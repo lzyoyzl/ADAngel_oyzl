@@ -1,0 +1,48 @@
+experiment:
+  name: llama2_7b_prefill_o0_o1_o2_sm120
+  seed: 20250805
+  formal: true
+matrix:
+  m: 4096
+  n: 4096
+  k: 4096
+  operation: A_times_W_transpose
+quantization:
+  activation:
+    format: int8_symmetric_per_row
+    qmin: -127
+    qmax: 127
+    zero_row_scale: 1.0
+  weight:
+    format: mxfp4_e2m1_ue8m0
+    group_size: 32
+    rounding: round_ties_to_even
+    overflow: saturate
+    zero_block_scale_code: 127
+output:
+  accumulator: fp32
+  dtype: fp32
+variants: [o0, o1, o2]
+modes: [conversion_only, compute_only, cold, steady_state]
+timing:
+  warmup: 50
+  repeats: 200
+  stream_count: 1
+  interleave_variants: true
+  cuda_events: true
+  max_cv_percent: 3.0
+statistics:
+  percentiles: [5, 50, 95]
+  report_iqr: true
+  bootstrap_samples: 10000
+  confidence: 0.95
+correctness:
+  reference: o0
+  mse_reduction_dtype: fp64
+  microkernel_rtol: 0.001
+  microkernel_atol: 0.001
+  reject_nan_inf: true
+backend:
+  required: native
+  cuda_arch: sm_120a
+  allow_reference_for_formal: false

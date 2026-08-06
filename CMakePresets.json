@@ -1,0 +1,17 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "sm120-release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/sm120-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CUDA_ARCHITECTURES": "120a"
+      }
+    }
+  ],
+  "buildPresets": [
+    {"name": "sm120-release", "configurePreset": "sm120-release"}
+  ]
+}

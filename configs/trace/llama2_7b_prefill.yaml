@@ -1,0 +1,8 @@
+model: meta-llama/Llama-2-7b-hf
+batch_size: 1
+sequence_length: 4096
+valid_tokens: 4096
+dtype: fp16
+layers: [0, 6, 12, 18, 24, 31]
+projections: [q_proj, k_proj, v_proj, o_proj]
+expected_shape: [4096, 4096]

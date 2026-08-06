@@ -1,0 +1,25 @@
+host:
+  operating_system: "Ubuntu 22.04 LTS"
+  architecture: "x86_64"
+  python_version: "3.10.12"
+machine:
+  required_gpu_name_regex: "RTX 5090"
+  required_compute_capability: [12, 0]
+  cuda_arch: sm_120a
+  exclusive_gpu_recommended: true
+toolchain:
+  cuda_toolkit_version: "12.8.1"
+  nvcc_release: "12.8"
+  nvcc_build: "12.8.90"
+  minimum_linux_driver: "570.124.06"
+  minimum_windows_driver: "572.61"
+  cutlass_tag: "v4.5.2"
+  cutlass_commit: "db1c288993354c88e551c40c19a8fb93a774a241"
+  pytorch_version: "2.7.1"
+  pytorch_cuda_build: "cu128"
+  gcc_version: "11"
+  cmake_minimum: "3.24"
+  cxx_standard: "17"
+power:
+  persistence_mode_recommended: true
+  fixed_clocks_optional: true

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adangel-sm120"
+version = "0.1.0"
+description = "RTX 5090 SM120 O0/O1/O2 MXFP4 experiment harness"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+dependencies = ["PyYAML==6.0.2", "torch==2.7.1"]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.5", "ruff==0.9.10"]
+trace = ["transformers==4.49.0", "safetensors==0.5.3", "sentencepiece==0.2.0"]
+analysis = ["numpy==2.1.3", "pandas==2.2.3", "matplotlib==3.9.2"]
+
+[project.scripts]
+adangel = "adangel.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["sm120: requires an RTX 5090 and the native sm_120a extension"]
