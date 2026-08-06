@@ -38,12 +38,15 @@ extern "C" __global__ void adangel_int8_to_fp16(
 
 extern "C" __global__ void adangel_mxfp4_to_int8(
     const uint8_t* packed, int8_t* output, int rows, int k) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index >= rows * k) return;
-  int row = index / k;
-  int col = index - row * k;
-  uint8_t byte = packed[row * (k / 2) + col / 2];
-  output[index] = adangel::e2m1_to_int8_base((col & 1) ? byte >> 4 : byte & 0xF);
+  const int row = static_cast<int>(blockIdx.y);
+  const int pair = static_cast<int>(blockIdx.x * blockDim.x + threadIdx.x);
+  const int pairs_per_row = k / 2;
+  if (row >= rows || pair >= pairs_per_row) return;
+  const uint8_t byte = packed[row * pairs_per_row + pair];
+  char2 values;
+  values.x = adangel::e2m1_to_int8_base(byte & 0xF);
+  values.y = adangel::e2m1_to_int8_base(byte >> 4);
+  reinterpret_cast<char2*>(output)[row * pairs_per_row + pair] = values;
 }
 
 namespace {
@@ -91,4 +94,21 @@ void adangel_launch_int8_to_fp16(
       rows,
       k);
   check_launch("INT8-to-FP16");
+}
+
+void adangel_launch_mxfp4_to_int8(
+    const at::Tensor& packed,
+    at::Tensor& output,
+    cudaStream_t stream) {
+  const int rows = static_cast<int>(output.size(0));
+  const int k = static_cast<int>(output.size(1));
+  const int pairs_per_row = k / 2;
+  constexpr int threads = 256;
+  dim3 blocks((pairs_per_row + threads - 1) / threads, rows);
+  adangel_mxfp4_to_int8<<<blocks, threads, 0, stream>>>(
+      packed.data_ptr<uint8_t>(),
+      output.data_ptr<int8_t>(),
+      rows,
+      k);
+  check_launch("MXFP4-to-INT8");
 }

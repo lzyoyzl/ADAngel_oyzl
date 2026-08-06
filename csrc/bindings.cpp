@@ -12,10 +12,10 @@ py::dict capabilities() {
   py::dict result;
   result["compiled_sm120a"] = true;
   result["o0_fp16_tc"] = adangel_o0_is_implemented();
-  result["o1_int8_tc"] = false;
+  result["o1_int8_tc"] = adangel_o1_is_implemented();
   result["o2_mxf4_block_scale"] = false;
   result["o2_cutlass_tiled"] = adangel_o2_cutlass_is_implemented();
-  result["status"] = "O0 production adapter is implemented; O1/O2 production adapters are pending";
+  result["status"] = "O0/O1 production adapters are implemented; O2 is pending";
   return result;
 }
 
@@ -40,6 +40,10 @@ py::dict benchmark(
     return adangel_benchmark_o0(
         a_int8, a_scale, w_mxfp4, w_scale, mode, warmup, repeats);
   }
+  if (variant == "o1") {
+    return adangel_benchmark_o1(
+        a_int8, a_scale, w_mxfp4, w_scale, mode, warmup, repeats);
+  }
   TORCH_CHECK(
       false,
       "The ",
@@ -62,7 +66,7 @@ py::dict verify_layout() {
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
   module.def("capabilities", &capabilities);
   module.def("run_o0", &adangel_run_o0);
-  module.def("run_o1", &unavailable);
+  module.def("run_o1", &adangel_run_o1);
   module.def("run_o2", &unavailable);
   module.def("benchmark", &benchmark);
   module.def("verify_layout", &verify_layout);

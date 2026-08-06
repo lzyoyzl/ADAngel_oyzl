@@ -41,6 +41,27 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('module.def("run_o0", &adangel_run_o0)', bindings)
         self.assertNotIn('result["o0_fp16_tc"] = false', bindings)
 
+    def test_o1_production_backend_contract(self):
+        source = (ROOT / "csrc/sm120/o1_gemm.cu").read_text()
+        conversion = (ROOT / "csrc/sm120/conversion.cu").read_text()
+        bindings = (ROOT / "csrc/bindings.cpp").read_text()
+        self.assertIn("CUBLAS_COMPUTE_32I", source)
+        self.assertIn("CUDA_R_8I", source)
+        self.assertIn("CUDA_R_32I", source)
+        self.assertIn("CUBLASLT_NUMERICAL_IMPL_FLAGS_IMMA", source)
+        self.assertIn("CUBLASLT_NUMERICAL_IMPL_FLAGS_ACCUMULATOR_32I", source)
+        self.assertIn("CUBLASLT_NUMERICAL_IMPL_FLAGS_INPUT_8I", source)
+        self.assertIn("adangel_o1_scale_accumulate", source)
+        self.assertIn("adangel_launch_mxfp4_to_int8", source)
+        self.assertIn("e2m1_to_int8_base", conversion)
+        self.assertIn('module.def("run_o1", &adangel_run_o1)', bindings)
+        self.assertNotIn('result["o1_int8_tc"] = false', bindings)
+
+    def test_o1_has_all_timing_modes(self):
+        source = (ROOT / "csrc/sm120/o1_gemm.cu").read_text()
+        for mode in ("conversion_only", "compute_only", "cold", "steady_state"):
+            self.assertIn(f'"{mode}"', source)
+
     def test_o0_has_all_timing_modes(self):
         source = (ROOT / "csrc/sm120/o0_gemm.cu").read_text()
         for mode in ("conversion_only", "compute_only", "cold", "steady_state"):

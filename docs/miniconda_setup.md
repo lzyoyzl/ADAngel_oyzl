@@ -202,23 +202,34 @@ python -m adangel doctor
 python -m unittest discover -s tests/unit -p 'test_*.py' -v
 ```
 
-O0 正式后端已经实现并启用独立 capability；O1/O2 capability 仍关闭。因此
+O0/O1 正式后端已经实现并启用各自的独立 capability；O2 capability 仍关闭。因此
 `python -m adangel doctor --require-native` 和完整正式 benchmark 目前仍应拒绝运行；
 这不是 Conda 配置失败，也不能用 reference 后端绕过。
 
-先独立验收 O0（不需要模型和 trace）：
+先独立验收 O0/O1（不需要模型和 trace）：
 
 ```bash
 python -c "import torch; import adangel._sm120 as m; print(dict(m.capabilities()))"
 python scripts/validate_o0.py
 python -m pytest tests/integration/test_sm120_o0.py -q --run-sm120
+python scripts/validate_o1.py
+python -m pytest tests/integration/test_sm120_o1.py -q --run-sm120
 ```
 
-预期 `o0_fp16_tc=true`，验证脚本输出 `passed=true`。它会核对反量化、FP32 输出、
-cuBLASLt HMMA 元数据和四种计时模式。若源码是在 editable install 之后更新的，必须先
-重新执行本节构建命令；只重启 Python 不会重新编译 `.so`。
+预期 `o0_fp16_tc=true`、`o1_int8_tc=true`，两个验证脚本都输出 `passed=true`。
+O0 会核对反量化、FP32 输出和 cuBLASLt HMMA；O1 会核对精确 E2M1→INT8 映射、
+逐 K32 INT32 partial/FP32 scale accumulation 和 cuBLASLt IMMA。两者都会验证四种计时
+模式。若源码是在 editable install 之后更新的，必须先重新执行本节构建命令；只重启
+Python 不会重新编译 `.so`。
 
-O1/O2 adapter 完成后再执行完整验收：
+专项小矩阵通过后，使用 `4096^3` 对 O1 再做一次正式形状验收：
+
+```bash
+python scripts/validate_o1.py --m 4096 --n 4096 --k 4096 --warmup 5 --repeats 10 \
+  | tee reports/o1_4096_validation.json
+```
+
+O2 adapter 完成后再执行完整验收：
 
 ```bash
 python -m adangel doctor --require-native
