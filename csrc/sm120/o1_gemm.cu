@@ -1,7 +1,7 @@
 #include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
-#include <cublasLt.h>
 #include <cuda_runtime_api.h>
+#include <mma.h>
 #include <pybind11/stl.h>
 #include <torch/extension.h>
 
@@ -17,21 +17,17 @@ namespace py = pybind11;
 namespace {
 
 constexpr int kGroupSize = 32;
-constexpr int kScaleTileM = 16;
-constexpr int kScaleTileN = 256;
-constexpr uint64_t kMaxWorkspaceBytes = 64ULL * 1024ULL * 1024ULL;
-constexpr int kRequestedAlgorithms = 64;
+constexpr int kWmmaK = 16;
+constexpr int kTileM = 64;
+constexpr int kTileN = 32;
+constexpr int kWarpsPerBlock = 8;
+constexpr int kThreadsPerBlock = kWarpsPerBlock * 32;
+constexpr int kOutputsPerThread = (kTileM * kTileN) / kThreadsPerBlock;
+
+static_assert(kOutputsPerThread == 8);
 
 void check_cuda(cudaError_t status, const char* operation) {
   TORCH_CHECK(status == cudaSuccess, operation, " failed: ", cudaGetErrorString(status));
-}
-
-void check_cublas(cublasStatus_t status, const char* operation) {
-  TORCH_CHECK(
-      status == CUBLAS_STATUS_SUCCESS,
-      operation,
-      " failed with cuBLAS status ",
-      static_cast<int>(status));
 }
 
 enum class TimingMode { kConversionOnly, kComputeOnly, kCold, kSteadyState };
@@ -80,303 +76,190 @@ float elapsed_ms(const CudaEvent& begin, const CudaEvent& end) {
   return value;
 }
 
-// One block reuses 256 column scales across 16 output rows. Each warp therefore reads/writes
-// contiguous output values while the strided W_scale load is paid only once per output tile.
-__global__ void adangel_o1_scale_accumulate(
-    const int32_t* partial,
+void record(cudaEvent_t event, cudaStream_t stream) {
+  check_cuda(cudaEventRecord(event, stream), "cudaEventRecord");
+}
+
+}  // namespace
+
+// One CTA owns a 64x32 output tile. Eight warps compute 16x16 subtiles. For each K32 group,
+// two signed-int8 WMMA operations create one exact INT32 partial per output element. The partial
+// is staged only in shared memory, immediately rescaled, and accumulated in per-thread FP32
+// registers. Each final FP32 output is written to global memory exactly once.
+extern "C" __global__ void adangel_o1_fused_tiled(
+    const int8_t* a_int8,
     const float* a_scale,
+    const int8_t* w_int8,
     const uint8_t* w_scale,
     float* output,
     int m,
     int n,
-    int groups,
-    int group) {
-  __shared__ float column_scale[kScaleTileN];
-  __shared__ float row_scale[kScaleTileM];
-  const int lane = static_cast<int>(threadIdx.x);
-  const int column = static_cast<int>(blockIdx.x) * kScaleTileN + lane;
-  const int row_begin = static_cast<int>(blockIdx.y) * kScaleTileM;
-  if (lane < kScaleTileM) {
-    const int row = row_begin + lane;
-    row_scale[lane] = row < m ? a_scale[row] : 0.0f;
-  }
-  column_scale[lane] = column < n
-      ? adangel::decode_ue8m0(w_scale[column * groups + group])
-      : 0.0f;
-  __syncthreads();
-  if (column >= n) return;
+    int k,
+    int groups) {
+  __shared__ __align__(32) int8_t shared_a_lo[kTileM * kWmmaK];
+  __shared__ __align__(32) int8_t shared_a_hi[kTileM * kWmmaK];
+  // B is W^T. Each half is stored column-major [K16,N32] for WMMA matrix_b.
+  __shared__ __align__(32) int8_t shared_b_lo[kTileN * kWmmaK];
+  __shared__ __align__(32) int8_t shared_b_hi[kTileN * kWmmaK];
+  __shared__ __align__(32) int32_t shared_partial[kWarpsPerBlock * 16 * 16];
 
+  const int thread = static_cast<int>(threadIdx.x);
+  const int warp = thread >> 5;
+  const int warp_row = warp >> 1;
+  const int warp_column = warp & 1;
+  const int tile_row = static_cast<int>(blockIdx.y) * kTileM;
+  const int tile_column = static_cast<int>(blockIdx.x) * kTileN;
+  const int local_column = thread & (kTileN - 1);
+  const int first_local_row = thread >> 5;
+  const int global_column = tile_column + local_column;
+
+  float row_scales[kOutputsPerThread];
+  float accumulators[kOutputsPerThread];
 #pragma unroll
-  for (int row_offset = 0; row_offset < kScaleTileM; ++row_offset) {
-    const int row = row_begin + row_offset;
-    if (row >= m) break;
-    const int64_t index = static_cast<int64_t>(row) * n + column;
-    float scale = __fmul_rn(row_scale[row_offset], column_scale[lane]);
-    scale = __fmul_rn(scale, 0.5f);
-    const float contribution = __fmul_rn(static_cast<float>(partial[index]), scale);
-    output[index] = group == 0 ? contribution : __fadd_rn(output[index], contribution);
+  for (int item = 0; item < kOutputsPerThread; ++item) {
+    const int local_row = first_local_row + item * 8;
+    const int global_row = tile_row + local_row;
+    row_scales[item] = global_row < m ? a_scale[global_row] : 0.0f;
+    accumulators[item] = 0.0f;
+  }
+
+  for (int group = 0; group < groups; ++group) {
+    const int group_k = group * kGroupSize;
+    for (int linear = thread; linear < kTileM * kGroupSize;
+         linear += kThreadsPerBlock) {
+      const int local_row = linear / kGroupSize;
+      const int local_k = linear - local_row * kGroupSize;
+      const int global_row = tile_row + local_row;
+      const int8_t value = global_row < m
+          ? a_int8[static_cast<int64_t>(global_row) * k + group_k + local_k]
+          : int8_t{0};
+      if (local_k < kWmmaK) {
+        shared_a_lo[local_row * kWmmaK + local_k] = value;
+      } else {
+        shared_a_hi[local_row * kWmmaK + local_k - kWmmaK] = value;
+      }
+    }
+    for (int linear = thread; linear < kTileN * kGroupSize;
+         linear += kThreadsPerBlock) {
+      const int local_col = linear / kGroupSize;
+      const int local_k = linear - local_col * kGroupSize;
+      const int global_col = tile_column + local_col;
+      const int8_t value = global_col < n
+          ? w_int8[static_cast<int64_t>(global_col) * k + group_k + local_k]
+          : int8_t{0};
+      if (local_k < kWmmaK) {
+        shared_b_lo[local_col * kWmmaK + local_k] = value;
+      } else {
+        shared_b_hi[local_col * kWmmaK + local_k - kWmmaK] = value;
+      }
+    }
+    __syncthreads();
+
+    using namespace nvcuda;
+    wmma::fragment<wmma::matrix_a, 16, 16, 16, signed char, wmma::row_major> a_fragment;
+    wmma::fragment<wmma::matrix_b, 16, 16, 16, signed char, wmma::col_major> b_fragment;
+    wmma::fragment<wmma::accumulator, 16, 16, 16, int> partial_fragment;
+    wmma::fill_fragment(partial_fragment, 0);
+
+    const int a_offset = warp_row * 16 * kWmmaK;
+    const int b_offset = warp_column * 16 * kWmmaK;
+    wmma::load_matrix_sync(a_fragment, shared_a_lo + a_offset, kWmmaK);
+    wmma::load_matrix_sync(b_fragment, shared_b_lo + b_offset, kWmmaK);
+    wmma::mma_sync(partial_fragment, a_fragment, b_fragment, partial_fragment);
+    wmma::load_matrix_sync(a_fragment, shared_a_hi + a_offset, kWmmaK);
+    wmma::load_matrix_sync(b_fragment, shared_b_hi + b_offset, kWmmaK);
+    wmma::mma_sync(partial_fragment, a_fragment, b_fragment, partial_fragment);
+    wmma::store_matrix_sync(
+        shared_partial + warp * 16 * 16,
+        partial_fragment,
+        16,
+        wmma::mem_row_major);
+    __syncthreads();
+
+    const float column_scale = global_column < n
+        ? adangel::decode_ue8m0(w_scale[global_column * groups + group])
+        : 0.0f;
+#pragma unroll
+    for (int item = 0; item < kOutputsPerThread; ++item) {
+      const int local_row = first_local_row + item * 8;
+      const int owner_warp = (local_row / 16) * 2 + local_column / 16;
+      const int owner_index =
+          (local_row % 16) * 16 + (local_column % 16);
+      const int32_t partial = shared_partial[owner_warp * 16 * 16 + owner_index];
+      float scale = __fmul_rn(row_scales[item], column_scale);
+      scale = __fmul_rn(scale, 0.5f);
+      const float contribution = __fmul_rn(static_cast<float>(partial), scale);
+      accumulators[item] = group == 0
+          ? contribution
+          : __fadd_rn(accumulators[item], contribution);
+    }
+    // The next iteration may overwrite A/B shared storage immediately. Its load barrier also
+    // prevents any warp from overwriting shared_partial before every thread consumed this group.
+  }
+
+  if (global_column < n) {
+#pragma unroll
+    for (int item = 0; item < kOutputsPerThread; ++item) {
+      const int global_row = tile_row + first_local_row + item * 8;
+      if (global_row < m) {
+        output[static_cast<int64_t>(global_row) * n + global_column] = accumulators[item];
+      }
+    }
   }
 }
 
-class O1LtPlan {
- public:
-  O1LtPlan(int64_t m, int64_t n, int64_t full_k, uint64_t max_workspace_bytes) {
-    try {
-      check_cublas(cublasLtCreate(&handle_), "cublasLtCreate");
-      check_cublas(
-          cublasLtMatmulDescCreate(&operation_, CUBLAS_COMPUTE_32I, CUDA_R_32I),
-          "cublasLtMatmulDescCreate");
-      // Row-major [M,K] and [N,K] buffers are memory-equivalent to column-major [K,M] and
-      // [K,N]. This TN description satisfies cuBLASLt's regular-order IMMA requirements.
-      cublasOperation_t transpose_a = CUBLAS_OP_T;
-      cublasOperation_t transpose_b = CUBLAS_OP_N;
-      check_cublas(
-          cublasLtMatmulDescSetAttribute(
-              operation_, CUBLASLT_MATMUL_DESC_TRANSA, &transpose_a, sizeof(transpose_a)),
-          "set TRANSA");
-      check_cublas(
-          cublasLtMatmulDescSetAttribute(
-              operation_, CUBLASLT_MATMUL_DESC_TRANSB, &transpose_b, sizeof(transpose_b)),
-          "set TRANSB");
+namespace {
 
-      check_cublas(
-          cublasLtMatrixLayoutCreate(
-              &a_layout_, CUDA_R_8I, kGroupSize, m, full_k),
-          "create A K32 layout");
-      check_cublas(
-          cublasLtMatrixLayoutCreate(
-              &b_layout_, CUDA_R_8I, kGroupSize, n, full_k),
-          "create W K32 layout");
-      check_cublas(
-          cublasLtMatrixLayoutCreate(&c_layout_, CUDA_R_32I, m, n, n),
-          "create partial C layout");
-      check_cublas(
-          cublasLtMatrixLayoutCreate(&d_layout_, CUDA_R_32I, m, n, n),
-          "create partial D layout");
-      cublasLtOrder_t column_order = CUBLASLT_ORDER_COL;
-      cublasLtOrder_t row_order = CUBLASLT_ORDER_ROW;
-      check_cublas(
-          cublasLtMatrixLayoutSetAttribute(
-              a_layout_, CUBLASLT_MATRIX_LAYOUT_ORDER, &column_order, sizeof(column_order)),
-          "set A column-major layout");
-      check_cublas(
-          cublasLtMatrixLayoutSetAttribute(
-              b_layout_, CUBLASLT_MATRIX_LAYOUT_ORDER, &column_order, sizeof(column_order)),
-          "set W column-major layout");
-      check_cublas(
-          cublasLtMatrixLayoutSetAttribute(
-              c_layout_, CUBLASLT_MATRIX_LAYOUT_ORDER, &row_order, sizeof(row_order)),
-          "set C row-major layout");
-      check_cublas(
-          cublasLtMatrixLayoutSetAttribute(
-              d_layout_, CUBLASLT_MATRIX_LAYOUT_ORDER, &row_order, sizeof(row_order)),
-          "set D row-major layout");
-
-      check_cublas(cublasLtMatmulPreferenceCreate(&preference_), "create matmul preference");
-      check_cublas(
-          cublasLtMatmulPreferenceSetAttribute(
-              preference_,
-              CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
-              &max_workspace_bytes,
-              sizeof(max_workspace_bytes)),
-          "set maximum workspace");
-
-      std::vector<cublasLtMatmulHeuristicResult_t> candidates(kRequestedAlgorithms);
-      int returned = 0;
-      check_cublas(
-          cublasLtMatmulAlgoGetHeuristic(
-              handle_,
-              operation_,
-              a_layout_,
-              b_layout_,
-              c_layout_,
-              d_layout_,
-              preference_,
-              static_cast<int>(candidates.size()),
-              candidates.data(),
-              &returned),
-          "cublasLtMatmulAlgoGetHeuristic");
-
-      bool found = false;
-      for (int index = 0; index < returned; ++index) {
-        const auto& candidate = candidates[index];
-        if (candidate.state != CUBLAS_STATUS_SUCCESS ||
-            candidate.workspaceSize > max_workspace_bytes) {
-          continue;
-        }
-        uint64_t flags = 0;
-        size_t flag_bytes = 0;
-        cublasStatus_t flag_status = cublasLtMatmulAlgoCapGetAttribute(
-            &candidate.algo,
-            CUBLASLT_ALGO_CAP_NUMERICAL_IMPL_FLAGS,
-            &flags,
-            sizeof(flags),
-            &flag_bytes);
-        constexpr uint64_t required_flags =
-            CUBLASLT_NUMERICAL_IMPL_FLAGS_IMMA |
-            CUBLASLT_NUMERICAL_IMPL_FLAGS_ACCUMULATOR_32I |
-            CUBLASLT_NUMERICAL_IMPL_FLAGS_INPUT_8I;
-        uint32_t split_k = 0;
-        size_t split_k_bytes = 0;
-        cublasStatus_t split_k_status = cublasLtMatmulAlgoConfigGetAttribute(
-            &candidate.algo,
-            CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
-            &split_k,
-            sizeof(split_k),
-            &split_k_bytes);
-        if (flag_status != CUBLAS_STATUS_SUCCESS || flag_bytes != sizeof(flags) ||
-            (flags & required_flags) != required_flags ||
-            split_k_status != CUBLAS_STATUS_SUCCESS ||
-            split_k_bytes != sizeof(split_k) ||
-            split_k > 1) {
-          continue;
-        }
-        heuristic_ = candidate;
-        numerical_flags_ = flags;
-        split_k_ = split_k;
-        found = true;
-        break;
-      }
-      TORCH_CHECK(
-          found,
-          "cuBLASLt returned no INT8 Tensor Core (IMMA) algorithm for O1 K32 shape ",
-          m,
-          "x",
-          n,
-          " within ",
-          max_workspace_bytes,
-          " workspace bytes");
-
-      size_t algorithm_bytes = 0;
-      check_cublas(
-          cublasLtMatmulAlgoConfigGetAttribute(
-              &heuristic_.algo,
-              CUBLASLT_ALGO_CONFIG_ID,
-              &algorithm_id_,
-              sizeof(algorithm_id_),
-              &algorithm_bytes),
-          "read cuBLASLt algorithm ID");
-      TORCH_CHECK(
-          algorithm_bytes == sizeof(algorithm_id_), "invalid cuBLASLt algorithm ID size");
-    } catch (...) {
-      release();
-      throw;
-    }
-  }
-
-  ~O1LtPlan() { release(); }
-  O1LtPlan(const O1LtPlan&) = delete;
-  O1LtPlan& operator=(const O1LtPlan&) = delete;
-
-  void run_group(
-      const int8_t* a,
-      const int8_t* w,
-      at::Tensor& partial,
-      at::Tensor& workspace,
-      cudaStream_t stream) const {
-    void* workspace_pointer = heuristic_.workspaceSize == 0 ? nullptr : workspace.data_ptr();
-    if (workspace_pointer != nullptr) {
-      TORCH_CHECK(
-          (reinterpret_cast<uintptr_t>(workspace_pointer) & 255U) == 0,
-          "cuBLASLt workspace must be at least 256-byte aligned");
-    }
-    const int32_t alpha = 1;
-    const int32_t beta = 0;
-    check_cublas(
-        cublasLtMatmul(
-            handle_,
-            operation_,
-            &alpha,
-            a,
-            a_layout_,
-            w,
-            b_layout_,
-            &beta,
-            partial.data_ptr<int32_t>(),
-            c_layout_,
-            partial.data_ptr<int32_t>(),
-            d_layout_,
-            &heuristic_.algo,
-            workspace_pointer,
-            heuristic_.workspaceSize,
-            stream),
-        "O1 cublasLtMatmul K32");
-  }
-
-  py::dict metadata(int groups) const {
-    py::dict result;
-    result["library"] = "cublasLt+CUDA";
-    result["algorithm_id"] = algorithm_id_;
-    result["workspace_bytes"] = static_cast<uint64_t>(heuristic_.workspaceSize);
-    result["numerical_impl_flags"] = numerical_flags_;
-    result["tensor_core"] = true;
-    result["mma_family"] = "IMMA";
-    result["split_k"] = split_k_;
-    result["compute_type"] = "CUBLAS_COMPUTE_32I";
-    result["input_dtype"] = "int8";
-    result["partial_dtype"] = "int32";
-    result["output_dtype"] = "fp32";
-    result["group_size"] = kGroupSize;
-    result["group_count"] = groups;
-    result["scale_formula"] = "A_scale*decode_ue8m0(W_scale)/2";
-    return result;
-  }
-
- private:
-  void release() noexcept {
-    if (preference_ != nullptr) cublasLtMatmulPreferenceDestroy(preference_);
-    if (d_layout_ != nullptr) cublasLtMatrixLayoutDestroy(d_layout_);
-    if (c_layout_ != nullptr) cublasLtMatrixLayoutDestroy(c_layout_);
-    if (b_layout_ != nullptr) cublasLtMatrixLayoutDestroy(b_layout_);
-    if (a_layout_ != nullptr) cublasLtMatrixLayoutDestroy(a_layout_);
-    if (operation_ != nullptr) cublasLtMatmulDescDestroy(operation_);
-    if (handle_ != nullptr) cublasLtDestroy(handle_);
-    preference_ = nullptr;
-    d_layout_ = c_layout_ = b_layout_ = a_layout_ = nullptr;
-    operation_ = nullptr;
-    handle_ = nullptr;
-  }
-
-  cublasLtHandle_t handle_ = nullptr;
-  cublasLtMatmulDesc_t operation_ = nullptr;
-  cublasLtMatrixLayout_t a_layout_ = nullptr;
-  cublasLtMatrixLayout_t b_layout_ = nullptr;
-  cublasLtMatrixLayout_t c_layout_ = nullptr;
-  cublasLtMatrixLayout_t d_layout_ = nullptr;
-  cublasLtMatmulPreference_t preference_ = nullptr;
-  cublasLtMatmulHeuristicResult_t heuristic_{};
-  uint64_t numerical_flags_ = 0;
-  uint32_t split_k_ = 0;
-  int algorithm_id_ = -1;
-};
-
-void launch_scale_accumulate(
-    const at::Tensor& partial,
+void launch_fused_o1(
+    const at::Tensor& a_int8,
     const at::Tensor& a_scale,
+    const at::Tensor& w_int8,
     const at::Tensor& w_scale,
     at::Tensor& output,
-    int group,
     cudaStream_t stream) {
-  const int m = static_cast<int>(output.size(0));
-  const int n = static_cast<int>(output.size(1));
-  const int groups = static_cast<int>(w_scale.size(1));
-  dim3 blocks(
-      (n + kScaleTileN - 1) / kScaleTileN,
-      (m + kScaleTileM - 1) / kScaleTileM);
-  adangel_o1_scale_accumulate<<<blocks, kScaleTileN, 0, stream>>>(
-      partial.data_ptr<int32_t>(),
+  const int m = static_cast<int>(a_int8.size(0));
+  const int k = static_cast<int>(a_int8.size(1));
+  const int n = static_cast<int>(w_int8.size(0));
+  const int groups = k / kGroupSize;
+  dim3 grid((n + kTileN - 1) / kTileN, (m + kTileM - 1) / kTileM);
+  adangel_o1_fused_tiled<<<grid, kThreadsPerBlock, 0, stream>>>(
+      a_int8.data_ptr<int8_t>(),
       a_scale.data_ptr<float>(),
+      w_int8.data_ptr<int8_t>(),
       w_scale.data_ptr<uint8_t>(),
       output.data_ptr<float>(),
       m,
       n,
-      groups,
-      group);
-  check_cuda(cudaGetLastError(), "O1 K32 scale/accumulate launch");
+      k,
+      groups);
+  check_cuda(cudaGetLastError(), "O1 fused tiled WMMA launch");
 }
 
-void record(cudaEvent_t event, cudaStream_t stream) {
-  check_cuda(cudaEventRecord(event, stream), "cudaEventRecord");
+py::dict fused_metadata(int groups) {
+  py::dict result;
+  result["library"] = "CUDA WMMA";
+  result["algorithm_id"] = -1;
+  result["workspace_bytes"] = 0;
+  result["numerical_impl_flags"] = 0;
+  result["tensor_core"] = true;
+  result["mma_family"] = "IMMA";
+  result["mma_api"] = "nvcuda::wmma";
+  result["mma_shape"] = "m16n16k16";
+  result["implementation"] = "fused_tiled";
+  result["kernel_symbol"] = "adangel_o1_fused_tiled";
+  result["cta_tile"] = py::make_tuple(kTileM, kTileN, kGroupSize);
+  result["split_k"] = 1;
+  result["compute_type"] = "S8xS8_TO_S32";
+  result["input_dtype"] = "int8";
+  result["partial_dtype"] = "int32";
+  result["accumulation_dtype"] = "fp32";
+  result["output_dtype"] = "fp32";
+  result["group_size"] = kGroupSize;
+  result["group_count"] = groups;
+  result["scale_formula"] = "A_scale*decode_ue8m0(W_scale)/2";
+  result["global_partial_buffer"] = false;
+  result["output_stores_per_element"] = 1;
+  return result;
 }
 
 }  // namespace
@@ -401,30 +284,12 @@ py::dict adangel_benchmark_o1(
   const int64_t m = a_int8.size(0);
   const int64_t k = a_int8.size(1);
   const int64_t n = w_mxfp4.size(0);
-  TORCH_CHECK(
-      m % 4 == 0 && n % 4 == 0,
-      "O1 regular-order INT8 Tensor Core path requires M and N divisible by 4; got ",
-      m,
-      "x",
-      n);
   const int groups = static_cast<int>(k / kGroupSize);
   auto w_int8 = at::empty({n, k}, a_int8.options().dtype(at::kChar));
-  auto partial = at::empty({m, n}, a_int8.options().dtype(at::kInt));
   auto output = at::empty({m, n}, a_int8.options().dtype(at::kFloat));
-  auto workspace = at::empty(
-      {static_cast<int64_t>(kMaxWorkspaceBytes)}, a_int8.options().dtype(at::kByte));
-  O1LtPlan plan(m, n, k, kMaxWorkspaceBytes);
 
   auto convert_weight = [&]() { adangel_launch_mxfp4_to_int8(w_mxfp4, w_int8, stream); };
-  auto gemm = [&]() {
-    const int8_t* a_pointer = a_int8.data_ptr<int8_t>();
-    const int8_t* w_pointer = w_int8.data_ptr<int8_t>();
-    for (int group = 0; group < groups; ++group) {
-      const int offset = group * kGroupSize;
-      plan.run_group(a_pointer + offset, w_pointer + offset, partial, workspace, stream);
-      launch_scale_accumulate(partial, a_scale, w_scale, output, group, stream);
-    }
-  };
+  auto gemm = [&]() { launch_fused_o1(a_int8, a_scale, w_int8, w_scale, output, stream); };
 
   if (mode == TimingMode::kComputeOnly || mode == TimingMode::kSteadyState) convert_weight();
   for (int iteration = 0; iteration < warmup; ++iteration) {
@@ -486,7 +351,7 @@ py::dict adangel_benchmark_o1(
     }
   }
 
-  // conversion_only returns a valid O1 output, but this K32 GEMM sequence is not timed.
+  // conversion_only returns a valid O1 output, but the fused kernel is outside its event range.
   if (mode == TimingMode::kConversionOnly) gemm();
 
   py::dict timings;
@@ -499,7 +364,7 @@ py::dict adangel_benchmark_o1(
   result["converted_weight"] = w_int8;
   result["converted_activation"] = py::none();
   result["timings_ms"] = timings;
-  result["kernel"] = plan.metadata(groups);
+  result["kernel"] = fused_metadata(groups);
   return result;
 }
 
@@ -523,9 +388,8 @@ py::dict adangel_run_o1(
   return measured;
 }
 
-// Retained for the one-time PTX/SASS audit. The production path above additionally rejects
-// cuBLASLt algorithms whose numerical implementation flags do not contain IMMA.
-
+// Retained as an independent direct-PTX smoke probe. The instruction audit must additionally
+// associate integer mma instructions with the adangel_o1_fused_tiled production kernel symbol.
 extern "C" __global__ void adangel_o1_int8_mma_probe(
     const uint32_t* a, const uint32_t* b, int32_t* d) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 1200

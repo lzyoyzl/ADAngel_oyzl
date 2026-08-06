@@ -45,17 +45,40 @@ class TestProjectContract(unittest.TestCase):
         source = (ROOT / "csrc/sm120/o1_gemm.cu").read_text()
         conversion = (ROOT / "csrc/sm120/conversion.cu").read_text()
         bindings = (ROOT / "csrc/bindings.cpp").read_text()
-        self.assertIn("CUBLAS_COMPUTE_32I", source)
-        self.assertIn("CUDA_R_8I", source)
-        self.assertIn("CUDA_R_32I", source)
-        self.assertIn("CUBLASLT_NUMERICAL_IMPL_FLAGS_IMMA", source)
-        self.assertIn("CUBLASLT_NUMERICAL_IMPL_FLAGS_ACCUMULATOR_32I", source)
-        self.assertIn("CUBLASLT_NUMERICAL_IMPL_FLAGS_INPUT_8I", source)
-        self.assertIn("adangel_o1_scale_accumulate", source)
+        self.assertIn("#include <mma.h>", source)
+        self.assertIn("wmma::fragment<wmma::matrix_a", source)
+        self.assertIn("wmma::fragment<wmma::matrix_b", source)
+        self.assertIn("wmma::fragment<wmma::accumulator", source)
+        self.assertIn("wmma::mma_sync", source)
+        self.assertIn("shared_partial", source)
+        self.assertIn("accumulators[kOutputsPerThread]", source)
+        self.assertIn("adangel_o1_fused_tiled", source)
+        self.assertIn('result["implementation"] = "fused_tiled"', source)
+        self.assertIn('result["global_partial_buffer"] = false', source)
+        self.assertNotIn("cublasLtMatmul(", source)
         self.assertIn("adangel_launch_mxfp4_to_int8", source)
         self.assertIn("e2m1_to_int8_base", conversion)
         self.assertIn('module.def("run_o1", &adangel_run_o1)', bindings)
         self.assertNotIn('result["o1_int8_tc"] = false', bindings)
+
+    def test_o1_fused_tile_output_ownership(self):
+        coordinates = [
+            (thread // 32 + item * 8, thread % 32)
+            for thread in range(256)
+            for item in range(8)
+        ]
+        self.assertEqual(len(coordinates), 64 * 32)
+        self.assertEqual(len(set(coordinates)), 64 * 32)
+        self.assertEqual(
+            set(coordinates), {(row, column) for row in range(64) for column in range(32)}
+        )
+        for row, column in coordinates:
+            owner_warp = (row // 16) * 2 + column // 16
+            owner_index = (row % 16) * 16 + column % 16
+            self.assertGreaterEqual(owner_warp, 0)
+            self.assertLess(owner_warp, 8)
+            self.assertGreaterEqual(owner_index, 0)
+            self.assertLess(owner_index, 256)
 
     def test_o1_has_all_timing_modes(self):
         source = (ROOT / "csrc/sm120/o1_gemm.cu").read_text()

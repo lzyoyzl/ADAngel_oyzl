@@ -218,15 +218,15 @@ python -m pytest tests/integration/test_sm120_o1.py -q --run-sm120
 
 预期 `o0_fp16_tc=true`、`o1_int8_tc=true`，两个验证脚本都输出 `passed=true`。
 O0 会核对反量化、FP32 输出和 cuBLASLt HMMA；O1 会核对精确 E2M1→INT8 映射、
-逐 K32 INT32 partial/FP32 scale accumulation 和 cuBLASLt IMMA。两者都会验证四种计时
-模式。若源码是在 editable install 之后更新的，必须先重新执行本节构建命令；只重启
-Python 不会重新编译 `.so`。
+fused tiled signed-INT8 WMMA、逐 K32 INT32 partial/FP32 寄存器累加、无全局 partial
+buffer 以及单次最终输出写回。两者都会验证四种计时模式。若源码是在 editable install
+之后更新的，必须先重新执行本节构建命令；只重启 Python 不会重新编译 `.so`。
 
 专项小矩阵通过后，使用 `4096^3` 对 O1 再做一次正式形状验收：
 
 ```bash
 python scripts/validate_o1.py --m 4096 --n 4096 --k 4096 --warmup 5 --repeats 10 \
-  | tee reports/o1_4096_validation.json
+  | tee reports/o1_4096_fused_validation.json
 ```
 
 O2 adapter 完成后再执行完整验收：

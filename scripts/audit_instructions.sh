@@ -21,6 +21,15 @@ grep -E 'mxf4.*block_scale|block_scale.*mxf4' "$output_dir/extension.ptx" >/dev/
 grep -E 'mma.*s8.*s8.*s32' "$output_dir/extension.ptx" >/dev/null || {
   echo 'O1 INT8 MMA not found in PTX' >&2; exit 1;
 }
+awk '
+  /adangel_o1_fused_tiled/ { inside = 1 }
+  inside && /mma.*s8.*s8.*s32/ { found = 1 }
+  inside && /^[[:space:]]*}/ { exit found ? 0 : 1 }
+  END { if (!inside || !found) exit 1 }
+' "$output_dir/extension.ptx" || {
+  echo 'O1 fused kernel symbol does not contain INT8 MMA in PTX' >&2
+  exit 1
+}
 grep -E 'mma.*f16.*f16.*f32|HMMA' "$output_dir/extension.ptx" "$output_dir/extension.sass" >/dev/null || {
   echo 'O0 FP16 Tensor Core instruction not found' >&2; exit 1;
 }
@@ -31,6 +40,6 @@ grep -E 'MMA|HMMA|IMMA' "$output_dir/extension.sass" >/dev/null || {
 {
   echo "binary=$binary"
   echo "status=PASS"
-  echo "manual_review=Confirm the matched instructions belong to adangel_o0/o1/o2 kernel symbols."
+  echo "manual_review=O1 fused PTX association passed; confirm O0/O1/O2 SASS symbol association."
 } > "$output_dir/summary.txt"
 echo "instruction audit passed; review $output_dir/summary.txt and extension.sass"

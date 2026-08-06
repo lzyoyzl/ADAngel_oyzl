@@ -87,13 +87,21 @@ def main() -> int:
 
     kernel = dict(actual["kernel"])
     required_metadata = {
+        "library": "CUDA WMMA",
         "tensor_core": True,
         "mma_family": "IMMA",
-        "compute_type": "CUBLAS_COMPUTE_32I",
+        "mma_api": "nvcuda::wmma",
+        "mma_shape": "m16n16k16",
+        "implementation": "fused_tiled",
+        "kernel_symbol": "adangel_o1_fused_tiled",
+        "compute_type": "S8xS8_TO_S32",
         "input_dtype": "int8",
         "partial_dtype": "int32",
+        "accumulation_dtype": "fp32",
         "output_dtype": "fp32",
         "group_size": 32,
+        "global_partial_buffer": False,
+        "output_stores_per_element": 1,
     }
     for key, value in required_metadata.items():
         if kernel.get(key) != value:

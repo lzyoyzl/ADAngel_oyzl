@@ -47,11 +47,19 @@ def test_o1_native_matches_semantic_reference():
     assert torch.isfinite(actual["output"]).all()
     kernel = dict(actual["kernel"])
     assert kernel["tensor_core"] is True
+    assert kernel["library"] == "CUDA WMMA"
     assert kernel["mma_family"] == "IMMA"
-    assert kernel["compute_type"] == "CUBLAS_COMPUTE_32I"
+    assert kernel["mma_api"] == "nvcuda::wmma"
+    assert kernel["mma_shape"] == "m16n16k16"
+    assert kernel["implementation"] == "fused_tiled"
+    assert kernel["kernel_symbol"] == "adangel_o1_fused_tiled"
+    assert kernel["compute_type"] == "S8xS8_TO_S32"
     assert kernel["partial_dtype"] == "int32"
+    assert kernel["accumulation_dtype"] == "fp32"
     assert kernel["output_dtype"] == "fp32"
     assert kernel["group_size"] == 32
+    assert kernel["global_partial_buffer"] is False
+    assert kernel["output_stores_per_element"] == 1
 
 
 @pytest.mark.sm120

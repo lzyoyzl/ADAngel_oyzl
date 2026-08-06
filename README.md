@@ -21,11 +21,12 @@ SASS/PTX 指令审计，防止某个实现静默退化为 CUDA Core 或软件模
 累加/输出的 GEMM。算法搜索在计时区间外完成，并只接受同时声明 HMMA、FP16 输入和
 FP32 累加的候选；所选 algorithm ID、数值实现 flags 与 workspace 大小会写入结果。
 
-O1 正式后端也已实现：E2M1 nibble 由 CUDA kernel 精确转换为 `2*E2M1` INT8 基值；
-每个 K32 块通过 cuBLASLt regular-order IMMA 产生 INT32 partial，再由 CUDA kernel
-乘 `A_scale*decode_ue8m0(W_scale)/2` 并按 K32 顺序 FP32 累加。算法搜索和 workspace
-分配均位于计时区间外，只接受同时声明 IMMA、INT8 输入和 INT32 累加的算法；GEMM
-计时包含全部 128 次 K32 IMMA 以及逐组缩放/FP32 累加。
+O1 正式后端也已实现：E2M1 nibble 由 CUDA kernel 精确转换为 `2*E2M1` INT8 基值。
+正式 GEMM 使用单次 fused CTA-tiled kernel；每个 `64x32` CTA 在共享内存中复用 K32
+的 A/W tile，8 个 warp 通过 signed-INT8 WMMA 生成 `16x16` INT32 partial tile，随即
+乘 `A_scale*decode_ue8m0(W_scale)/2`。FP32 结果按 K32 顺序保存在每线程寄存器中，
+遍历完全部 group 后每个输出元素只写回一次。实现不申请全局 partial buffer，也不再
+执行 128 次全矩阵 GEMM/缩放 kernel。
 
 O0/O1 独立 capability 已启用，但任何新源码仍必须在目标 RTX 5090 上重新编译并通过
 下述专项数值/计时验证。O2 publication-performance adapter 仍未实现，因此完整
@@ -169,7 +170,9 @@ python -m pytest tests/integration/test_sm120_o1.py -q --run-sm120
 
 预期 `o0_fp16_tc` 和 `o1_int8_tc` 均为 `true`，两个验证脚本必须输出
 `"passed": true`。O0 元数据必须报告 HMMA、`CUBLAS_COMPUTE_32F` 和 FP32 输出；
-O1 必须报告 IMMA、`CUBLAS_COMPUTE_32I`、INT32 partial、K32 以及 FP32 输出。
+O1 必须报告 `CUDA WMMA`、IMMA、`fused_tiled`、`S8xS8_TO_S32`、INT32 partial、
+FP32 寄存器累加和 K32；同时 `global_partial_buffer=false` 且
+`output_stores_per_element=1`。
 O1 验证会逐元素核对 MXFP4→INT8 映射，并用 `rtol=1e-3, atol=1e-3` 对照可扩展
 语义参考。两个脚本同时验证四种计时模式的阶段集合。此时 `python -m adangel doctor`
 仍会因为 O2 尚未实现而报告整体不可用，这是预期行为，并不表示 O0/O1 失败。
@@ -178,7 +181,7 @@ O1 验证会逐元素核对 MXFP4→INT8 映射，并用 `rtol=1e-3, atol=1e-3` 
 
 ```bash
 python scripts/validate_o1.py --m 4096 --n 4096 --k 4096 --warmup 5 --repeats 10 \
-  | tee reports/o1_4096_validation.json
+  | tee reports/o1_4096_fused_validation.json
 ```
 
 RTX 5090 上的全部原生集成测试和 PTX layout microkernel 在三个后端完成后执行：
@@ -198,7 +201,8 @@ bash scripts/audit_instructions.sh build reports/audit
 ```
 
 审计应找到：O0 的 FP16 Tensor Core 指令、O1 的 INT8 Tensor Core 指令，以及
-O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA。脚本只做存在性冒烟检查；它不是
+O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA。对 O1，脚本还要求 INT8 MMA 位于
+`adangel_o1_fused_tiled` 的 PTX entry 内；SASS symbol 归属仍需人工确认。该审计不是
 完整 profiling。审计文件与实验环境一起归档。
 
 ## 5. 正式运行
