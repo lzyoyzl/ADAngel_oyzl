@@ -65,6 +65,13 @@ def require_sm120_extension():
         import torch
     except ImportError as exc:
         raise RuntimeError("PyTorch is not installed") from exc
+    torch_version = torch.__version__.split("+")[0]
+    if torch_version != EXPECTED_TORCH:
+        raise RuntimeError(f"requires PyTorch {EXPECTED_TORCH}, found {torch.__version__}")
+    if torch.version.cuda != EXPECTED_TORCH_CUDA:
+        raise RuntimeError(
+            f"requires PyTorch CUDA {EXPECTED_TORCH_CUDA}, found {torch.version.cuda}"
+        )
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is not available")
     name = torch.cuda.get_device_name(0)
@@ -85,3 +92,23 @@ def require_native():
     if not status.available:
         raise RuntimeError(f"formal SM120 backend unavailable: {status.reason}")
     return load_native()
+
+
+def require_variant(variant: str):
+    """Require only the production capability needed by one public variant call."""
+    extension = require_sm120_extension()
+    capabilities = dict(extension.capabilities())
+    required = {
+        "o0": ("o0_fp16_tc",),
+        "o1": ("o1_int8_tc",),
+        "o2": ("o2_mxf4_block_scale", "o2_cutlass_tiled"),
+    }
+    if variant not in required:
+        raise ValueError(f"unknown variant: {variant}")
+    missing = [key for key in required[variant] if not capabilities.get(key, False)]
+    if missing:
+        raise RuntimeError(
+            f"formal SM120 {variant.upper()} backend unavailable: native extension lacks: "
+            f"{', '.join(missing)}"
+        )
+    return extension

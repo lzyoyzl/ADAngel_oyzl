@@ -5,7 +5,7 @@ from __future__ import annotations
 from ..reference import run_o0_reference, run_o1_reference, run_o2_reference
 from ..trace.prepare import prepare_trace
 from ..trace.schema import validate_prepared
-from .extension import require_native
+from .extension import require_variant
 
 _REFERENCES = {"o0": run_o0_reference, "o1": run_o1_reference, "o2": run_o2_reference}
 
@@ -20,7 +20,7 @@ def _run(inputs, variant: str, mode: str = "cold", backend: str = "native"):
         return _REFERENCES[variant](inputs)
     if backend != "native":
         raise ValueError(f"unknown backend: {backend}")
-    extension = require_native()
+    extension = require_variant(variant)
     return getattr(extension, f"run_{variant}")(
         inputs.A_int8, inputs.A_scale, inputs.W_mxfp4, inputs.W_scale, mode
     )
@@ -42,7 +42,7 @@ def benchmark_variant(inputs, variant, mode, warmup=50, repeats=200, backend="na
     validate_prepared(inputs, formal=backend == "native")
     if backend != "native":
         raise RuntimeError("performance benchmark records require the native SM120 backend")
-    extension = require_native()
+    extension = require_variant(variant)
     return extension.benchmark(
         variant,
         mode,

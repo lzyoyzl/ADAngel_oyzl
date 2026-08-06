@@ -202,12 +202,23 @@ python -m adangel doctor
 python -m unittest discover -s tests/unit -p 'test_*.py' -v
 ```
 
-当前仓库仍把 publication-performance O0/O1/O2 原生 adapter 的 capability gate 保持为
-关闭状态。在这些 adapter 完成并通过 RTX 5090 数值、layout 与指令审计之前，
-`python -m adangel doctor --require-native` 和正式 benchmark 按设计应拒绝运行；这不是
-Conda 配置失败，也不能用 reference 后端绕过。
+O0 正式后端已经实现并启用独立 capability；O1/O2 capability 仍关闭。因此
+`python -m adangel doctor --require-native` 和完整正式 benchmark 目前仍应拒绝运行；
+这不是 Conda 配置失败，也不能用 reference 后端绕过。
 
-adapter 完成后再执行完整验收：
+先独立验收 O0（不需要模型和 trace）：
+
+```bash
+python -c "import torch; import adangel._sm120 as m; print(dict(m.capabilities()))"
+python scripts/validate_o0.py
+python -m pytest tests/integration/test_sm120_o0.py -q --run-sm120
+```
+
+预期 `o0_fp16_tc=true`，验证脚本输出 `passed=true`。它会核对反量化、FP32 输出、
+cuBLASLt HMMA 元数据和四种计时模式。若源码是在 editable install 之后更新的，必须先
+重新执行本节构建命令；只重启 Python 不会重新编译 `.so`。
+
+O1/O2 adapter 完成后再执行完整验收：
 
 ```bash
 python -m adangel doctor --require-native

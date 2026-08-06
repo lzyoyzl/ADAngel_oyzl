@@ -135,6 +135,7 @@ def run_experiment(
                         "summary": summaries,
                         "equivalent_tflops": _throughput_tflops(m, n, k, float(gemm_median)),
                         "mse_vs_o0": None,
+                        "kernel": payload.get("kernel"),
                         "stable_cv": stable,
                         "valid": stable,
                     }

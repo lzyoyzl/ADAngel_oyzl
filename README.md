@@ -16,11 +16,15 @@ SASS/PTX 指令审计，防止某个实现静默退化为 CUDA Core 或软件模
 ## 当前实现状态
 
 数据采集/准备、三配置语义参考、正式调度、统计、MSE、四表四图和防误跑能力门
-已经实现。`csrc/sm120` 中也提供三类目标 MMA 的 ISA probe。当前提交尚未在 RTX
-5090 上编译验证，`o2_cutlass.cu` 的 publication-performance CUTLASS adapter 因而
-保持关闭，`capabilities()` 会返回 false，正式 `run` 会按设计拒绝启动。完成该 adapter
-并在 5090 上通过数值、layout 和指令审计后，才允许把能力位改为 true。这个门不能
-用 reference 或单 warp probe 绕过。
+已经实现。O0 正式后端也已实现：使用预分配 CUDA kernel 完成 MXFP4→FP16 权重
+反量化和 INT8→FP16 激活反量化，再由 cuBLASLt 执行行主序 FP16×FP16、FP32
+累加/输出的 GEMM。算法搜索在计时区间外完成，并只接受同时声明 HMMA、FP16 输入和
+FP32 累加的候选；所选 algorithm ID、数值实现 flags 与 workspace 大小会写入结果。
+
+O0 能力位现已启用，但仍必须在目标 RTX 5090 上重新编译并通过下述 O0 数值/计时验证。
+O1 和 O2 的 publication-performance adapter 仍未实现，因此完整 `doctor` 状态仍是
+`available: false`，完整 O0/O1/O2 正式 `run` 也会按设计拒绝启动。这个门不能用
+reference 或 ISA probe 绕过。
 
 ## 目录说明
 
@@ -145,7 +149,23 @@ CPU 上可先运行不依赖 GPU 的编码测试：
 python -m unittest discover -s tests/unit -p 'test_*.py' -v
 ```
 
-RTX 5090 上运行原生集成测试和 PTX layout microkernel：
+修改 O0 原生源码后，先在 RTX 5090 上重新构建，再运行不需要模型或 trace 的 O0
+专项验收：
+
+```bash
+ADANGEL_BUILD_CUDA=1 python -m pip install -v -e . --no-build-isolation --no-deps
+python -c "import torch; import adangel._sm120 as m; print(dict(m.capabilities()))"
+python scripts/validate_o0.py
+python -m pytest tests/integration/test_sm120_o0.py -q --run-sm120
+```
+
+预期 `o0_fp16_tc` 为 `true`；`validate_o0.py` 必须输出 `"passed": true`，且 kernel
+元数据中的 `tensor_core` 为 `true`、`compute_type` 为 `CUBLAS_COMPUTE_32F`、输出为
+`torch.float32`。该脚本逐元素检查两路反量化结果，并用 `rtol=1e-3, atol=1e-3`
+核对最终输出，同时验证四种计时模式的阶段集合。此时 `python -m adangel doctor`
+仍会因为 O1/O2 尚未实现而报告整体不可用，这是预期行为，并不表示 O0 失败。
+
+RTX 5090 上的全部原生集成测试和 PTX layout microkernel 在三个后端完成后执行：
 
 ```bash
 python -m pytest tests/integration -q --run-sm120

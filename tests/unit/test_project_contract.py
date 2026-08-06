@@ -27,6 +27,25 @@ class TestProjectContract(unittest.TestCase):
             "-gencode=arch=compute_120a,code=[sm_120a,compute_120a]", setup
         )
 
+    def test_o0_production_backend_contract(self):
+        source = (ROOT / "csrc/sm120/o0_gemm.cu").read_text()
+        bindings = (ROOT / "csrc/bindings.cpp").read_text()
+        self.assertIn("CUBLAS_COMPUTE_32F", source)
+        self.assertIn("CUDA_R_16F", source)
+        self.assertIn("CUDA_R_32F", source)
+        self.assertIn("CUBLASLT_NUMERICAL_IMPL_FLAGS_HMMA", source)
+        self.assertIn("CUBLASLT_NUMERICAL_IMPL_FLAGS_ACCUMULATOR_32F", source)
+        self.assertIn("CUBLASLT_NUMERICAL_IMPL_FLAGS_INPUT_16F", source)
+        self.assertIn("adangel_launch_mxfp4_to_fp16", source)
+        self.assertIn("adangel_launch_int8_to_fp16", source)
+        self.assertIn('module.def("run_o0", &adangel_run_o0)', bindings)
+        self.assertNotIn('result["o0_fp16_tc"] = false', bindings)
+
+    def test_o0_has_all_timing_modes(self):
+        source = (ROOT / "csrc/sm120/o0_gemm.cu").read_text()
+        for mode in ("conversion_only", "compute_only", "cold", "steady_state"):
+            self.assertIn(f'"{mode}"', source)
+
 
 if __name__ == "__main__":
     unittest.main()
