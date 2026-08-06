@@ -60,7 +60,12 @@ def extensions():
         libraries=["cublasLt"],
         extra_compile_args={
             "cxx": ["-O3", "-std=c++17"],
-            "nvcc": ["-O3", "-std=c++17", "-lineinfo", "-gencode=arch=compute_120a,code=sm_120a"],
+            "nvcc": [
+                "-O3",
+                "-std=c++17",
+                "-lineinfo",
+                "-gencode=arch=compute_120a,code=[sm_120a,compute_120a]",
+            ],
         },
     )
     return [extension], {"build_ext": BuildExtension.with_options(use_ninja=True)}

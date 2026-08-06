@@ -21,6 +21,12 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("kind::mxf4.block_scale.scale_vec::2X", source)
         self.assertIn("m16n8k64.row.col.f32.e2m1.e2m1.f32.ue8m0", source)
 
+    def test_native_build_embeds_sm120a_sass_and_ptx(self):
+        setup = (ROOT / "setup.py").read_text()
+        self.assertIn(
+            "-gencode=arch=compute_120a,code=[sm_120a,compute_120a]", setup
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
