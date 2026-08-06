@@ -1,24 +1,34 @@
 host:
-  operating_system: "Ubuntu 22.04 LTS"
+  operating_system: "Ubuntu 24.04 LTS"
   architecture: "x86_64"
   python_version: "3.10.12"
+  environment_manager: "Miniconda"
+  conda_environment: "adangel-sm120"
 machine:
   required_gpu_name_regex: "RTX 5090"
   required_compute_capability: [12, 0]
   cuda_arch: sm_120a
+  observed_gpu_name: "NVIDIA GeForce RTX 5090"
+  observed_memory_mib: 32607
+  observed_driver: "595.58.03"
+  nvidia_smi_cuda_compatibility: "13.2"
   exclusive_gpu_recommended: true
 toolchain:
-  cuda_toolkit_version: "12.8.1"
+  cuda_home: "/usr/local/cuda-12.8"
+  cuda_toolkit_version: "12.8"
   nvcc_release: "12.8"
-  nvcc_build: "12.8.90"
+  nvcc_build: "12.8.93"
+  nvcc_full_build: "cuda_12.8.r12.8/compiler.35583870_0"
   minimum_linux_driver: "570.124.06"
-  minimum_windows_driver: "572.61"
   cutlass_tag: "v4.5.2"
   cutlass_commit: "db1c288993354c88e551c40c19a8fb93a774a241"
   pytorch_version: "2.7.1"
   pytorch_cuda_build: "cu128"
-  gcc_version: "11"
-  cmake_minimum: "3.24"
+  gcc_version: "11.5.0"
+  gxx_version: "11.5.0"
+  git_version: "2.43.0"
+  cmake_version: "3.30.5"
+  ninja_version: "1.11.1.3"
   cxx_standard: "17"
 power:
   persistence_mode_recommended: true

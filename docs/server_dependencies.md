@@ -1,46 +1,48 @@
-# RTX 5090 服务器依赖清单
+# RTX 5090 服务器依赖与版本矩阵
 
 本文只描述后续在服务器上需要的环境，不会在当前机器或服务器上自动安装任何组件，也不会
-下载 Llama-2-7B。正式实验直接接收外部采集的 24 个 trace 样本。
+下载 Llama-2-7B。完整逐步命令见 [Miniconda 配置指南](miniconda_setup.md)，正式实验直接
+接收外部采集的 24 个 trace 样本。
 
 ## 1. 固定平台与版本
 
 | 组件 | 固定版本/要求 | 用途 |
 |---|---|---|
 | GPU | NVIDIA GeForce RTX 5090，compute capability 12.0 | 唯一正式实验设备 |
-| OS | Ubuntu 22.04 LTS x86_64 | 固定用户态基线 |
-| NVIDIA driver | Linux `>=570.124.06` | CUDA 12.8 Update 1 最低兼容版本；可用更新生产驱动 |
-| CUDA Toolkit | 12.8 Update 1 | 提供 SM120/PTX、headers、nvcc、cuBLASLt |
-| nvcc | release 12.8，build 12.8.90 | 编译 `sm_120a` 扩展 |
+| 显存 | 32607 MiB | 服务器 `nvidia-smi` 实测 |
+| OS | Ubuntu 24.04 LTS x86_64 | 固定用户态基线 |
+| NVIDIA driver | 595.58.03（最低仍为 570.124.06） | 保留服务器现有驱动 |
+| `nvidia-smi` CUDA | 13.2 | 驱动支持上限，不是编译 Toolkit |
+| CUDA Toolkit | 12.8，路径 `/usr/local/cuda-12.8` | 提供 SM120/PTX、headers、nvcc、cuBLASLt |
+| nvcc | release 12.8，build 12.8.93 | 编译 `sm_120a` 扩展 |
 | Python | 3.10.12，64-bit | 实验驱动 |
+| 环境管理 | Miniconda，环境名 `adangel-sm120` | 隔离 Python 与构建工具 |
 | PyTorch | 2.7.1，官方 cu128 wheel | CUDA tensor、扩展绑定、CUDA Event |
 | CUTLASS | v4.5.2，commit `db1c288993354c88e551c40c19a8fb93a774a241` | 正式 SM120 tiled kernel |
-| GCC/G++ | 11.x | CUDA host compiler |
-| CMake | >=3.24 | 可选的原生构建入口 |
-| Ninja | 1.11.x | PyTorch 扩展并行构建 |
+| GCC/G++ | 11.5.0 | 服务器已有 CUDA host compiler |
+| Git | 2.43.0 | 获取和校验 CUTLASS |
+| CMake | 3.30.5 | Conda 环境内通过 pip 安装 |
+| Ninja | 1.11.1.3 Python 包 | PyTorch 扩展并行构建 |
 | C++ | C++17 | 统一编译标准 |
 
-只固定工具链和库版本；driver 可以高于最低值，并由 `environment.json` 记录精确版本。不要使用
-A100/H100 后端，不要把 `sm_120` 或 PTX JIT 替代 `sm_120a` 的正式构建。
+driver 595.58.03 比 CUDA 12.8 所需最低版本更新，能够通过向后兼容运行 CUDA 12.8
+应用。不要因为 `nvidia-smi` 显示 13.2 而更换 CUDA Toolkit。不要使用 A100/H100 后端，
+也不要把 `sm_120` 或 PTX JIT 替代 `sm_120a` 的正式构建。
 
 ## 2. 系统包
 
-服务器管理员需事先提供：
+服务器已经提供且项目只读使用：
 
 ```text
-nvidia-driver（满足上表最低版本）
-cuda-toolkit-12-8（Update 1 / nvcc 12.8.90）
-build-essential
-gcc-11 g++-11
-git
-cmake（>=3.24）
-ninja-build
-python3.10 python3.10-dev python3.10-venv
-pkg-config
+NVIDIA driver 595.58.03
+CUDA Toolkit /usr/local/cuda-12.8（nvcc 12.8.93）
+gcc-11 / g++-11 11.5.0
+Git 2.43.0
 ```
 
-CUDA Toolkit 应来自 NVIDIA 官方仓库，而不是 Ubuntu 的旧版 `nvidia-cuda-toolkit` 包。项目需要
-toolkit 编译器；只有 driver/runtime 或 PyTorch 自带 CUDA runtime 不足以编译扩展。
+无需重新安装这些系统组件。Python、CMake、Ninja 和其余用户态包由 Miniconda 环境提供。
+项目需要系统 Toolkit 编译器；只有 driver/runtime 或 PyTorch 自带 CUDA runtime 不足以编译
+扩展。
 
 ## 3. Python 包
 
@@ -51,17 +53,17 @@ toolkit 编译器；只有 driver/runtime 或 PyTorch 自带 CUDA runtime 不足
 - `requirements/server-dev.txt`：测试和扩展构建工具；
 - `requirements/server-trace-optional.txt`：仅未来自行采集模型 trace 时需要，本轮不安装。
 
-PyTorch 必须从官方 cu128 wheel 索引安装。下面是供你以后在服务器上手工执行的建议顺序，
-不是自动安装脚本：
+PyTorch 必须从官方 cu128 wheel 索引安装。Miniconda 环境的完整手工顺序为：
 
 ```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
+conda env create -f environment/miniconda-rtx5090.yml
+conda activate adangel-sm120
+source scripts/activate_server_env.sh
 python -m pip install --upgrade pip==25.0.1
 python -m pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu128
 python -m pip install -r requirements/server-analysis.txt -r requirements/server-dev.txt
 python -m pip install PyYAML==6.0.2 typing_extensions==4.12.2
-python -m pip install -e . --no-build-isolation --no-deps
+python -m pip check
 ```
 
 `server-core.txt` 是版本清单；其中 torch 的实际安装仍应使用上面的 cu128 专用索引，防止从默认
@@ -70,17 +72,15 @@ sentencepiece。
 
 ## 4. 构建变量
 
-建议只在当前 shell 设置，避免污染其他 CUDA 项目：
+项目提供的激活脚本只设置当前 shell，避免污染其他 CUDA 项目：
 
 ```bash
-export CUDA_HOME=/usr/local/cuda-12.8
-export PATH="$CUDA_HOME/bin:$PATH"
-export LD_LIBRARY_PATH="$CUDA_HOME/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-export CC=/usr/bin/gcc-11
-export CXX=/usr/bin/g++-11
-export TORCH_CUDA_ARCH_LIST='12.0a'
-export ADANGEL_CUTLASS_ROOT="$PWD/third_party/cutlass-src"
+conda activate adangel-sm120
+source scripts/activate_server_env.sh
 ```
+
+除原有变量外，脚本还固定 `CUDACXX=/usr/local/cuda-12.8/bin/nvcc`，并在外部没有预先
+指定时使用 `CUDA_VISIBLE_DEVICES=0`。
 
 CUTLASS 必须是可验证 commit 的 git checkout。仓库的 `scripts/fetch_cutlass.sh` 只在你主动执行时
 获取固定 tag；项目导入、测试和 benchmark 都不会隐式联网。
@@ -119,6 +119,8 @@ python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda
 nvcc --version
 nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
 gcc-11 --version
+g++-11 --version
+git --version
 cmake --version
 ninja --version
 git -C third_party/cutlass-src rev-parse HEAD
@@ -126,8 +128,9 @@ python scripts/check_server_prereqs.py
 python -m adangel doctor
 ```
 
-期望关键输出为：RTX 5090、`(12, 0)`、torch `2.7.1+cu128`（显示形式可能保留 local tag）、
-`torch.version.cuda == 12.8`、nvcc build `12.8.90` 和上表 CUTLASS 完整 SHA。检查脚本返回非零
+期望关键输出为：Ubuntu 24.04、RTX 5090、`(12, 0)`、torch `2.7.1+cu128`（显示形式可能
+保留 local tag）、`torch.version.cuda == 12.8`、nvcc build `12.8.93`、GCC/G++ 11.5.0、
+Git 2.43.0 和上表 CUTLASS 完整 SHA。检查脚本返回非零
 表示依赖尚未满足，不应开始编译或实验。
 
 ## 7. 构建后的项目验收

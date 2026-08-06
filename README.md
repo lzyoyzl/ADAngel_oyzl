@@ -33,6 +33,7 @@ ADAngel_oyzl/
 ├── csrc/
 │   ├── common/           # CUDA 公共校验与辅助代码
 │   └── sm120/            # O0/O1/O2 转换、GEMM、绑定与 PTX microkernel
+├── environment/          # Miniconda 环境定义；不包含驱动或系统 CUDA
 ├── include/adangel/      # C++/CUDA 公共数据结构和原生接口声明
 ├── python/adangel/
 │   ├── analysis/         # 聚合 JSONL，生成四张主表和四张主图
@@ -41,7 +42,7 @@ ADAngel_oyzl/
 │   ├── quantization/     # INT8、E2M1、UE8M0、K32 packing 参考实现
 │   ├── reference/        # O0/O1/O2 可读的 FP32 语义参考实现
 │   └── trace/            # trace 采集、样本 schema 和磁盘格式
-├── scripts/              # 采集、准备、运行、汇总与指令审计入口
+├── scripts/              # 环境激活、检查、采集、准备、运行、汇总与指令审计入口
 ├── tests/
 │   ├── unit/             # 16 种 E2M1 编码、UE8M0、mapping、指标测试
 │   └── integration/      # 小矩阵 O0/O1/O2 与参考实现交叉验证
@@ -71,35 +72,46 @@ Y         [4096, 4096] fp32
   SM120 block-scaled MXFP4 MMA，FP32 累加/输出。
 
 详细定义见 [实验协议](docs/experiment_protocol.md)、[数据格式](docs/data_format.md)、
-[本机验证记录](docs/local_validation.md)
+[Miniconda 配置指南](docs/miniconda_setup.md)、[本机验证记录](docs/local_validation.md)
 和 [SM120 microscale layout](docs/mxfp4_scale_layout.md)。
 
-## 服务器依赖（这里只给清单，不自动配置）
+## 服务器环境（Miniconda，不自动配置）
 
-正式环境固定为 Ubuntu 22.04 x86_64、Python 3.10.12、CUDA Toolkit 12.8 Update 1
-（nvcc 12.8.90）、PyTorch 2.7.1 cu128、CUTLASS v4.5.2 commit
-`db1c288993354c88e551c40c19a8fb93a774a241`、GCC/G++ 11、CMake 3.24+、Ninja 和
-C++17。Linux NVIDIA driver 至少为 570.124.06；建议使用服务器已有的更新版生产驱动。
+当前目标服务器基线已更新为 Ubuntu 24.04 x86_64、RTX 5090 32607 MiB、driver
+595.58.03、`/usr/local/cuda-12.8`、nvcc 12.8.93、GCC/G++ 11.5.0 和 Git 2.43.0。
+`nvidia-smi` 显示的 CUDA 13.2 是驱动支持上限，不是项目编译 Toolkit；本项目继续固定
+使用 CUDA 12.8，不安装 CUDA 13.2。
 
-完整的系统包、Python 锁定依赖、PyTorch cu128 安装顺序、环境变量、磁盘需求和逐项验收命令见
-[服务器依赖清单](docs/server_dependencies.md)。可机器读取的版本位于 `requirements/` 和
-`configs/machine/rtx5090.yaml`。本仓库不会自动安装驱动/CUDA/Python 包，也不会自动下载模型。
+Python 3.10.12 使用 Miniconda 环境 `adangel-sm120` 管理；PyTorch 固定为 2.7.1 cu128，
+CUTLASS 固定为 v4.5.2 commit `db1c288993354c88e551c40c19a8fb93a774a241`。完整的
+Miniconda 安装、依赖安装顺序、环境变量、构建、验收和故障排查见
+[Miniconda 配置指南](docs/miniconda_setup.md)；精简依赖矩阵见
+[服务器依赖清单](docs/server_dependencies.md)。机器可读版本位于 `environment/`、
+`requirements/` 和 `configs/machine/rtx5090.yaml`。本仓库不会自动配置服务器，也不会
+自动下载模型。
 
-服务器人工配置完成后，先执行只读检查，再获取固定 CUTLASS 源码并构建：
+最短配置与构建顺序如下；首次安装 Miniconda 的步骤请直接按详细指南执行：
 
 ```bash
-python scripts/check_server_prereqs.py --skip-cutlass
+conda env create -f environment/miniconda-rtx5090.yml
+conda activate adangel-sm120
+source scripts/activate_server_env.sh
+python -m pip install --upgrade pip==25.0.1
+python -m pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu128
+python -m pip install PyYAML==6.0.2 typing_extensions==4.12.2
+python -m pip install -r requirements/server-analysis.txt -r requirements/server-dev.txt
+python -m pip check
 bash scripts/fetch_cutlass.sh
-export ADANGEL_CUTLASS_ROOT="$PWD/third_party/cutlass-src"
-export TORCH_CUDA_ARCH_LIST='12.0a'
-ADANGEL_BUILD_CUDA=1 python -m pip install -v -e . --no-build-isolation
 python scripts/check_server_prereqs.py
-python -m adangel doctor --require-native
+ADANGEL_BUILD_CUDA=1 python -m pip install -v -e . --no-build-isolation --no-deps
+python scripts/check_server_prereqs.py
+python -m adangel doctor
 ```
 
-`check_server_prereqs.py` 只读取版本，不执行安装或下载。`doctor --require-native` 会检查 RTX
-5090、compute capability 12.0、锁定的 PyTorch/CUDA 构建、扩展编译目标及 kernel 能力。
-任何一项不满足都会退出，正式 benchmark 不会退回 reference。
+`check_server_prereqs.py` 只读取版本，不执行安装或下载。原生 adapter 完成后，
+`doctor --require-native` 会检查 RTX 5090、compute capability 12.0、锁定的
+PyTorch/CUDA 构建、扩展编译目标及 kernel 能力。任何一项不满足都会退出，正式 benchmark
+不会退回 reference。
 
 ## 1. 放置外部 trace（主流程，不下载模型）
 

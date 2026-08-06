@@ -8,12 +8,18 @@
   https://github.com/NVIDIA/cutlass/releases/tag/v4.5.2
 - Pinned CUTLASS commit:
   https://github.com/NVIDIA/cutlass/commit/db1c288993354c88e551c40c19a8fb93a774a241
-- CUDA Toolkit 12.8 Update 1 release notes:
+- Archived CUDA Toolkit 12.8.1 release notes:
   https://docs.nvidia.com/cuda/archive/12.8.1/cuda-toolkit-release-notes/index.html
 - PyTorch 2.7.1 CUDA 12.8 wheel installation matrix:
   https://pytorch.org/get-started/previous-versions/
 - NVIDIA CUDA installation guide for Linux:
   https://docs.nvidia.com/cuda/archive/12.8.1/cuda-installation-guide-linux/index.html
+- NVIDIA CUDA Toolkit/driver compatibility and architecture matrix:
+  https://docs.nvidia.com/datacenter/tesla/drivers/cuda-toolkit-driver-and-architecture-matrix.html
+- NVIDIA CUDA compatibility guide:
+  https://docs.nvidia.com/deploy/cuda-compatibility/
+- Miniconda Linux installation guide:
+  https://www.anaconda.com/docs/getting-started/miniconda/install/linux-install
 
 OCP v1.0 section 6.3 defines the recommended block conversion: choose the largest power of two
 not exceeding the block maximum, divided by the largest power of two representable by the element

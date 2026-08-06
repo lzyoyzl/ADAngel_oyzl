@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import re
 import shutil
@@ -14,10 +15,16 @@ from importlib import metadata
 from pathlib import Path
 
 EXPECTED = {
-    "python": (3, 10),
+    "python": (3, 10, 12),
     "torch": "2.7.1",
     "torch_cuda": "12.8",
-    "nvcc_build": "12.8.90",
+    "nvcc_build": "12.8.93",
+    "cuda_home": "/usr/local/cuda-12.8",
+    "gcc": "11.5.0",
+    "gxx": "11.5.0",
+    "git": "2.43.0",
+    "cmake": "3.30.5",
+    "ninja": "1.11.1",
     "cutlass": "db1c288993354c88e551c40c19a8fb93a774a241",
 }
 EXPECTED_PACKAGES = {
@@ -33,6 +40,7 @@ EXPECTED_PACKAGES = {
     "setuptools": "75.8.0",
     "wheel": "0.45.1",
     "ninja": "1.11.1.3",
+    "cmake": "3.30.5",
 }
 
 
@@ -74,15 +82,46 @@ def main() -> int:
     add(
         checks,
         "ubuntu_release",
-        'ID=ubuntu' in os_text and 'VERSION_ID="22.04"' in os_text,
+        'ID=ubuntu' in os_text and 'VERSION_ID="24.04"' in os_text,
         next((line for line in os_text.splitlines() if line.startswith("PRETTY_NAME=")), "unknown"),
     )
     add(
         checks,
         "python",
-        sys.version_info[:2] == EXPECTED["python"],
+        sys.version_info[:3] == EXPECTED["python"],
         platform.python_version(),
     )
+
+    cuda_home = os.environ.get("CUDA_HOME", "not set")
+    add(
+        checks,
+        "conda_environment",
+        os.environ.get("CONDA_DEFAULT_ENV") == "adangel-sm120",
+        os.environ.get("CONDA_DEFAULT_ENV", "not set"),
+    )
+    add(checks, "CUDA_HOME", cuda_home == EXPECTED["cuda_home"], cuda_home)
+    add(checks, "CC", os.environ.get("CC") == "/usr/bin/gcc-11", os.environ.get("CC", "not set"))
+    add(checks, "CXX", os.environ.get("CXX") == "/usr/bin/g++-11", os.environ.get("CXX", "not set"))
+    add(
+        checks,
+        "CUDACXX",
+        os.environ.get("CUDACXX") == "/usr/local/cuda-12.8/bin/nvcc",
+        os.environ.get("CUDACXX", "not set"),
+    )
+    add(
+        checks,
+        "TORCH_CUDA_ARCH_LIST",
+        os.environ.get("TORCH_CUDA_ARCH_LIST") == "12.0a",
+        os.environ.get("TORCH_CUDA_ARCH_LIST", "not set"),
+    )
+    add(
+        checks,
+        "CUDA_VISIBLE_DEVICES",
+        os.environ.get("CUDA_VISIBLE_DEVICES") == "0",
+        os.environ.get("CUDA_VISIBLE_DEVICES", "not set"),
+    )
+    library_paths = os.environ.get("LD_LIBRARY_PATH", "").split(":")
+    add(checks, "cuda_library_path", "/usr/local/cuda-12.8/lib64" in library_paths, str(library_paths))
     for package, expected_version in EXPECTED_PACKAGES.items():
         try:
             actual_version = metadata.version(package)
@@ -133,17 +172,21 @@ def main() -> int:
         actual_build = build.group(1) if build else "unparsed"
         add(checks, "nvcc", ok and actual_build == EXPECTED["nvcc_build"], actual_build)
 
-    for executable, minimum_major in (("gcc-11", 11), ("cmake", 3), ("ninja", 1)):
+    executable_versions = {
+        "gcc-11": EXPECTED["gcc"],
+        "g++-11": EXPECTED["gxx"],
+        "git": EXPECTED["git"],
+        "cmake": EXPECTED["cmake"],
+        "ninja": EXPECTED["ninja"],
+    }
+    for executable, expected_version in executable_versions.items():
         path = shutil.which(executable)
         if path is None:
             add(checks, executable, False, "not found in PATH")
             continue
         ok, output = command([path, "--version"])
         first = output.splitlines()[0] if output else "no output"
-        version = re.search(r"(\d+)\.(\d+)", first)
-        passed = ok and version is not None and int(version.group(1)) >= minimum_major
-        if executable == "cmake" and version is not None:
-            passed = ok and (int(version.group(1)), int(version.group(2))) >= (3, 24)
+        passed = ok and numeric_version(first) == numeric_version(expected_version)
         add(checks, executable, passed, first)
 
     if not args.skip_cutlass:
