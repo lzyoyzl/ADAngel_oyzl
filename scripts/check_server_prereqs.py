@@ -184,7 +184,8 @@ def main() -> int:
         if path is None:
             add(checks, executable, False, "not found in PATH")
             continue
-        ok, output = command([path, "--version"])
+        version_flag = "-dumpfullversion" if executable in {"gcc-11", "g++-11"} else "--version"
+        ok, output = command([path, version_flag])
         first = output.splitlines()[0] if output else "no output"
         passed = ok and numeric_version(first) == numeric_version(expected_version)
         add(checks, executable, passed, first)

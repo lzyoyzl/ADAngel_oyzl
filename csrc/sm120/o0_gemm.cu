@@ -1,4 +1,5 @@
 #include <cuda_fp16.h>
+#include <stdint.h>
 
 // O0 production uses cublasLt with FP16 A/B, FP32 compute and FP32 D. This translation unit is
 // kept separate so its algorithm ID/workspace can be pinned after tuning on the target RTX 5090.
