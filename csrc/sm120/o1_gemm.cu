@@ -118,8 +118,8 @@ void record(cudaEvent_t event, cudaStream_t stream) {
 // registers, and writes each final output element exactly once.
 template <class TmaA, class TmaB>
 __global__ __launch_bounds__(kThreadsPerBlock) void adangel_o1_tma_warp_specialized(
-    CUTLASS_GRID_CONSTANT TmaA const tma_a,
-    CUTLASS_GRID_CONSTANT TmaB const tma_b,
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
     const float* a_scale,
     const uint8_t* w_scale,
     float* output,
@@ -127,7 +127,11 @@ __global__ __launch_bounds__(kThreadsPerBlock) void adangel_o1_tma_warp_speciali
     int n,
     int k,
     int groups) {
-  __shared__ O1SharedStorage shared_storage;
+  // PipelineTmaAsync::SharedStorage contains barrier objects whose default constructor is
+  // intentionally unavailable. Back the aggregate with raw dynamic shared memory so CUDA does
+  // not try to construct it, then let PipelineTmaAsync initialize its barriers explicitly.
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& shared_storage = *reinterpret_cast<O1SharedStorage*>(shared_bytes);
 
   auto mA = tma_a.get_tma_tensor(cute::make_shape(m, k));
   auto mB = tma_b.get_tma_tensor(cute::make_shape(n, k));
@@ -325,7 +329,8 @@ void launch_tma_o1(
     cudaStream_t stream) {
   const int groups = k / kGroupSize;
   dim3 grid((n + kTileN - 1) / kTileN, (m + kTileM - 1) / kTileM);
-  adangel_o1_tma_warp_specialized<<<grid, kThreadsPerBlock, 0, stream>>>(
+  adangel_o1_tma_warp_specialized<<<
+      grid, kThreadsPerBlock, sizeof(O1SharedStorage), stream>>>(
       tma_a,
       tma_b,
       a_scale.data_ptr<float>(),
