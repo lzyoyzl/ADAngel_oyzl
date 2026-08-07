@@ -22,12 +22,13 @@ grep -E 'mma.*s8.*s8.*s32' "$output_dir/extension.ptx" >/dev/null || {
   echo 'O1 INT8 MMA not found in PTX' >&2; exit 1;
 }
 awk '
-  /adangel_o1_fused_tiled/ { inside = 1 }
-  inside && /mma.*s8.*s8.*s32/ { found = 1 }
-  inside && /^[[:space:]]*}/ { exit found ? 0 : 1 }
-  END { if (!inside || !found) exit 1 }
+  /adangel_o1_tma_warp_specialized/ { inside = 1 }
+  inside && /cp\.async\.bulk\.tensor/ { found_tma = 1 }
+  inside && /mma.*s8.*s8.*s32/ { found_imma = 1 }
+  inside && /^[[:space:]]*}/ { exit (found_tma && found_imma) ? 0 : 1 }
+  END { if (!inside || !found_tma || !found_imma) exit 1 }
 ' "$output_dir/extension.ptx" || {
-  echo 'O1 fused kernel symbol does not contain INT8 MMA in PTX' >&2
+  echo 'O1 production kernel must contain both TMA load and INT8 MMA in PTX' >&2
   exit 1
 }
 grep -E 'mma.*f16.*f16.*f32|HMMA' "$output_dir/extension.ptx" "$output_dir/extension.sass" >/dev/null || {
@@ -40,6 +41,6 @@ grep -E 'MMA|HMMA|IMMA' "$output_dir/extension.sass" >/dev/null || {
 {
   echo "binary=$binary"
   echo "status=PASS"
-  echo "manual_review=O1 fused PTX association passed; confirm O0/O1/O2 SASS symbol association."
+  echo "manual_review=O1 TMA+IMMA PTX association passed; confirm the same O1 symbol contains TMA-load and IMMA opcodes in SASS."
 } > "$output_dir/summary.txt"
 echo "instruction audit passed; review $output_dir/summary.txt and extension.sass"

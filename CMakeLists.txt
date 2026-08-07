@@ -47,7 +47,7 @@ target_include_directories(adangel_sm120 PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${ADANGEL_CUTLASS_ROOT}/include
   ${TORCH_INCLUDE_DIRS})
-target_link_libraries(adangel_sm120 PRIVATE ${TORCH_LIBRARIES} CUDA::cudart CUDA::cublasLt)
+target_link_libraries(adangel_sm120 PRIVATE ${TORCH_LIBRARIES} CUDA::cudart CUDA::cuda_driver CUDA::cublasLt)
 target_compile_definitions(adangel_sm120 PRIVATE TORCH_EXTENSION_NAME=_sm120)
 target_compile_options(adangel_sm120 PRIVATE
   $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr;-lineinfo>)

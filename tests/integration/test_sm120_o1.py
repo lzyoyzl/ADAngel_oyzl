@@ -3,7 +3,7 @@ import pytest
 from adangel.ops.extension import require_variant
 
 
-def _inputs():
+def _inputs(m=128, n=128, k=64):
     import torch
 
     from adangel.quantization.int8 import quantize_int8_per_row
@@ -11,8 +11,8 @@ def _inputs():
     from adangel.trace.schema import PreparedInputs
 
     generator = torch.Generator().manual_seed(2026)
-    activation = torch.randn((128, 64), generator=generator, dtype=torch.float16)
-    weight = torch.randn((128, 64), generator=generator, dtype=torch.float16)
+    activation = torch.randn((m, k), generator=generator, dtype=torch.float16)
+    weight = torch.randn((n, k), generator=generator, dtype=torch.float16)
     a_int8, a_scale = quantize_int8_per_row(activation)
     w_mxfp4, w_scale = quantize_mxfp4(weight)
     cpu = PreparedInputs("o1_native_small", a_int8, a_scale, w_mxfp4, w_scale)
@@ -47,12 +47,18 @@ def test_o1_native_matches_semantic_reference():
     assert torch.isfinite(actual["output"]).all()
     kernel = dict(actual["kernel"])
     assert kernel["tensor_core"] is True
-    assert kernel["library"] == "CUDA WMMA"
+    assert kernel["library"] == "CUTLASS CuTe + CUDA WMMA"
     assert kernel["mma_family"] == "IMMA"
     assert kernel["mma_api"] == "nvcuda::wmma"
     assert kernel["mma_shape"] == "m16n16k16"
-    assert kernel["implementation"] == "fused_tiled"
-    assert kernel["kernel_symbol"] == "adangel_o1_fused_tiled"
+    assert kernel["implementation"] == "tma_warp_specialized"
+    assert kernel["kernel_symbol"] == "adangel_o1_tma_warp_specialized"
+    assert kernel["data_movement"] == "TMA"
+    assert kernel["kernel_schedule"] == "cooperative_warp_specialized"
+    assert kernel["pipeline_stages"] == 3
+    assert kernel["producer_warps"] == 1
+    assert kernel["consumer_warps"] == 8
+    assert tuple(kernel["tma_operands"]) == ("A_int8", "W_int8")
     assert kernel["compute_type"] == "S8xS8_TO_S32"
     assert kernel["partial_dtype"] == "int32"
     assert kernel["accumulation_dtype"] == "fp32"
@@ -60,6 +66,20 @@ def test_o1_native_matches_semantic_reference():
     assert kernel["group_size"] == 32
     assert kernel["global_partial_buffer"] is False
     assert kernel["output_stores_per_element"] == 1
+
+
+@pytest.mark.sm120
+def test_o1_tma_zero_fills_partial_mn_tiles():
+    import torch
+
+    from adangel.ops.dispatch import run_o1
+    from adangel.reference import run_o1_reference
+
+    cpu_inputs, cuda_inputs = _inputs(m=68, n=36, k=64)
+    expected = run_o1_reference(cpu_inputs)
+    actual = run_o1(cuda_inputs, mode="compute_only", backend="native")
+    torch.cuda.synchronize()
+    torch.testing.assert_close(actual["output"].cpu(), expected["output"], rtol=1e-3, atol=1e-3)
 
 
 @pytest.mark.sm120

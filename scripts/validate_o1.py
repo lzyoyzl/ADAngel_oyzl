@@ -16,6 +16,8 @@ def parse_args():
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument("--repeats", type=int, default=10)
     parser.add_argument("--seed", type=int, default=2026)
+    parser.add_argument("--max-compute-ms", type=float, default=5.29)
+    parser.add_argument("--max-cv-percent", type=float, default=3.0)
     return parser.parse_args()
 
 
@@ -41,6 +43,27 @@ def semantic_reference(inputs):
         scale = inputs.A_scale[:, None] * w_scales[:, group][None, :] * 0.5
         output.add_(partial * scale)
     return output, w_int8
+
+
+def summarize(values):
+    numbers = sorted(float(value) for value in values)
+
+    def percentile(q):
+        position = (len(numbers) - 1) * q
+        lower = int(position)
+        upper = min(lower + 1, len(numbers) - 1)
+        fraction = position - lower
+        return numbers[lower] * (1.0 - fraction) + numbers[upper] * fraction
+
+    mean = statistics.fmean(numbers)
+    return {
+        "median_ms": statistics.median(numbers),
+        "p5_ms": percentile(0.05),
+        "p95_ms": percentile(0.95),
+        "iqr_ms": percentile(0.75) - percentile(0.25),
+        "cv_percent": 0.0 if mean == 0.0 else statistics.pstdev(numbers) / mean * 100.0,
+        "samples": len(numbers),
+    }
 
 
 def main() -> int:
@@ -87,13 +110,19 @@ def main() -> int:
 
     kernel = dict(actual["kernel"])
     required_metadata = {
-        "library": "CUDA WMMA",
+        "library": "CUTLASS CuTe + CUDA WMMA",
         "tensor_core": True,
         "mma_family": "IMMA",
         "mma_api": "nvcuda::wmma",
         "mma_shape": "m16n16k16",
-        "implementation": "fused_tiled",
-        "kernel_symbol": "adangel_o1_fused_tiled",
+        "implementation": "tma_warp_specialized",
+        "kernel_symbol": "adangel_o1_tma_warp_specialized",
+        "data_movement": "TMA",
+        "kernel_schedule": "cooperative_warp_specialized",
+        "pipeline_stages": 3,
+        "producer_warps": 1,
+        "consumer_warps": 8,
+        "tma_operands": ("A_int8", "W_int8"),
         "compute_type": "S8xS8_TO_S32",
         "input_dtype": "int8",
         "partial_dtype": "int32",
@@ -130,24 +159,38 @@ def main() -> int:
         if set(timings) != stages:
             raise RuntimeError(f"{mode}: expected stages {sorted(stages)}, got {sorted(timings)}")
         torch.testing.assert_close(payload["output"], expected_output, rtol=1e-3, atol=1e-3)
-        modes[mode] = {
-            stage: {
-                "median_ms": statistics.median(float(value) for value in values),
-                "samples": len(values),
-            }
-            for stage, values in timings.items()
-        }
+        modes[mode] = {stage: summarize(values) for stage, values in timings.items()}
+
+    formal_shape = (args.m, args.n, args.k) == (4096, 4096, 4096)
+    compute = modes["compute_only"]["gemm"]
+    violations = []
+    if formal_shape and compute["median_ms"] > args.max_compute_ms:
+        violations.append(
+            f"compute-only median {compute['median_ms']:.6f} ms exceeds "
+            f"{args.max_compute_ms:.6f} ms"
+        )
+    if formal_shape and compute["cv_percent"] >= args.max_cv_percent:
+        violations.append(
+            f"compute-only CV {compute['cv_percent']:.3f}% must be below "
+            f"{args.max_cv_percent:.3f}%"
+        )
 
     report = {
-        "passed": True,
+        "passed": not violations,
         "shape": [args.m, args.n, args.k],
         "output_dtype": str(actual["output"].dtype),
         "max_abs_error": max_abs_error,
         "kernel": kernel,
         "modes": modes,
+        "performance_gate": {
+            "applied": formal_shape,
+            "max_compute_ms": args.max_compute_ms,
+            "max_cv_percent": args.max_cv_percent,
+            "violations": violations,
+        },
     }
     print(json.dumps(report, indent=2))
-    return 0
+    return 0 if report["passed"] else 1
 
 
 if __name__ == "__main__":

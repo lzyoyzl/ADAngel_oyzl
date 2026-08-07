@@ -18,7 +18,7 @@ RTX 5090 上完成。
 ## 已完成验证
 
 ```text
-22 项纯 Python 单元测试通过（含 O0/O1 正式后端静态契约与 fused tile ownership）
+22 项纯 Python 单元测试通过（含 O0/O1 正式后端静态契约与 TMA pipeline/consumer ownership）
 python/adangel、tests、scripts 全量 compileall 通过
 scripts/fetch_cutlass.sh 与 scripts/audit_instructions.sh 的 bash -n 通过
 doctor 正确报告：PyTorch is not installed
@@ -36,8 +36,8 @@ doctor 正确报告：PyTorch is not installed
 4. 再次运行 `python scripts/check_server_prereqs.py`。
 5. 构建扩展；确认 `capabilities()` 中 `o0_fp16_tc=true`、`o1_int8_tc=true`。
 6. 运行 `python scripts/validate_o0.py`、`python scripts/validate_o1.py` 和对应原生集成
-   测试，确认 O0 HMMA 与 O1 fused WMMA、转换、FP32 输出和四种计时模式全部通过。
-7. 用 `4096^3` 运行 `validate_o1.py`，归档 `reports/o1_4096_fused_validation.json`。
+   测试，确认 O0 HMMA 与 O1 TMA+warp-specialized IMMA、转换、FP32 输出和四种计时模式全部通过。
+7. 用 `4096^3` 运行 `validate_o1.py`，归档 `reports/o1_4096_tma_ws_validation.json`。
 8. 运行 `pytest tests/integration -q --run-sm120`，尤其是不同 A/B/K32 scale 的
    单 warp layout 验证。
 9. 完成/启用 `csrc/sm120/o2_cutlass.cu`，数值验证通过后才可设置 O2 能力位。

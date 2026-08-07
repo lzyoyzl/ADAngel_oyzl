@@ -50,10 +50,18 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("wmma::fragment<wmma::matrix_b", source)
         self.assertIn("wmma::fragment<wmma::accumulator", source)
         self.assertIn("wmma::mma_sync", source)
-        self.assertIn("shared_partial", source)
+        self.assertIn("PipelineTmaAsync<kPipelineStages>", source)
+        self.assertIn("make_tma_atom", source)
+        self.assertIn("producer_acquire", source)
+        self.assertIn("consumer_wait", source)
+        self.assertIn("consumer_release", source)
+        self.assertIn("NamedBarrier::sync", source)
+        self.assertIn("shared_storage.partial", source)
         self.assertIn("accumulators[kOutputsPerThread]", source)
-        self.assertIn("adangel_o1_fused_tiled", source)
-        self.assertIn('result["implementation"] = "fused_tiled"', source)
+        self.assertIn("adangel_o1_tma_warp_specialized", source)
+        self.assertIn('result["implementation"] = "tma_warp_specialized"', source)
+        self.assertIn('result["data_movement"] = "TMA"', source)
+        self.assertIn('result["kernel_schedule"] = "cooperative_warp_specialized"', source)
         self.assertIn('result["global_partial_buffer"] = false', source)
         self.assertNotIn("cublasLtMatmul(", source)
         self.assertIn("adangel_launch_mxfp4_to_int8", source)
@@ -61,7 +69,7 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('module.def("run_o1", &adangel_run_o1)', bindings)
         self.assertNotIn('result["o1_int8_tc"] = false', bindings)
 
-    def test_o1_fused_tile_output_ownership(self):
+    def test_o1_tma_consumer_output_ownership(self):
         coordinates = [
             (thread // 32 + item * 8, thread % 32)
             for thread in range(256)

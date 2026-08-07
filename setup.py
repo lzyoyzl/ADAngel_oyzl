@@ -57,12 +57,13 @@ def extensions():
         "adangel._sm120",
         sources=sources,
         include_dirs=[str(root / "include"), str(cutlass_root / "include")],
-        libraries=["cublasLt"],
+        libraries=["cublasLt", "cuda"],
         extra_compile_args={
             "cxx": ["-O3", "-std=c++17"],
             "nvcc": [
                 "-O3",
                 "-std=c++17",
+                "--expt-relaxed-constexpr",
                 "-lineinfo",
                 "-gencode=arch=compute_120a,code=[sm_120a,compute_120a]",
             ],
