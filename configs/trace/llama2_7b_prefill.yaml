@@ -6,3 +6,17 @@ dtype: fp16
 layers: [0, 6, 12, 18, 24, 31]
 projections: [q_proj, k_proj, v_proj, o_proj]
 expected_shape: [4096, 4096]
+device: cuda:0
+attention_implementation: sdpa
+environment_source:
+  project: tensor_hook
+  commit: 80888257f8f1ac1a5cf84659dbfe84e36c60a45c
+calibration:
+  dataset: Salesforce/wikitext
+  subset: wikitext-2-raw-v1
+  split: train
+  revision: b08601e04326c79dfdd32d625aee71d232d685c3
+  seed: 20250805
+  corpus_joiner: "\n\n"
+  sampled_tokens: 4095
+  prepend_bos: true

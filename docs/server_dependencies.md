@@ -1,8 +1,8 @@
 # RTX 5090 服务器依赖与版本矩阵
 
-本文只描述后续在服务器上需要的环境，不会在当前机器或服务器上自动安装任何组件，也不会
-下载 Llama-2-7B。完整逐步命令见 [Miniconda 配置指南](miniconda_setup.md)，正式实验直接
-接收外部采集的 24 个 trace 样本。
+本文主要描述 RTX 5090 实验服务器需要的环境，不会自动安装组件或下载 Llama-2-7B。完整
+逐步命令见 [Miniconda 配置指南](miniconda_setup.md)。模型只在另一台模型服务器加载，按
+[双服务器 trace 采集指南](trace_collection.md)产生并传输 24 个样本。
 
 ## 1. 固定平台与版本
 
@@ -51,7 +51,7 @@ Git 2.43.0
 - `requirements/server-core.txt`：运行与构建必需；
 - `requirements/server-analysis.txt`：四表四图；
 - `requirements/server-dev.txt`：测试和扩展构建工具；
-- `requirements/server-trace-optional.txt`：仅未来自行采集模型 trace 时需要，本轮不安装。
+- `requirements/server-trace-optional.txt`：仅模型服务器的 `adangel-trace` 克隆环境缺包时使用；5090 不安装。
 
 PyTorch 必须从官方 cu128 wheel 索引安装。Miniconda 环境的完整手工顺序为：
 
@@ -67,8 +67,8 @@ python -m pip check
 ```
 
 `server-core.txt` 是版本清单；其中 torch 的实际安装仍应使用上面的 cu128 专用索引，防止从默认
-索引得到不符合要求的构建。模型 trace 已由外部提供时，不安装 transformers、safetensors 或
-sentencepiece。
+索引得到不符合要求的构建。RTX 5090 只接收已采集的 trace，不安装 transformers、datasets、
+accelerate、safetensors 或 sentencepiece。
 
 ## 4. 构建变量
 
@@ -94,20 +94,23 @@ ADANGEL_BUILD_CUDA=1 python -m pip install -v -e . --no-build-isolation --no-dep
 构建脚本会拒绝错误的 PyTorch/CUDA 构建或 CUTLASS commit。正式 runner 还会拒绝非 RTX 5090、
 非 compute capability 12.0、能力位未完成或没有 `sm_120a` 的扩展。
 
-## 5. 外部 trace 与磁盘
+## 5. 双服务器 trace 与磁盘
 
-不需要模型文件。只需从外部复制以下数据：
+RTX 5090 不需要模型文件。模型服务器按 `docs/trace_collection.md` 采集并传输：
 
 ```text
 data/raw/llama2_7b_prefill/
+  trace_manifest.json
   layer_00_q_proj.pt
   ...
   layer_31_o_proj.pt
 ```
 
-共 24 个样本；每个文件包含 `[4096,4096]` FP16 的激活和权重。原始 trace 约 1.5 GiB，准备后
-数据约 0.57 GiB；若保存 24 份 O0 FP32 输出，另需约 1.5 GiB。考虑构建缓存、审计文件、运行
-副本和报告，建议项目所在盘至少预留 10 GiB。详细字段见 `docs/data_format.md`。
+共 24 个样本；每个文件包含 `[4096,4096]` FP16 的激活和权重。传输后必须在 5090 再次运行
+`scripts/validate_raw_trace.py`，核对文件集合、SHA-256 和 tensor 内容。原始 trace 约
+1.5 GiB，准备后数据约 0.57 GiB；若保存 24 份 O0 FP32 输出，另需约 1.5 GiB。考虑构建缓存、
+审计文件、运行副本和报告，建议项目所在盘至少预留 10 GiB。详细字段见
+`docs/data_format.md`。
 
 ## 6. 只读验收
 
@@ -144,5 +147,5 @@ EXTENSION_DIR=$(python -c "import torch, pathlib; import adangel._sm120 as m; pr
 bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 ```
 
-这些检查不进行模型下载。只有 `scripts/collect_trace.py` 被用户显式调用时才会访问模型仓库；本轮
-主流程不调用该脚本。
+这些检查不进行模型下载。`scripts/collect_trace.py` 只在模型服务器运行，并强制从绝对本地
+目录加载模型；WikiText 首次读取可能访问 Hugging Face datasets，或使用已有本地 cache。

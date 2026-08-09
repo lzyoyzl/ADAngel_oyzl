@@ -132,16 +132,47 @@ python -m adangel doctor
 PyTorch/CUDA 构建、扩展编译目标及 kernel 能力。任何一项不满足都会退出，正式 benchmark
 不会退回 reference。
 
-## 1. 放置外部 trace（主流程，不下载模型）
+## 1. 在模型服务器采集并传输 trace
 
-本轮不在项目中下载或加载 Llama-2-7B。请把服务器外部已经采集好的 24 个 FP16 样本放到
-`data/raw/llama2_7b_prefill/`。每个 `.pt` 文件必须包含
-`sample_id/layer/projection/activation_fp16/weight_fp16`；层为 `0,6,12,18,24,31`，projection
-为 `q_proj/k_proj/v_proj/o_proj`，A/W 均严格为 `[4096,4096]` FP16。完整 schema、命名和
-校验规则见 [数据格式](docs/data_format.md)。
+Llama-2-7B 只需放在模型服务器；RTX 5090 服务器不加载或下载模型。模型服务器复用已有
+`tensor_hook_cu128` 环境的方式是克隆出隔离环境，然后仅以 Python editable 模式安装本项目：
 
-仓库保留 `scripts/collect_trace.py` 仅作为未来可选工具；当前主流程不调用它，也不需要安装
-`requirements/server-trace-optional.txt`。
+```bash
+conda create --name adangel-trace --clone tensor_hook_cu128
+conda activate adangel-trace
+cd /path/to/ADAngel_oyzl
+python -m pip install -e . --no-deps
+```
+
+不要在模型服务器运行 `ADANGEL_BUILD_CUDA=1`、获取 CUTLASS 或重新执行指令审计。确认
+`transformers/datasets/accelerate/safetensors/sentencepiece/PyYAML` 均可导入；只有缺包时才
+按 `requirements/server-trace-optional.txt` 补装。正式采集和本地验证命令为：
+
+```bash
+python scripts/collect_trace.py \
+  --model /absolute/path/to/Llama-2-7b-hf \
+  --output data/raw/llama2_7b_prefill \
+  --config configs/trace/llama2_7b_prefill.yaml \
+  --device cuda:0
+
+python scripts/validate_raw_trace.py \
+  --input data/raw/llama2_7b_prefill \
+  --config configs/trace/llama2_7b_prefill.yaml
+```
+
+采集器固定 WikiText-2 revision、随机种子和 4096-token FP16 prefill，生成 6 层 × 4 projection
+共 24 个自包含 `.pt` 文件和 `trace_manifest.json`。随后将整个目录传至 RTX 5090：
+
+```bash
+rsync -avP --partial \
+  data/raw/llama2_7b_prefill/ \
+  zlouyang@<5090服务器地址>:/home/zlouyang/oyzl/ADAngel_oyzl/data/raw/llama2_7b_prefill/
+```
+
+在 RTX 5090 服务器再次运行相同的 `validate_raw_trace.py`；文件缺失、多余或 SHA-256
+变化时会直接失败。完整环境核对、manifest 字段和故障处理见
+[双服务器 trace 采集指南](docs/trace_collection.md)，字段定义见
+[数据格式](docs/data_format.md)。
 
 ## 2. 生成公共输入
 
@@ -266,6 +297,11 @@ O2 的 `W_scale → CUTLASS SFB` 重排只有约数微秒，因此使用独立 C
 影响。该批量区间与主路径计时隔离；`conversion_only/total` 和 `cold/total` 仍直接
 测量只执行一次权重 scale 重排的真实端到端路径。
 分阶段批量均值与直接 total 独立测量，二者可能有微小差异；端到端结论以 total 为准。
+转换开销主表把该阶段记录为 o2/weight_conversion（图中即 O2-W-layout）。
+转换吞吐按有效 tensor 的逻辑读写字节计算，不把未触碰的 physical-layout padding 计入：
+
+- O2-W：2*N*(K/32)，即读取自然 W_scale 并写出有效 SFB scale。
+- O2-A：M*K + 4*M + M*K/2 + 3*M*(K/32)。
 
 ## 6. 生成四表四图
 

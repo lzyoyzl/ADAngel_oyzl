@@ -20,11 +20,19 @@ def _throughput_tflops(m: int, n: int, k: int, ms: float) -> float:
 
 
 def _conversion_bytes(variant: str, stage: str, m: int, n: int, k: int) -> int:
+    natural_sfa = m * (k // 32)
+    natural_sfb = n * (k // 32)
     sizes = {
         ("o0", "weight_conversion"): n * k // 2 + n * (k // 32) + 2 * n * k,
         ("o0", "activation_conversion"): m * k + 4 * m + 2 * m * k,
         ("o1", "weight_conversion"): n * k // 2 + n * k,
-        ("o2", "activation_conversion"): m * k + 4 * m + m * k // 2 + m * (k // 32),
+        # Quantization writes natural SFA; layout repack reads and writes each
+        # logical SFA value once. Padding in the physical allocation is not
+        # touched by the timed repack kernel and therefore is not counted.
+        ("o2", "activation_conversion"): (
+            m * k + 4 * m + m * k // 2 + 3 * natural_sfa
+        ),
+        ("o2", "weight_conversion"): 2 * natural_sfb,
     }
     return sizes.get((variant, stage), 0)
 

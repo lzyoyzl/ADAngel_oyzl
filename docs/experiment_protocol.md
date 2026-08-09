@@ -31,6 +31,8 @@ O2 的 `W_scale → SFB` 微秒级重排在独立 CUDA Event 区间内执行 100
 一次重排的真实端到端路径。转换吞吐以实际读写字节/时间报告；GEMM 等效吞吐按
 `2MNK/time` 报告。
 分阶段批量均值与直接 total 独立测量，端到端结果以 total 为准。
+主表将 O2-W-layout 记录为 o2/weight_conversion；其吞吐按 2*N*(K/32) 字节计算。
+O2-A 按 M*K + 4*M + M*K/2 + 3*M*(K/32) 字节计算；未触碰的物理布局 padding 不计入。
 
 ## 正确性
 

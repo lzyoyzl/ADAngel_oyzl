@@ -138,7 +138,7 @@ python -m pip check
 | `requirements/server-core.txt` | torch、PyYAML、typing_extensions 的版本清单 |
 | `requirements/server-analysis.txt` | NumPy、pandas、Matplotlib、Pillow |
 | `requirements/server-dev.txt` | pytest、ruff、setuptools、wheel、Ninja、CMake |
-| `requirements/server-trace-optional.txt` | 仅自行采集模型 trace 时使用；本实验不安装 |
+| `requirements/server-trace-optional.txt` | 仅模型服务器采集 trace 时补缺包；5090 环境不安装 |
 
 不要直接从默认 PyPI 安装 `server-core.txt`，因为 torch 必须来自官方 cu128 索引。上述顺序
 会让 torch 自动安装与其 wheel 匹配的 CUDA 用户态运行库；这些库不会替换系统驱动或
@@ -250,12 +250,15 @@ EXTENSION_DIR=$(python -c "import torch, pathlib; import adangel._sm120 as m; pr
 bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 ```
 
-## 8. 外部 trace 与正式实验
+## 8. 双服务器 trace 与正式实验
 
-本流程不下载 Llama-2-7B。把外部准备好的 24 个 FP16 trace 文件复制到
-`data/raw/llama2_7b_prefill/`，然后按 README 的“生成公共输入”“正式运行”和“四表四图”
-步骤执行。不要安装 `requirements/server-trace-optional.txt`，除非以后明确需要服务器自行
-采集模型 trace。
+Llama-2-7B 只放在模型服务器。克隆 `tensor_hook_cu128` 为 `adangel-trace`，使用
+`scripts/collect_trace.py` 采集并完整校验 24 个 FP16 样本，再通过 rsync 传到
+`data/raw/llama2_7b_prefill/`。5090 端再次运行 `scripts/validate_raw_trace.py` 后，按
+README 的“生成公共输入”“正式运行”和“四表四图”步骤执行。
+
+`requirements/server-trace-optional.txt` 只用于模型服务器克隆环境缺包时补装，不属于
+`adangel-sm120` 环境。完整步骤见 `docs/trace_collection.md`。
 
 ## 9. 保存可复现环境快照
 

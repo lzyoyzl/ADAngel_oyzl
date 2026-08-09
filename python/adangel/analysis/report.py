@@ -35,7 +35,11 @@ def generate_report(run_dir: str | Path, output_dir: str | Path) -> Path:
             flat.append({**base, "stage": stage, **stats})
     frame = pd.DataFrame(flat)
 
-    conversion_names = {"o0": ["weight_conversion", "activation_conversion"], "o1": ["weight_conversion"], "o2": ["activation_conversion"]}
+    conversion_names = {
+        "o0": ["weight_conversion", "activation_conversion"],
+        "o1": ["weight_conversion"],
+        "o2": ["weight_conversion", "activation_conversion"],
+    }
     conv = frame[frame["mode"].eq("conversion_only")].copy()
     conv = conv[conv.apply(lambda row: row["stage"] in conversion_names[row["variant"]], axis=1)]
     conv.to_csv(table_dir / "01_conversion_overhead.csv", index=False)

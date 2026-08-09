@@ -8,8 +8,9 @@ import yaml
 
 from ..quantization.int8 import quantize_int8_per_row
 from ..quantization.mxfp4 import quantize_mxfp4
+from .raw import RAW_MANIFEST_NAME, validate_raw_trace, validate_trace_config
 from .schema import PreparedInputs
-from .storage import save_prepared, write_manifest
+from .storage import save_prepared, sha256_file, write_manifest
 
 
 def _config(value: dict | str | Path) -> dict:
@@ -28,14 +29,7 @@ def _validate_configs(experiment: dict, trace: dict) -> tuple[list[int], list[st
     weight = quantization.get("weight", {})
     if weight.get("format") != "mxfp4_e2m1_ue8m0" or weight.get("group_size") != 32:
         raise ValueError("weight quantization must be MXFP4 E2M1/UE8M0 K32")
-    layers = [int(value) for value in trace.get("layers", [])]
-    projections = list(trace.get("projections", []))
-    if layers != [0, 6, 12, 18, 24, 31] or projections != ["q_proj", "k_proj", "v_proj", "o_proj"]:
-        raise ValueError("trace config must select the planned six layers and four projections")
-    if trace.get("batch_size") != 1 or trace.get("sequence_length") != 4096:
-        raise ValueError("trace config requires batch=1 and 4096 valid tokens")
-    if list(trace.get("expected_shape", [])) != [4096, 4096]:
-        raise ValueError("trace config expected_shape must be [4096,4096]")
+    layers, projections, _, _ = validate_trace_config(trace)
     return layers, projections
 
 
@@ -62,6 +56,29 @@ def _load_and_validate_raw(path: Path, layer: int, projection: str):
     return raw
 
 
+def _source_trace_provenance(input_dir: Path, raw_manifest: dict) -> dict:
+    tokenization = raw_manifest["tokenization"]
+    return {
+        "manifest_file": RAW_MANIFEST_NAME,
+        "manifest_sha256": sha256_file(input_dir / RAW_MANIFEST_NAME),
+        "format": raw_manifest["format"],
+        "dataset": raw_manifest["dataset"],
+        "tokenization": {
+            "seed": tokenization["seed"],
+            "start_index": tokenization["start_index"],
+            "sampled_tokens": tokenization["sampled_tokens"],
+            "prepend_bos": tokenization["prepend_bos"],
+            "bos_token_id": tokenization["bos_token_id"],
+            "corpus_token_count": tokenization["corpus_token_count"],
+            "input_ids_sha256": tokenization["input_ids_sha256"],
+        },
+        "model": raw_manifest["model"],
+        "runtime": raw_manifest["runtime"],
+        "inference": raw_manifest["inference"],
+        "environment_source": raw_manifest.get("environment_source", {}),
+    }
+
+
 def prepare_trace(
     input_dir: str | Path,
     output_dir: str | Path,
@@ -76,16 +93,12 @@ def prepare_trace(
         for layer in layers
         for projection in projections
     }
-    actual = {path.name for path in input_dir.glob("*.pt")}
-    missing, extra = sorted(set(expected) - actual), sorted(actual - set(expected))
-    if missing or extra:
-        raise ValueError(f"raw trace file set mismatch; missing={missing}, extra={extra}")
     if output_dir.exists() and any(output_dir.iterdir()):
         raise FileExistsError(f"refusing to overwrite non-empty prepared directory: {output_dir}")
 
-    # Validate all external files before creating any prepared output.
-    for filename, (layer, projection) in expected.items():
-        _load_and_validate_raw(input_dir / filename, layer, projection)
+    # Validate manifest, transfer hashes, tensors, and q/k/v hook identity before
+    # creating any prepared output.
+    raw_manifest = validate_raw_trace(input_dir, trace, deep=True)
 
     records: list[dict] = []
     for filename, (layer, projection) in expected.items():
@@ -121,6 +134,7 @@ def prepare_trace(
                 "layers": layers,
                 "projections": projections,
             },
+            "source_trace": _source_trace_provenance(input_dir, raw_manifest),
         },
     )
     return records

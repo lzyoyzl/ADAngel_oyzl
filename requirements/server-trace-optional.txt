@@ -1,4 +1,9 @@
-# Not needed when using externally supplied trace files.
-transformers==4.49.0
-safetensors==0.5.3
-sentencepiece==0.2.0
+# Model-server-only dependencies for collecting a local Llama-2 FP16 trace.
+# Reuse/clone the proven tensor_hook environment and install ADAngel with
+# --no-deps so its working PyTorch CUDA build is never replaced.
+transformers>=4.49,<5
+accelerate>=1,<2
+datasets>=3.3.2,<6
+safetensors>=0.5.3,<1
+sentencepiece>=0.2.0,<1
+PyYAML>=6.0.2,<7
