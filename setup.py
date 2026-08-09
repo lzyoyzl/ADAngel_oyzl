@@ -26,9 +26,15 @@ def extensions():
     root = Path(__file__).parent
     cutlass_root = Path(os.environ.get("ADANGEL_CUTLASS_ROOT", root / "third_party/cutlass-src"))
     cutlass_header = cutlass_root / "include/cutlass/cutlass.h"
+    cutlass_util_header = cutlass_root / "tools/util/include/cutlass/util/packed_stride.hpp"
     if not cutlass_header.is_file():
         raise RuntimeError(
             "Pinned CUTLASS source is missing; run scripts/fetch_cutlass.sh or set ADANGEL_CUTLASS_ROOT"
+        )
+    if not cutlass_util_header.is_file():
+        raise RuntimeError(
+            "Pinned CUTLASS utility headers are missing; expected "
+            f"{cutlass_util_header}"
         )
     try:
         actual_cutlass = subprocess.run(
@@ -56,7 +62,11 @@ def extensions():
     extension = CUDAExtension(
         "adangel._sm120",
         sources=sources,
-        include_dirs=[str(root / "include"), str(cutlass_root / "include")],
+        include_dirs=[
+            str(root / "include"),
+            str(cutlass_root / "include"),
+            str(cutlass_root / "tools/util/include"),
+        ],
         libraries=["cublasLt", "cuda"],
         extra_compile_args={
             "cxx": ["-O3", "-std=c++17"],

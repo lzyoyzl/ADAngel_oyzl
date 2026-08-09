@@ -26,6 +26,8 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn(
             "-gencode=arch=compute_120a,code=[sm_120a,compute_120a]", setup
         )
+        self.assertIn("tools/util/include/cutlass/util/packed_stride.hpp", setup)
+        self.assertIn('str(cutlass_root / "tools/util/include")', setup)
 
     def test_o0_production_backend_contract(self):
         source = (ROOT / "csrc/sm120/o0_gemm.cu").read_text()

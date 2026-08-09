@@ -192,6 +192,19 @@ def main() -> int:
 
     if not args.skip_cutlass:
         root = Path(args.cutlass_root)
+        core_header = root / "include/cutlass/cutlass.h"
+        packed_stride_header = (
+            root / "tools/util/include/cutlass/util/packed_stride.hpp"
+        )
+        add(
+            checks, "cutlass_core_headers", core_header.is_file(), str(core_header)
+        )
+        add(
+            checks,
+            "cutlass_utility_headers",
+            packed_stride_header.is_file(),
+            str(packed_stride_header),
+        )
         ok, output = command(["git", "-C", str(root), "rev-parse", "HEAD"])
         actual = output.splitlines()[0] if output else "unavailable"
         add(checks, "cutlass_commit", ok and actual == EXPECTED["cutlass"], actual)
