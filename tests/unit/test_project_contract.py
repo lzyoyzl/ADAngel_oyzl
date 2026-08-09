@@ -118,6 +118,14 @@ class TestProjectContract(unittest.TestCase):
         )
         self.assertIn("o2_mxf4_layout_probe", audit)
         self.assertIn("has_tma && has_mma", audit)
+        self.assertIn(
+            r"/^[[:space:]]*(\.visible[[:space:]]+)?\.entry[[:space:]]/",
+            audit,
+        )
+        self.assertIn(
+            r"/^[[:space:]]*Function[[:space:]]*:/",
+            audit,
+        )
 
     def test_o2_has_all_timing_modes(self):
         source = (ROOT / "csrc/sm120/o2_cutlass.cu").read_text()

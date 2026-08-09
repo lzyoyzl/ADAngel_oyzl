@@ -62,7 +62,7 @@ find_ptx_symbol() {
       reset_entry()
     }
     BEGIN { reset_entry() }
-    /^[[:space:]]*\.(visible[[:space:]]+)?entry[[:space:]]/ {
+    /^[[:space:]]*(\.visible[[:space:]]+)?\.entry[[:space:]]/ {
       reset_entry()
       entry = $0
       symbol = $0
@@ -90,7 +90,7 @@ check_sass_symbol() {
   local symbol=$1
   local family=$2
   awk -v symbol="$symbol" -v family="$family" '
-    /^Function :/ {
+    /^[[:space:]]*Function[[:space:]]*:/ {
       inside = index($0, symbol) != 0
       next
     }
