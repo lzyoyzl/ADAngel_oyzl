@@ -13,11 +13,14 @@
 - O0-GEMM：FP16×FP16，FP32 accumulate/output。
 - O1-W-convert：E2M1 nibble → 精确的 `2*E2M1` INT8 基值。
 - O1-GEMM：INT8 MMA、每 K32 rescale、FP32 累加的整体。
-- O2-A-quant：反缩放、K32 amax、UE8M0、E2M1 RNE 与 packing。
+- O2-A-quant：反缩放、K32 amax、UE8M0、E2M1 RNE、packing 与 SFA 重排。
+- O2-W-layout：自然顺序的 `W_scale[N,K/32]` → CUTLASS SFB physical layout；
+  packed MXFP4 权重数值本身不转换。
 - O2-GEMM：MXFP4 block-scaled MMA 与 FP32 累加。
 
-`conversion_only` 分别测转换 kernel；`compute_only` 使用已转换输入；`cold` 包含
-该 variant 的所有转换；`steady_state` 缓存静态权重转换，只保留在线激活处理。
+`conversion_only` 分别测转换 kernel；`compute_only` 预先完成 A 量化、SFA 与 SFB
+重排，只测 GEMM；`cold` 包含该 variant 的所有转换；`steady_state` 缓存静态权重
+转换。对 O2，steady-state 因而只保留在线 A 量化/SFA 重排与 GEMM。
 
 ## 统计规则
 

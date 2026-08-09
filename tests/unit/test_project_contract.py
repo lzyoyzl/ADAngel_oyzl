@@ -75,6 +75,45 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('module.def("run_o1", &adangel_run_o1)', bindings)
         self.assertNotIn('result["o1_int8_tc"] = false', bindings)
 
+    def test_o2_production_backend_contract(self):
+        source = (ROOT / "csrc/sm120/o2_cutlass.cu").read_text()
+        bindings = (ROOT / "csrc/bindings.cpp").read_text()
+        audit = (ROOT / "scripts/audit_instructions.sh").read_text()
+        self.assertIn("cutlass::arch::OpClassBlockScaledTensorOp", source)
+        self.assertIn("cutlass::gemm::KernelTmaWarpSpecializedCooperative", source)
+        self.assertIn("StageCountAutoCarveout", source)
+        self.assertIn("GemmUniversalAdapter", source)
+        self.assertIn("Sm1xxBlockScaledConfig<kGroupSize>", source)
+        self.assertIn("tile_atom_to_shape_SFA", source)
+        self.assertIn("tile_atom_to_shape_SFB", source)
+        self.assertIn("adangel_o2_quantize_activation", source)
+        self.assertIn("adangel_o2_repack_scale", source)
+        self.assertIn("encode_e2m1_rne", source)
+        self.assertIn("gemm_operator.can_implement", source)
+        self.assertIn("gemm_operator.initialize", source)
+        self.assertIn('result["data_movement"] = "TMA"', source)
+        self.assertIn(
+            'result["kernel_schedule"] = "cooperative_warp_specialized"', source
+        )
+        self.assertIn('result["mma_family"] = "MXFP4_BLOCK_SCALED"', source)
+        self.assertIn('result["global_partial_buffer"] = false', source)
+        self.assertIn('module.def("run_o2", &adangel_run_o2)', bindings)
+        self.assertIn(
+            'result["o2_mxf4_block_scale"] = adangel_o2_cutlass_is_implemented()',
+            bindings,
+        )
+        self.assertIn(
+            'result["o2_cutlass_tiled"] = adangel_o2_cutlass_is_implemented()',
+            bindings,
+        )
+        self.assertIn("o2_mxf4_layout_probe", audit)
+        self.assertIn("has_tma && has_mma", audit)
+
+    def test_o2_has_all_timing_modes(self):
+        source = (ROOT / "csrc/sm120/o2_cutlass.cu").read_text()
+        for mode in ("conversion_only", "compute_only", "cold", "steady_state"):
+            self.assertIn(f'"{mode}"', source)
+
     def test_o1_tma_consumer_output_ownership(self):
         coordinates = [
             (thread // 32 + item * 8, thread % 32)

@@ -29,10 +29,17 @@ O1 正式后端也已实现：E2M1 nibble 由 CUDA kernel 精确转换为 `2*E2M
 执行 128 次全矩阵 GEMM/缩放 kernel。
 TMA/warp-specialization details: warp 0 is the only TMA producer; eight consumer warps run the existing IMMA path. A and W use a three-stage shared-memory pipeline, and the tensor-map descriptors are encoded before warmup and CUDA Event timing.
 
-O0/O1 独立 capability 已启用，但任何新源码仍必须在目标 RTX 5090 上重新编译并通过
-下述专项数值/计时验证。O2 publication-performance adapter 仍未实现，因此完整
-`doctor` 状态仍是 `available: false`，完整 O0/O1/O2 正式 `run` 也会按设计拒绝启动。
-这个门不能用 reference 或 ISA probe 绕过。
+O2 正式后端现已实现。融合 CUDA kernel 将 `A_int8*A_scale` 按 K32 计算 amax、生成
+UE8M0 scale、执行 E2M1 RNE 量化并完成 nibble packing；随后把自然顺序的 A/W scale
+分别重排为 CUTLASS SFA/SFB physical layout。GEMM 使用 CUTLASS 4.5.2
+`OpClassBlockScaledTensorOp`、`128x128x256` CTA tile、TMA 与
+`KernelTmaWarpSpecializedCooperative`，执行原生 MXFP4 block-scaled MMA、FP32
+累加和输出。W 的 packed MXFP4 数值不复制、不转置。
+
+O0/O1/O2 capability 均已在源码中启用，但任何新源码仍必须在目标 RTX 5090 上重新
+编译，并通过下述数值、计时与同 kernel 指令审计后才能生成正式结果。验收成功时
+`python -m adangel doctor --require-native` 应报告 `available: true`；这个门不能用
+reference 或 ISA probe 绕过。
 
 ## 目录说明
 
@@ -157,8 +164,7 @@ CPU 上可先运行不依赖 GPU 的编码测试：
 python -m unittest discover -s tests/unit -p 'test_*.py' -v
 ```
 
-修改 O0/O1 原生源码后，先在 RTX 5090 上重新构建，再运行不需要模型或 trace 的
-两组专项验收：
+修改任一原生后端后，先在 RTX 5090 上重新构建，再运行不需要模型或 trace 的三组专项验收：
 
 ```bash
 ADANGEL_BUILD_CUDA=1 python -m pip install -v -e . --no-build-isolation --no-deps
@@ -167,19 +173,25 @@ python scripts/validate_o0.py
 python -m pytest tests/integration/test_sm120_o0.py -q --run-sm120
 python scripts/validate_o1.py
 python -m pytest tests/integration/test_sm120_o1.py -q --run-sm120
+python scripts/validate_o2.py
+python -m pytest tests/integration/test_sm120_o2.py -q --run-sm120
 ```
 
-预期 `o0_fp16_tc` 和 `o1_int8_tc` 均为 `true`，两个验证脚本必须输出
-`"passed": true`。O0 元数据必须报告 HMMA、`CUBLAS_COMPUTE_32F` 和 FP32 输出；
+预期 `o0_fp16_tc`、`o1_int8_tc`、`o2_mxf4_block_scale` 和
+`o2_cutlass_tiled` 均为 `true`，三个验证脚本必须输出 `"passed": true`。
+O0 元数据必须报告 HMMA、`CUBLAS_COMPUTE_32F` 和 FP32 输出；
 O1 必须报告 `CUTLASS CuTe + CUDA WMMA`、IMMA、`tma_warp_specialized`、`S8xS8_TO_S32`、INT32 partial、
 FP32 寄存器累加和 K32；同时 `global_partial_buffer=false` 且
-`output_stores_per_element=1`
-The O1 metadata must additionally report `data_movement=TMA`, `kernel_schedule=cooperative_warp_specialized`, `pipeline_stages=3`, `producer_warps=1`, and `consumer_warps=8`.。
+`output_stores_per_element=1`。O1 元数据还必须报告 `data_movement=TMA`、
+`kernel_schedule=cooperative_warp_specialized`、`pipeline_stages=3`、
+`producer_warps=1` 和 `consumer_warps=8`。
 O1 验证会逐元素核对 MXFP4→INT8 映射，并用 `rtol=1e-3, atol=1e-3` 对照可扩展
-语义参考。两个脚本同时验证四种计时模式的阶段集合。此时 `python -m adangel doctor`
-仍会因为 O2 尚未实现而报告整体不可用，这是预期行为，并不表示 O0/O1 失败。
+语义参考。O2 验证会逐元素核对激活 E2M1 编码、RNE、packing 和 UE8M0 scale，
+执行 SFA/SFB layout probe，并检查 CUTLASS TMA cooperative warp-specialized 元数据。
+三个脚本都会验证四种计时模式的阶段集合。全部通过后，
+`python -m adangel doctor --require-native` 应报告整体可用。
 
-小矩阵通过后再执行 O1 正式形状验收：
+小矩阵通过后再执行 O1/O2 正式形状验收：
 
 ```bash
 python scripts/validate_o1.py --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 \
@@ -187,7 +199,15 @@ python scripts/validate_o1.py --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 2
   | tee reports/o1_4096_tma_ws_validation.json
 ```
 
-RTX 5090 上的全部原生集成测试和 PTX layout microkernel 在三个后端完成后执行：
+```bash
+python scripts/validate_o2.py \
+  --m 4096 --n 4096 --k 4096 \
+  --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o2_4096_validation.json
+```
+
+
+三组专项测试通过后，再执行全部原生集成测试和 PTX layout microkernel：
 
 ```bash
 python -m pytest tests/integration -q --run-sm120
@@ -200,14 +220,16 @@ python -m adangel verify-layout --require-native
 ## 4. 一次性指令审计
 
 ```bash
-bash scripts/audit_instructions.sh build reports/audit
+EXTENSION_DIR=$(python -c "import torch, pathlib; import adangel._sm120 as m; print(pathlib.Path(m.__file__).parent)")
+bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 ```
 
 审计应找到：O0 的 FP16 Tensor Core 指令、O1 的 INT8 Tensor Core 指令，以及
-O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA。对 O1，脚本还要求 INT8 MMA 位于
-`adangel_o1_tma_warp_specialized` 的 PTX entry 内；SASS symbol 归属仍需人工确认。该审计不是
-完整 profiling。审计文件与实验环境一起归档。
-The audit only passes when `cp.async.bulk.tensor` and signed INT8 MMA are both found inside that production PTX entry; SASS review must associate TMA-load and IMMA opcodes with the same kernel.
+O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA。脚本要求 O1 的 TMA 与 signed INT8
+MMA 位于同一个 `adangel_o1_tma_warp_specialized` PTX/SASS entry；同时要求 O2 的
+TMA 与 MXFP4 block-scaled MMA 位于同一个正式 CUTLASS PTX/SASS entry，并明确排除
+`o2_mxf4_layout_probe`。成功后 `reports/audit/summary.txt` 会记录两个正式 kernel
+symbol 和 `status=PASS`。该审计不是完整 profiling，审计文件应与实验环境一起归档。
 
 ## 5. 正式运行
 

@@ -13,18 +13,10 @@ py::dict capabilities() {
   result["compiled_sm120a"] = true;
   result["o0_fp16_tc"] = adangel_o0_is_implemented();
   result["o1_int8_tc"] = adangel_o1_is_implemented();
-  result["o2_mxf4_block_scale"] = false;
+  result["o2_mxf4_block_scale"] = adangel_o2_cutlass_is_implemented();
   result["o2_cutlass_tiled"] = adangel_o2_cutlass_is_implemented();
-  result["status"] = "O0/O1 production adapters are implemented; O2 is pending";
+  result["status"] = "O0/O1/O2 production adapters are implemented";
   return result;
-}
-
-py::object unavailable(py::args, py::kwargs) {
-  TORCH_CHECK(false,
-      "The SM120 production adapter is intentionally disabled until it is compiled, numerically "
-      "validated, and instruction-audited on an RTX 5090. Reference code must not be used for "
-      "formal timing.");
-  return py::none();
 }
 
 py::dict benchmark(
@@ -42,6 +34,10 @@ py::dict benchmark(
   }
   if (variant == "o1") {
     return adangel_benchmark_o1(
+        a_int8, a_scale, w_mxfp4, w_scale, mode, warmup, repeats);
+  }
+  if (variant == "o2") {
+    return adangel_benchmark_o2(
         a_int8, a_scale, w_mxfp4, w_scale, mode, warmup, repeats);
   }
   TORCH_CHECK(
@@ -67,7 +63,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
   module.def("capabilities", &capabilities);
   module.def("run_o0", &adangel_run_o0);
   module.def("run_o1", &adangel_run_o1);
-  module.def("run_o2", &unavailable);
+  module.def("run_o2", &adangel_run_o2);
   module.def("benchmark", &benchmark);
   module.def("verify_layout", &verify_layout);
 }

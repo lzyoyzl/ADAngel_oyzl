@@ -21,6 +21,23 @@ __host__ __device__ inline int8_t e2m1_to_int8_base(uint8_t code) {
   return (code & 8) ? -value : value;
 }
 
+// OCP E2M1 round-to-nearest, ties-to-even encoder. The code parity is the
+// significand parity at every positive midpoint.
+__host__ __device__ inline uint8_t encode_e2m1_rne(float value) {
+  const bool negative = signbit(value) && value != 0.0f;
+  const float magnitude = fabsf(value);
+  uint8_t code = 0;
+  if (magnitude <= 0.25f) code = 0;
+  else if (magnitude < 0.75f) code = 1;
+  else if (magnitude <= 1.25f) code = 2;
+  else if (magnitude < 1.75f) code = 3;
+  else if (magnitude <= 2.5f) code = 4;
+  else if (magnitude < 3.5f) code = 5;
+  else if (magnitude <= 5.0f) code = 6;
+  else code = 7;
+  return static_cast<uint8_t>(code | (negative ? 8 : 0));
+}
+
 __device__ inline float decode_ue8m0(uint8_t code) {
   return ldexpf(1.0f, static_cast<int>(code) - kUe8m0Bias);
 }

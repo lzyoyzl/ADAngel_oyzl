@@ -32,3 +32,11 @@ lane 0，并从各自 operand 选择低两个字节。
 `tests/integration/test_sm120_layout.py` 为每个位置使用不同 scale，专门检测 lane、
 byte、A/B 方向及转置错误。该 microkernel 只负责 layout/语义验证；正式 4096³
 性能入口是 `csrc/sm120/o2_cutlass.cu` 的 tiled CUTLASS kernel。
+
+正式 kernel 不直接把自然布局 `A_scale[M,K/32]` 和 `W_scale[N,K/32]` 传给 MMA。
+它使用 `cutlass::detail::Sm1xxBlockScaledConfig<32>` 的
+`tile_atom_to_shape_SFA/SFB` 生成 physical layout，再由 GPU repack kernel 写入对应
+位置。激活量化输出仍保留自然布局副本用于逐元素正确性验证。W 的 packed
+`W_mxfp4[N,K/2]` 直接解释为 ColumnMajor `B[K,N]`，不复制或转置；只有 W scale
+发生 SFB 重排。指令审计还必须证明 TMA load 与 MXFP4 block-scaled MMA 同属正式
+CUTLASS kernel，而不是本页描述的单 warp probe。

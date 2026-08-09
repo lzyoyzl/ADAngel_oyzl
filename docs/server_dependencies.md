@@ -140,7 +140,8 @@ python -m adangel doctor --require-native
 python -m unittest discover -s tests/unit -p 'test_*.py' -v
 python -m pytest tests/integration -q --run-sm120
 python -m adangel verify-layout --require-native
-bash scripts/audit_instructions.sh build reports/audit
+EXTENSION_DIR=$(python -c "import torch, pathlib; import adangel._sm120 as m; print(pathlib.Path(m.__file__).parent)")
+bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 ```
 
 这些检查不进行模型下载。只有 `scripts/collect_trace.py` 被用户显式调用时才会访问模型仓库；本轮

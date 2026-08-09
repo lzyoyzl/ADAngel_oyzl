@@ -202,11 +202,11 @@ python -m adangel doctor
 python -m unittest discover -s tests/unit -p 'test_*.py' -v
 ```
 
-O0/O1 正式后端已经实现并启用各自的独立 capability；O2 capability 仍关闭。因此
-`python -m adangel doctor --require-native` 和完整正式 benchmark 目前仍应拒绝运行；
-这不是 Conda 配置失败，也不能用 reference 后端绕过。
+O0/O1/O2 正式后端均已实现并启用独立 capability。重新构建后，
+`python -m adangel doctor --require-native` 应报告 `available: true`；若不是，应停止
+正式 benchmark 并按 capability 缺失项排查，不能用 reference 后端绕过。
 
-先独立验收 O0/O1（不需要模型和 trace）：
+先独立验收 O0/O1/O2（不需要模型和 trace）：
 
 ```bash
 python -c "import torch; import adangel._sm120 as m; print(dict(m.capabilities()))"
@@ -214,15 +214,18 @@ python scripts/validate_o0.py
 python -m pytest tests/integration/test_sm120_o0.py -q --run-sm120
 python scripts/validate_o1.py
 python -m pytest tests/integration/test_sm120_o1.py -q --run-sm120
+python scripts/validate_o2.py
+python -m pytest tests/integration/test_sm120_o2.py -q --run-sm120
 ```
 
-预期 `o0_fp16_tc=true`、`o1_int8_tc=true`，两个验证脚本都输出 `passed=true`。
+预期四个后端能力位均为 true，三个验证脚本都输出 `passed=true`。
 O0 会核对反量化、FP32 输出和 cuBLASLt HMMA；O1 会核对精确 E2M1→INT8 映射、
 `tma_warp_specialized` TMA + signed-INT8 WMMA、逐 K32 INT32 partial/FP32 寄存器累加、无全局 partial
-buffer 以及单次最终输出写回。两者都会验证四种计时模式。若源码是在 editable install
-之后更新的，必须先重新执行本节构建命令；只重启 Python 不会重新编译 `.so`。
+buffer 以及单次最终输出写回。O2 会核对激活 MXFP4 编码、SFA/SFB layout、原生
+block-scaled MMA、TMA 与 cooperative warp specialization。三者都会验证四种计时模式。
+若源码是在 editable install 之后更新的，必须先重新构建；只重启 Python 不会更新 `.so`。
 
-专项小矩阵通过后，使用 `4096^3` 对 O1 再做一次正式形状验收：
+专项小矩阵通过后，使用 `4096^3` 对 O1/O2 做正式形状验收：
 
 ```bash
 python scripts/validate_o1.py --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 \
@@ -230,13 +233,21 @@ python scripts/validate_o1.py --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 2
   | tee reports/o1_4096_tma_ws_validation.json
 ```
 
-O2 adapter 完成后再执行完整验收：
+```bash
+python scripts/validate_o2.py \
+  --m 4096 --n 4096 --k 4096 \
+  --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o2_4096_validation.json
+```
+
+最后执行完整验收与同 kernel 指令审计：
 
 ```bash
 python -m adangel doctor --require-native
 python -m pytest tests/integration -q --run-sm120
 python -m adangel verify-layout --require-native
-bash scripts/audit_instructions.sh build reports/audit
+EXTENSION_DIR=$(python -c "import torch, pathlib; import adangel._sm120 as m; print(pathlib.Path(m.__file__).parent)")
+bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 ```
 
 ## 8. 外部 trace 与正式实验
