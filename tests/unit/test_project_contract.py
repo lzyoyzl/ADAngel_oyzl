@@ -107,6 +107,16 @@ class TestProjectContract(unittest.TestCase):
         )
         self.assertIn('result["mma_family"] = "MXFP4_BLOCK_SCALED"', source)
         self.assertIn('result["global_partial_buffer"] = false', source)
+        self.assertIn("kWeightScaleRepackTimingInnerRepeats = 100", source)
+        self.assertIn('result["weight_scale_repack_timing_method"]', source)
+        self.assertIn('result["weight_scale_repack_timing_isolated"] = true', source)
+        self.assertIn('result["total_timing_semantics"]', source)
+        self.assertIn("std::vector<EventPair> weight_repack_events", source)
+        self.assertEqual(source.count("convert_weight_timing_batch();"), 1)
+        self.assertIn(
+            "weight_batch / static_cast<float>(kWeightScaleRepackTimingInnerRepeats)",
+            source,
+        )
         self.assertIn('module.def("run_o2", &adangel_run_o2)', bindings)
         self.assertIn(
             'result["o2_mxf4_block_scale"] = adangel_o2_cutlass_is_implemented()',

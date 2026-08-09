@@ -116,6 +116,10 @@ def main() -> int:
         "accumulation_dtype": "fp32",
         "output_dtype": "fp32",
         "weight_scale_layout_repack": True,
+        "weight_scale_repack_timing_method": "batched_cuda_event_average",
+        "weight_scale_repack_timing_isolated": True,
+        "weight_scale_repack_inner_repeats": 100,
+        "total_timing_semantics": "direct_single_weight_scale_repack",
         "global_partial_buffer": False,
         "output_stores_per_element": 1,
     }

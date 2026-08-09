@@ -80,6 +80,10 @@ def test_o2_native_matches_semantic_reference():
     assert kernel["accumulation_dtype"] == "fp32"
     assert kernel["output_dtype"] == "fp32"
     assert kernel["weight_scale_layout_repack"] is True
+    assert kernel["weight_scale_repack_timing_method"] == "batched_cuda_event_average"
+    assert kernel["weight_scale_repack_timing_isolated"] is True
+    assert kernel["weight_scale_repack_inner_repeats"] == 100
+    assert kernel["total_timing_semantics"] == "direct_single_weight_scale_repack"
     assert kernel["global_partial_buffer"] is False
     assert kernel["output_stores_per_element"] == 1
 

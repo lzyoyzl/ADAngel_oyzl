@@ -30,6 +30,8 @@ namespace {
 constexpr int kGroupSize = 32;
 constexpr int kQuantWarpsPerBlock = 8;
 constexpr int kQuantThreads = kQuantWarpsPerBlock * 32;
+constexpr int kWeightScaleRepackTimingInnerRepeats = 100;
+static_assert(kWeightScaleRepackTimingInnerRepeats > 1);
 constexpr char kCutlassCommit[] = "db1c288993354c88e551c40c19a8fb93a774a241";
 
 using ElementA = cutlass::float_e2m1_t;
@@ -144,6 +146,11 @@ struct EventSet {
   CudaEvent e1;
   CudaEvent e2;
   CudaEvent e3;
+};
+
+struct EventPair {
+  CudaEvent begin;
+  CudaEvent end;
 };
 
 void record(cudaEvent_t event, cudaStream_t stream) {
@@ -292,6 +299,11 @@ py::dict kernel_metadata(size_t workspace_bytes, int groups) {
   result["output_dtype"] = "fp32";
   result["workspace_bytes"] = static_cast<uint64_t>(workspace_bytes);
   result["weight_scale_layout_repack"] = true;
+  result["weight_scale_repack_timing_method"] = "batched_cuda_event_average";
+  result["weight_scale_repack_timing_isolated"] = true;
+  result["weight_scale_repack_inner_repeats"] =
+      kWeightScaleRepackTimingInnerRepeats;
+  result["total_timing_semantics"] = "direct_single_weight_scale_repack";
   result["global_partial_buffer"] = false;
   result["output_stores_per_element"] = 1;
   return result;
@@ -398,6 +410,11 @@ py::dict adangel_benchmark_o2(
   auto convert_weight = [&]() {
     launch_repack_scale(w_scale, sfb_storage, layout_sfb, n, groups, stream);
   };
+  auto convert_weight_timing_batch = [&]() {
+    for (int inner = 0; inner < kWeightScaleRepackTimingInnerRepeats; ++inner) {
+      convert_weight();
+    }
+  };
   auto convert_activation = [&]() {
     launch_quantize_activation(a_int8, a_scale, a_mxfp4, a_scale_natural, stream);
     launch_repack_scale(
@@ -464,6 +481,25 @@ py::dict adangel_benchmark_o2(
       : (mode == TimingMode::kComputeOnly ? events.back().e1.get() : events.back().e2.get());
   check_cuda(cudaEventSynchronize(final_event), "O2 measurement synchronization");
 
+  // Time the microsecond-scale SFB repack in an isolated batched interval.
+  // Main-path events above still contain exactly one repack, preserving the
+  // direct conversion_only/cold total-latency semantics.
+  std::vector<EventPair> weight_repack_events;
+  if (mode == TimingMode::kConversionOnly || mode == TimingMode::kCold) {
+    weight_repack_events.reserve(repeats);
+    for (int iteration = 0; iteration < repeats; ++iteration) {
+      weight_repack_events.emplace_back();
+    }
+    for (auto& marker : weight_repack_events) {
+      record(marker.begin.get(), stream);
+      convert_weight_timing_batch();
+      record(marker.end.get(), stream);
+    }
+    check_cuda(
+        cudaEventSynchronize(weight_repack_events.back().end.get()),
+        "O2 weight-repack timing synchronization");
+  }
+
   std::vector<float> weight_ms;
   std::vector<float> activation_ms;
   std::vector<float> gemm_ms;
@@ -472,9 +508,14 @@ py::dict adangel_benchmark_o2(
   activation_ms.reserve(repeats);
   gemm_ms.reserve(repeats);
   total_ms.reserve(repeats);
-  for (const auto& marker : events) {
+  for (int iteration = 0; iteration < repeats; ++iteration) {
+    const auto& marker = events[iteration];
     if (mode == TimingMode::kConversionOnly) {
-      weight_ms.push_back(elapsed_ms(marker.e0, marker.e1));
+      const auto& weight_marker = weight_repack_events[iteration];
+      const float weight_batch = elapsed_ms(weight_marker.begin, weight_marker.end);
+      const float weight_single =
+          weight_batch / static_cast<float>(kWeightScaleRepackTimingInnerRepeats);
+      weight_ms.push_back(weight_single);
       activation_ms.push_back(elapsed_ms(marker.e1, marker.e2));
       total_ms.push_back(elapsed_ms(marker.e0, marker.e2));
     } else if (mode == TimingMode::kComputeOnly) {
@@ -482,7 +523,11 @@ py::dict adangel_benchmark_o2(
       gemm_ms.push_back(value);
       total_ms.push_back(value);
     } else if (mode == TimingMode::kCold) {
-      weight_ms.push_back(elapsed_ms(marker.e0, marker.e1));
+      const auto& weight_marker = weight_repack_events[iteration];
+      const float weight_batch = elapsed_ms(weight_marker.begin, weight_marker.end);
+      const float weight_single =
+          weight_batch / static_cast<float>(kWeightScaleRepackTimingInnerRepeats);
+      weight_ms.push_back(weight_single);
       activation_ms.push_back(elapsed_ms(marker.e1, marker.e2));
       gemm_ms.push_back(elapsed_ms(marker.e2, marker.e3));
       total_ms.push_back(elapsed_ms(marker.e0, marker.e3));

@@ -261,6 +261,11 @@ python -m adangel run \
 - `results.jsonl`：每个样本/variant/mode 的原始统计与 MSE。
 
 正式配置启用 `CV < 3%` 门限。超过门限的记录标为失败，不能静默进入主表。
+O2 的 `W_scale → CUTLASS SFB` 重排只有约数微秒，因此使用独立 CUDA Event
+区间连续执行 100 次并以总耗时除以 100，降低事件量化和少量调度离群值的相对
+影响。该批量区间与主路径计时隔离；`conversion_only/total` 和 `cold/total` 仍直接
+测量只执行一次权重 scale 重排的真实端到端路径。
+分阶段批量均值与直接 total 独立测量，二者可能有微小差异；端到端结论以 total 为准。
 
 ## 6. 生成四表四图
 
