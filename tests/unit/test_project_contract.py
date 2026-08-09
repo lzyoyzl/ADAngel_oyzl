@@ -92,6 +92,13 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("adangel_o2_quantize_activation", source)
         self.assertIn("adangel_o2_repack_scale", source)
         self.assertIn("encode_e2m1_rne", source)
+        shuffle = source.index("const int next_lane_code =")
+        even_lane_pack = source.index("if ((lane & 1) == 0)", shuffle)
+        self.assertLess(shuffle, even_lane_pack)
+        self.assertIn(
+            "__shfl_down_sync(0xffffffffu, static_cast<int>(code), 1)",
+            source[shuffle:even_lane_pack],
+        )
         self.assertIn("gemm_operator.can_implement", source)
         self.assertIn("gemm_operator.initialize", source)
         self.assertIn('result["data_movement"] = "TMA"', source)

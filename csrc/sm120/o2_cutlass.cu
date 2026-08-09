@@ -192,9 +192,13 @@ __global__ void adangel_o2_quantize_activation(
   const float scale = ldexpf(1.0f, exponent);
   const uint8_t code = adangel::encode_e2m1_rne(value / scale);
 
+  // The full-warp mask requires every lane to execute this intrinsic.  Only
+  // even lanes consume the shuffled value, but odd lanes must still
+  // participate so that lane 2*i can safely read the code from lane 2*i+1.
+  const int next_lane_code =
+      __shfl_down_sync(0xffffffffu, static_cast<int>(code), 1);
   if ((lane & 1) == 0) {
-    const uint8_t high = static_cast<uint8_t>(
-        __shfl_down_sync(0xffffffffu, static_cast<int>(code), 1));
+    const uint8_t high = static_cast<uint8_t>(next_lane_code);
     packed[
         static_cast<int64_t>(row) * (k / 2) +
         static_cast<int64_t>(group) * (kGroupSize / 2) +
