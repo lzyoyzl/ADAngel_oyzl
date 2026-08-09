@@ -83,6 +83,7 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("cutlass::gemm::KernelTmaWarpSpecializedCooperative", source)
         self.assertIn("StageCountAutoCarveout", source)
         self.assertIn("GemmUniversalAdapter", source)
+        self.assertIn("#include <cutlass/util/packed_stride.hpp>", source)
         self.assertIn("Sm1xxBlockScaledConfig<kGroupSize>", source)
         self.assertIn("tile_atom_to_shape_SFA", source)
         self.assertIn("tile_atom_to_shape_SFB", source)

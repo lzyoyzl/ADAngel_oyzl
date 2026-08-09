@@ -9,6 +9,7 @@
 #include <cutlass/gemm/dispatch_policy.hpp>
 #include <cutlass/gemm/kernel/gemm_universal.hpp>
 #include <cutlass/numeric_types.h>
+#include <cutlass/util/packed_stride.hpp>
 #include <cuda_runtime_api.h>
 #include <pybind11/stl.h>
 #include <torch/extension.h>
