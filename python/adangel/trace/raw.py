@@ -185,6 +185,7 @@ def _validate_manifest_contract(manifest: dict, config: dict) -> dict[str, dict]
         "pyyaml",
         "safetensors",
         "sentencepiece",
+        "protobuf",
     }
     if not required_runtime.issubset(runtime):
         raise ValueError("raw trace runtime metadata is incomplete")
@@ -205,6 +206,7 @@ def _validate_manifest_contract(manifest: dict, config: dict) -> dict[str, dict]
         "pyyaml",
         "safetensors",
         "sentencepiece",
+        "protobuf",
     )
     if any(str(runtime.get(name, "")).lower() == "missing" for name in package_names):
         raise ValueError("raw trace runtime is missing a required collection package")

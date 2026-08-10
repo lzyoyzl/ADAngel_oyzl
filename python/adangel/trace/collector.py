@@ -99,6 +99,7 @@ def _runtime_metadata(torch: Any, device: Any) -> dict:
         "pyyaml": _package_version("PyYAML"),
         "safetensors": _package_version("safetensors"),
         "sentencepiece": _package_version("sentencepiece"),
+        "protobuf": _package_version("protobuf"),
     }
 
 

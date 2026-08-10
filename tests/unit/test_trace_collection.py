@@ -100,6 +100,7 @@ class TestTraceCollection(unittest.TestCase):
             "pyyaml": "6.0.2",
             "safetensors": "0.5.3",
             "sentencepiece": "0.2.0",
+            "protobuf": "5.29.3",
         }
         return {
             "version": RAW_TRACE_VERSION,

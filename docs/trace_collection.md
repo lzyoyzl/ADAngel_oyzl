@@ -54,6 +54,7 @@ import accelerate
 import yaml
 import safetensors
 import sentencepiece
+import google.protobuf
 
 print(json.dumps({
     "python": platform.python_version(),
@@ -71,6 +72,7 @@ print(json.dumps({
     "pyyaml": yaml.__version__,
     "safetensors": safetensors.__version__,
     "sentencepiece_import": True,
+    "protobuf": google.protobuf.__version__,
 }, indent=2))
 PY
 
@@ -84,6 +86,14 @@ python -m pip freeze > runs/trace_environment/pip-freeze.txt
 
 ```bash
 python -m pip install -r requirements/server-trace-optional.txt
+```
+
+Llama 模型目录没有预生成 fast-tokenizer 文件时，Transformers 会从 SentencePiece
+转换 tokenizer；该路径同时依赖 `protobuf`。若出现
+`LlamaConverter requires the protobuf library`，执行：
+
+```bash
+python -m pip install protobuf==5.29.3
 ```
 
 该 requirements 使用兼容范围而非覆盖已有环境的全部精确版本。WikiText 第一次读取需要

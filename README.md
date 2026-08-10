@@ -145,7 +145,7 @@ python -m pip install -e . --no-deps
 ```
 
 不要在模型服务器运行 `ADANGEL_BUILD_CUDA=1`、获取 CUTLASS 或重新执行指令审计。确认
-`transformers/datasets/accelerate/safetensors/sentencepiece/PyYAML` 均可导入；只有缺包时才
+`transformers/datasets/accelerate/safetensors/sentencepiece/protobuf/PyYAML` 均可导入；只有缺包时才
 按 `requirements/server-trace-optional.txt` 补装。正式采集和本地验证命令为：
 
 ```bash

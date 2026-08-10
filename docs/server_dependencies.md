@@ -68,7 +68,7 @@ python -m pip check
 
 `server-core.txt` 是版本清单；其中 torch 的实际安装仍应使用上面的 cu128 专用索引，防止从默认
 索引得到不符合要求的构建。RTX 5090 只接收已采集的 trace，不安装 transformers、datasets、
-accelerate、safetensors 或 sentencepiece。
+accelerate、safetensors、sentencepiece 或 protobuf。
 
 ## 4. 构建变量
 
