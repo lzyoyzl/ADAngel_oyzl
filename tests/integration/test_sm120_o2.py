@@ -83,7 +83,13 @@ def test_o2_native_matches_semantic_reference():
     assert kernel["weight_scale_repack_timing_method"] == "batched_cuda_event_average"
     assert kernel["weight_scale_repack_timing_isolated"] is True
     assert kernel["weight_scale_repack_inner_repeats"] == 100
-    assert kernel["total_timing_semantics"] == "direct_single_weight_scale_repack"
+    assert kernel["activation_conversion_timing_method"] == "batched_cuda_event_average"
+    assert kernel["activation_conversion_timing_isolated"] is True
+    assert kernel["activation_conversion_inner_repeats"] == 100
+    assert (
+        kernel["total_timing_semantics"]
+        == "conversion_only_amortized_cold_steady_direct"
+    )
     assert kernel["global_partial_buffer"] is False
     assert kernel["output_stores_per_element"] == 1
 
@@ -134,6 +140,14 @@ def test_o2_native_timing_modes(mode, expected_stages):
     assert all(
         len(values) == 3 and all(value > 0 for value in values)
         for values in timings.values()
+    )
+    timing_method = dict(result["timing_method"])
+    assert timing_method["strategy"] == "conversion_amortized_end_to_end_direct"
+    assert timing_method["conversion_inner_repeats"] == 100
+    assert timing_method["mode_total_timing"] == (
+        "batched_cuda_event_average"
+        if mode == "conversion_only"
+        else "direct_single_path"
     )
     expected = run_o2_reference(cpu_inputs)
     torch.testing.assert_close(result["output"].cpu(), expected["output"], rtol=1e-3, atol=1e-3)

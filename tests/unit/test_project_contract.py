@@ -14,6 +14,7 @@ class TestProjectContract(unittest.TestCase):
         self.assertEqual(config["output"], {"accumulator": "fp32", "dtype": "fp32"})
         self.assertEqual(config["timing"]["warmup"], 50)
         self.assertEqual(config["timing"]["repeats"], 200)
+        self.assertEqual(config["timing"]["conversion_inner_repeats"], 100)
         self.assertEqual(config["backend"]["cuda_arch"], "sm_120a")
 
     def test_target_o2_instruction_is_present(self):
@@ -107,16 +108,12 @@ class TestProjectContract(unittest.TestCase):
         )
         self.assertIn('result["mma_family"] = "MXFP4_BLOCK_SCALED"', source)
         self.assertIn('result["global_partial_buffer"] = false', source)
-        self.assertIn("kWeightScaleRepackTimingInnerRepeats = 100", source)
         self.assertIn('result["weight_scale_repack_timing_method"]', source)
         self.assertIn('result["weight_scale_repack_timing_isolated"] = true', source)
+        self.assertIn('result["activation_conversion_timing_method"]', source)
+        self.assertIn('result["activation_conversion_timing_isolated"] = true', source)
         self.assertIn('result["total_timing_semantics"]', source)
-        self.assertIn("std::vector<EventPair> weight_repack_events", source)
-        self.assertEqual(source.count("convert_weight_timing_batch();"), 1)
-        self.assertIn(
-            "weight_batch / static_cast<float>(kWeightScaleRepackTimingInnerRepeats)",
-            source,
-        )
+        self.assertIn("measure_batched_conversion", source)
         self.assertIn('module.def("run_o2", &adangel_run_o2)', bindings)
         self.assertIn(
             'result["o2_mxf4_block_scale"] = adangel_o2_cutlass_is_implemented()',
@@ -140,6 +137,36 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn(
             r"/^[[:space:]]*Function[[:space:]]*:/",
             audit,
+        )
+
+    def test_dual_track_timing_contract(self):
+        config = yaml.safe_load(
+            (ROOT / "configs/experiment/o0_o1_o2_4096.yaml").read_text()
+        )
+        self.assertEqual(config["timing"]["conversion_inner_repeats"], 100)
+        for filename in ("o0_gemm.cu", "o1_gemm.cu", "o2_cutlass.cu"):
+            source = (ROOT / "csrc/sm120" / filename).read_text()
+            self.assertIn("measure_batched_conversion", source)
+            self.assertIn(
+                '"conversion_amortized_end_to_end_direct"',
+                source,
+            )
+            self.assertIn(
+                '"isolated_batched_cuda_event_average"',
+                source,
+            )
+            self.assertIn('"direct_single_path"', source)
+            self.assertIn('result["timing_method"]', source)
+
+        bindings = (ROOT / "csrc/bindings.cpp").read_text()
+        self.assertIn(
+            'py::arg("conversion_inner_repeats")',
+            bindings,
+        )
+        runner = (ROOT / "python/adangel/benchmark/runner.py").read_text()
+        self.assertIn(
+            '"timing_method": payload.get("timing_method")',
+            runner,
         )
 
     def test_o2_has_all_timing_modes(self):

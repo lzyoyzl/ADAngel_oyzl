@@ -43,7 +43,12 @@ def _summarize_timings(timings: dict[str, list[float]], max_cv: float) -> tuple[
     return summaries, stable
 
 
-def _validate_benchmark_payload(payload: dict, repeats: int) -> None:
+def _validate_benchmark_payload(
+    payload: dict,
+    repeats: int,
+    mode: str,
+    conversion_inner_repeats: int,
+) -> None:
     if "output" not in payload or "timings_ms" not in payload:
         raise RuntimeError("native benchmark must return output and timings_ms")
     allowed = {"weight_conversion", "activation_conversion", "gemm", "total"}
@@ -53,6 +58,20 @@ def _validate_benchmark_payload(payload: dict, repeats: int) -> None:
     for name, values in payload["timings_ms"].items():
         if len(values) != repeats:
             raise RuntimeError(f"stage {name} returned {len(values)} samples, expected {repeats}")
+    timing_method = payload.get("timing_method")
+    if not isinstance(timing_method, dict):
+        raise RuntimeError("native benchmark must return timing_method metadata")
+    if timing_method.get("strategy") != "conversion_amortized_end_to_end_direct":
+        raise RuntimeError("native benchmark returned an unexpected timing strategy")
+    if int(timing_method.get("conversion_inner_repeats", 0)) != conversion_inner_repeats:
+        raise RuntimeError("native benchmark conversion_inner_repeats does not match config")
+    expected_total_method = (
+        "batched_cuda_event_average"
+        if mode == "conversion_only"
+        else "direct_single_path"
+    )
+    if timing_method.get("mode_total_timing") != expected_total_method:
+        raise RuntimeError(f"{mode}: native benchmark returned the wrong total timing method")
 
 
 def run_experiment(
@@ -74,8 +93,12 @@ def run_experiment(
     timing = config["timing"]
     warmup = int(warmup_override if warmup_override is not None else timing["warmup"])
     repeats = int(repeats_override if repeats_override is not None else timing["repeats"])
-    if warmup < 0 or repeats <= 0:
-        raise ValueError("warmup must be non-negative and repeats must be positive")
+    conversion_inner_repeats = int(timing["conversion_inner_repeats"])
+    if warmup < 0 or repeats <= 0 or conversion_inner_repeats <= 1:
+        raise ValueError(
+            "warmup must be non-negative, repeats must be positive, and "
+            "conversion_inner_repeats must exceed one"
+        )
 
     manifest_path = data_dir / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -120,8 +143,21 @@ def run_experiment(
             # Interleave variants inside each mode to reduce systematic temperature/boost drift.
             for mode in modes:
                 for variant in variants:
-                    payload = benchmark_variant(inputs, variant, mode, warmup, repeats, backend="native")
-                    _validate_benchmark_payload(payload, repeats)
+                    payload = benchmark_variant(
+                        inputs,
+                        variant,
+                        mode,
+                        warmup,
+                        repeats,
+                        backend="native",
+                        conversion_inner_repeats=conversion_inner_repeats,
+                    )
+                    _validate_benchmark_payload(
+                        payload,
+                        repeats,
+                        mode,
+                        conversion_inner_repeats,
+                    )
                     summaries, stable = _summarize_timings(payload["timings_ms"], max_cv)
                     m, n, k = inputs.shape
                     for stage, stats in summaries.items():
@@ -134,7 +170,7 @@ def run_experiment(
                         )
                     gemm_median = summaries.get("gemm", {}).get("median_ms", 0.0)
                     record = {
-                        "schema_version": 1,
+                        "schema_version": 2,
                         "sample_id": inputs.sample_id,
                         "variant": variant,
                         "mode": mode,
@@ -144,6 +180,7 @@ def run_experiment(
                         "equivalent_tflops": _throughput_tflops(m, n, k, float(gemm_median)),
                         "mse_vs_o0": None,
                         "kernel": payload.get("kernel"),
+                        "timing_method": payload.get("timing_method"),
                         "stable_cv": stable,
                         "valid": stable,
                     }

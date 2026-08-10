@@ -289,14 +289,20 @@ python -m adangel run \
 
 - `config.yaml`：解析后的完整配置；
 - `environment.json`：GPU、driver、CUDA、PyTorch、git commit 与扩展能力；
-- `results.jsonl`：每个样本/variant/mode 的原始统计与 MSE。
+- `results.jsonl`：schema v2；每个样本/variant/mode 的原始统计、计时方法与 MSE。
 
 正式配置启用 `CV < 3%` 门限。超过门限的记录标为失败，不能静默进入主表。
-O2 的 `W_scale → CUTLASS SFB` 重排只有约数微秒，因此使用独立 CUDA Event
-区间连续执行 100 次并以总耗时除以 100，降低事件量化和少量调度离群值的相对
-影响。该批量区间与主路径计时隔离；`conversion_only/total` 和 `cold/total` 仍直接
-测量只执行一次权重 scale 重排的真实端到端路径。
-分阶段批量均值与直接 total 独立测量，二者可能有微小差异；端到端结论以 total 为准。
+转换阶段采用批量摊销计时：O0-W、O0-A、O1-W、O2-W-layout 和 O2-A 均在独立
+CUDA Event 区间内连续执行 `timing.conversion_inner_repeats=100` 次，再以总耗时
+除以 100。`conversion_only/total` 同样对完整转换序列执行100次后摊销。这样可降低
+CUDA Event 分辨率和少量调度离群值对微秒级转换kernel的相对影响。
+
+端到端路径保持单次直接计时：`compute_only/total`、`cold/total` 和
+`steady_state/total` 的每个原始样本都只执行一次对应路径；cold仍只包含一次权重转换，
+steady-state仍缓存静态权重转换。批量组件测量与直接total相互隔离，所以各阶段median
+之和不要求与direct total严格相等，端到端结论以direct total为准。每条
+`results.jsonl` 记录的 `timing_method` 会保存实际策略、inner repeats和该mode的
+total计时语义。
 转换开销主表把该阶段记录为 o2/weight_conversion（图中即 O2-W-layout）。
 转换吞吐按有效 tensor 的逻辑读写字节计算，不把未触碰的 physical-layout padding 计入：
 

@@ -117,4 +117,12 @@ def test_o1_native_timing_modes(mode, expected_stages):
         len(values) == 3 and all(value > 0 for value in values)
         for values in timings.values()
     )
+    timing_method = dict(result["timing_method"])
+    assert timing_method["strategy"] == "conversion_amortized_end_to_end_direct"
+    assert timing_method["conversion_inner_repeats"] == 100
+    assert timing_method["mode_total_timing"] == (
+        "batched_cuda_event_average"
+        if mode == "conversion_only"
+        else "direct_single_path"
+    )
     torch.testing.assert_close(result["output"].cpu(), expected["output"], rtol=1e-3, atol=1e-3)

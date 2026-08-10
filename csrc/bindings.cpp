@@ -27,18 +27,40 @@ py::dict benchmark(
     const at::Tensor& w_mxfp4,
     const at::Tensor& w_scale,
     int warmup,
-    int repeats) {
+    int repeats,
+    int conversion_inner_repeats) {
   if (variant == "o0") {
     return adangel_benchmark_o0(
-        a_int8, a_scale, w_mxfp4, w_scale, mode, warmup, repeats);
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode,
+        warmup,
+        repeats,
+        conversion_inner_repeats);
   }
   if (variant == "o1") {
     return adangel_benchmark_o1(
-        a_int8, a_scale, w_mxfp4, w_scale, mode, warmup, repeats);
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode,
+        warmup,
+        repeats,
+        conversion_inner_repeats);
   }
   if (variant == "o2") {
     return adangel_benchmark_o2(
-        a_int8, a_scale, w_mxfp4, w_scale, mode, warmup, repeats);
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode,
+        warmup,
+        repeats,
+        conversion_inner_repeats);
   }
   TORCH_CHECK(
       false,
@@ -64,6 +86,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
   module.def("run_o0", &adangel_run_o0);
   module.def("run_o1", &adangel_run_o1);
   module.def("run_o2", &adangel_run_o2);
-  module.def("benchmark", &benchmark);
+  module.def(
+      "benchmark",
+      &benchmark,
+      py::arg("variant"),
+      py::arg("mode"),
+      py::arg("a_int8"),
+      py::arg("a_scale"),
+      py::arg("w_mxfp4"),
+      py::arg("w_scale"),
+      py::arg("warmup"),
+      py::arg("repeats"),
+      py::arg("conversion_inner_repeats") =
+          kAdangelDefaultConversionTimingInnerRepeats);
   module.def("verify_layout", &verify_layout);
 }

@@ -15,6 +15,7 @@ def parse_args():
     parser.add_argument("--k", type=int, default=256)
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument("--repeats", type=int, default=10)
+    parser.add_argument("--conversion-inner-repeats", type=int, default=100)
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--max-compute-ms", type=float, default=5.29)
     parser.add_argument("--max-cv-percent", type=float, default=3.0)
@@ -72,8 +73,11 @@ def main() -> int:
         raise SystemExit("M/N/K must be positive and K must be divisible by 64")
     if args.m % 4 or args.n % 4:
         raise SystemExit("M and N must be divisible by 4 for the regular-order INT8 TC path")
-    if args.warmup < 0 or args.repeats <= 0:
-        raise SystemExit("warmup must be non-negative and repeats must be positive")
+    if args.warmup < 0 or args.repeats <= 0 or args.conversion_inner_repeats <= 1:
+        raise SystemExit(
+            "warmup must be non-negative, repeats must be positive, and "
+            "conversion-inner-repeats must exceed one"
+        )
 
     import torch
 
@@ -143,6 +147,7 @@ def main() -> int:
         "steady_state": {"gemm", "total"},
     }
     modes = {}
+    timing_methods = {}
     for mode, stages in expected_stages.items():
         payload = native.benchmark(
             "o1",
@@ -153,12 +158,14 @@ def main() -> int:
             inputs.W_scale,
             args.warmup,
             args.repeats,
+            args.conversion_inner_repeats,
         )
         torch.cuda.synchronize()
         timings = dict(payload["timings_ms"])
         if set(timings) != stages:
             raise RuntimeError(f"{mode}: expected stages {sorted(stages)}, got {sorted(timings)}")
         torch.testing.assert_close(payload["output"], expected_output, rtol=1e-3, atol=1e-3)
+        timing_methods[mode] = dict(payload["timing_method"])
         modes[mode] = {stage: summarize(values) for stage, values in timings.items()}
 
     formal_shape = (args.m, args.n, args.k) == (4096, 4096, 4096)
@@ -181,6 +188,7 @@ def main() -> int:
         "output_dtype": str(actual["output"].dtype),
         "max_abs_error": max_abs_error,
         "kernel": kernel,
+        "timing_method_by_mode": timing_methods,
         "modes": modes,
         "performance_gate": {
             "applied": formal_shape,

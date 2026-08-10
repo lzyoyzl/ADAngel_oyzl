@@ -15,6 +15,7 @@ def parse_args():
     parser.add_argument("--k", type=int, default=256)
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument("--repeats", type=int, default=10)
+    parser.add_argument("--conversion-inner-repeats", type=int, default=100)
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--max-cv-percent", type=float, default=3.0)
     return parser.parse_args()
@@ -47,8 +48,11 @@ def main() -> int:
         raise SystemExit("M/N/K must be positive and K must be divisible by 64")
     if args.m % 4 or args.n % 4:
         raise SystemExit("M and N must be divisible by 4 for the FP32 row-major epilogue")
-    if args.warmup < 0 or args.repeats <= 0:
-        raise SystemExit("warmup must be non-negative and repeats must be positive")
+    if args.warmup < 0 or args.repeats <= 0 or args.conversion_inner_repeats <= 1:
+        raise SystemExit(
+            "warmup must be non-negative, repeats must be positive, and "
+            "conversion-inner-repeats must exceed one"
+        )
 
     import torch
 
@@ -119,7 +123,10 @@ def main() -> int:
         "weight_scale_repack_timing_method": "batched_cuda_event_average",
         "weight_scale_repack_timing_isolated": True,
         "weight_scale_repack_inner_repeats": 100,
-        "total_timing_semantics": "direct_single_weight_scale_repack",
+        "activation_conversion_timing_method": "batched_cuda_event_average",
+        "activation_conversion_timing_isolated": True,
+        "activation_conversion_inner_repeats": 100,
+        "total_timing_semantics": "conversion_only_amortized_cold_steady_direct",
         "global_partial_buffer": False,
         "output_stores_per_element": 1,
     }
@@ -137,6 +144,7 @@ def main() -> int:
         "steady_state": {"activation_conversion", "gemm", "total"},
     }
     modes = {}
+    timing_methods = {}
     for mode, stages in expected_stages.items():
         payload = native.benchmark(
             "o2",
@@ -147,12 +155,14 @@ def main() -> int:
             inputs.W_scale,
             args.warmup,
             args.repeats,
+            args.conversion_inner_repeats,
         )
         torch.cuda.synchronize()
         timings = dict(payload["timings_ms"])
         if set(timings) != stages:
             raise RuntimeError(f"{mode}: expected stages {sorted(stages)}, got {sorted(timings)}")
         torch.testing.assert_close(payload["output"], expected["output"], rtol=1e-3, atol=1e-3)
+        timing_methods[mode] = dict(payload["timing_method"])
         modes[mode] = {stage: summarize(values) for stage, values in timings.items()}
 
     formal_shape = (args.m, args.n, args.k) == (4096, 4096, 4096)
@@ -173,6 +183,7 @@ def main() -> int:
         "max_abs_error": max_abs_error,
         "layout_probe": layout,
         "kernel": kernel,
+        "timing_method_by_mode": timing_methods,
         "modes": modes,
         "performance_gate": {
             "applied": formal_shape,

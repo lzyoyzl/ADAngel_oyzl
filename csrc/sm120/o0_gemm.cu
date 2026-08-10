@@ -72,6 +72,11 @@ struct EventSet {
   CudaEvent e3;
 };
 
+struct EventPair {
+  CudaEvent begin;
+  CudaEvent end;
+};
+
 float elapsed_ms(const CudaEvent& begin, const CudaEvent& end) {
   float value = 0.0f;
   check_cuda(cudaEventElapsedTime(&value, begin.get(), end.get()), "cudaEventElapsedTime");
@@ -296,6 +301,49 @@ void record(cudaEvent_t event, cudaStream_t stream) {
   check_cuda(cudaEventRecord(event, stream), "cudaEventRecord");
 }
 
+template <class Operation>
+std::vector<float> measure_batched_conversion(
+    Operation&& operation,
+    int repeats,
+    int inner_repeats,
+    cudaStream_t stream,
+    const char* synchronization_name) {
+  std::vector<EventPair> events;
+  events.reserve(repeats);
+  for (int iteration = 0; iteration < repeats; ++iteration) events.emplace_back();
+  for (auto& marker : events) {
+    record(marker.begin.get(), stream);
+    for (int inner = 0; inner < inner_repeats; ++inner) operation();
+    record(marker.end.get(), stream);
+  }
+  check_cuda(cudaEventSynchronize(events.back().end.get()), synchronization_name);
+
+  std::vector<float> samples;
+  samples.reserve(repeats);
+  for (const auto& marker : events) {
+    samples.push_back(
+        elapsed_ms(marker.begin, marker.end) / static_cast<float>(inner_repeats));
+  }
+  return samples;
+}
+
+py::dict timing_metadata(const std::string& mode, int conversion_inner_repeats) {
+  py::dict result;
+  result["strategy"] = "conversion_amortized_end_to_end_direct";
+  result["conversion_stage_timing"] =
+      "isolated_batched_cuda_event_average";
+  result["conversion_inner_repeats"] = conversion_inner_repeats;
+  result["conversion_only_total_timing"] = "batched_cuda_event_average";
+  result["end_to_end_total_timing"] = "direct_single_path";
+  result["mode_total_timing"] = mode == "conversion_only"
+      ? "batched_cuda_event_average"
+      : "direct_single_path";
+  result["mode_total_inner_repeats"] =
+      mode == "conversion_only" ? conversion_inner_repeats : 1;
+  result["component_and_total_measured_separately"] = true;
+  return result;
+}
+
 }  // namespace
 
 bool adangel_o0_is_implemented() { return true; }
@@ -307,9 +355,13 @@ py::dict adangel_benchmark_o0(
     const at::Tensor& w_scale,
     const std::string& mode_name,
     int warmup,
-    int repeats) {
+    int repeats,
+    int conversion_inner_repeats) {
   TORCH_CHECK(warmup >= 0, "warmup must be non-negative");
   TORCH_CHECK(repeats > 0, "repeats must be positive");
+  TORCH_CHECK(
+      conversion_inner_repeats > 1,
+      "conversion_inner_repeats must exceed one");
   adangel_validate_cuda_inputs(a_int8, a_scale, w_mxfp4, w_scale);
   const TimingMode mode = parse_mode(mode_name);
   c10::cuda::CUDAGuard device_guard(a_int8.device());
@@ -390,6 +442,44 @@ py::dict adangel_benchmark_o0(
       : (mode == TimingMode::kComputeOnly ? events.back().e1.get() : events.back().e2.get());
   check_cuda(cudaEventSynchronize(final_event), "O0 measurement synchronization");
 
+  // Conversion components are measured in isolated batched intervals so CUDA Event
+  // quantization and rare scheduling outliers do not dominate microsecond-scale kernels.
+  // The cold/steady-state main-path events above still contain one real conversion and
+  // therefore preserve direct end-to-end total latency.
+  std::vector<float> isolated_weight_ms;
+  std::vector<float> isolated_activation_ms;
+  std::vector<float> conversion_only_total_ms;
+  if (mode == TimingMode::kConversionOnly || mode == TimingMode::kCold) {
+    isolated_weight_ms = measure_batched_conversion(
+        convert_weight,
+        repeats,
+        conversion_inner_repeats,
+        stream,
+        "O0 weight-conversion timing synchronization");
+  }
+  if (mode == TimingMode::kConversionOnly ||
+      mode == TimingMode::kCold ||
+      mode == TimingMode::kSteadyState) {
+    isolated_activation_ms = measure_batched_conversion(
+        convert_activation,
+        repeats,
+        conversion_inner_repeats,
+        stream,
+        "O0 activation-conversion timing synchronization");
+  }
+  if (mode == TimingMode::kConversionOnly) {
+    auto convert_all = [&]() {
+      convert_weight();
+      convert_activation();
+    };
+    conversion_only_total_ms = measure_batched_conversion(
+        convert_all,
+        repeats,
+        conversion_inner_repeats,
+        stream,
+        "O0 conversion-only total timing synchronization");
+  }
+
   std::vector<float> weight_ms;
   std::vector<float> activation_ms;
   std::vector<float> gemm_ms;
@@ -398,22 +488,23 @@ py::dict adangel_benchmark_o0(
   activation_ms.reserve(repeats);
   gemm_ms.reserve(repeats);
   total_ms.reserve(repeats);
-  for (const auto& marker : events) {
+  for (int iteration = 0; iteration < repeats; ++iteration) {
+    const auto& marker = events[iteration];
     if (mode == TimingMode::kConversionOnly) {
-      weight_ms.push_back(elapsed_ms(marker.e0, marker.e1));
-      activation_ms.push_back(elapsed_ms(marker.e1, marker.e2));
-      total_ms.push_back(elapsed_ms(marker.e0, marker.e2));
+      weight_ms.push_back(isolated_weight_ms[iteration]);
+      activation_ms.push_back(isolated_activation_ms[iteration]);
+      total_ms.push_back(conversion_only_total_ms[iteration]);
     } else if (mode == TimingMode::kComputeOnly) {
       float value = elapsed_ms(marker.e0, marker.e1);
       gemm_ms.push_back(value);
       total_ms.push_back(value);
     } else if (mode == TimingMode::kCold) {
-      weight_ms.push_back(elapsed_ms(marker.e0, marker.e1));
-      activation_ms.push_back(elapsed_ms(marker.e1, marker.e2));
+      weight_ms.push_back(isolated_weight_ms[iteration]);
+      activation_ms.push_back(isolated_activation_ms[iteration]);
       gemm_ms.push_back(elapsed_ms(marker.e2, marker.e3));
       total_ms.push_back(elapsed_ms(marker.e0, marker.e3));
     } else {
-      activation_ms.push_back(elapsed_ms(marker.e0, marker.e1));
+      activation_ms.push_back(isolated_activation_ms[iteration]);
       gemm_ms.push_back(elapsed_ms(marker.e1, marker.e2));
       total_ms.push_back(elapsed_ms(marker.e0, marker.e2));
     }
@@ -433,6 +524,8 @@ py::dict adangel_benchmark_o0(
   result["converted_weight"] = w_fp16;
   result["converted_activation"] = a_fp16;
   result["timings_ms"] = timings;
+  result["timing_method"] =
+      timing_metadata(mode_name, conversion_inner_repeats);
   result["kernel"] = plan.metadata();
   return result;
 }
@@ -444,7 +537,15 @@ py::dict adangel_run_o0(
     const at::Tensor& w_scale,
     const std::string& mode) {
   py::dict measured =
-      adangel_benchmark_o0(a_int8, a_scale, w_mxfp4, w_scale, mode, 0, 1);
+      adangel_benchmark_o0(
+          a_int8,
+          a_scale,
+          w_mxfp4,
+          w_scale,
+          mode,
+          0,
+          1,
+          kAdangelDefaultConversionTimingInnerRepeats);
   py::dict timings = measured["timings_ms"].cast<py::dict>();
   auto scalar = [&](const char* name) {
     if (!timings.contains(name)) return 0.0f;

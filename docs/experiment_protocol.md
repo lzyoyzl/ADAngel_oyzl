@@ -24,13 +24,20 @@
 
 ## 统计规则
 
-每项预热 50 次、测量 200 次。每一次记录 CUDA Event 延迟；汇总 median、P5、
-P95、IQR、CV。CV 超过 3% 的数据判为不合格，需要在保持配置不变的前提下重测。
-O2 的 `W_scale → SFB` 微秒级重排在独立 CUDA Event 区间内执行 100 次，单次
-延迟取批量耗时除以 100。批量微基准不进入主路径；相关 total 指标仍直接测量只执行
-一次重排的真实端到端路径。转换吞吐以实际读写字节/时间报告；GEMM 等效吞吐按
-`2MNK/time` 报告。
-分阶段批量均值与直接 total 独立测量，端到端结果以 total 为准。
+每项预热 50 次、测量 200 次；汇总 median、P5、P95、IQR、CV。CV 超过 3% 的
+数据判为不合格，需要在保持配置不变的前提下重测。
+
+转换组件统一采用独立批量CUDA Event计时。O0-W、O0-A、O1-W、O2-W-layout和
+O2-A在每个外层样本中连续执行
+`timing.conversion_inner_repeats=100` 次，单次延迟取批量耗时除以100。
+`conversion_only/total` 对该variant的完整转换序列采用相同批量摊销方法。
+
+`compute_only/total`、`cold/total`、`steady_state/total` 保持单次直接路径计时：
+cold只执行一次在线权重/激活转换，steady-state继续缓存静态权重转换。转换组件的
+批量区间不进入端到端区间。分阶段批量均值与直接total独立测量，因此二者不要求精确
+相加；端到端结果以direct total为准。每条结果记录通过`timing_method`明确保存
+实际计时方法和inner repeats。转换吞吐以实际读写字节/时间报告；GEMM等效吞吐按
+`2MNK/time`报告。
 主表将 O2-W-layout 记录为 o2/weight_conversion；其吞吐按 2*N*(K/32) 字节计算。
 O2-A 按 M*K + 4*M + M*K/2 + 3*M*(K/32) 字节计算；未触碰的物理布局 padding 不计入。
 

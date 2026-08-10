@@ -38,7 +38,15 @@ def run_o2(inputs, mode="cold", backend="native"):
     return _run(inputs, "o2", mode, backend)
 
 
-def benchmark_variant(inputs, variant, mode, warmup=50, repeats=200, backend="native"):
+def benchmark_variant(
+    inputs,
+    variant,
+    mode,
+    warmup=50,
+    repeats=200,
+    backend="native",
+    conversion_inner_repeats=100,
+):
     validate_prepared(inputs, formal=backend == "native")
     if backend != "native":
         raise RuntimeError("performance benchmark records require the native SM120 backend")
@@ -52,4 +60,5 @@ def benchmark_variant(inputs, variant, mode, warmup=50, repeats=200, backend="na
         inputs.W_scale,
         int(warmup),
         int(repeats),
+        int(conversion_inner_repeats),
     )
