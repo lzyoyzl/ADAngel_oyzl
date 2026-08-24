@@ -116,6 +116,27 @@ check_no_local_sass() {
   ' "$output_dir/extension.sass"
 }
 
+resource_usage_for_symbol() {
+  local symbol=$1
+  awk -v symbol="$symbol" '
+    /^[[:space:]]*Function[[:space:]]+/ {
+      found = index($0, symbol) != 0
+      next
+    }
+    found && /^[[:space:]]*REG:/ {
+      sub(/^[[:space:]]*/, "")
+      print
+      exit 0
+    }
+    END { if (!found) exit 1 }
+  ' "$output_dir/extension.resources.txt"
+}
+
+check_zero_stack_local_resource() {
+  local usage=$1
+  [[ " $usage " == *" STACK:0 "* && " $usage " == *" LOCAL:0 "* ]]
+}
+
 source_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 production_impl=$(sed -n 's/.*kProductionO1Implementation.*"\([^"]*\)".*/\1/p' \
   "$source_root/csrc/sm120/o1_gemm.cu" | head -n 1)
@@ -159,10 +180,37 @@ check_no_local_sass "$o1_register_64_symbol" || {
   echo "O1 register_64x32 contains local-memory load/store (possible spill)" >&2
   exit 1
 }
-check_no_local_sass "$o1_register_128_symbol" || {
-  echo "O1 register_128x128 contains local-memory load/store (possible spill)" >&2
+o1_production_resource=$(resource_usage_for_symbol "$o1_symbol") || {
+  echo "O1 production resource usage not found: $o1_symbol" >&2
   exit 1
 }
+o1_register_64_resource=$(resource_usage_for_symbol "$o1_register_64_symbol") || {
+  echo "O1 register_64x32 resource usage not found: $o1_register_64_symbol" >&2
+  exit 1
+}
+o1_register_128_resource=$(resource_usage_for_symbol "$o1_register_128_symbol") || {
+  echo "O1 register_128x128 resource usage not found: $o1_register_128_symbol" >&2
+  exit 1
+}
+check_no_local_sass "$o1_symbol" &&
+  check_zero_stack_local_resource "$o1_production_resource" || {
+    echo "O1 production kernel spills to local memory: $o1_symbol ($o1_production_resource)" >&2
+    exit 1
+  }
+check_zero_stack_local_resource "$o1_register_64_resource" || {
+  echo "O1 register_64x32 has non-zero stack/local usage: $o1_register_64_resource" >&2
+  exit 1
+}
+
+o1_register_128_spill_check="PASS(no LDL/STL; STACK=0; LOCAL=0)"
+if ! check_no_local_sass "$o1_register_128_symbol" ||
+   ! check_zero_stack_local_resource "$o1_register_128_resource"; then
+  o1_register_128_spill_check="DISQUALIFIED(local-memory spill)"
+  if [[ "$production_impl" == "register_128x128" ]]; then
+    echo "O1 register_128x128 production candidate spills: $o1_register_128_resource" >&2
+    exit 1
+  fi
+fi
 check_sass_symbol "$o2_symbol" o2 || {
   echo "O2 production SASS entry lacks TMA or OMMA: $o2_symbol" >&2
   exit 1
@@ -175,9 +223,13 @@ trap - EXIT
   echo "status=PASS"
   echo "o1_production_implementation=$production_impl"
   echo "o1_production_symbol=$o1_symbol"
+  echo "o1_production_resource=$o1_production_resource"
   echo "o1_register_64_symbol=$o1_register_64_symbol"
+  echo "o1_register_64_resource=$o1_register_64_resource"
+  echo "o1_register_64_spill_check=PASS(no LDL/STL; STACK=0; LOCAL=0)"
   echo "o1_register_128_symbol=$o1_register_128_symbol"
-  echo "o1_register_spill_check=PASS(no LDL/STL in candidate SASS)"
+  echo "o1_register_128_resource=$o1_register_128_resource"
+  echo "o1_register_128_spill_check=$o1_register_128_spill_check"
   echo "o2_production_symbol=$o2_symbol"
   echo "verified=O0 Tensor Core; O1 same-entry TMA+INT8 MMA; O2 same-entry TMA+MXFP4 block-scaled MMA"
 } > "$summary_file"

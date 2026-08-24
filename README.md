@@ -281,7 +281,10 @@ bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 审计应找到：O0 的 FP16 Tensor Core 指令、O1 的 INT8 Tensor Core 指令，以及
 O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA。脚本要求 O1 的 TMA 与 signed INT8
 MMA 位于选定的 production entry；两个寄存器候选也必须在各自同一 entry 内包含
-TMA+IMMA，且 SASS 不得出现 `LDL/STL` spill。O2 的
+TMA+IMMA。production 和第一候选 `register_64x32` 必须同时满足 SASS 无 `LDL/STL`
+且 resource usage 为 `STACK=0, LOCAL=0`。`register_128x128` 是可选 CTA 消融；若出现
+spill，summary 将其标记为 `DISQUALIFIED`，但不会阻断无 spill 的64×32候选；若把有
+spill的128×128实现选为production，审计仍会失败。O2 的
 TMA 与 MXFP4 block-scaled MMA 位于同一个正式 CUTLASS PTX/SASS entry，并明确排除
 `o2_mxf4_layout_probe`。summary 记录 production/candidate symbol、spill 检查与
 `status=PASS`，资源使用写入 `extension.resources.txt`。该审计不是完整 profiling。

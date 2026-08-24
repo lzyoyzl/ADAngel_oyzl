@@ -95,6 +95,10 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('module.def("run_o1", &adangel_run_o1)', bindings)
         self.assertIn('"_benchmark_o1_impl"', bindings)
         self.assertNotIn('result["o1_int8_tc"] = false', bindings)
+        audit = (ROOT / "scripts/audit_instructions.sh").read_text()
+        self.assertIn("check_zero_stack_local_resource", audit)
+        self.assertIn('o1_register_128_spill_check="DISQUALIFIED(local-memory spill)"', audit)
+        self.assertIn('production_impl" == "register_128x128', audit)
 
     def test_o2_production_backend_contract(self):
         source = (ROOT / "csrc/sm120/o2_cutlass.cu").read_text()

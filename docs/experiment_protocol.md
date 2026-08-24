@@ -81,3 +81,9 @@ production_selected
 候选晋升要求：正确性/MSE 回归通过；所有正式计时阶段 CV<3%；24 样本
 compute-only 配对加速比 bootstrap 95% CI 下界>1；PTX/SASS 同一正式 symbol 包含
 TMA 与 signed INT8 MMA；SASS/resource usage 无 local-memory spill。旧 run 缺少上述
+元数据时不能冒充寄存器后端结果。
+
+`register_64x32` 是本轮必须验收的第一候选；`register_128x128` 仅用于 CTA 消融。
+可选消融若出现 `LDL/STL`、非零 `STACK` 或 `LOCAL`，必须标记为 `DISQUALIFIED`，且
+不得晋升，但不应阻断已经满足全部门槛的64×32候选。任何被选为production的实现都
+必须通过无spill门槛。
