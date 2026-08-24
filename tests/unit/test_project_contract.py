@@ -99,6 +99,14 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("check_zero_stack_local_resource", audit)
         self.assertIn('o1_register_128_spill_check="DISQUALIFIED(local-memory spill)"', audit)
         self.assertIn('production_impl" == "register_128x128', audit)
+        timing_body = source[
+            source.index("py::dict measure_o1_implementation") :
+            source.index("template <class Config>", source.index("py::dict measure_o1_implementation"))
+        ]
+        self.assertLess(
+            timing_body.index("events.reserve(repeats)"),
+            timing_body.index("iteration < warmup"),
+        )
 
     def test_o2_production_backend_contract(self):
         source = (ROOT / "csrc/sm120/o2_cutlass.cu").read_text()

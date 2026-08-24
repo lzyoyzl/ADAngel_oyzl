@@ -850,8 +850,15 @@ py::dict measure_o1_implementation(
     int conversion_inner_repeats,
     int groups,
     cudaStream_t stream,
-    Gemm&& gemm) {
+  Gemm&& gemm) {
   auto convert_weight = [&]() { adangel_launch_mxfp4_to_int8(w_mxfp4, w_int8, stream); };
+
+  // Allocate every timing event before warmup. Creating hundreds of CUDA
+  // events after warmup leaves the device idle long enough for clocks to drop,
+  // so the measured repetitions would include a fresh boost transition.
+  std::vector<EventSet> events;
+  events.reserve(repeats);
+  for (int iteration = 0; iteration < repeats; ++iteration) events.emplace_back();
 
   if (mode == TimingMode::kComputeOnly || mode == TimingMode::kSteadyState) convert_weight();
   for (int iteration = 0; iteration < warmup; ++iteration) {
@@ -865,10 +872,6 @@ py::dict measure_o1_implementation(
     }
   }
   check_cuda(cudaStreamSynchronize(stream), "O1 warmup synchronization");
-
-  std::vector<EventSet> events;
-  events.reserve(repeats);
-  for (int iteration = 0; iteration < repeats; ++iteration) events.emplace_back();
 
   for (int iteration = 0; iteration < repeats; ++iteration) {
     auto& marker = events[iteration];

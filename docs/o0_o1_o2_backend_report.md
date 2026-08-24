@@ -434,6 +434,9 @@ conversion_inner_repeats = 100
 max_cv_percent = 3.0
 ```
 
+CUDA Event 在预热前统一预分配；预热同步后立即进入正式测量，二者之间不创建Event、
+不申请显存且不做文件 I/O，避免CPU侧准备空档引入GPU动态升频阶段。
+
 O0/O1/O2 在每个 mode 内交错运行，以减小温度和 boost 频率漂移造成的系统偏差。
 
 | 指标 | 含义 |
@@ -625,4 +628,3 @@ shared_partial_redistribution = false
 6. O1 相对 O0 的 MSE 极小，O2 因激活再次量化而有更明显误差；
 7. 转换开销使用批量摊销，端到端 total 使用单次直接计时，不能简单把阶段 median 相加；
 8. 最终结论要同时呈现转换成本、compute-only、cold/steady-state 和 MSE，不能只看吞吐图。
-

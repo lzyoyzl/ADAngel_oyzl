@@ -27,6 +27,9 @@
 每项预热 50 次、测量 200 次；汇总 median、P5、P95、IQR、CV。CV 超过 3% 的
 数据判为不合格，需要在保持配置不变的前提下重测。
 
+所有 CUDA Event 必须在预热开始前创建完毕；预热同步与第一条正式测量之间不得创建
+Event、申请显存或执行文件 I/O，避免CPU侧准备空档导致GPU降频后在测量区间重新升频。
+
 转换组件统一采用独立批量CUDA Event计时。O0-W、O0-A、O1-W、O2-W-layout和
 O2-A在每个外层样本中连续执行
 `timing.conversion_inner_repeats=100` 次，单次延迟取批量耗时除以100。

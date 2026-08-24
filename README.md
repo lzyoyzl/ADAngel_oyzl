@@ -312,7 +312,8 @@ python -m adangel run \
 ```
 
 运行顺序按样本交错 O0/O1/O2；使用单 stream、CUDA Event、预热 50 次、测量
-200 次，计时区间不分配显存、不做文件 I/O。每个 run 生成：
+200 次。计时Event必须在预热前完成创建，预热同步与第一条正式测量之间不得创建
+Event、分配显存或做文件 I/O，避免GPU降频后在测量区间重新升频。每个 run 生成：
 
 - `config.yaml`：解析后的完整配置；
 - `environment.json`：GPU、driver、CUDA、PyTorch、git commit 与扩展能力；
