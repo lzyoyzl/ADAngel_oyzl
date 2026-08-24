@@ -247,8 +247,15 @@ python scripts/validate_o1.py --implementation register_128x128 \
 python scripts/benchmark_o1_implementations.py \
   --data data/prepared/llama2_7b_prefill \
   --output reports/o1_register_partial_ab.json \
-  --warmup 50 --repeats 200 --conversion-inner-repeats 100
+  --warmup 50 --repeats 200 --conversion-inner-repeats 100 \
+  --max-paired-retries 5
 ```
+
+若动态Boost令某个 `(sample, mode)` 的shared或64×32记录超过CV门槛，脚本只对该
+sample-mode成对重跑两种实现并交替顺序。一次重试只有在两边全部阶段同时 `CV<3%`
+且MSE回归通过时才会替换原记录；接受条件不使用延迟大小。JSON保留所有失败尝试、
+接受的attempt和未解决项，禁止静默删除单边慢样本。128×128消融不参与定点重试，
+因为其是否可晋升由独立spill审计先行决定。
 只有正确性/MSE、全部阶段 CV、paired speedup bootstrap 95% CI 和无 spill 审计均
 通过，才允许修改 `kProductionO1Implementation`；不设绝对延迟门槛。晋升后须重新
 编译并重跑正式 24 样本，旧 run 不能冒充寄存器后端结果。

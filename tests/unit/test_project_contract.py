@@ -107,6 +107,12 @@ class TestProjectContract(unittest.TestCase):
             timing_body.index("events.reserve(repeats)"),
             timing_body.index("iteration < warmup"),
         )
+        ab_script = (ROOT / "scripts/benchmark_o1_implementations.py").read_text()
+        self.assertIn('"--max-paired-retries"', ab_script)
+        self.assertIn('primary_pair = ("shared_partial", "register_64x32")', ab_script)
+        self.assertIn("pair_stable and mse_passed", ab_script)
+        self.assertIn('"attempts": retry_attempts', ab_script)
+        self.assertIn('"unresolved": unresolved_retries', ab_script)
 
     def test_o2_production_backend_contract(self):
         source = (ROOT / "csrc/sm120/o2_cutlass.cu").read_text()

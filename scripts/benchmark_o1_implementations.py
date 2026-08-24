@@ -26,6 +26,15 @@ def parse_args():
     parser.add_argument("--bootstrap-resamples", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=20250805)
     parser.add_argument("--samples", type=int, default=0, help="0 uses all manifest samples")
+    parser.add_argument(
+        "--max-paired-retries",
+        type=int,
+        default=0,
+        help=(
+            "retry only unstable shared/register_64x32 sample-mode pairs; "
+            "0 disables targeted retries"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -60,7 +69,12 @@ def mse64(actual, reference):
 
 def main() -> int:
     args = parse_args()
-    if args.warmup < 0 or args.repeats <= 0 or args.conversion_inner_repeats <= 1:
+    if (
+        args.warmup < 0
+        or args.repeats <= 0
+        or args.conversion_inner_repeats <= 1
+        or args.max_paired_retries < 0
+    ):
         raise SystemExit("invalid timing arguments")
     if args.bootstrap_resamples < 1000:
         raise SystemExit("bootstrap-resamples must be at least 1000")
@@ -145,6 +159,126 @@ def main() -> int:
             actual = outputs[(sample["sample_id"], candidate)]
             torch.testing.assert_close(actual, baseline, rtol=1e-3, atol=1e-3)
 
+    initial_by_key = {
+        (record["sample_id"], record["implementation"], record["mode"]): record
+        for record in records
+    }
+    replacements = {}
+    retry_attempts = []
+    accepted_retries = []
+    unresolved_retries = []
+    if args.max_paired_retries:
+        primary_pair = ("shared_partial", "register_64x32")
+        sample_by_id = {sample["sample_id"]: sample for sample in samples}
+        unstable_targets = [
+            (sample["sample_id"], mode)
+            for sample in samples
+            for mode in MODES
+            if not all(
+                initial_by_key[(sample["sample_id"], implementation, mode)]["stable"]
+                for implementation in primary_pair
+            )
+        ]
+        targets_by_sample = {}
+        for sample_id, mode in unstable_targets:
+            targets_by_sample.setdefault(sample_id, []).append(mode)
+
+        for sample_index, sample in enumerate(samples):
+            sample_id = sample["sample_id"]
+            target_modes = targets_by_sample.get(sample_id, ())
+            if not target_modes:
+                continue
+            inputs = load_prepared(args.data / sample_by_id[sample_id]["file"], device="cuda")
+            for mode in target_modes:
+                accepted = None
+                mode_index = MODES.index(mode)
+                for attempt in range(1, args.max_paired_retries + 1):
+                    order = list(primary_pair)
+                    if (sample_index + mode_index + attempt) & 1:
+                        order.reverse()
+                    pair_records = {}
+                    pair_outputs = {}
+                    for implementation in order:
+                        payload = native._benchmark_o1_impl(
+                            implementation,
+                            mode,
+                            inputs.A_int8,
+                            inputs.A_scale,
+                            inputs.W_mxfp4,
+                            inputs.W_scale,
+                            args.warmup,
+                            args.repeats,
+                            args.conversion_inner_repeats,
+                        )
+                        torch.cuda.synchronize()
+                        stage_summaries = {
+                            stage: summarize(values)
+                            for stage, values in dict(payload["timings_ms"]).items()
+                        }
+                        output = payload["output"]
+                        if output.dtype != torch.float32 or not torch.isfinite(output).all():
+                            raise RuntimeError(
+                                f"{sample_id} {implementation} {mode} retry {attempt}: "
+                                "output is not finite FP32"
+                            )
+                        pair_outputs[implementation] = output
+                        pair_records[implementation] = {
+                            "sample_id": sample_id,
+                            "implementation": implementation,
+                            "mode": mode,
+                            "stages": stage_summaries,
+                            "kernel": dict(payload["kernel"]),
+                            "mse_vs_o0": mse64(output, o0_outputs[sample_id]),
+                            "stable": all(
+                                stage["cv_percent"] < args.max_cv_percent
+                                for stage in stage_summaries.values()
+                            ),
+                        }
+                    torch.testing.assert_close(
+                        pair_outputs["register_64x32"],
+                        pair_outputs["shared_partial"],
+                        rtol=1e-3,
+                        atol=1e-3,
+                    )
+                    old_mse = pair_records["shared_partial"]["mse_vs_o0"]
+                    new_mse = pair_records["register_64x32"]["mse_vs_o0"]
+                    mse_passed = abs(new_mse - old_mse) <= 1e-12 + 1e-5 * abs(old_mse)
+                    pair_stable = all(
+                        pair_records[implementation]["stable"]
+                        for implementation in primary_pair
+                    )
+                    retry_attempts.append(
+                        {
+                            "sample_id": sample_id,
+                            "mode": mode,
+                            "attempt": attempt,
+                            "order": order,
+                            "pair_stable": pair_stable,
+                            "mse_regression_passed": mse_passed,
+                            "records": [pair_records[key] for key in primary_pair],
+                        }
+                    )
+                    if pair_stable and mse_passed:
+                        accepted = pair_records
+                        for implementation in primary_pair:
+                            replacements[(sample_id, implementation, mode)] = pair_records[
+                                implementation
+                            ]
+                        accepted_retries.append(
+                            {"sample_id": sample_id, "mode": mode, "attempt": attempt}
+                        )
+                        break
+                if accepted is None:
+                    unresolved_retries.append({"sample_id": sample_id, "mode": mode})
+
+        records = [
+            replacements.get(
+                (record["sample_id"], record["implementation"], record["mode"]),
+                record,
+            )
+            for record in records
+        ]
+
     by_key = {
         (record["sample_id"], record["implementation"], record["mode"]): record
         for record in records
@@ -223,6 +357,17 @@ def main() -> int:
             "ordering": "paired blocks; implementation order alternates by sample and mode",
         },
         "production_implementation_during_ab": "shared_partial",
+        "targeted_paired_retry": {
+            "enabled": bool(args.max_paired_retries),
+            "max_attempts": args.max_paired_retries,
+            "acceptance": (
+                "both shared_partial and register_64x32 have every stage CV below "
+                "threshold and pass MSE regression; latency is not an acceptance input"
+            ),
+            "attempts": retry_attempts,
+            "accepted": accepted_retries,
+            "unresolved": unresolved_retries,
+        },
         "records": records,
         "comparisons": comparisons,
         "promotion_rule": (
@@ -233,7 +378,7 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"output": str(args.output), "comparisons": comparisons}, indent=2))
-    return 0
+    return 1 if unresolved_retries else 0
 
 
 if __name__ == "__main__":

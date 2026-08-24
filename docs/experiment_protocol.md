@@ -30,6 +30,11 @@
 所有 CUDA Event 必须在预热开始前创建完毕；预热同步与第一条正式测量之间不得创建
 Event、申请显存或执行文件 I/O，避免CPU侧准备空档导致GPU降频后在测量区间重新升频。
 
+若未锁频的GPU仍使某个O1 A/B `(sample, mode)` 超过CV门槛，允许进行有上限的定点
+成对重试。每次必须同时重跑shared baseline和`register_64x32`，并按attempt交替执行
+顺序；只有两边全部阶段同时 `CV<3%` 且MSE回归通过时才接受。接受条件不得包含延迟
+大小，报告必须保留所有attempt及未解决项。禁止只重跑或挑选候选一侧的有利结果。
+
 转换组件统一采用独立批量CUDA Event计时。O0-W、O0-A、O1-W、O2-W-layout和
 O2-A在每个外层样本中连续执行
 `timing.conversion_inner_repeats=100` 次，单次延迟取批量耗时除以100。
