@@ -22,12 +22,17 @@ SASS/PTX 指令审计，防止某个实现静默退化为 CUDA Core 或软件模
 FP32 累加的候选；所选 algorithm ID、数值实现 flags 与 workspace 大小会写入结果。
 
 O1 正式后端也已实现：E2M1 nibble 由 CUDA kernel 精确转换为 `2*E2M1` INT8 基值。
-正式 GEMM 使用单次 `tma_warp_specialized` TMA warp-specialized kernel；每个 `64x32` CTA 在共享内存中复用 K32
+当前 production 仍指向可复现的 `shared_partial` 基线：单次 TMA warp-specialized
+kernel 中，每个 `64x32x32` CTA 在共享内存中复用 K32
 的 A/W tile，8 个 warp 通过 signed-INT8 WMMA 生成 `16x16` INT32 partial tile，随即
 乘 `A_scale*decode_ue8m0(W_scale)/2`。FP32 结果按 K32 顺序保存在每线程寄存器中，
 遍历完全部 group 后每个输出元素只写回一次。实现不申请全局 partial buffer，也不再
 执行 128 次全矩阵 GEMM/缩放 kernel。
-TMA/warp-specialization details: warp 0 is the only TMA producer; eight consumer warps run the existing IMMA path. A and W use a three-stage shared-memory pipeline, and the tensor-map descriptors are encoded before warmup and CUDA Event timing.
+本轮新增两个待 RTX 5090 晋升验收的候选：`register_64x32` 保持 `64x32x32`
+CTA、1 producer/8 consumer；`register_128x128` 使用 `128x128x32` CTA、
+1 producer/16 consumer。两者用 CuTe m16n8k32 atom 在寄存器内完成 partial 缩放
+与累加，删除 partial 共享内存中转和对应 named barrier。共享内存仍用于三阶段 TMA
+A/W pipeline。O2 继续使用 `128x128x256`；不强制 O1/O2 完整 CTA 相同。
 
 O2 正式后端现已实现。融合 CUDA kernel 将 `A_int8*A_scale` 按 K32 计算 amax、生成
 UE8M0 scale、执行 E2M1 RNE 量化并完成 nibble packing；随后把自然顺序的 A/W scale
@@ -91,6 +96,7 @@ Y         [4096, 4096] fp32
   SM120 block-scaled MXFP4 MMA，FP32 累加/输出。
 
 详细定义见 [实验协议](docs/experiment_protocol.md)、[数据格式](docs/data_format.md)、
+[O0/O1/O2 后端与测量报告](docs/o0_o1_o2_backend_report.md)、
 [Miniconda 配置指南](docs/miniconda_setup.md)、[本机验证记录](docs/local_validation.md)
 和 [SM120 microscale layout](docs/mxfp4_scale_layout.md)。
 
@@ -211,11 +217,10 @@ python -m pytest tests/integration/test_sm120_o2.py -q --run-sm120
 预期 `o0_fp16_tc`、`o1_int8_tc`、`o2_mxf4_block_scale` 和
 `o2_cutlass_tiled` 均为 `true`，三个验证脚本必须输出 `"passed": true`。
 O0 元数据必须报告 HMMA、`CUBLAS_COMPUTE_32F` 和 FP32 输出；
-O1 必须报告 `CUTLASS CuTe + CUDA WMMA`、IMMA、`tma_warp_specialized`、`S8xS8_TO_S32`、INT32 partial、
-FP32 寄存器累加和 K32；同时 `global_partial_buffer=false` 且
-`output_stores_per_element=1`。O1 元数据还必须报告 `data_movement=TMA`、
-`kernel_schedule=cooperative_warp_specialized`、`pipeline_stages=3`、
-`producer_warps=1` 和 `consumer_warps=8`。
+O1 production 在晋升前必须报告 `implementation_key=shared_partial`。寄存器候选必须
+报告 `mma_api=cute::MMA_Atom`、`mma_shape=m16n8k32`、
+`partial_storage=register`、`shared_partial_redistribution=false`、
+`global_partial_buffer=false` 和 `output_stores_per_element=1`。
 O1 验证会逐元素核对 MXFP4→INT8 映射，并用 `rtol=1e-3, atol=1e-3` 对照可扩展
 语义参考。O2 验证会逐元素核对激活 E2M1 编码、RNE、packing 和 UE8M0 scale，
 执行 SFA/SFB layout probe，并检查 CUTLASS TMA cooperative warp-specialized 元数据。
@@ -225,10 +230,28 @@ O1 验证会逐元素核对 MXFP4→INT8 映射，并用 `rtol=1e-3, atol=1e-3` 
 小矩阵通过后再执行 O1/O2 正式形状验收：
 
 ```bash
-python scripts/validate_o1.py --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 \
-  --max-compute-ms 5.29 --max-cv-percent 3.0 \
-  | tee reports/o1_4096_tma_ws_validation.json
+python scripts/validate_o1.py --implementation shared_partial \
+  --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o1_4096_shared_baseline.json
+python scripts/validate_o1.py --implementation register_64x32 \
+  --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o1_4096_register_64x32.json
+python scripts/validate_o1.py --implementation register_128x128 \
+  --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o1_4096_register_128x128.json
 ```
+
+24 样本配对 A/B 与 CTA 消融：
+
+```bash
+python scripts/benchmark_o1_implementations.py \
+  --data data/prepared/llama2_7b_prefill \
+  --output reports/o1_register_partial_ab.json \
+  --warmup 50 --repeats 200 --conversion-inner-repeats 100
+```
+只有正确性/MSE、全部阶段 CV、paired speedup bootstrap 95% CI 和无 spill 审计均
+通过，才允许修改 `kProductionO1Implementation`；不设绝对延迟门槛。晋升后须重新
+编译并重跑正式 24 样本，旧 run 不能冒充寄存器后端结果。
 
 ```bash
 python scripts/validate_o2.py \
@@ -257,10 +280,11 @@ bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 
 审计应找到：O0 的 FP16 Tensor Core 指令、O1 的 INT8 Tensor Core 指令，以及
 O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA。脚本要求 O1 的 TMA 与 signed INT8
-MMA 位于同一个 `adangel_o1_tma_warp_specialized` PTX/SASS entry；同时要求 O2 的
+MMA 位于选定的 production entry；两个寄存器候选也必须在各自同一 entry 内包含
+TMA+IMMA，且 SASS 不得出现 `LDL/STL` spill。O2 的
 TMA 与 MXFP4 block-scaled MMA 位于同一个正式 CUTLASS PTX/SASS entry，并明确排除
-`o2_mxf4_layout_probe`。成功后 `reports/audit/summary.txt` 会记录两个正式 kernel
-symbol 和 `status=PASS`。该审计不是完整 profiling，审计文件应与实验环境一起归档。
+`o2_mxf4_layout_probe`。summary 记录 production/candidate symbol、spill 检查与
+`status=PASS`，资源使用写入 `extension.resources.txt`。该审计不是完整 profiling。
 
 ## 5. 正式运行
 

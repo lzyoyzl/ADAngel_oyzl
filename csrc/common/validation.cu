@@ -25,7 +25,7 @@ bool adangel_validate_cuda_inputs(
               w_mxfp4.is_contiguous() && w_scale.is_contiguous(), "all inputs must be contiguous");
   auto m = a_int8.size(0), k = a_int8.size(1), n = w_mxfp4.size(0);
   TORCH_CHECK(m > 0 && n > 0 && k > 0, "M, N, and K must be positive");
-  TORCH_CHECK(k % 64 == 0, "K must be divisible by 64");
+  TORCH_CHECK(k % 32 == 0, "K must be divisible by the MX scale-vector size 32");
   TORCH_CHECK(a_scale.sizes() == at::IntArrayRef({m}), "invalid A_scale shape");
   TORCH_CHECK(w_mxfp4.sizes() == at::IntArrayRef({n, k / 2}), "invalid W_mxfp4 shape");
   TORCH_CHECK(w_scale.sizes() == at::IntArrayRef({n, k / 32}), "invalid W_scale shape");

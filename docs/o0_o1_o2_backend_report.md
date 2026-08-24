@@ -152,7 +152,7 @@ Y^{(1)}_{m,n}=\sum_{g=0}^{K/32-1}FP32(P^{(g)}_{m,n})
 
 ### 4.3 当前正式 kernel
 
-当前 O1 使用自定义 `adangel_o1_tma_warp_specialized` kernel：
+当前 production 使用保留的 `adangel_o1_shared_partial_baseline` kernel：
 
 ```text
 CTA tile       = 64 x 32 x 32
@@ -178,6 +178,10 @@ MMA            = nvcuda::wmma m16n16k16, S8 x S8 -> S32
 - `csrc/sm120/conversion.cu`
 - `csrc/sm120/o1_gemm.cu`
 
+源码还包含 `adangel_o1_register_partial_64x32` 与
+`adangel_o1_register_partial_128x128` 两个内部候选。RTX 5090 验收前，公开
+`run_o1()` 不会选择它们，下面的历史性能和 MSE 也仍属于 shared baseline。
+
 ### 4.4 当前 O1 的关键瓶颈
 
 当前实现没有全局 partial buffer，但 partial 尚未全程留在寄存器中：
@@ -185,7 +189,7 @@ MMA            = nvcuda::wmma m16n16k16, S8 x S8 -> S32
 ```text
 WMMA INT32 fragment（寄存器）
   -> wmma::store_matrix_sync
-  -> shared_storage.partial（共享内存）
+  -> shared_storage.shared_partial（共享内存）
   -> consumer named barrier
   -> 按逻辑输出坐标重新读取
   -> INT32 转 FP32、乘 scale、累加到 FP32 寄存器
@@ -484,9 +488,32 @@ O2-W 统计自然 W scale 读取与有效 SFB scale 写入。O2-A 的三个 scal
 
 这些数字是当前硬件和实现的测量结果，不是代码中的固定验收门槛。最终汇报应以选定的已验收 run 及其环境文件为准。
 
-## 12. O1 下一步拟议优化：让 partial 留在寄存器中
+## 12. O1 寄存器 partial 候选与 CTA 消融
 
-> **状态：优先级最高，但尚未正式实施。当前代码、审计结果、性能数字和 MSE 均对应“partial 经共享内存中转”的 O1。**
+> **状态：两个候选已写入源码和内部 A/B 接口，但尚未在 RTX 5090 完成编译、指令/资源审计和 24 样本性能验收。production 与 `1.661712 ms` 历史结果仍是 shared-partial baseline。**
+
+当前实现状态如下：
+
+| 实现 | CTA | producer/consumer | MMA | partial 路径 | 状态 |
+|---|---|---|---|---|---|
+| `shared_partial` | `64x32x32` | `1/8` | WMMA m16n16k16×2 | shared 中转与两次 barrier | production baseline |
+| `register_64x32` | `64x32x32` | `1/8` | CuTe m16n8k32 | 寄存器内缩放/累加 | 第一候选 |
+| `register_128x128` | `128x128x32` | `1/16` | CuTe m16n8k32 | 寄存器内缩放/累加 | CTA 消融候选 |
+| O2 | `128x128x256` | CUTLASS cooperative | MXFP4 block-scaled | 硬件消费 scale | 保持不变 |
+
+寄存器候选使用 `thr_mma.partition_C(identity_tensor)` 建立 accumulator register 与
+逻辑 `(row,column)` 的对应关系。A row scale 在 K 循环前放入寄存器；每个 K32 的
+W column scale 由 warp lane 加载并 shuffle 广播；INT32→FP32、scale 与 FP32 累加
+均在寄存器内完成。TMA A/W 三阶段共享内存 pipeline 仍然保留。
+
+候选通过以下全部条件后才可晋升：reference 与边界 shape 正确；24 样本 O1-vs-O0
+MSE 相对 baseline 满足 `rtol=1e-5, atol=1e-12`；所有计时阶段 CV<3%；
+compute-only 配对加速比 bootstrap 95% CI 下界>1；同一候选 SASS 内同时出现
+TMA/IMMA 且无 `LDL/STL` spill。没有绝对延迟门槛。
+
+`register_128x128` 只令 M/N tile 与 O2 相同，K tile 仍为32；O2 K tile 为256且在
+原生 block-scaled MMA 中消费8组 K32 scale。因此不强制 O1/O2 完整 CTA 相同。
+
 
 ### 12.1 优化目标
 
@@ -501,10 +528,10 @@ O2-W 统计自然 W scale 读取与有效 SFB scale 写入。O2-A 的三个 scal
 - INT32 partial、FP32 最终累加和 FP32 输出；
 - 每个输出元素只写全局显存一次。
 
-只修改 partial 后处理路径：
+寄存器候选只修改 partial 后处理路径：
 
 ```text
-当前：
+baseline：
 INT32 MMA register fragment
   -> shared partial
   -> barrier
@@ -512,14 +539,14 @@ INT32 MMA register fragment
   -> scale
   -> FP32 accumulator register
 
-目标：
+register candidate：
 INT32 MMA result registers
   -> 直接匹配本线程所拥有元素的 row/column scale
   -> INT32-to-FP32 + scale
   -> FP32 accumulator registers
 ```
 
-“partial 留在寄存器”不表示完全不使用共享内存。TMA 搬入的 A/W tile 仍需要共享内存多阶段流水线；要消除的是 `shared_storage.partial` 以及围绕它的中转和 named barrier。
+“partial 留在寄存器”不表示完全不使用共享内存。TMA 搬入的 A/W tile 仍需要共享内存多阶段流水线；候选消除的是 `shared_storage.shared_partial` 以及围绕它的中转和 named barrier。
 
 ### 12.2 为什么不能只删除 `store_matrix_sync`
 
@@ -531,12 +558,12 @@ s^A_{row}s^W_{column,group}/2
 
 因此必须知道每个 accumulator register 对应 tile 的哪一行、哪一列。`nvcuda::wmma::fragment` 内部元素映射不应作为稳定、公开的逻辑布局直接依赖，当前实现才使用 shared-memory row-major 中转恢复坐标。
 
-拟议实现应改用能明确表达寄存器布局的方式，例如：
+当前候选使用 CuTe 明确表达寄存器布局：
 
-1. 使用 CuTe MMA atom/tiled MMA，依据 fragment layout 构造对应行/列 scale fragment；或
-2. 使用 SM120 对应 inline PTX `mma.sync`，显式遵守 PTX 文档给出的 accumulator register ownership；
-3. 为每个 consumer warp 的 `16x16` tile 预取或广播行 scale 与当前 K32 列 scale；
-4. 两个 K16 MMA 完成一个 K32 后，在寄存器内直接完成类型转换、缩放和 FP32 累加。
+1. `partition_C(identity_tensor)` 建立 accumulator register 的行列坐标；
+2. m16n8k32 atom 一次完成一个 K32 INT8 MMA；
+3. A row scale 预取，W column/group scale 由 warp shuffle 广播；
+4. 在寄存器内完成 INT32→FP32、缩放和按 group 顺序累加。
 
 ### 12.3 预期收益与仍然存在的成本
 
@@ -557,9 +584,9 @@ s^A_{row}s^W_{column,group}/2
 
 因此该优化应改善当前 O1 的结构性瓶颈，但不能预先保证 O1 一定快于 O0，也不应以“必须达到某个绝对延迟”作为正确性验收条件。
 
-### 12.4 实施后的验收要求
+### 12.4 晋升 production 的验收要求
 
-优化完成后应重新执行：
+候选必须重新执行：
 
 1. 小规模 Python reference 对齐和边界 shape 测试；
 2. `4096^3` O1 正确性、四种 mode、缓存语义和 CV 验证；
@@ -568,14 +595,14 @@ s^A_{row}s^W_{column,group}/2
 5. SASS/源码检查，确认不再有 partial shared-memory store/reload；
 6. 与当前 O1 的 compute-only、cold、steady-state 结果做前后对照。
 
-建议结果元数据新增：
+候选结果元数据必须包含：
 
 ```text
 partial_storage = register
 shared_partial_redistribution = false
 ```
 
-在这些条件通过前，所有图表都应标注为“当前 shared-partial O1”，不能把拟议优化当成已经完成的后端能力。
+在这些条件通过前，所有图表都应标注为“shared-partial O1 baseline”，不能把已编码但未验收的候选当成正式后端结果。
 
 ## 13. 指令审计与结果边界
 
@@ -593,7 +620,7 @@ shared_partial_redistribution = false
 1. 三种配置从完全相同的公共量化输入出发，最终输出统一为 FP32；
 2. O0 把 scale 前置到 FP16 反量化，随后执行高度优化的标准 GEMM；
 3. O1 使用 INT8 Tensor Core，但普通 INT8 MMA 不支持 UE8M0 block scale，必须逐 K32 软件缩放；
-4. 当前 O1 已消除 128 次全矩阵 GEMM 和全局 partial 落盘，但 partial 仍经共享内存中转，这是下一步最高优先级优化；
+4. 寄存器 partial 候选已实现但尚待 5090 A/B 晋升；历史 O1 数字仍是 shared-partial baseline；
 5. O2 使用原生 block-scaled MXFP4 MMA，逐 K32 scale 由指令消费，GEMM 性能最高；
 6. O1 相对 O0 的 MSE 极小，O2 因激活再次量化而有更明显误差；
 7. 转换开销使用批量摊销，端到端 total 使用单次直接计时，不能简单把阶段 median 相加；

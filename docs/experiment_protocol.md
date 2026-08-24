@@ -47,3 +47,37 @@ O2-A 按 M*K + 4*M + M*K/2 + 3*M*(K/32) 字节计算；未触碰的物理布局 
 0。对 24 个 MSE 报告逐样本值、median、IQR、max 和 bootstrap 95% CI。
 
 正式运行前执行一次指令审计。审计证明使用目标 Tensor Core 指令，但不进入主结果。
+
+## O1 实现 A/B 与 CTA 消融
+
+O1 的公开 production 实现由源码常量 `kProductionO1Implementation` 唯一指定。
+寄存器候选未通过 RTX 5090 验收前，该值保持 `shared_partial`。内部接口
+`adangel._sm120._benchmark_o1_impl` 只用于候选验证，正式 runner 不暴露实现选择。
+
+A/B 固定使用同一进程、同一输入、单 CUDA stream，并按样本和 mode 交替实现调用
+顺序。三种实现为：
+
+- `shared_partial`：`64x32x32`，历史 production baseline；
+- `register_64x32`：相同 CTA、TMA stage 和 producer/consumer 数，仅改变 partial 路径
+  及为获得公开 fragment 坐标而必须采用的 CuTe m16n8k32 MMA API；
+- `register_128x128`：`128x128x32`、1 producer/16 consumer，仅作为 M/N CTA 消融。
+
+O2 保持 `128x128x256`，不得为追求表面 CTA 一致而修改。O1 每个 K32 后必须软件
+缩放，O2 可在一个 K256 mainloop tile 内由原生 block-scaled MMA 消费8组 scale。
+
+每条 O1 结果必须记录：
+
+```text
+implementation_key
+partial_storage
+shared_partial_redistribution
+cta_tile
+kernel_symbol
+mma_api
+mma_shape
+production_selected
+```
+
+候选晋升要求：正确性/MSE 回归通过；所有正式计时阶段 CV<3%；24 样本
+compute-only 配对加速比 bootstrap 95% CI 下界>1；PTX/SASS 同一正式 symbol 包含
+TMA 与 signed INT8 MMA；SASS/resource usage 无 local-memory spill。旧 run 缺少上述

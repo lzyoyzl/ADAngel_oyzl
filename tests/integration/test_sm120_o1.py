@@ -26,6 +26,39 @@ def _inputs(m=128, n=128, k=64):
     return cpu, cuda
 
 
+def _pattern_inputs(pattern, m=16, n=8, k=96):
+    import torch
+
+    from adangel.trace.schema import PreparedInputs
+
+    if pattern == "zero":
+        a_int8 = torch.zeros((m, k), dtype=torch.int8)
+        w_mxfp4 = torch.zeros((n, k // 2), dtype=torch.uint8)
+    elif pattern == "alternating":
+        columns = torch.arange(k)
+        a_int8 = torch.where(columns % 2 == 0, 127, -127).to(torch.int8).repeat(m, 1)
+        # Low nibble +6, high nibble -6.
+        w_mxfp4 = torch.full((n, k // 2), 0xF7, dtype=torch.uint8)
+    elif pattern == "saturated":
+        a_int8 = torch.full((m, k), 127, dtype=torch.int8)
+        w_mxfp4 = torch.full((n, k // 2), 0x77, dtype=torch.uint8)
+    else:
+        raise ValueError(pattern)
+    a_scale = torch.linspace(0.25, 2.0, m, dtype=torch.float32)
+    rows = torch.arange(n, dtype=torch.int64)[:, None]
+    groups = torch.arange(k // 32, dtype=torch.int64)[None, :]
+    w_scale = (124 + (rows + groups) % 7).to(torch.uint8).contiguous()
+    cpu = PreparedInputs("o1_pattern", a_int8, a_scale, w_mxfp4, w_scale)
+    cuda = PreparedInputs(
+        cpu.sample_id,
+        cpu.A_int8.cuda(),
+        cpu.A_scale.cuda(),
+        cpu.W_mxfp4.cuda(),
+        cpu.W_scale.cuda(),
+    )
+    return cpu, cuda
+
+
 @pytest.mark.sm120
 def test_o1_native_matches_semantic_reference():
     import torch
@@ -51,8 +84,13 @@ def test_o1_native_matches_semantic_reference():
     assert kernel["mma_family"] == "IMMA"
     assert kernel["mma_api"] == "nvcuda::wmma"
     assert kernel["mma_shape"] == "m16n16k16"
-    assert kernel["implementation"] == "tma_warp_specialized"
-    assert kernel["kernel_symbol"] == "adangel_o1_tma_warp_specialized"
+    assert kernel["implementation"] == "tma_warp_specialized_shared_partial"
+    assert kernel["implementation_key"] == "shared_partial"
+    assert kernel["kernel_symbol"] == "adangel_o1_shared_partial_baseline"
+    assert kernel["partial_storage"] == "shared_memory"
+    assert kernel["shared_partial_redistribution"] is True
+    assert kernel["production_selected"] is True
+    assert tuple(kernel["cta_tile"]) == (64, 32, 32)
     assert kernel["data_movement"] == "TMA"
     assert kernel["kernel_schedule"] == "cooperative_warp_specialized"
     assert kernel["pipeline_stages"] == 3
@@ -126,3 +164,81 @@ def test_o1_native_timing_modes(mode, expected_stages):
         else "direct_single_path"
     )
     torch.testing.assert_close(result["output"].cpu(), expected["output"], rtol=1e-3, atol=1e-3)
+
+
+@pytest.mark.sm120
+@pytest.mark.parametrize("implementation", ["register_64x32", "register_128x128"])
+@pytest.mark.parametrize(
+    ("m", "n", "k"),
+    [(16, 8, 32), (64, 32, 64), (68, 36, 96)],
+)
+def test_o1_register_partial_candidates_match_reference(implementation, m, n, k):
+    import torch
+
+    from adangel.ops.extension import require_variant
+    from adangel.reference import run_o1_reference
+
+    cpu_inputs, cuda_inputs = _inputs(m=m, n=n, k=k)
+    expected = run_o1_reference(cpu_inputs)
+    native = require_variant("o1")
+    result = native._benchmark_o1_impl(
+        implementation,
+        "compute_only",
+        cuda_inputs.A_int8,
+        cuda_inputs.A_scale,
+        cuda_inputs.W_mxfp4,
+        cuda_inputs.W_scale,
+        0,
+        1,
+        100,
+    )
+    torch.cuda.synchronize()
+    torch.testing.assert_close(
+        result["converted_weight"].cpu(), expected["converted_weight"], rtol=0, atol=0
+    )
+    torch.testing.assert_close(
+        result["output"].cpu(), expected["output"], rtol=1e-3, atol=1e-3
+    )
+    kernel = dict(result["kernel"])
+    assert kernel["implementation_key"] == implementation
+    assert kernel["implementation"] == "tma_warp_specialized_register_partial"
+    assert kernel["library"] == "CUTLASS CuTe + CUDA"
+    assert kernel["mma_api"] == "cute::MMA_Atom"
+    assert kernel["mma_atom"] == "SM80_16x8x32_S32S8S8S32_TN"
+    assert kernel["mma_shape"] == "m16n8k32"
+    assert kernel["partial_storage"] == "register"
+    assert kernel["shared_partial_redistribution"] is False
+    assert kernel["global_partial_buffer"] is False
+    assert kernel["output_stores_per_element"] == 1
+    assert kernel["production_selected"] is False
+
+
+@pytest.mark.sm120
+@pytest.mark.parametrize("implementation", ["register_64x32", "register_128x128"])
+@pytest.mark.parametrize("pattern", ["zero", "alternating", "saturated"])
+def test_o1_register_partial_scale_coordinate_patterns(implementation, pattern):
+    import torch
+
+    from adangel.ops.extension import require_variant
+    from adangel.reference import run_o1_reference
+
+    cpu_inputs, cuda_inputs = _pattern_inputs(pattern)
+    expected = run_o1_reference(cpu_inputs)
+    native = require_variant("o1")
+    result = native._benchmark_o1_impl(
+        implementation,
+        "compute_only",
+        cuda_inputs.A_int8,
+        cuda_inputs.A_scale,
+        cuda_inputs.W_mxfp4,
+        cuda_inputs.W_scale,
+        0,
+        1,
+        100,
+    )
+    torch.cuda.synchronize()
+    torch.testing.assert_close(
+        result["output"].cpu(), expected["output"], rtol=1e-3, atol=1e-3
+    )
+    assert result["output"].dtype == torch.float32
+    assert torch.isfinite(result["output"]).all()

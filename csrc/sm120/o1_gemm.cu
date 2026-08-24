@@ -1,5 +1,11 @@
 #include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
+#include <cute/algorithm/copy.hpp>
+#include <cute/algorithm/gemm.hpp>
+#include <cute/arch/copy_sm75.hpp>
+#include <cute/atom/copy_atom.hpp>
+#include <cute/atom/mma_atom.hpp>
+#include <cute/atom/mma_traits_sm80.hpp>
 #include <cute/tensor.hpp>
 #include <cutlass/arch/barrier.h>
 #include <cutlass/cutlass.h>
@@ -11,6 +17,7 @@
 
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "adangel/data_types.cuh"
@@ -49,12 +56,73 @@ using SmemLayoutB = decltype(cute::make_layout(
 struct alignas(128) O1SharedStorage {
   alignas(128) uint8_t a[kPipelineStages * kAStageElements];
   alignas(128) uint8_t b[kPipelineStages * kBStageElements];
-  alignas(32) int32_t partial[kConsumerWarps * 16 * 16];
+  alignas(32) int32_t shared_partial[kConsumerWarps * 16 * 16];
   alignas(16) O1Pipeline::SharedStorage pipeline;
 };
 
 static_assert(kOutputsPerThread == 8);
 static_assert(kThreadsPerBlock == 288);
+constexpr char kProductionO1Implementation[] = "shared_partial";
+
+struct O1Register64Config {
+  static constexpr int kTileM = 64;
+  static constexpr int kTileN = 32;
+  static constexpr int kProducerWarps = 1;
+  static constexpr int kConsumerWarps = 8;
+  static constexpr int kProducerThreads = 32;
+  static constexpr int kConsumerThreads = 256;
+  static constexpr int kThreadsPerBlock = 288;
+  static constexpr int kAStageElements = 64 * kGroupSize;
+  static constexpr int kBStageElements = 32 * kGroupSize;
+  using Pipeline = cutlass::PipelineTmaAsync<kPipelineStages>;
+  using SmemLayoutA = decltype(cute::make_layout(
+      cute::make_shape(cute::_64{}, cute::_32{}, cute::_3{}),
+      cute::make_stride(cute::_32{}, cute::_1{}, cute::Int<64 * 32>{})));
+  using SmemLayoutB = decltype(cute::make_layout(
+      cute::make_shape(cute::_32{}, cute::_32{}, cute::_3{}),
+      cute::make_stride(cute::_32{}, cute::_1{}, cute::Int<32 * 32>{})));
+  using TiledMma = cute::TiledMMA<
+      cute::MMA_Atom<cute::SM80_16x8x32_S32S8S8S32_TN>,
+      cute::Layout<cute::Shape<cute::_4, cute::_2, cute::_1>>,
+      cute::Tile<cute::_64, cute::_32, cute::_32>>;
+};
+
+struct O1Register128Config {
+  static constexpr int kTileM = 128;
+  static constexpr int kTileN = 128;
+  static constexpr int kProducerWarps = 1;
+  static constexpr int kConsumerWarps = 16;
+  static constexpr int kProducerThreads = 32;
+  static constexpr int kConsumerThreads = 512;
+  static constexpr int kThreadsPerBlock = 544;
+  static constexpr int kAStageElements = 128 * kGroupSize;
+  static constexpr int kBStageElements = 128 * kGroupSize;
+  using Pipeline = cutlass::PipelineTmaAsync<kPipelineStages>;
+  using SmemLayoutA = decltype(cute::make_layout(
+      cute::make_shape(cute::_128{}, cute::_32{}, cute::_3{}),
+      cute::make_stride(cute::_32{}, cute::_1{}, cute::Int<128 * 32>{})));
+  using SmemLayoutB = SmemLayoutA;
+  using TiledMma = cute::TiledMMA<
+      cute::MMA_Atom<cute::SM80_16x8x32_S32S8S8S32_TN>,
+      cute::Layout<cute::Shape<cute::_4, cute::_4, cute::_1>>,
+      cute::Tile<cute::_128, cute::_128, cute::_32>>;
+};
+
+template <class Config>
+struct alignas(128) O1RegisterSharedStorage {
+  alignas(128) uint8_t a[kPipelineStages * Config::kAStageElements];
+  alignas(128) uint8_t b[kPipelineStages * Config::kBStageElements];
+  alignas(16) typename Config::Pipeline::SharedStorage pipeline;
+};
+
+enum class O1Implementation {
+  kSharedPartial,
+  kRegister64x32,
+  kRegister128x128,
+};
+
+static_assert(O1Register64Config::kThreadsPerBlock == 288);
+static_assert(O1Register128Config::kThreadsPerBlock == 544);
 
 void check_cuda(cudaError_t status, const char* operation) {
   TORCH_CHECK(status == cudaSuccess, operation, " failed: ", cudaGetErrorString(status));
@@ -165,7 +233,7 @@ py::dict timing_metadata(const std::string& mode, int conversion_inner_repeats) 
 // every K32 group produces an INT32 partial, applies A_scale*W_scale/2, accumulates in FP32
 // registers, and writes each final output element exactly once.
 template <class TmaA, class TmaB>
-__global__ __launch_bounds__(kThreadsPerBlock) void adangel_o1_tma_warp_specialized(
+__global__ __launch_bounds__(kThreadsPerBlock) void adangel_o1_shared_partial_baseline(
     CUTE_GRID_CONSTANT TmaA const tma_a,
     CUTE_GRID_CONSTANT TmaB const tma_b,
     const float* a_scale,
@@ -290,7 +358,7 @@ __global__ __launch_bounds__(kThreadsPerBlock) void adangel_o1_tma_warp_speciali
     wmma::load_matrix_sync(b_fragment, shared_b + b_offset + kWmmaK, kGroupSize);
     wmma::mma_sync(partial_fragment, a_fragment, b_fragment, partial_fragment);
     wmma::store_matrix_sync(
-        shared_storage.partial + compute_warp * 16 * 16,
+        shared_storage.shared_partial + compute_warp * 16 * 16,
         partial_fragment,
         16,
         wmma::mem_row_major);
@@ -306,7 +374,7 @@ __global__ __launch_bounds__(kThreadsPerBlock) void adangel_o1_tma_warp_speciali
       const int owner_warp = (local_row / 16) * 2 + local_column / 16;
       const int owner_index = (local_row % 16) * 16 + (local_column % 16);
       const int32_t partial =
-          shared_storage.partial[owner_warp * 16 * 16 + owner_index];
+          shared_storage.shared_partial[owner_warp * 16 * 16 + owner_index];
       float scale = __fmul_rn(row_scales[item], column_scale);
       scale = __fmul_rn(scale, 0.5f);
       const float contribution = __fmul_rn(static_cast<float>(partial), scale);
@@ -330,6 +398,228 @@ __global__ __launch_bounds__(kThreadsPerBlock) void adangel_o1_tma_warp_speciali
       }
     }
   }
+}
+
+template <class Config, class TmaA, class TmaB>
+__device__ __forceinline__ void adangel_o1_register_partial_body(
+    TmaA const& tma_a,
+    TmaB const& tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups,
+    O1RegisterSharedStorage<Config>& shared_storage) {
+  auto mA = tma_a.get_tma_tensor(cute::make_shape(m, k));
+  auto mB = tma_b.get_tma_tensor(cute::make_shape(n, k));
+  auto cta_tiler = cute::make_shape(
+      cute::Int<Config::kTileM>{},
+      cute::Int<Config::kTileN>{},
+      cute::Int<kGroupSize>{});
+  auto cta_coord = cute::make_coord(
+      static_cast<int>(blockIdx.y), static_cast<int>(blockIdx.x), cute::_);
+  auto gA = cute::local_tile(
+      mA, cta_tiler, cta_coord, cute::Step<cute::_1, cute::X, cute::_1>{});
+  auto gB = cute::local_tile(
+      mB, cta_tiler, cta_coord, cute::Step<cute::X, cute::_1, cute::_1>{});
+  auto sA = cute::make_tensor(
+      cute::make_smem_ptr(shared_storage.a), typename Config::SmemLayoutA{});
+  auto sB = cute::make_tensor(
+      cute::make_smem_ptr(shared_storage.b), typename Config::SmemLayoutB{});
+  auto [tAgA, tAsA] = cute::tma_partition(
+      tma_a,
+      cute::Int<0>{},
+      cute::Layout<cute::_1>{},
+      cute::group_modes<0, 2>(sA),
+      cute::group_modes<0, 2>(gA));
+  auto [tBgB, tBsB] = cute::tma_partition(
+      tma_b,
+      cute::Int<0>{},
+      cute::Layout<cute::_1>{},
+      cute::group_modes<0, 2>(sB),
+      cute::group_modes<0, 2>(gB));
+
+  const int thread = static_cast<int>(threadIdx.x);
+  const int warp = thread >> 5;
+  const int lane = thread & 31;
+  typename Config::Pipeline::Params pipeline_params;
+  pipeline_params.num_consumers = Config::kConsumerThreads;
+  pipeline_params.transaction_bytes =
+      Config::kAStageElements + Config::kBStageElements;
+  pipeline_params.initializing_warp = 0;
+  if (warp == 0 && lane == 0) {
+    pipeline_params.role = Config::Pipeline::ThreadCategory::Producer;
+    pipeline_params.is_leader = 1;
+  } else if (warp > 0) {
+    pipeline_params.role = Config::Pipeline::ThreadCategory::Consumer;
+  }
+  typename Config::Pipeline pipeline(
+      shared_storage.pipeline,
+      pipeline_params,
+      cute::Shape<cute::_1, cute::_1, cute::_1>{});
+  cutlass::pipeline_init_wait(1);
+
+  if (warp == 0) {
+    if (lane == 0) {
+      auto write_state =
+          cutlass::make_producer_start_state<typename Config::Pipeline>();
+      for (int group = 0; group < groups; ++group) {
+        pipeline.producer_acquire(write_state);
+        auto* tma_barrier = pipeline.producer_get_barrier(write_state);
+        cute::copy(
+            tma_a.with(*tma_barrier),
+            tAgA(cute::_, group),
+            tAsA(cute::_, write_state.index()));
+        cute::copy(
+            tma_b.with(*tma_barrier),
+            tBgB(cute::_, group),
+            tBsB(cute::_, write_state.index()));
+        ++write_state;
+      }
+      pipeline.producer_tail(write_state);
+    }
+    return;
+  }
+
+  const int compute_thread = thread - Config::kProducerThreads;
+  const int tile_row = static_cast<int>(blockIdx.y) * Config::kTileM;
+  const int tile_column = static_cast<int>(blockIdx.x) * Config::kTileN;
+  typename Config::TiledMma tiled_mma;
+  auto thr_mma = tiled_mma.get_slice(compute_thread);
+  auto tCrA = thr_mma.partition_fragment_A(sA(cute::_, cute::_, cute::Int<0>{}));
+  auto tCrB = thr_mma.partition_fragment_B(sB(cute::_, cute::_, cute::Int<0>{}));
+  auto cC = cute::make_identity_tensor(
+      cute::make_shape(
+          cute::Int<Config::kTileM>{}, cute::Int<Config::kTileN>{}));
+  auto tCcC = thr_mma.partition_C(cC);
+  auto tCrPartial = thr_mma.make_fragment_C(tCcC);
+  auto tCrAccumulator = cute::make_fragment_like<float>(tCrPartial);
+  auto tCrRowScale = cute::make_fragment_like<float>(tCrPartial);
+  cute::clear(tCrAccumulator);
+  for (int item = 0; item < cute::size(tCrRowScale); ++item) {
+    const int local_row = cute::get<0>(tCcC(item));
+    const int global_row = tile_row + local_row;
+    tCrRowScale(item) = global_row < m ? a_scale[global_row] : 0.0f;
+  }
+
+  using SmemCopyAtom =
+      cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, uint8_t>;
+  SmemCopyAtom smem_copy_atom;
+  auto tiled_copy_a = cute::make_tiled_copy_A(smem_copy_atom, tiled_mma);
+  auto tiled_copy_b = cute::make_tiled_copy_B(smem_copy_atom, tiled_mma);
+  auto thr_copy_a = tiled_copy_a.get_slice(compute_thread);
+  auto thr_copy_b = tiled_copy_b.get_slice(compute_thread);
+  auto tXsA = thr_copy_a.partition_S(sA);
+  auto tXsB = thr_copy_b.partition_S(sB);
+  auto tXrA = thr_copy_a.retile_D(tCrA);
+  auto tXrB = thr_copy_b.retile_D(tCrB);
+
+  typename Config::Pipeline::PipelineState read_state;
+  for (int group = 0; group < groups; ++group) {
+    pipeline.consumer_wait(read_state);
+    const int read_stage = read_state.index();
+    cute::copy(
+        smem_copy_atom,
+        tXsA(cute::_, cute::_, cute::_, read_stage),
+        tXrA);
+    cute::copy(
+        smem_copy_atom,
+        tXsB(cute::_, cute::_, cute::_, read_stage),
+        tXrB);
+    cute::clear(tCrPartial);
+    cute::gemm(tiled_mma, tCrA, tCrB, tCrPartial);
+
+    float warp_column_scales[Config::kTileN / 32];
+#pragma unroll
+    for (int round = 0; round < Config::kTileN / 32; ++round) {
+      const int local_column = round * 32 + lane;
+      const int global_column = tile_column + local_column;
+      warp_column_scales[round] = global_column < n
+          ? adangel::decode_ue8m0(
+                w_scale[global_column * groups + group])
+          : 0.0f;
+    }
+
+    for (int item = 0; item < cute::size(tCrPartial); ++item) {
+      const int local_column = cute::get<1>(tCcC(item));
+      float column_scale = 0.0f;
+#pragma unroll
+      for (int round = 0; round < Config::kTileN / 32; ++round) {
+        const float candidate = __shfl_sync(
+            0xffffffffu, warp_column_scales[round], local_column & 31);
+        if ((local_column >> 5) == round) column_scale = candidate;
+      }
+      float scale = __fmul_rn(tCrRowScale(item), column_scale);
+      scale = __fmul_rn(scale, 0.5f);
+      const float contribution =
+          __fmul_rn(static_cast<float>(tCrPartial(item)), scale);
+      tCrAccumulator(item) = group == 0
+          ? contribution
+          : __fadd_rn(tCrAccumulator(item), contribution);
+    }
+
+    pipeline.consumer_release(read_state);
+    ++read_state;
+  }
+
+  auto mC = cute::make_tensor(
+      cute::make_gmem_ptr(output),
+      cute::make_shape(m, n),
+      cute::make_stride(n, cute::Int<1>{}));
+  auto gC = cute::local_tile(
+      mC,
+      cute::make_shape(
+          cute::Int<Config::kTileM>{}, cute::Int<Config::kTileN>{}),
+      cute::make_coord(
+          static_cast<int>(blockIdx.y), static_cast<int>(blockIdx.x)));
+  auto tCgC = thr_mma.partition_C(gC);
+  for (int item = 0; item < cute::size(tCrAccumulator); ++item) {
+    const int local_row = cute::get<0>(tCcC(item));
+    const int local_column = cute::get<1>(tCcC(item));
+    if (tile_row + local_row < m && tile_column + local_column < n) {
+      tCgC(item) = tCrAccumulator(item);
+    }
+  }
+}
+
+template <class TmaA, class TmaB>
+__global__ __launch_bounds__(O1Register64Config::kThreadsPerBlock)
+void adangel_o1_register_partial_64x32(
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups) {
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& shared_storage =
+      *reinterpret_cast<O1RegisterSharedStorage<O1Register64Config>*>(shared_bytes);
+  adangel_o1_register_partial_body<O1Register64Config>(
+      tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
+}
+
+template <class TmaA, class TmaB>
+__global__ __launch_bounds__(O1Register128Config::kThreadsPerBlock)
+void adangel_o1_register_partial_128x128(
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups) {
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& shared_storage =
+      *reinterpret_cast<O1RegisterSharedStorage<O1Register128Config>*>(shared_bytes);
+  adangel_o1_register_partial_body<O1Register128Config>(
+      tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
 }
 
 namespace {
@@ -377,7 +667,7 @@ void launch_tma_o1(
     cudaStream_t stream) {
   const int groups = k / kGroupSize;
   dim3 grid((n + kTileN - 1) / kTileN, (m + kTileM - 1) / kTileM);
-  adangel_o1_tma_warp_specialized<<<
+  adangel_o1_shared_partial_baseline<<<
       grid, kThreadsPerBlock, sizeof(O1SharedStorage), stream>>>(
       tma_a,
       tma_b,
@@ -391,25 +681,106 @@ void launch_tma_o1(
   check_cuda(cudaGetLastError(), "O1 TMA warp-specialized WMMA launch");
 }
 
-py::dict tma_metadata(int groups) {
+template <class Config>
+auto make_register_tma_a(const at::Tensor& a_int8) {
+  const int m = static_cast<int>(a_int8.size(0));
+  const int k = static_cast<int>(a_int8.size(1));
+  auto tensor = cute::make_tensor(
+      reinterpret_cast<const uint8_t*>(a_int8.data_ptr<int8_t>()),
+      cute::make_shape(m, k),
+      cute::make_stride(k, cute::Int<1>{}));
+  auto layout = typename Config::SmemLayoutA{};
+  return cute::make_tma_atom(
+      cute::SM90_TMA_LOAD{},
+      tensor,
+      layout(cute::_, cute::_, cute::Int<0>{}),
+      cute::make_shape(
+          cute::Int<Config::kTileM>{}, cute::Int<kGroupSize>{}));
+}
+
+template <class Config>
+auto make_register_tma_b(const at::Tensor& w_int8) {
+  const int n = static_cast<int>(w_int8.size(0));
+  const int k = static_cast<int>(w_int8.size(1));
+  auto tensor = cute::make_tensor(
+      reinterpret_cast<const uint8_t*>(w_int8.data_ptr<int8_t>()),
+      cute::make_shape(n, k),
+      cute::make_stride(k, cute::Int<1>{}));
+  auto layout = typename Config::SmemLayoutB{};
+  return cute::make_tma_atom(
+      cute::SM90_TMA_LOAD{},
+      tensor,
+      layout(cute::_, cute::_, cute::Int<0>{}),
+      cute::make_shape(
+          cute::Int<Config::kTileN>{}, cute::Int<kGroupSize>{}));
+}
+
+template <class Config, class TmaA, class TmaB>
+void launch_register_o1(
+    const at::Tensor& a_scale,
+    const at::Tensor& w_scale,
+    at::Tensor& output,
+    int m,
+    int n,
+    int k,
+    TmaA const& tma_a,
+    TmaB const& tma_b,
+    cudaStream_t stream) {
+  const int groups = k / kGroupSize;
+  dim3 grid(
+      (n + Config::kTileN - 1) / Config::kTileN,
+      (m + Config::kTileM - 1) / Config::kTileM);
+  constexpr int shared_bytes = sizeof(O1RegisterSharedStorage<Config>);
+  if constexpr (std::is_same_v<Config, O1Register64Config>) {
+    adangel_o1_register_partial_64x32<<<
+        grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+        tma_a,
+        tma_b,
+        a_scale.data_ptr<float>(),
+        w_scale.data_ptr<uint8_t>(),
+        output.data_ptr<float>(),
+        m,
+        n,
+        k,
+        groups);
+  } else {
+    adangel_o1_register_partial_128x128<<<
+        grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+        tma_a,
+        tma_b,
+        a_scale.data_ptr<float>(),
+        w_scale.data_ptr<uint8_t>(),
+        output.data_ptr<float>(),
+        m,
+        n,
+        k,
+        groups);
+  }
+  check_cuda(cudaGetLastError(), "O1 register-partial launch");
+}
+
+O1Implementation parse_o1_implementation(const std::string& implementation) {
+  const std::string selected = implementation == "production"
+      ? std::string(kProductionO1Implementation)
+      : implementation;
+  if (selected == "shared_partial") return O1Implementation::kSharedPartial;
+  if (selected == "register_64x32") return O1Implementation::kRegister64x32;
+  if (selected == "register_128x128") return O1Implementation::kRegister128x128;
+  TORCH_CHECK(false, "unknown O1 implementation: ", implementation);
+  return O1Implementation::kSharedPartial;
+}
+
+py::dict o1_metadata(O1Implementation implementation, int groups) {
   py::dict result;
-  result["library"] = "CUTLASS CuTe + CUDA WMMA";
   result["algorithm_id"] = -1;
   result["workspace_bytes"] = 0;
   result["numerical_impl_flags"] = 0;
   result["tensor_core"] = true;
   result["mma_family"] = "IMMA";
-  result["mma_api"] = "nvcuda::wmma";
-  result["mma_shape"] = "m16n16k16";
-  result["implementation"] = "tma_warp_specialized";
-  result["kernel_symbol"] = "adangel_o1_tma_warp_specialized";
   result["data_movement"] = "TMA";
   result["kernel_schedule"] = "cooperative_warp_specialized";
   result["pipeline_stages"] = kPipelineStages;
-  result["producer_warps"] = kProducerWarps;
-  result["consumer_warps"] = kConsumerWarps;
   result["tma_operands"] = py::make_tuple("A_int8", "W_int8");
-  result["cta_tile"] = py::make_tuple(kTileM, kTileN, kGroupSize);
   result["split_k"] = 1;
   result["compute_type"] = "S8xS8_TO_S32";
   result["input_dtype"] = "int8";
@@ -421,6 +792,42 @@ py::dict tma_metadata(int groups) {
   result["scale_formula"] = "A_scale*decode_ue8m0(W_scale)/2";
   result["global_partial_buffer"] = false;
   result["output_stores_per_element"] = 1;
+  result["production_selected"] =
+      implementation == parse_o1_implementation("production");
+  if (implementation == O1Implementation::kSharedPartial) {
+    result["library"] = "CUTLASS CuTe + CUDA WMMA";
+    result["mma_api"] = "nvcuda::wmma";
+    result["mma_atom"] = py::none();
+    result["mma_shape"] = "m16n16k16";
+    result["implementation"] = "tma_warp_specialized_shared_partial";
+    result["implementation_key"] = "shared_partial";
+    result["kernel_symbol"] = "adangel_o1_shared_partial_baseline";
+    result["producer_warps"] = kProducerWarps;
+    result["consumer_warps"] = kConsumerWarps;
+    result["cta_tile"] = py::make_tuple(kTileM, kTileN, kGroupSize);
+    result["partial_storage"] = "shared_memory";
+    result["shared_partial_redistribution"] = true;
+  } else {
+    const bool is_64 = implementation == O1Implementation::kRegister64x32;
+    result["library"] = "CUTLASS CuTe + CUDA";
+    result["mma_api"] = "cute::MMA_Atom";
+    result["mma_atom"] = "SM80_16x8x32_S32S8S8S32_TN";
+    result["mma_shape"] = "m16n8k32";
+    result["implementation"] =
+        "tma_warp_specialized_register_partial";
+    result["implementation_key"] =
+        is_64 ? "register_64x32" : "register_128x128";
+    result["kernel_symbol"] = is_64
+        ? "adangel_o1_register_partial_64x32"
+        : "adangel_o1_register_partial_128x128";
+    result["producer_warps"] = 1;
+    result["consumer_warps"] = is_64 ? 8 : 16;
+    result["cta_tile"] = is_64
+        ? py::make_tuple(64, 32, kGroupSize)
+        : py::make_tuple(128, 128, kGroupSize);
+    result["partial_storage"] = "register";
+    result["shared_partial_redistribution"] = false;
+  }
   return result;
 }
 
@@ -428,50 +835,23 @@ py::dict tma_metadata(int groups) {
 
 bool adangel_o1_is_implemented() { return true; }
 
-py::dict adangel_benchmark_o1(
-    const at::Tensor& a_int8,
-    const at::Tensor& a_scale,
+namespace {
+
+template <class Gemm>
+py::dict measure_o1_implementation(
     const at::Tensor& w_mxfp4,
-    const at::Tensor& w_scale,
+    at::Tensor& w_int8,
+    at::Tensor& output,
     const std::string& mode_name,
+    TimingMode mode,
+    O1Implementation implementation,
     int warmup,
     int repeats,
-    int conversion_inner_repeats) {
-  TORCH_CHECK(warmup >= 0, "warmup must be non-negative");
-  TORCH_CHECK(repeats > 0, "repeats must be positive");
-  TORCH_CHECK(
-      conversion_inner_repeats > 1,
-      "conversion_inner_repeats must exceed one");
-  adangel_validate_cuda_inputs(a_int8, a_scale, w_mxfp4, w_scale);
-  const TimingMode mode = parse_mode(mode_name);
-  c10::cuda::CUDAGuard device_guard(a_int8.device());
-  cudaStream_t stream = c10::cuda::getCurrentCUDAStream(a_int8.get_device()).stream();
-
-  const int64_t m = a_int8.size(0);
-  const int64_t k = a_int8.size(1);
-  const int64_t n = w_mxfp4.size(0);
-  const int groups = static_cast<int>(k / kGroupSize);
-  auto w_int8 = at::empty({n, k}, a_int8.options().dtype(at::kChar));
-  auto output = at::empty({m, n}, a_int8.options().dtype(at::kFloat));
-
-  // Tensor-map descriptors are tied to the stable preallocated buffers and are intentionally
-  // encoded before warmup and before every CUDA Event timing interval.
-  auto tma_a = make_o1_tma_a(a_int8);
-  auto tma_b = make_o1_tma_b(w_int8);
-
+    int conversion_inner_repeats,
+    int groups,
+    cudaStream_t stream,
+    Gemm&& gemm) {
   auto convert_weight = [&]() { adangel_launch_mxfp4_to_int8(w_mxfp4, w_int8, stream); };
-  auto gemm = [&]() {
-    launch_tma_o1(
-        a_scale,
-        w_scale,
-        output,
-        static_cast<int>(m),
-        static_cast<int>(n),
-        static_cast<int>(k),
-        tma_a,
-        tma_b,
-        stream);
-  };
 
   if (mode == TimingMode::kComputeOnly || mode == TimingMode::kSteadyState) convert_weight();
   for (int iteration = 0; iteration < warmup; ++iteration) {
@@ -561,8 +941,174 @@ py::dict adangel_benchmark_o1(
   result["timings_ms"] = timings;
   result["timing_method"] =
       timing_metadata(mode_name, conversion_inner_repeats);
-  result["kernel"] = tma_metadata(groups);
+  result["kernel"] = o1_metadata(implementation, groups);
   return result;
+}
+
+template <class Config>
+py::dict benchmark_register_implementation(
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4,
+    const at::Tensor& w_scale,
+    const std::string& mode_name,
+    TimingMode mode,
+    O1Implementation implementation,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats,
+    at::Tensor& w_int8,
+    at::Tensor& output,
+    cudaStream_t stream) {
+  const int m = static_cast<int>(a_int8.size(0));
+  const int k = static_cast<int>(a_int8.size(1));
+  const int n = static_cast<int>(w_mxfp4.size(0));
+  auto tma_a = make_register_tma_a<Config>(a_int8);
+  auto tma_b = make_register_tma_b<Config>(w_int8);
+  auto gemm = [&]() {
+    launch_register_o1<Config>(
+        a_scale, w_scale, output, m, n, k, tma_a, tma_b, stream);
+  };
+  return measure_o1_implementation(
+      w_mxfp4,
+      w_int8,
+      output,
+      mode_name,
+      mode,
+      implementation,
+      warmup,
+      repeats,
+      conversion_inner_repeats,
+      k / kGroupSize,
+      stream,
+      gemm);
+}
+
+py::dict benchmark_o1_selected(
+    const std::string& implementation_name,
+    const std::string& mode_name,
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4,
+    const at::Tensor& w_scale,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats) {
+  TORCH_CHECK(warmup >= 0, "warmup must be non-negative");
+  TORCH_CHECK(repeats > 0, "repeats must be positive");
+  TORCH_CHECK(
+      conversion_inner_repeats > 1,
+      "conversion_inner_repeats must exceed one");
+  adangel_validate_cuda_inputs(a_int8, a_scale, w_mxfp4, w_scale);
+  const TimingMode mode = parse_mode(mode_name);
+  const O1Implementation implementation =
+      parse_o1_implementation(implementation_name);
+  c10::cuda::CUDAGuard device_guard(a_int8.device());
+  cudaStream_t stream =
+      c10::cuda::getCurrentCUDAStream(a_int8.get_device()).stream();
+
+  const int m = static_cast<int>(a_int8.size(0));
+  const int k = static_cast<int>(a_int8.size(1));
+  const int n = static_cast<int>(w_mxfp4.size(0));
+  auto w_int8 = at::empty({n, k}, a_int8.options().dtype(at::kChar));
+  auto output = at::empty({m, n}, a_int8.options().dtype(at::kFloat));
+
+  if (implementation == O1Implementation::kSharedPartial) {
+    auto tma_a = make_o1_tma_a(a_int8);
+    auto tma_b = make_o1_tma_b(w_int8);
+    auto gemm = [&]() {
+      launch_tma_o1(
+          a_scale, w_scale, output, m, n, k, tma_a, tma_b, stream);
+    };
+    return measure_o1_implementation(
+        w_mxfp4,
+        w_int8,
+        output,
+        mode_name,
+        mode,
+        implementation,
+        warmup,
+        repeats,
+        conversion_inner_repeats,
+        k / kGroupSize,
+        stream,
+        gemm);
+  }
+  if (implementation == O1Implementation::kRegister64x32) {
+    return benchmark_register_implementation<O1Register64Config>(
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode_name,
+        mode,
+        implementation,
+        warmup,
+        repeats,
+        conversion_inner_repeats,
+        w_int8,
+        output,
+        stream);
+  }
+  return benchmark_register_implementation<O1Register128Config>(
+      a_int8,
+      a_scale,
+      w_mxfp4,
+      w_scale,
+      mode_name,
+      mode,
+      implementation,
+      warmup,
+      repeats,
+      conversion_inner_repeats,
+      w_int8,
+      output,
+      stream);
+}
+
+}  // namespace
+
+py::dict adangel_benchmark_o1_impl(
+    const std::string& implementation,
+    const std::string& mode,
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4,
+    const at::Tensor& w_scale,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats) {
+  return benchmark_o1_selected(
+      implementation,
+      mode,
+      a_int8,
+      a_scale,
+      w_mxfp4,
+      w_scale,
+      warmup,
+      repeats,
+      conversion_inner_repeats);
+}
+
+py::dict adangel_benchmark_o1(
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4,
+    const at::Tensor& w_scale,
+    const std::string& mode,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats) {
+  return benchmark_o1_selected(
+      "production",
+      mode,
+      a_int8,
+      a_scale,
+      w_mxfp4,
+      w_scale,
+      warmup,
+      repeats,
+      conversion_inner_repeats);
 }
 
 py::dict adangel_run_o1(
@@ -594,7 +1140,7 @@ py::dict adangel_run_o1(
 }
 
 // Retained as an independent direct-PTX smoke probe. The instruction audit must additionally
-// associate TMA loads and integer MMA with the adangel_o1_tma_warp_specialized production kernel.
+// associate TMA loads and integer MMA with each exact production/candidate kernel symbol.
 extern "C" __global__ void adangel_o1_int8_mma_probe(
     const uint32_t* a, const uint32_t* b, int32_t* d) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 1200

@@ -66,6 +66,16 @@ pybind11::dict adangel_benchmark_o1(
     int warmup,
     int repeats,
     int conversion_inner_repeats);
+pybind11::dict adangel_benchmark_o1_impl(
+    const std::string& implementation,
+    const std::string& mode,
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4,
+    const at::Tensor& w_scale,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats);
 
 std::pair<bool, float> adangel_verify_o2_layout_cuda();
 bool adangel_o2_cutlass_is_implemented();

@@ -17,7 +17,12 @@ def parse_args():
     parser.add_argument("--repeats", type=int, default=10)
     parser.add_argument("--conversion-inner-repeats", type=int, default=100)
     parser.add_argument("--seed", type=int, default=2026)
-    parser.add_argument("--max-compute-ms", type=float, default=5.29)
+    parser.add_argument(
+        "--implementation",
+        choices=("production", "shared_partial", "register_64x32", "register_128x128"),
+        default="production",
+    )
+    parser.add_argument("--max-compute-ms", type=float)
     parser.add_argument("--max-cv-percent", type=float, default=3.0)
     return parser.parse_args()
 
@@ -69,8 +74,8 @@ def summarize(values):
 
 def main() -> int:
     args = parse_args()
-    if min(args.m, args.n, args.k) <= 0 or args.k % 64:
-        raise SystemExit("M/N/K must be positive and K must be divisible by 64")
+    if min(args.m, args.n, args.k) <= 0 or args.k % 32:
+        raise SystemExit("M/N/K must be positive and K must be divisible by 32")
     if args.m % 4 or args.n % 4:
         raise SystemExit("M and N must be divisible by 4 for the regular-order INT8 TC path")
     if args.warmup < 0 or args.repeats <= 0 or args.conversion_inner_repeats <= 1:
@@ -81,7 +86,6 @@ def main() -> int:
 
     import torch
 
-    from adangel.ops.dispatch import run_o1
     from adangel.ops.extension import require_variant
     from adangel.quantization.int8 import quantize_int8_per_row
     from adangel.quantization.mxfp4 import quantize_mxfp4
@@ -102,7 +106,33 @@ def main() -> int:
     )
 
     expected_output, expected_weight = semantic_reference(inputs)
-    actual = run_o1(inputs, mode="compute_only", backend="native")
+
+    def benchmark(mode, warmup, repeats):
+        if args.implementation == "production":
+            return native.benchmark(
+                "o1",
+                mode,
+                inputs.A_int8,
+                inputs.A_scale,
+                inputs.W_mxfp4,
+                inputs.W_scale,
+                warmup,
+                repeats,
+                args.conversion_inner_repeats,
+            )
+        return native._benchmark_o1_impl(
+            args.implementation,
+            mode,
+            inputs.A_int8,
+            inputs.A_scale,
+            inputs.W_mxfp4,
+            inputs.W_scale,
+            warmup,
+            repeats,
+            args.conversion_inner_repeats,
+        )
+
+    actual = benchmark("compute_only", 0, 1)
     torch.cuda.synchronize()
     torch.testing.assert_close(actual["converted_weight"], expected_weight, rtol=0, atol=0)
     if actual["converted_activation"] is not None:
@@ -113,19 +143,13 @@ def main() -> int:
     max_abs_error = float((actual["output"] - expected_output).abs().max().item())
 
     kernel = dict(actual["kernel"])
-    required_metadata = {
-        "library": "CUTLASS CuTe + CUDA WMMA",
+    common_metadata = {
         "tensor_core": True,
         "mma_family": "IMMA",
-        "mma_api": "nvcuda::wmma",
-        "mma_shape": "m16n16k16",
-        "implementation": "tma_warp_specialized",
-        "kernel_symbol": "adangel_o1_tma_warp_specialized",
         "data_movement": "TMA",
         "kernel_schedule": "cooperative_warp_specialized",
         "pipeline_stages": 3,
         "producer_warps": 1,
-        "consumer_warps": 8,
         "tma_operands": ("A_int8", "W_int8"),
         "compute_type": "S8xS8_TO_S32",
         "input_dtype": "int8",
@@ -136,7 +160,40 @@ def main() -> int:
         "global_partial_buffer": False,
         "output_stores_per_element": 1,
     }
-    for key, value in required_metadata.items():
+    selected_key = kernel.get("implementation_key")
+    if args.implementation != "production" and selected_key != args.implementation:
+        raise RuntimeError(
+            f"requested {args.implementation}, native metadata selected {selected_key}"
+        )
+    if selected_key == "shared_partial":
+        implementation_metadata = {
+            "library": "CUTLASS CuTe + CUDA WMMA",
+            "mma_api": "nvcuda::wmma",
+            "mma_shape": "m16n16k16",
+            "implementation": "tma_warp_specialized_shared_partial",
+            "kernel_symbol": "adangel_o1_shared_partial_baseline",
+            "consumer_warps": 8,
+            "partial_storage": "shared_memory",
+            "shared_partial_redistribution": True,
+        }
+    else:
+        is_64 = selected_key == "register_64x32"
+        implementation_metadata = {
+            "library": "CUTLASS CuTe + CUDA",
+            "mma_api": "cute::MMA_Atom",
+            "mma_atom": "SM80_16x8x32_S32S8S8S32_TN",
+            "mma_shape": "m16n8k32",
+            "implementation": "tma_warp_specialized_register_partial",
+            "kernel_symbol": (
+                "adangel_o1_register_partial_64x32"
+                if is_64
+                else "adangel_o1_register_partial_128x128"
+            ),
+            "consumer_warps": 8 if is_64 else 16,
+            "partial_storage": "register",
+            "shared_partial_redistribution": False,
+        }
+    for key, value in {**common_metadata, **implementation_metadata}.items():
         if kernel.get(key) != value:
             raise RuntimeError(f"kernel metadata {key}: expected {value!r}, got {kernel.get(key)!r}")
 
@@ -149,17 +206,7 @@ def main() -> int:
     modes = {}
     timing_methods = {}
     for mode, stages in expected_stages.items():
-        payload = native.benchmark(
-            "o1",
-            mode,
-            inputs.A_int8,
-            inputs.A_scale,
-            inputs.W_mxfp4,
-            inputs.W_scale,
-            args.warmup,
-            args.repeats,
-            args.conversion_inner_repeats,
-        )
+        payload = benchmark(mode, args.warmup, args.repeats)
         torch.cuda.synchronize()
         timings = dict(payload["timings_ms"])
         if set(timings) != stages:
@@ -171,7 +218,11 @@ def main() -> int:
     formal_shape = (args.m, args.n, args.k) == (4096, 4096, 4096)
     compute = modes["compute_only"]["gemm"]
     violations = []
-    if formal_shape and compute["median_ms"] > args.max_compute_ms:
+    if (
+        formal_shape
+        and args.max_compute_ms is not None
+        and compute["median_ms"] > args.max_compute_ms
+    ):
         violations.append(
             f"compute-only median {compute['median_ms']:.6f} ms exceeds "
             f"{args.max_compute_ms:.6f} ms"
@@ -184,6 +235,7 @@ def main() -> int:
 
     report = {
         "passed": not violations,
+        "requested_implementation": args.implementation,
         "shape": [args.m, args.n, args.k],
         "output_dtype": str(actual["output"].dtype),
         "max_abs_error": max_abs_error,

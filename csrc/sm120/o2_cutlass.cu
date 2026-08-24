@@ -376,6 +376,7 @@ py::dict adangel_benchmark_o2(
       conversion_inner_repeats > 1,
       "conversion_inner_repeats must exceed one");
   adangel_validate_cuda_inputs(a_int8, a_scale, w_mxfp4, w_scale);
+  TORCH_CHECK(a_int8.size(1) % 64 == 0, "O2 K must be divisible by 64");
   const TimingMode mode = parse_mode(mode_name);
   c10::cuda::CUDAGuard device_guard(a_int8.device());
   cudaStream_t stream = c10::cuda::getCurrentCUDAStream(a_int8.get_device()).stream();
