@@ -491,19 +491,25 @@ O2-A = M*K + 4*M + M*K/2 + 3*M*(K/32)
 
 O2-W 统计自然 W scale 读取与有效 SFB scale 写入。O2-A 的三个 scale 项对应 natural scale 写、natural scale 读和有效 SFA 写。未触碰的 physical-layout padding 不计入逻辑字节。
 
-### 11.3 当前 compute-only 性能量级
+### 11.3 优化后 production 的 compute-only 性能量级
 
-当前一次 24 样本正式运行的跨样本 median 摘要：
+`runs/rtx5090_o1_register_final_dynamic` 的24样本跨样本median摘要如下。该run按用户选择
+不锁频，使用动态Boost诊断口径；288条记录中90条触发普通`CV>=3%`标记，因此必须同时
+披露`tables/00_stability.csv`，不能称为“全部阶段CV通过”的锁频稳定性结果。
 
 | variant | median latency | equivalent throughput | speedup vs O0 |
 |---|---:|---:|---:|
-| O0 | `0.766688 ms` | `179.263 TFLOP/s` | `1.000x` |
-| O1 | `1.661712 ms` | `82.709 TFLOP/s` | `0.461x` |
-| O2 | `0.132768 ms` | `1035.181 TFLOP/s` | `5.775x` |
+| O0 | `0.766720 ms` | `179.256 TFLOP/s` | `1.000x` |
+| O1 register partial | `1.219312 ms` | `112.718 TFLOP/s` | `0.629x` |
+| O2 | `0.134624 ms` | `1020.910 TFLOP/s` | `5.690x` |
 
-当前 O1 约为 O0 延迟的 2.17 倍。它与实现分析一致：O1 已避免 128 次全矩阵 kernel 启动和全局 partial 落盘，但仍承担逐 K32 软件 scale、partial 共享内存中转和同步。
+相对旧`1.661712 ms` shared-partial baseline，新O1按跨样本median约加速`1.363x`；
+24样本专用A/B得到约`1.367x`，两者一致。新O1仍约为O0延迟的1.59倍，因为逐K32的
+scale获取、INT32→FP32和软件缩放/累加无法由普通INT8 MMA原生完成。
 
-这些数字是当前硬件和实现的测量结果，不是代码中的固定验收门槛。最终汇报应以选定的已验收 run 及其环境文件为准。
+同一run的cold total跨样本median为O0/O1/O2=`0.838272/1.255024/0.204144 ms`，
+steady-state total为`0.807128/1.218640/0.211200 ms`。O1相对O0的MSE median/max为
+`9.8234e-9/2.7278e-8`；O2为`0.003796/0.015460`。这些数字不是代码中的绝对延迟门槛。
 
 ## 12. O1 寄存器 partial 候选与 CTA 消融
 
