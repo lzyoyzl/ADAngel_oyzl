@@ -167,9 +167,14 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("has_tma && has_mma", audit)
         runner = (ROOT / "python/adangel/benchmark/runner.py").read_text()
         report = (ROOT / "python/adangel/analysis/report.py").read_text()
+        cli = (ROOT / "python/adangel/cli.py").read_text()
         self.assertIn('("o2", "weight_conversion"): 2 * natural_sfb', runner)
         self.assertIn("m * k + 4 * m + m * k // 2 + 3 * natural_sfa", runner)
         self.assertIn('"o2": ["weight_conversion", "activation_conversion"]', report)
+        self.assertIn('stability_policy: str = "strict"', report)
+        self.assertIn('table_dir / "00_stability.csv"', report)
+        self.assertIn('output_dir / "report_metadata.json"', report)
+        self.assertIn('"--stability-policy"', cli)
         self.assertIn(
             r"/^[[:space:]]*(\.visible[[:space:]]+)?\.entry[[:space:]]/",
             audit,

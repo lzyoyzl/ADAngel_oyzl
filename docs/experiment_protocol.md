@@ -36,6 +36,11 @@ O1 实现 A/B 在未锁频 RTX 5090 上采用 `cv_policy=diagnostic`：CV仍作�
 重试，但必须同时重跑shared baseline和`register_64x32`，不得只重跑或挑选候选一侧。
 锁频复现可改用`cv_policy=strict`，此时两边所有阶段必须同时`CV<3%`。
 
+四表四图分析默认仍为`stability_policy=strict`。用户明确选择不锁频时，可以显式采用
+`stability_policy=diagnostic`生成动态Boost诊断报告。该模式保留全部原始记录、
+`valid/stable_cv`、失败stage及最大CV，并在图标题和metadata中标记；不得把它描述为
+“所有阶段CV通过”的稳定性实验。
+
 转换组件统一采用独立批量CUDA Event计时。O0-W、O0-A、O1-W、O2-W-layout和
 O2-A在每个外层样本中连续执行
 `timing.conversion_inner_repeats=100` 次，单次延迟取批量耗时除以100。

@@ -353,6 +353,20 @@ python -m adangel analyze \
   --output reports/rtx5090_main
 ```
 
+默认分析使用 `--stability-policy strict`，任何 `CV>=3%` 的记录都会阻止制图。若明确
+选择不锁频，且动态Boost/桌面图形调度造成大量CV标记，可显式使用：
+
+```bash
+python -m adangel analyze \
+  --run runs/rtx5090_main \
+  --output reports/rtx5090_main_dynamic \
+  --stability-policy diagnostic
+```
+
+diagnostic不会删除或重写原始样本；四张主表保留`valid/stable_cv`列，额外生成
+`tables/00_stability.csv`和`report_metadata.json`，所有图片标题标明动态Boost诊断口径。
+该模式用于报告中位数与MSE，P5/P95和CV仍必须一并披露，不能称为锁频稳定性结果。
+
 输出：
 
 ```text

@@ -40,7 +40,13 @@ def _run(args) -> None:
 def _analyze(args) -> None:
     from .analysis import generate_report
 
-    print(generate_report(args.run, args.output))
+    print(
+        generate_report(
+            args.run,
+            args.output,
+            stability_policy=args.stability_policy,
+        )
+    )
 
 
 def _verify_layout(args) -> None:
@@ -78,6 +84,15 @@ def build_parser() -> argparse.ArgumentParser:
     analyze = commands.add_parser("analyze", help="generate the four tables and figures")
     analyze.add_argument("--run", required=True)
     analyze.add_argument("--output", required=True)
+    analyze.add_argument(
+        "--stability-policy",
+        choices=("strict", "diagnostic"),
+        default="strict",
+        help=(
+            "strict rejects CV-failed records; diagnostic includes them, records a warning, "
+            "and preserves stability columns in every table"
+        ),
+    )
     analyze.set_defaults(func=_analyze)
 
     verify = commands.add_parser("verify-layout", help="run the single-warp SM120 scale-layout test")
