@@ -1,12 +1,12 @@
 #include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
-#include <cute/algorithm/copy.hpp>
-#include <cute/algorithm/gemm.hpp>
-#include <cute/arch/copy_sm75.hpp>
+#include <cute/tensor.hpp>
 #include <cute/atom/copy_atom.hpp>
 #include <cute/atom/mma_atom.hpp>
 #include <cute/atom/mma_traits_sm80.hpp>
-#include <cute/tensor.hpp>
+#include <cute/arch/copy_sm75.hpp>
+#include <cute/algorithm/copy.hpp>
+#include <cute/algorithm/gemm.hpp>
 #include <cutlass/arch/barrier.h>
 #include <cutlass/cutlass.h>
 #include <cutlass/pipeline/sm90_pipeline.hpp>
