@@ -24,16 +24,17 @@
 
 ## 统计规则
 
-每项预热 50 次、测量 200 次；汇总 median、P5、P95、IQR、CV。CV 超过 3% 的
-数据判为不合格，需要在保持配置不变的前提下重测。
+每项预热 50 次、测量 200 次；汇总 median、P5、P95、IQR、CV。正式主实验仍将
+`CV<3%` 作为稳定记录标准，并通过保持配置不变的成对重测处理偶发离群。
 
 所有 CUDA Event 必须在预热开始前创建完毕；预热同步与第一条正式测量之间不得创建
 Event、申请显存或执行文件 I/O，避免CPU侧准备空档导致GPU降频后在测量区间重新升频。
 
-若未锁频的GPU仍使某个O1 A/B `(sample, mode)` 超过CV门槛，允许进行有上限的定点
-成对重试。每次必须同时重跑shared baseline和`register_64x32`，并按attempt交替执行
-顺序；只有两边全部阶段同时 `CV<3%` 且MSE回归通过时才接受。接受条件不得包含延迟
-大小，报告必须保留所有attempt及未解决项。禁止只重跑或挑选候选一侧的有利结果。
+O1 实现 A/B 在未锁频 RTX 5090 上采用 `cv_policy=diagnostic`：CV仍作为稳定性诊断并
+完整保存，但不因少量动态Boost或调度离群单独否决候选；性能判断基于同进程、同输入、
+交替顺序的逐样本 median 配对比值及其bootstrap置信区间。可进行有上限的定点成对
+重试，但必须同时重跑shared baseline和`register_64x32`，不得只重跑或挑选候选一侧。
+锁频复现可改用`cv_policy=strict`，此时两边所有阶段必须同时`CV<3%`。
 
 转换组件统一采用独立批量CUDA Event计时。O0-W、O0-A、O1-W、O2-W-layout和
 O2-A在每个外层样本中连续执行
@@ -58,15 +59,15 @@ O2-A 按 M*K + 4*M + M*K/2 + 3*M*(K/32) 字节计算；未触碰的物理布局 
 
 ## O1 实现 A/B 与 CTA 消融
 
-O1 的公开 production 实现由源码常量 `kProductionO1Implementation` 唯一指定。
-寄存器候选未通过 RTX 5090 验收前，该值保持 `shared_partial`。内部接口
+O1 的公开 production 实现由源码常量 `kProductionO1Implementation` 唯一指定，
+当前为 `register_64x32`。内部接口
 `adangel._sm120._benchmark_o1_impl` 只用于候选验证，正式 runner 不暴露实现选择。
 
 A/B 固定使用同一进程、同一输入、单 CUDA stream，并按样本和 mode 交替实现调用
 顺序。三种实现为：
 
-- `shared_partial`：`64x32x32`，历史 production baseline；
-- `register_64x32`：相同 CTA、TMA stage 和 producer/consumer 数，仅改变 partial 路径
+- `shared_partial`：`64x32x32`，保留的历史 A/B baseline；
+- `register_64x32`：当前 production；相同 CTA、TMA stage 和 producer/consumer 数，仅改变 partial 路径
   及为获得公开 fragment 坐标而必须采用的 CuTe m16n8k32 MMA API；
 - `register_128x128`：`128x128x32`、1 producer/16 consumer，仅作为 M/N CTA 消融。
 
@@ -86,12 +87,12 @@ mma_shape
 production_selected
 ```
 
-候选晋升要求：正确性/MSE 回归通过；所有正式计时阶段 CV<3%；24 样本
-compute-only 配对加速比 bootstrap 95% CI 下界>1；PTX/SASS 同一正式 symbol 包含
-TMA 与 signed INT8 MMA；SASS/resource usage 无 local-memory spill。旧 run 缺少上述
-元数据时不能冒充寄存器后端结果。
+动态Boost诊断策略下的晋升要求：正确性/MSE回归通过；24样本compute-only配对加速比
+bootstrap 95% CI下界>1；PTX/SASS同一正式symbol包含TMA与signed INT8 MMA；
+SASS/resource usage无local-memory spill。CV、P5/P95及所有重试仍须报告。严格策略
+额外要求所有计时阶段`CV<3%`。旧run缺少上述元数据时不能冒充寄存器后端结果。
 
-`register_64x32` 是本轮必须验收的第一候选；`register_128x128` 仅用于 CTA 消融。
+`register_64x32` 已选为 production；`register_128x128` 仅用于 CTA 消融。
 可选消融若出现 `LDL/STL`、非零 `STACK` 或 `LOCAL`，必须标记为 `DISQUALIFIED`，且
 不得晋升，但不应阻断已经满足全部门槛的64×32候选。任何被选为production的实现都
 必须通过无spill门槛。

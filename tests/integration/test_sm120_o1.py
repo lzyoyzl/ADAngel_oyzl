@@ -80,15 +80,16 @@ def test_o1_native_matches_semantic_reference():
     assert torch.isfinite(actual["output"]).all()
     kernel = dict(actual["kernel"])
     assert kernel["tensor_core"] is True
-    assert kernel["library"] == "CUTLASS CuTe + CUDA WMMA"
+    assert kernel["library"] == "CUTLASS CuTe + CUDA"
     assert kernel["mma_family"] == "IMMA"
-    assert kernel["mma_api"] == "nvcuda::wmma"
-    assert kernel["mma_shape"] == "m16n16k16"
-    assert kernel["implementation"] == "tma_warp_specialized_shared_partial"
-    assert kernel["implementation_key"] == "shared_partial"
-    assert kernel["kernel_symbol"] == "adangel_o1_shared_partial_baseline"
-    assert kernel["partial_storage"] == "shared_memory"
-    assert kernel["shared_partial_redistribution"] is True
+    assert kernel["mma_api"] == "cute::MMA_Atom"
+    assert kernel["mma_atom"] == "SM80_16x8x32_S32S8S8S32_TN"
+    assert kernel["mma_shape"] == "m16n8k32"
+    assert kernel["implementation"] == "tma_warp_specialized_register_partial"
+    assert kernel["implementation_key"] == "register_64x32"
+    assert kernel["kernel_symbol"] == "adangel_o1_register_partial_64x32"
+    assert kernel["partial_storage"] == "register"
+    assert kernel["shared_partial_redistribution"] is False
     assert kernel["production_selected"] is True
     assert tuple(kernel["cta_tile"]) == (64, 32, 32)
     assert kernel["data_movement"] == "TMA"
@@ -210,7 +211,7 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
     assert kernel["shared_partial_redistribution"] is False
     assert kernel["global_partial_buffer"] is False
     assert kernel["output_stores_per_element"] == 1
-    assert kernel["production_selected"] is False
+    assert kernel["production_selected"] is (implementation == "register_64x32")
 
 
 @pytest.mark.sm120

@@ -64,7 +64,7 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("producer_acquire", source)
         self.assertIn("consumer_wait", source)
         self.assertIn("consumer_release", source)
-        self.assertIn('kProductionO1Implementation[] = "shared_partial"', source)
+        self.assertIn('kProductionO1Implementation[] = "register_64x32"', source)
         self.assertIn("adangel_o1_shared_partial_baseline", source)
         self.assertIn("NamedBarrier::sync", source)
         self.assertIn("shared_storage.shared_partial", source)
@@ -109,10 +109,14 @@ class TestProjectContract(unittest.TestCase):
         )
         ab_script = (ROOT / "scripts/benchmark_o1_implementations.py").read_text()
         self.assertIn('"--max-paired-retries"', ab_script)
+        self.assertIn('"--cv-policy"', ab_script)
+        self.assertIn('choices=("diagnostic", "strict")', ab_script)
         self.assertIn('primary_pair = ("shared_partial", "register_64x32")', ab_script)
         self.assertIn("pair_stable and mse_passed", ab_script)
         self.assertIn('"attempts": retry_attempts', ab_script)
         self.assertIn('"unresolved": unresolved_retries', ab_script)
+        self.assertIn('"performance_eligible_except_spill_audit"', ab_script)
+        self.assertIn('"strict_eligible_except_spill_audit"', ab_script)
 
     def test_o2_production_backend_contract(self):
         source = (ROOT / "csrc/sm120/o2_cutlass.cu").read_text()

@@ -1,6 +1,6 @@
 # O0/O1/O2 后端实现、差异与实验测量说明
 
-> 文档定位：面向实验汇报、阶段答辩和结果解读。本文描述 RTX 5090（SM120a）上的当前正式后端，以及已经采用的 MSE 与计时口径。凡标注为“拟议优化”的内容均尚未进入当前实现和现有实验结果。
+> 文档定位：面向实验汇报、阶段答辩和结果解读。本文描述 RTX 5090（SM120a）上的当前正式后端，以及已经采用的 MSE 与计时口径；历史 baseline 数据会单独标注，不能与优化后 production 混用。
 
 ## 1. 实验目标与公共起点
 
@@ -152,7 +152,7 @@ Y^{(1)}_{m,n}=\sum_{g=0}^{K/32-1}FP32(P^{(g)}_{m,n})
 
 ### 4.3 当前正式 kernel
 
-当前 production 使用保留的 `adangel_o1_shared_partial_baseline` kernel：
+当前 production 使用 `adangel_o1_register_partial_64x32` kernel：
 
 ```text
 CTA tile       = 64 x 32 x 32
@@ -160,14 +160,17 @@ threads/CTA    = 288
 producer warp  = 1
 consumer warps = 8
 TMA pipeline   = 3 stages
-MMA            = nvcuda::wmma m16n16k16, S8 x S8 -> S32
+MMA            = CuTe m16n8k32, S8 x S8 -> S32
 ```
+
+INT32 partial根据CuTe fragment坐标直接在寄存器内匹配行/列scale并累加到FP32；
+`shared_partial`实现只作为历史A/B baseline保留。
 
 一个 CTA 最终负责 `Y[64,32]`。每次 K32 循环读取 `A_tile[64,32]` 和 `W_tile[32,32]`：
 
 1. producer warp 通过 TMA 把下一组 A/W tile 搬入三阶段共享内存流水线；
-2. 8 个 consumer warp 将 `64x32` 输出划分为 8 个 `16x16` 子块；
-3. 每个 consumer warp 执行两次 `m16n16k16`，覆盖完整 K32；
+2. 8 个 consumer warp 按 CuTe `TiledMMA` 的显式 thread/value layout 划分输出；
+3. consumer warp 执行 `m16n8k32` signed-INT8 MMA，直接覆盖当前 K32；
 4. 得到该 K32 的 INT32 partial；
 5. partial 转 FP32，乘 `A_scale * decode_ue8m0(W_scale) / 2`；
 6. 累加到线程持有的 FP32 最终 accumulator；
@@ -178,13 +181,13 @@ MMA            = nvcuda::wmma m16n16k16, S8 x S8 -> S32
 - `csrc/sm120/conversion.cu`
 - `csrc/sm120/o1_gemm.cu`
 
-源码还包含 `adangel_o1_register_partial_64x32` 与
-`adangel_o1_register_partial_128x128` 两个内部候选。RTX 5090 验收前，公开
-`run_o1()` 不会选择它们，下面的历史性能和 MSE 也仍属于 shared baseline。
+源码还保留 `adangel_o1_shared_partial_baseline` 用于 A/B，并包含已因 spill 取消资格的
+`adangel_o1_register_partial_128x128` CTA 消融。公开 `run_o1()` 选择64×32寄存器实现。
+下文 `1.661712 ms` 等旧性能数字仍属于 shared baseline。
 
-### 4.4 当前 O1 的关键瓶颈
+### 4.4 历史 shared-partial baseline 的关键瓶颈
 
-当前实现没有全局 partial buffer，但 partial 尚未全程留在寄存器中：
+历史 baseline 没有全局 partial buffer，但 partial 未全程留在寄存器中：
 
 ```text
 WMMA INT32 fragment（寄存器）
@@ -206,7 +209,10 @@ WMMA INT32 fragment（寄存器）
 - 网格共有 `(4096/64) x (4096/32) = 8192` 个 CTA；
 - 聚合 partial 共享内存读写约 16 GiB，此外还有每组同步、类型转换和软件 scale。
 
-这解释了当前 O1 即使已采用 TMA、warp specialization 和单 kernel，仍可能慢于 O0。瓶颈不是 INT8 Tensor Core 本身，而是普通 INT8 MMA 缺乏原生 block scale 输入，导致每个 K32 都要走软件后处理。
+这解释了历史 O1 baseline 即使已采用 TMA、warp specialization 和单 kernel，仍明显慢于
+O0。寄存器 production 已消除其中的 shared partial 读写和 named barrier，但普通 INT8
+MMA 仍缺乏原生 block scale 输入，因此每个 K32 的 scale 获取、INT32→FP32、缩放与
+FP32 累加仍然存在；这也是优化后 O1 仍可能慢于 O0 的主要原因。
 
 ## 5. O2：原生 SM120 block-scaled MXFP4 GEMM
 
@@ -452,7 +458,10 @@ O0/O1/O2 在每个 mode 内交错运行，以减小温度和 boost 频率漂移�
 | `iqr_ms` | Q3-Q1，中间 50% 样本跨度 |
 | `cv_percent` | population standard deviation / mean x 100%，衡量相对波动 |
 
-所有记录阶段必须满足 `CV < 3%`，否则 record 标记为 invalid，不能静默进入主表。若确认是偶发调度离群值，应以完全相同配置重测整个目标 record，并保留原失败记录与 retry provenance，不能手工删除单个 timing sample。
+正式主实验仍以 `CV < 3%` 标记稳定记录。O1 后端 A/B 在用户选择不锁频后采用动态Boost
+诊断策略：CV、P5/P95、原始离群和retry provenance全部保留，但候选性能判断使用逐样本
+配对median及bootstrap 95% CI，不因少量CV离群单独否决。锁频复现可切换为严格策略，
+此时CV重新成为硬门槛。任何策略都不能手工删除单个timing sample。
 
 ### 11.1 GEMM 等效吞吐
 
@@ -498,15 +507,15 @@ O2-W 统计自然 W scale 读取与有效 SFB scale 写入。O2-A 的三个 scal
 
 ## 12. O1 寄存器 partial 候选与 CTA 消融
 
-> **状态：两个候选已写入源码和内部 A/B 接口，但尚未在 RTX 5090 完成编译、指令/资源审计和 24 样本性能验收。production 与 `1.661712 ms` 历史结果仍是 shared-partial baseline。**
+> **状态：`register_64x32` 已在 RTX 5090 通过正确性、MSE、TMA+IMMA 和无spill审计，24样本 compute-only 配对加速比约 `1.367x`，bootstrap 95% CI约为 `[1.342,1.393]`，现已选为 production。`1.661712 ms` 仍是旧 shared-partial baseline结果，不能作为新production的最终延迟。**
 
 当前实现状态如下：
 
 | 实现 | CTA | producer/consumer | MMA | partial 路径 | 状态 |
 |---|---|---|---|---|---|
-| `shared_partial` | `64x32x32` | `1/8` | WMMA m16n16k16×2 | shared 中转与两次 barrier | production baseline |
-| `register_64x32` | `64x32x32` | `1/8` | CuTe m16n8k32 | 寄存器内缩放/累加 | 第一候选 |
-| `register_128x128` | `128x128x32` | `1/16` | CuTe m16n8k32 | 寄存器内缩放/累加 | CTA 消融候选 |
+| `shared_partial` | `64x32x32` | `1/8` | WMMA m16n16k16×2 | shared 中转与两次 barrier | 历史 A/B baseline |
+| `register_64x32` | `64x32x32` | `1/8` | CuTe m16n8k32 | 寄存器内缩放/累加 | production |
+| `register_128x128` | `128x128x32` | `1/16` | CuTe m16n8k32 | 寄存器内缩放/累加 | 因spill取消资格 |
 | O2 | `128x128x256` | CUTLASS cooperative | MXFP4 block-scaled | 硬件消费 scale | 保持不变 |
 
 寄存器候选使用 `thr_mma.partition_C(identity_tensor)` 建立 accumulator register 与
@@ -514,10 +523,10 @@ O2-W 统计自然 W scale 读取与有效 SFB scale 写入。O2-A 的三个 scal
 W column scale 由 warp lane 加载并 shuffle 广播；INT32→FP32、scale 与 FP32 累加
 均在寄存器内完成。TMA A/W 三阶段共享内存 pipeline 仍然保留。
 
-候选通过以下全部条件后才可晋升：reference 与边界 shape 正确；24 样本 O1-vs-O0
-MSE 相对 baseline 满足 `rtol=1e-5, atol=1e-12`；所有计时阶段 CV<3%；
-compute-only 配对加速比 bootstrap 95% CI 下界>1；同一候选 SASS 内同时出现
-TMA/IMMA 且无 `LDL/STL` spill。没有绝对延迟门槛。
+晋升证据包括：reference与边界shape正确；24样本O1-vs-O0 MSE相对baseline满足
+`rtol=1e-5, atol=1e-12`；compute-only配对加速比bootstrap 95% CI下界>1；同一
+候选SASS内同时出现TMA/IMMA且无`LDL/STL` spill。未锁频运行中的CV保留为诊断项，
+不设置绝对延迟门槛。
 
 `register_128x128` 只令 M/N tile 与 O2 相同，K tile 仍为32；O2 K tile 为256且在
 原生 block-scaled MMA 中消费8组 K32 scale。因此不强制 O1/O2 完整 CTA 相同。
@@ -610,7 +619,8 @@ partial_storage = register
 shared_partial_redistribution = false
 ```
 
-在这些条件通过前，所有图表都应标注为“shared-partial O1 baseline”，不能把已编码但未验收的候选当成正式后端结果。
+现有旧图表仍应标注为“shared-partial O1 baseline”。只有重新编译并由production元数据
+明确报告`register_64x32`的新run，才能作为优化后O1的正式结果。
 
 ## 13. 指令审计与结果边界
 

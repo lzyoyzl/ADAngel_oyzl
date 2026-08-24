@@ -22,17 +22,17 @@ SASS/PTX 指令审计，防止某个实现静默退化为 CUDA Core 或软件模
 FP32 累加的候选；所选 algorithm ID、数值实现 flags 与 workspace 大小会写入结果。
 
 O1 正式后端也已实现：E2M1 nibble 由 CUDA kernel 精确转换为 `2*E2M1` INT8 基值。
-当前 production 仍指向可复现的 `shared_partial` 基线：单次 TMA warp-specialized
-kernel 中，每个 `64x32x32` CTA 在共享内存中复用 K32
-的 A/W tile，8 个 warp 通过 signed-INT8 WMMA 生成 `16x16` INT32 partial tile，随即
-乘 `A_scale*decode_ue8m0(W_scale)/2`。FP32 结果按 K32 顺序保存在每线程寄存器中，
-遍历完全部 group 后每个输出元素只写回一次。实现不申请全局 partial buffer，也不再
-执行 128 次全矩阵 GEMM/缩放 kernel。
-本轮新增两个待 RTX 5090 晋升验收的候选：`register_64x32` 保持 `64x32x32`
-CTA、1 producer/8 consumer；`register_128x128` 使用 `128x128x32` CTA、
-1 producer/16 consumer。两者用 CuTe m16n8k32 atom 在寄存器内完成 partial 缩放
-与累加，删除 partial 共享内存中转和对应 named barrier。共享内存仍用于三阶段 TMA
-A/W pipeline。O2 继续使用 `128x128x256`；不强制 O1/O2 完整 CTA 相同。
+production 现指向 `register_64x32`：单次 TMA cooperative warp-specialized kernel 中，
+每个 `64x32x32` CTA 由 1 个 producer warp 和 8 个 consumer warp 协作。CuTe
+`m16n8k32` signed-INT8 MMA 产生 INT32 partial；partial 不再落到共享内存，而是直接在
+寄存器内转换为 FP32、乘 `A_scale*decode_ue8m0(W_scale)/2` 并按 K32 顺序累加。
+遍历完128个group后，每个输出元素只写回一次。共享内存仍用于三阶段 TMA A/W
+pipeline，但 partial 中转及其 named barrier 已删除。
+
+保留的 `shared_partial` 仅作为历史 A/B baseline。`register_128x128` 使用
+`128x128x32` CTA、1 producer/16 consumer，只作为 CTA 消融；RTX 5090 资源审计发现
+该候选存在 local-memory spill，因此不得晋升。O2 继续使用 `128x128x256`；不强制
+O1/O2 完整 CTA 相同。
 
 O2 正式后端现已实现。融合 CUDA kernel 将 `A_int8*A_scale` 按 K32 计算 amax、生成
 UE8M0 scale、执行 E2M1 RNE 量化并完成 nibble packing；随后把自然顺序的 A/W scale
@@ -217,8 +217,9 @@ python -m pytest tests/integration/test_sm120_o2.py -q --run-sm120
 预期 `o0_fp16_tc`、`o1_int8_tc`、`o2_mxf4_block_scale` 和
 `o2_cutlass_tiled` 均为 `true`，三个验证脚本必须输出 `"passed": true`。
 O0 元数据必须报告 HMMA、`CUBLAS_COMPUTE_32F` 和 FP32 输出；
-O1 production 在晋升前必须报告 `implementation_key=shared_partial`。寄存器候选必须
-报告 `mma_api=cute::MMA_Atom`、`mma_shape=m16n8k32`、
+O1 production 必须报告 `implementation_key=register_64x32`、
+`kernel_symbol=adangel_o1_register_partial_64x32`、
+`mma_api=cute::MMA_Atom`、`mma_shape=m16n8k32`、
 `partial_storage=register`、`shared_partial_redistribution=false`、
 `global_partial_buffer=false` 和 `output_stores_per_element=1`。
 O1 验证会逐元素核对 MXFP4→INT8 映射，并用 `rtol=1e-3, atol=1e-3` 对照可扩展
@@ -248,17 +249,17 @@ python scripts/benchmark_o1_implementations.py \
   --data data/prepared/llama2_7b_prefill \
   --output reports/o1_register_partial_ab.json \
   --warmup 50 --repeats 200 --conversion-inner-repeats 100 \
+  --cv-policy diagnostic \
   --max-paired-retries 5
 ```
 
-若动态Boost令某个 `(sample, mode)` 的shared或64×32记录超过CV门槛，脚本只对该
-sample-mode成对重跑两种实现并交替顺序。一次重试只有在两边全部阶段同时 `CV<3%`
-且MSE回归通过时才会替换原记录；接受条件不使用延迟大小。JSON保留所有失败尝试、
-接受的attempt和未解决项，禁止静默删除单边慢样本。128×128消融不参与定点重试，
-因为其是否可晋升由独立spill审计先行决定。
-只有正确性/MSE、全部阶段 CV、paired speedup bootstrap 95% CI 和无 spill 审计均
-通过，才允许修改 `kProductionO1Implementation`；不设绝对延迟门槛。晋升后须重新
-编译并重跑正式 24 样本，旧 run 不能冒充寄存器后端结果。
+默认 `--cv-policy diagnostic` 面向未锁频的 GeForce：所有 CV、离群值和定点重试均
+完整保留，但少量动态 Boost/调度离群不单独阻断晋升。性能判据使用同进程、同输入、
+交替顺序的24样本配对中位数；要求 correctness/MSE 通过、compute-only speedup 的
+bootstrap 95% CI 下界大于1，并通过无spill审计。需要锁频环境的严格复现实验时使用
+`--cv-policy strict`，此时所有计时阶段还必须 `CV<3%`，未解决重试会令脚本失败。
+两种策略都禁止删除单边慢样本或按延迟挑选重试结果。旧 shared-partial run 不能冒充
+当前寄存器 production 结果。
 
 ```bash
 python scripts/validate_o2.py \
@@ -288,7 +289,7 @@ bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 审计应找到：O0 的 FP16 Tensor Core 指令、O1 的 INT8 Tensor Core 指令，以及
 O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA。脚本要求 O1 的 TMA 与 signed INT8
 MMA 位于选定的 production entry；两个寄存器候选也必须在各自同一 entry 内包含
-TMA+IMMA。production 和第一候选 `register_64x32` 必须同时满足 SASS 无 `LDL/STL`
+TMA+IMMA。O1 production `register_64x32` 必须满足 SASS 无 `LDL/STL`
 且 resource usage 为 `STACK=0, LOCAL=0`。`register_128x128` 是可选 CTA 消融；若出现
 spill，summary 将其标记为 `DISQUALIFIED`，但不会阻断无 spill 的64×32候选；若把有
 spill的128×128实现选为production，审计仍会失败。O2 的

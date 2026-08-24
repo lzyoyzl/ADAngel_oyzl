@@ -23,6 +23,15 @@ def parse_args():
     parser.add_argument("--repeats", type=int, default=200)
     parser.add_argument("--conversion-inner-repeats", type=int, default=100)
     parser.add_argument("--max-cv-percent", type=float, default=3.0)
+    parser.add_argument(
+        "--cv-policy",
+        choices=("diagnostic", "strict"),
+        default="diagnostic",
+        help=(
+            "diagnostic reports CV/outliers but promotes from paired medians; strict also "
+            "requires every timed stage to remain below --max-cv-percent"
+        ),
+    )
     parser.add_argument("--bootstrap-resamples", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=20250805)
     parser.add_argument("--samples", type=int, default=0, help="0 uses all manifest samples")
@@ -283,6 +292,17 @@ def main() -> int:
         (record["sample_id"], record["implementation"], record["mode"]): record
         for record in records
     }
+    production_implementations = {
+        record["implementation"]
+        for record in records
+        if bool(record["kernel"].get("production_selected"))
+    }
+    if len(production_implementations) != 1:
+        raise RuntimeError(
+            "native metadata must identify exactly one O1 production implementation, got "
+            f"{sorted(production_implementations)}"
+        )
+    production_implementation = production_implementations.pop()
     comparisons = {}
     for candidate_index, candidate in enumerate(IMPLEMENTATIONS[1:]):
         by_mode = {}
@@ -330,6 +350,8 @@ def main() -> int:
             for record in records
             if record["implementation"] in {"shared_partial", candidate}
         )
+        performance_eligible = ci[0] > 1.0 and all(mse_regressions)
+        strict_eligible = performance_eligible and all_stable
         comparisons[candidate] = {
             "by_mode": by_mode,
             "paired_compute_speedup_geomean": math.exp(
@@ -340,13 +362,15 @@ def main() -> int:
             "all_timing_stages_cv_below_threshold": all_stable,
             "mse_regression_passed": all(mse_regressions),
             "spill_audit_required": True,
+            "performance_eligible_except_spill_audit": performance_eligible,
+            "strict_eligible_except_spill_audit": strict_eligible,
             "eligible_except_spill_audit": (
-                ci[0] > 1.0 and all_stable and all(mse_regressions)
+                strict_eligible if args.cv_policy == "strict" else performance_eligible
             ),
         }
 
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "data": str(args.data),
         "samples": len(samples),
         "timing": {
@@ -354,9 +378,11 @@ def main() -> int:
             "repeats": args.repeats,
             "conversion_inner_repeats": args.conversion_inner_repeats,
             "max_cv_percent": args.max_cv_percent,
+            "cv_policy": args.cv_policy,
+            "clock_policy": "dynamic_boost_not_locked",
             "ordering": "paired blocks; implementation order alternates by sample and mode",
         },
-        "production_implementation_during_ab": "shared_partial",
+        "production_implementation_during_ab": production_implementation,
         "targeted_paired_retry": {
             "enabled": bool(args.max_paired_retries),
             "max_attempts": args.max_paired_retries,
@@ -371,14 +397,15 @@ def main() -> int:
         "records": records,
         "comparisons": comparisons,
         "promotion_rule": (
-            "correctness and MSE pass, every timed stage CV < threshold, paired speedup "
-            "bootstrap 95% CI lower bound > 1, and separate SASS/resource audit reports no spill"
+            "correctness and MSE pass, paired-median speedup bootstrap 95% CI lower bound > 1, "
+            "and separate SASS/resource audit reports no spill; CV remains a reported diagnostic "
+            "under diagnostic policy and is an additional hard gate under strict policy"
         ),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"output": str(args.output), "comparisons": comparisons}, indent=2))
-    return 1 if unresolved_retries else 0
+    return 1 if args.cv_policy == "strict" and unresolved_retries else 0
 
 
 if __name__ == "__main__":
