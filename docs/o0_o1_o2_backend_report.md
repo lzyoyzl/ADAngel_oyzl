@@ -109,7 +109,9 @@ O0 不是在本轮计时区间内“先量化再反量化”。公共 INT8/MXFP4
 
 O0 在 GEMM 前完成所有 scale。GEMM 本身是规则的单次 `4096 x 4096 x 4096` FP16 GEMM，cuBLASLt 可以使用成熟的分块、流水线、数据复用和 Tensor Core 调度策略。GEMM 主循环没有逐 K32 scale 解码、INT32-to-FP32 转换或软件 scale 累加。
 
-O0 的代价是生成完整 FP16 A/W，转换输出体积较大；但在当前大矩阵上，规则 GEMM 的高效率仍使其明显快于当前 O1。
+O0 的代价是生成完整 FP16 A/W，转换输出体积较大。它曾明显快于历史 O1 baseline；
+当前 O1 经寄存器 partial、K64 pipeline、scale 共享和 CTA 消融后已反超 O0，但 O0
+仍是结构最规则、最成熟的基线。
 
 ## 4. O1：INT8 MMA 与逐 K32 软件 scale
 
@@ -530,14 +532,15 @@ production切换后已经重新生成完整288条记录；其正式诊断结果�
 
 | 口径 | O0 | 当前 O1 | O2 | O1相对O0 |
 |---|---:|---:|---:|---:|
-| compute-only GEMM | `0.768048 ms` | `0.629416 ms` | `0.136864 ms` | `1.220x` |
+| compute-only GEMM | `0.768048 ms` | `0.629416 ms` | `0.136864 ms` | `1.220x`（聚合median之比） |
 | cold total | `0.838392 ms` | `0.667272 ms` | `0.197880 ms` | `1.256x` |
 | steady-state total | `0.807112 ms` | `0.623248 ms` | `0.208248 ms` | `1.295x` |
 
 compute-only等效吞吐的跨样本median为O0 `178.946 TFLOP/s`、O1
 `218.359 TFLOP/s`、O2 `1004.201 TFLOP/s`。O1相对O0的MSE median为
 `9.8234e-9`、max为`2.7278e-8`；O2相对O0的MSE median为`0.0037960`、
-max为`0.0154600`。
+max为`0.0154600`。逐样本O1/O0 speedup的median为`1.2186x`；它与聚合median
+相除得到的`1.220x`口径接近，但两者定义不同。
 
 该run在共享GPU上执行，288条记录中有49条因某个stage的`CV>=3%`被标为不稳定；
 运行期间观察到并发外部Python GPU workload，因此这些记录以调度/资源竞争离群解释。
