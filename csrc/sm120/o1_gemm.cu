@@ -144,6 +144,43 @@ struct O1Register64K64Config {
       cute::Tile<cute::_64, cute::_32, cute::_32>>;
 };
 
+// Same K64 pipeline as O1Register64K64Config, but doubles the CTA M extent.
+// Sixteen consumer warps keep the per-thread accumulator footprint unchanged
+// while each CTA reuses one W/scale tile for twice as many output rows.
+struct O1Register128x32K64Config {
+  static constexpr int kTileM = 128;
+  static constexpr int kTileN = 32;
+  static constexpr int kProducerWarps = 1;
+  static constexpr int kConsumerWarps = 16;
+  static constexpr int kProducerThreads = 32;
+  static constexpr int kConsumerThreads = 512;
+  static constexpr int kThreadsPerBlock = 544;
+  static constexpr int kGroupsPerStage = 2;
+  static constexpr int kAGroupElements = 128 * kGroupSize;
+  static constexpr int kBGroupElements = 32 * kGroupSize;
+  static constexpr int kAStageElements = kGroupsPerStage * kAGroupElements;
+  static constexpr int kBStageElements = kGroupsPerStage * kBGroupElements;
+  using Pipeline = cutlass::PipelineTmaAsync<kPipelineStages>;
+  using SmemLayoutA = decltype(cute::make_layout(
+      cute::make_shape(cute::_128{}, cute::_32{}, cute::_2{}, cute::_3{}),
+      cute::make_stride(
+          cute::_32{},
+          cute::_1{},
+          cute::Int<128 * 32>{},
+          cute::Int<2 * 128 * 32>{})));
+  using SmemLayoutB = decltype(cute::make_layout(
+      cute::make_shape(cute::_32{}, cute::_32{}, cute::_2{}, cute::_3{}),
+      cute::make_stride(
+          cute::_32{},
+          cute::_1{},
+          cute::Int<32 * 32>{},
+          cute::Int<2 * 32 * 32>{})));
+  using TiledMma = cute::TiledMMA<
+      cute::MMA_Atom<cute::SM80_16x8x32_S32S8S8S32_TN>,
+      cute::Layout<cute::Shape<cute::_8, cute::_2, cute::_1>>,
+      cute::Tile<cute::_128, cute::_32, cute::_32>>;
+};
+
 template <class Config>
 struct alignas(128) O1RegisterSharedStorage {
   alignas(128) uint8_t a[kPipelineStages * Config::kAStageElements];
@@ -168,11 +205,13 @@ enum class O1Implementation {
   kRegister64x32,
   kRegister64x32ScaleShared,
   kRegister64x32K64ScaleShared,
+  kRegister128x32K64ScaleShared,
   kRegister128x128,
 };
 
 static_assert(O1Register64Config::kThreadsPerBlock == 288);
 static_assert(O1Register64K64Config::kThreadsPerBlock == 288);
+static_assert(O1Register128x32K64Config::kThreadsPerBlock == 544);
 static_assert(O1Register128Config::kThreadsPerBlock == 544);
 
 void check_cuda(cudaError_t status, const char* operation) {
@@ -688,7 +727,7 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
 // K64 pipeline candidate: one producer/consumer pipeline state owns two adjacent
 // K32 groups.  The two INT8 MMAs and their UE8M0 scale applications remain
 // independent, so the public K32 block-scale semantics are unchanged.
-template <class TmaA, class TmaB>
+template <class Config, class TmaA, class TmaB>
 __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
     TmaA const& tma_a,
     TmaB const& tma_b,
@@ -699,8 +738,7 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
     int n,
     int k,
     int groups,
-    O1RegisterScaleSharedStorage<O1Register64K64Config>& shared_storage) {
-  using Config = O1Register64K64Config;
+    O1RegisterScaleSharedStorage<Config>& shared_storage) {
   auto mA = tma_a.get_tma_tensor(cute::make_shape(m, k));
   auto mB = tma_b.get_tma_tensor(cute::make_shape(n, k));
   auto cta_tiler = cute::make_shape(
@@ -765,17 +803,20 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
       for (int subgroup = 0; subgroup < Config::kGroupsPerStage; ++subgroup) {
         const int group =
             pipeline_group * Config::kGroupsPerStage + subgroup;
-        const int local_column = lane;
-        const int global_column =
-            static_cast<int>(blockIdx.x) * Config::kTileN + local_column;
-        const float decoded = group < groups && global_column < n
-            ? adangel::decode_ue8m0(
-                  w_scale[global_column * groups + group])
-            : 0.0f;
-        shared_storage.column_scale_factor[
-            (write_stage * Config::kGroupsPerStage + subgroup) *
-                Config::kTileN +
-            local_column] = __fmul_rn(decoded, 0.5f);
+        for (int local_column = lane;
+             local_column < Config::kTileN;
+             local_column += 32) {
+          const int global_column =
+              static_cast<int>(blockIdx.x) * Config::kTileN + local_column;
+          const float decoded = group < groups && global_column < n
+              ? adangel::decode_ue8m0(
+                    w_scale[global_column * groups + group])
+              : 0.0f;
+          shared_storage.column_scale_factor[
+              (write_stage * Config::kGroupsPerStage + subgroup) *
+                  Config::kTileN +
+              local_column] = __fmul_rn(decoded, 0.5f);
+        }
       }
       __threadfence_block();
       __syncwarp();
@@ -855,15 +896,25 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
       cute::clear(tCrPartial);
       cute::gemm(tiled_mma, tCrA, tCrB, tCrPartial);
 
-      const float warp_column_scale =
-          shared_storage.column_scale_factor[
-              (read_stage * Config::kGroupsPerStage + subgroup) *
-                  Config::kTileN +
-              lane];
+      float warp_column_scales[Config::kTileN / 32];
+#pragma unroll
+      for (int round = 0; round < Config::kTileN / 32; ++round) {
+        const int local_column = round * 32 + lane;
+        warp_column_scales[round] =
+            shared_storage.column_scale_factor[
+                (read_stage * Config::kGroupsPerStage + subgroup) *
+                    Config::kTileN +
+                local_column];
+      }
       for (int item = 0; item < cute::size(tCrPartial); ++item) {
         const int local_column = cute::get<1>(tCcC(item));
-        const float column_scale = __shfl_sync(
-            0xffffffffu, warp_column_scale, local_column & 31);
+        float column_scale = 0.0f;
+#pragma unroll
+        for (int round = 0; round < Config::kTileN / 32; ++round) {
+          const float candidate = __shfl_sync(
+              0xffffffffu, warp_column_scales[round], local_column & 31);
+          if ((local_column >> 5) == round) column_scale = candidate;
+        }
         const float scale = __fmul_rn(tCrRowScale(item), column_scale);
         tCrAccumulator(item) = __fmaf_rn(
             static_cast<float>(tCrPartial(item)),
@@ -950,7 +1001,27 @@ void adangel_o1_register_partial_64x32_k64_scale_shared(
   auto& shared_storage =
       *reinterpret_cast<O1RegisterScaleSharedStorage<
           O1Register64K64Config>*>(shared_bytes);
-  adangel_o1_register_partial_k64_body(
+  adangel_o1_register_partial_k64_body<O1Register64K64Config>(
+      tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
+}
+
+template <class TmaA, class TmaB>
+__global__ __launch_bounds__(O1Register128x32K64Config::kThreadsPerBlock)
+void adangel_o1_register_partial_128x32_k64_scale_shared(
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups) {
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& shared_storage =
+      *reinterpret_cast<O1RegisterScaleSharedStorage<
+          O1Register128x32K64Config>*>(shared_bytes);
+  adangel_o1_register_partial_k64_body<O1Register128x32K64Config>(
       tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
 }
 
@@ -1114,6 +1185,19 @@ void launch_register_o1(
         n,
         k,
         groups);
+  } else if constexpr (
+      std::is_same_v<Config, O1Register128x32K64Config>) {
+    adangel_o1_register_partial_128x32_k64_scale_shared<<<
+        grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+        tma_a,
+        tma_b,
+        a_scale.data_ptr<float>(),
+        w_scale.data_ptr<uint8_t>(),
+        output.data_ptr<float>(),
+        m,
+        n,
+        k,
+        groups);
   } else if constexpr (std::is_same_v<Config, O1Register64Config>) {
     if constexpr (kShareColumnScale) {
       adangel_o1_register_partial_64x32_scale_shared<<<
@@ -1168,6 +1252,9 @@ O1Implementation parse_o1_implementation(const std::string& implementation) {
   if (selected == "register_64x32_k64_scale_shared") {
     return O1Implementation::kRegister64x32K64ScaleShared;
   }
+  if (selected == "register_128x32_k64_scale_shared") {
+    return O1Implementation::kRegister128x32K64ScaleShared;
+  }
   if (selected == "register_128x128") return O1Implementation::kRegister128x128;
   TORCH_CHECK(false, "unknown O1 implementation: ", implementation);
   return O1Implementation::kSharedPartial;
@@ -1212,11 +1299,15 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
     result["shared_partial_redistribution"] = true;
   } else {
     const bool is_128 = implementation == O1Implementation::kRegister128x128;
+    const bool is_128x32_k64 =
+        implementation == O1Implementation::kRegister128x32K64ScaleShared;
     const bool scale_shared =
         implementation == O1Implementation::kRegister64x32ScaleShared ||
-        implementation == O1Implementation::kRegister64x32K64ScaleShared;
+        implementation == O1Implementation::kRegister64x32K64ScaleShared ||
+        is_128x32_k64;
     const bool pipeline_k64 =
-        implementation == O1Implementation::kRegister64x32K64ScaleShared;
+        implementation == O1Implementation::kRegister64x32K64ScaleShared ||
+        is_128x32_k64;
     result["library"] = "CUTLASS CuTe + CUDA";
     result["mma_api"] = "cute::MMA_Atom";
     result["mma_atom"] = "SM80_16x8x32_S32S8S8S32_TN";
@@ -1225,23 +1316,29 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
         scale_shared
         ? "tma_warp_specialized_register_partial_scale_shared"
         : "tma_warp_specialized_register_partial";
-    result["implementation_key"] = pipeline_k64
+    result["implementation_key"] = is_128x32_k64
+        ? "register_128x32_k64_scale_shared"
+        : (pipeline_k64
         ? "register_64x32_k64_scale_shared"
         : (scale_shared
         ? "register_64x32_scale_shared"
-        : (is_128 ? "register_128x128" : "register_64x32"));
-    result["kernel_symbol"] = pipeline_k64
+        : (is_128 ? "register_128x128" : "register_64x32")));
+    result["kernel_symbol"] = is_128x32_k64
+        ? "adangel_o1_register_partial_128x32_k64_scale_shared"
+        : (pipeline_k64
         ? "adangel_o1_register_partial_64x32_k64_scale_shared"
         : (scale_shared
         ? "adangel_o1_register_partial_64x32_scale_shared"
         : (is_128
               ? "adangel_o1_register_partial_128x128"
-              : "adangel_o1_register_partial_64x32"));
+              : "adangel_o1_register_partial_64x32")));
     result["producer_warps"] = 1;
-    result["consumer_warps"] = is_128 ? 16 : 8;
+    result["consumer_warps"] = (is_128 || is_128x32_k64) ? 16 : 8;
     result["cta_tile"] = is_128
         ? py::make_tuple(128, 128, kGroupSize)
-        : py::make_tuple(64, 32, pipeline_k64 ? 64 : kGroupSize);
+        : (is_128x32_k64
+              ? py::make_tuple(128, 32, 64)
+              : py::make_tuple(64, 32, pipeline_k64 ? 64 : kGroupSize));
     result["partial_storage"] = "register";
     result["shared_partial_redistribution"] = false;
     result["column_scale_load_scope"] =
@@ -1496,6 +1593,22 @@ py::dict benchmark_o1_selected(
   }
   if (implementation == O1Implementation::kRegister64x32K64ScaleShared) {
     return benchmark_register_implementation<O1Register64K64Config, true>(
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode_name,
+        mode,
+        implementation,
+        warmup,
+        repeats,
+        conversion_inner_repeats,
+        w_int8,
+        output,
+        stream);
+  }
+  if (implementation == O1Implementation::kRegister128x32K64ScaleShared) {
+    return benchmark_register_implementation<O1Register128x32K64Config, true>(
         a_int8,
         a_scale,
         w_mxfp4,
