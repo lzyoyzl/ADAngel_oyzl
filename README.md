@@ -22,14 +22,17 @@ SASS/PTX 指令审计，防止某个实现静默退化为 CUDA Core 或软件模
 FP32 累加的候选；所选 algorithm ID、数值实现 flags 与 workspace 大小会写入结果。
 
 O1 正式后端也已实现：E2M1 nibble 由 CUDA kernel 精确转换为 `2*E2M1` INT8 基值。
-production 现指向 `register_64x32`：单次 TMA cooperative warp-specialized kernel 中，
-每个 `64x32x32` CTA 由 1 个 producer warp 和 8 个 consumer warp 协作。CuTe
-`m16n8k32` signed-INT8 MMA 产生 INT32 partial；partial 不再落到共享内存，而是直接在
-寄存器内转换为 FP32、乘 `A_scale*decode_ue8m0(W_scale)/2` 并按 K32 顺序累加。
-遍历完128个group后，每个输出元素只写回一次。共享内存仍用于三阶段 TMA A/W
-pipeline，但 partial 中转及其 named barrier 已删除。
+production 现指向 `register_128x64_k64_scale_shared_row_dedup`：单次 TMA
+cooperative warp-specialized kernel 中，每个 `128x64x64` CTA 由 1 个 producer warp
+和 16 个 consumer warp 协作。三阶段 pipeline 每个 stage 搬运两个相邻 K32 group，
+但两次 CuTe `m16n8k32` signed-INT8 MMA、scale 应用与 FP32 FMA 仍按 K32 独立且保持
+group 0→127 的数值顺序。producer 对每个 CTA/column/group 只解码一次 W scale 并放入
+stage-local shared memory；每线程只加载其 fragment 所需的两个唯一 row A scale。
+INT32 partial 始终留在寄存器，最终每个输出元素只写回一次。
 
-保留的 `shared_partial` 仅作为历史 A/B baseline。`register_128x128` 使用
+共享内存仍用于三阶段 TMA A/W pipeline 和 CTA 内 W scale 分发，不再用于 partial
+中转。保留的 `shared_partial` 与 `register_64x32` 分别作为历史 baseline 和上一版
+production。`register_128x128` 使用
 `128x128x32` CTA、1 producer/16 consumer，只作为 CTA 消融；RTX 5090 资源审计发现
 该候选存在 local-memory spill，因此不得晋升。O2 继续使用 `128x128x256`；不强制
 O1/O2 完整 CTA 相同。
@@ -217,11 +220,14 @@ python -m pytest tests/integration/test_sm120_o2.py -q --run-sm120
 预期 `o0_fp16_tc`、`o1_int8_tc`、`o2_mxf4_block_scale` 和
 `o2_cutlass_tiled` 均为 `true`，三个验证脚本必须输出 `"passed": true`。
 O0 元数据必须报告 HMMA、`CUBLAS_COMPUTE_32F` 和 FP32 输出；
-O1 production 必须报告 `implementation_key=register_64x32`、
-`kernel_symbol=adangel_o1_register_partial_64x32`、
+O1 production 必须报告
+`implementation_key=register_128x64_k64_scale_shared_row_dedup`、
+`kernel_symbol=adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup`、
 `mma_api=cute::MMA_Atom`、`mma_shape=m16n8k32`、
 `partial_storage=register`、`shared_partial_redistribution=false`、
-`global_partial_buffer=false` 和 `output_stores_per_element=1`。
+`cta_tile=[128,64,64]`、`groups_per_pipeline_stage=2`、
+`row_scale_loads_per_thread=2`、`global_partial_buffer=false` 和
+`output_stores_per_element=1`。
 O1 验证会逐元素核对 MXFP4→INT8 映射，并用 `rtol=1e-3, atol=1e-3` 对照可扩展
 语义参考。O2 验证会逐元素核对激活 E2M1 编码、RNE、packing 和 UE8M0 scale，
 执行 SFA/SFB layout probe，并检查 CUTLASS TMA cooperative warp-specialized 元数据。
@@ -237,6 +243,10 @@ python scripts/validate_o1.py --implementation shared_partial \
 python scripts/validate_o1.py --implementation register_64x32 \
   --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 --max-cv-percent 3.0 \
   | tee reports/o1_4096_register_64x32.json
+python scripts/validate_o1.py \
+  --implementation register_128x64_k64_scale_shared_row_dedup \
+  --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o1_4096_register_128x64_k64_production.json
 python scripts/validate_o1.py --implementation register_128x128 \
   --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 --max-cv-percent 3.0 \
   | tee reports/o1_4096_register_128x128.json
@@ -258,8 +268,8 @@ python scripts/benchmark_o1_implementations.py \
 交替顺序的24样本配对中位数；要求 correctness/MSE 通过、compute-only speedup 的
 bootstrap 95% CI 下界大于1，并通过无spill审计。需要锁频环境的严格复现实验时使用
 `--cv-policy strict`，此时所有计时阶段还必须 `CV<3%`，未解决重试会令脚本失败。
-两种策略都禁止删除单边慢样本或按延迟挑选重试结果。旧 shared-partial run 不能冒充
-当前寄存器 production 结果。
+两种策略都禁止删除单边慢样本或按延迟挑选重试结果。旧 shared-partial 和
+`register_64x32` run 不能冒充当前 `128x64x64` production 结果。
 
 ```bash
 python scripts/validate_o2.py \
@@ -288,10 +298,11 @@ bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 
 审计应找到：O0 的 FP16 Tensor Core 指令、O1 的 INT8 Tensor Core 指令，以及
 O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA。脚本要求 O1 的 TMA 与 signed INT8
-MMA 位于选定的 production entry；两个寄存器候选也必须在各自同一 entry 内包含
-TMA+IMMA。O1 production `register_64x32` 必须满足 SASS 无 `LDL/STL`
-且 resource usage 为 `STACK=0, LOCAL=0`。`register_128x128` 是可选 CTA 消融；若出现
-spill，summary 将其标记为 `DISQUALIFIED`，但不会阻断无 spill 的64×32候选；若把有
+MMA 位于选定的 production entry；保留的寄存器候选也必须在各自同一 entry 内包含
+TMA+IMMA。O1 production `register_128x64_k64_scale_shared_row_dedup` 必须满足
+SASS 无 `LDL/STL` 且 resource usage 为 `STACK=0, LOCAL=0`。`register_128x128` 是
+可选 CTA 消融；若出现 spill，summary 将其标记为 `DISQUALIFIED`，但不会阻断无 spill
+的 production；若把有
 spill的128×128实现选为production，审计仍会失败。O2 的
 TMA 与 MXFP4 block-scaled MMA 位于同一个正式 CUTLASS PTX/SASS entry，并明确排除
 `o2_mxf4_layout_probe`。summary 记录 production/candidate symbol、spill 检查与

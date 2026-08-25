@@ -85,18 +85,33 @@ def test_o1_native_matches_semantic_reference():
     assert kernel["mma_api"] == "cute::MMA_Atom"
     assert kernel["mma_atom"] == "SM80_16x8x32_S32S8S8S32_TN"
     assert kernel["mma_shape"] == "m16n8k32"
-    assert kernel["implementation"] == "tma_warp_specialized_register_partial"
-    assert kernel["implementation_key"] == "register_64x32"
-    assert kernel["kernel_symbol"] == "adangel_o1_register_partial_64x32"
+    assert kernel["implementation"] == (
+        "tma_warp_specialized_register_partial_scale_shared"
+    )
+    assert (
+        kernel["implementation_key"]
+        == "register_128x64_k64_scale_shared_row_dedup"
+    )
+    assert (
+        kernel["kernel_symbol"]
+        == "adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup"
+    )
     assert kernel["partial_storage"] == "register"
     assert kernel["shared_partial_redistribution"] is False
     assert kernel["production_selected"] is True
-    assert tuple(kernel["cta_tile"]) == (64, 32, 32)
+    assert tuple(kernel["cta_tile"]) == (128, 64, 64)
     assert kernel["data_movement"] == "TMA"
     assert kernel["kernel_schedule"] == "cooperative_warp_specialized"
     assert kernel["pipeline_stages"] == 3
     assert kernel["producer_warps"] == 1
-    assert kernel["consumer_warps"] == 8
+    assert kernel["consumer_warps"] == 16
+    assert kernel["column_scale_load_scope"] == "cta_once_per_column_group"
+    assert kernel["column_scale_storage"] == "stage_local_shared_fp32"
+    assert kernel["column_scale_consumer_load_scope"] == "all_warp_lanes"
+    assert kernel["row_scale_load_scope"] == "thread_once_per_unique_row"
+    assert kernel["row_scale_loads_per_thread"] == 2
+    assert kernel["groups_per_pipeline_stage"] == 2
+    assert kernel["pipeline_tile_k"] == 64
     assert tuple(kernel["tma_operands"]) == ("A_int8", "W_int8")
     assert kernel["compute_type"] == "S8xS8_TO_S32"
     assert kernel["partial_dtype"] == "int32"
@@ -248,7 +263,9 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
     assert kernel["shared_partial_redistribution"] is False
     assert kernel["global_partial_buffer"] is False
     assert kernel["output_stores_per_element"] == 1
-    assert kernel["production_selected"] is (implementation == "register_64x32")
+    assert kernel["production_selected"] is (
+        implementation == "register_128x64_k64_scale_shared_row_dedup"
+    )
     assert kernel["column_scale_load_scope"] == (
         "cta_once_per_column_group" if scale_shared else "consumer_warp"
     )

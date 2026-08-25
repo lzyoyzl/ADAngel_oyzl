@@ -62,7 +62,7 @@ struct alignas(128) O1SharedStorage {
 
 static_assert(kOutputsPerThread == 8);
 static_assert(kThreadsPerBlock == 288);
-constexpr char kProductionO1Implementation[] = "register_64x32";
+constexpr char kProductionO1Implementation[] = "register_128x64_k64_scale_shared_row_dedup";
 
 struct O1Register64Config {
   static constexpr int kTileM = 64;

@@ -152,38 +152,43 @@ Y^{(1)}_{m,n}=\sum_{g=0}^{K/32-1}FP32(P^{(g)}_{m,n})
 
 ### 4.3 当前正式 kernel
 
-当前 production 使用 `adangel_o1_register_partial_64x32` kernel：
+当前 production 使用
+`adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup` kernel：
 
 ```text
-CTA tile       = 64 x 32 x 32
-threads/CTA    = 288
+CTA tile       = 128 x 64 x 64
+threads/CTA    = 544
 producer warp  = 1
-consumer warps = 8
+consumer warps = 16
 TMA pipeline   = 3 stages
 MMA            = CuTe m16n8k32, S8 x S8 -> S32
+groups/stage   = 2 independent K32 groups
 ```
 
 INT32 partial根据CuTe fragment坐标直接在寄存器内匹配行/列scale并累加到FP32；
 `shared_partial`实现只作为历史A/B baseline保留。
 
-一个 CTA 最终负责 `Y[64,32]`。每次 K32 循环读取 `A_tile[64,32]` 和 `W_tile[32,32]`：
+一个 CTA 最终负责 `Y[128,64]`。每个pipeline stage读取`A_tile[128,64]`和
+`W_tile[64,64]`，其中包含两个相邻但数值上独立的K32 group：
 
-1. producer warp 通过 TMA 把下一组 A/W tile 搬入三阶段共享内存流水线；
-2. 8 个 consumer warp 按 CuTe `TiledMMA` 的显式 thread/value layout 划分输出；
-3. consumer warp 执行 `m16n8k32` signed-INT8 MMA，直接覆盖当前 K32；
-4. 得到该 K32 的 INT32 partial；
-5. partial 转 FP32，乘 `A_scale * decode_ue8m0(W_scale) / 2`；
-6. 累加到线程持有的 FP32 最终 accumulator；
-7. 128 组完成后，最终 FP32 输出只写全局显存一次。
+1. producer warp 通过 TMA 把下一块 A/W K64 tile 搬入三阶段共享内存流水线；
+2. producer对两个group的W scale按CTA/column/group各解码一次，写入stage-local shared；
+3. 16 个 consumer warp 按 CuTe `TiledMMA` 的显式 thread/value layout 划分输出；
+4. consumer依次对stage内group 0、group 1执行`m16n8k32` INT8 MMA；
+5. 每次MMA的INT32 partial分别转FP32并乘自己的
+   `A_scale * decode_ue8m0(W_scale) / 2`，不跨group合并scale；
+6. 每线程所需的A row scale按两个唯一row在K循环外加载；
+7. 64个K64 stage（共128个K32 group）完成后，FP32输出只写全局显存一次。
 
 相关代码：
 
 - `csrc/sm120/conversion.cu`
 - `csrc/sm120/o1_gemm.cu`
 
-源码还保留 `adangel_o1_shared_partial_baseline` 用于 A/B，并包含已因 spill 取消资格的
-`adangel_o1_register_partial_128x128` CTA 消融。公开 `run_o1()` 选择64×32寄存器实现。
-下文 `1.661712 ms` 等旧性能数字仍属于 shared baseline。
+源码还保留 `adangel_o1_shared_partial_baseline`、上一版`register_64x32`和多种CTA
+消融，并包含已因spill取消资格的`adangel_o1_register_partial_128x128`。
+公开`run_o1()`只选择上述128×64×64 production。`1.661712 ms`和`1.219312 ms`
+分别属于历史shared-partial与上一版production，不能代表当前实现。
 
 ### 4.4 历史 shared-partial baseline 的关键瓶颈
 
@@ -210,9 +215,10 @@ WMMA INT32 fragment（寄存器）
 - 聚合 partial 共享内存读写约 16 GiB，此外还有每组同步、类型转换和软件 scale。
 
 这解释了历史 O1 baseline 即使已采用 TMA、warp specialization 和单 kernel，仍明显慢于
-O0。寄存器 production 已消除其中的 shared partial 读写和 named barrier，但普通 INT8
-MMA 仍缺乏原生 block scale 输入，因此每个 K32 的 scale 获取、INT32→FP32、缩放与
-FP32 累加仍然存在；这也是优化后 O1 仍可能慢于 O0 的主要原因。
+O0。当前production已消除shared partial读写和named barrier，并通过K64 pipeline、
+CTA scale共享、CTA tile消融与A-scale去重进一步降低软件开销，实测已快于O0。普通
+INT8 MMA仍缺乏原生block scale输入，因此每个K32的INT32→FP32、缩放与FP32累加无法
+消除；这是O1仍明显慢于O2的主要原因。
 
 ## 5. O2：原生 SM120 block-scaled MXFP4 GEMM
 
@@ -491,43 +497,54 @@ O2-A = M*K + 4*M + M*K/2 + 3*M*(K/32)
 
 O2-W 统计自然 W scale 读取与有效 SFB scale 写入。O2-A 的三个 scale 项对应 natural scale 写、natural scale 读和有效 SFA 写。未触碰的 physical-layout padding 不计入逻辑字节。
 
-### 11.3 优化后 production 的 compute-only 性能量级
+### 11.3 当前 production 的 compute-only 性能量级
 
 `runs/rtx5090_o1_register_final_dynamic` 的24样本跨样本median摘要如下。该run按用户选择
 不锁频，使用动态Boost诊断口径；288条记录中90条触发普通`CV>=3%`标记，因此必须同时
 披露`tables/00_stability.csv`，不能称为“全部阶段CV通过”的锁频稳定性结果。
 
-| variant | median latency | equivalent throughput | speedup vs O0 |
+上一版正式run应保留为历史结果：O0/O1/O2的跨样本median分别为
+`0.766720/1.219312/0.134624 ms`。其中O1是`register_64x32`，不是当前production。
+
+当前`128x64x64` production在24个真实样本、warmup=50、repeats=200的同进程
+配对验收中得到：
+
+| implementation | median of sample medians | equivalent throughput | paired speedup |
 |---|---:|---:|---:|
-| O0 | `0.766720 ms` | `179.256 TFLOP/s` | `1.000x` |
-| O1 register partial | `1.219312 ms` | `112.718 TFLOP/s` | `0.629x` |
-| O2 | `0.134624 ms` | `1020.910 TFLOP/s` | `5.690x` |
+| O0 | `0.758048 ms` | `181.31 TFLOP/s` | `1.000x` |
+| 上一版 O1 `register_64x32` | `1.209136 ms` | `113.67 TFLOP/s` | — |
+| 当前 O1 `128x64x64` | `0.634232 ms` | `216.70 TFLOP/s` | `1.198x vs O0` |
 
-相对旧`1.661712 ms` shared-partial baseline，新O1按跨样本median约加速`1.363x`；
-24样本专用A/B得到约`1.367x`，两者一致。新O1仍约为O0延迟的1.59倍，因为逐K32的
-scale获取、INT32→FP32和软件缩放/累加无法由普通INT8 MMA原生完成。
+当前O1相对O0的平均配对加速为`1.1975x`，bootstrap 95% CI为
+`[1.1935,1.2024]`；相对上一版O1平均配对加速为`1.9407x`，95% CI为
+`[1.9075,1.9823]`。数值与上一版O1在容差内一致，逐样本O1-vs-O0 MSE仍在约
+`1e-12`到`3e-8`量级。
 
-同一run的cold total跨样本median为O0/O1/O2=`0.838272/1.255024/0.204144 ms`，
-steady-state total为`0.807128/1.218640/0.211200 ms`。O1相对O0的MSE median/max为
-`9.8234e-9/2.7278e-8`；O2为`0.003796/0.015460`。这些数字不是代码中的绝对延迟门槛。
+上一版run的cold/steady-state与四表四图不得改写成当前O1结果；production切换后必须
+重新生成完整288条记录。任何性能数字都不是代码中的绝对延迟门槛。
 
 ## 12. O1 寄存器 partial 候选与 CTA 消融
 
-> **状态：`register_64x32` 已在 RTX 5090 通过正确性、MSE、TMA+IMMA 和无spill审计，24样本 compute-only 配对加速比约 `1.367x`，bootstrap 95% CI约为 `[1.342,1.393]`，现已选为 production。`1.661712 ms` 仍是旧 shared-partial baseline结果，不能作为新production的最终延迟。**
+> **状态：`register_128x64_k64_scale_shared_row_dedup` 已在RTX 5090通过正确性、
+> 24样本配对性能和候选TMA+IMMA/无spill审计，现已选为production。相对O0平均
+> 加速约`1.198x`，bootstrap 95% CI约为`[1.194,1.202]`。切换production后的完整
+> runner与正式审计仍须重新执行，旧图表不能冒充当前结果。**
 
 当前实现状态如下：
 
 | 实现 | CTA | producer/consumer | MMA | partial 路径 | 状态 |
 |---|---|---|---|---|---|
 | `shared_partial` | `64x32x32` | `1/8` | WMMA m16n16k16×2 | shared 中转与两次 barrier | 历史 A/B baseline |
-| `register_64x32` | `64x32x32` | `1/8` | CuTe m16n8k32 | 寄存器内缩放/累加 | production |
+| `register_64x32` | `64x32x32` | `1/8` | CuTe m16n8k32 | 寄存器内缩放/累加 | 上一版production |
+| `register_128x64...row_dedup` | `128x64x64` | `1/16` | CuTe m16n8k32×2 | K32独立、寄存器FMA | 当前production |
+| `...row_dedup_sparse_scale` | `128x64x64` | `1/16` | 同上 | 稀疏consumer scale load | 慢约1.2%，拒绝 |
 | `register_128x128` | `128x128x32` | `1/16` | CuTe m16n8k32 | 寄存器内缩放/累加 | 因spill取消资格 |
 | O2 | `128x128x256` | CUTLASS cooperative | MXFP4 block-scaled | 硬件消费 scale | 保持不变 |
 
-寄存器候选使用 `thr_mma.partition_C(identity_tensor)` 建立 accumulator register 与
-逻辑 `(row,column)` 的对应关系。A row scale 在 K 循环前放入寄存器；每个 K32 的
-W column scale 由 warp lane 加载并 shuffle 广播；INT32→FP32、scale 与 FP32 累加
-均在寄存器内完成。TMA A/W 三阶段共享内存 pipeline 仍然保留。
+production使用`thr_mma.partition_C(identity_tensor)`建立accumulator register与
+逻辑`(row,column)`坐标。A row scale在K循环前按唯一row放入寄存器；W column scale
+由producer每CTA只解码一次并在stage-local shared中分发；INT32→FP32、scale与FP32
+FMA均在寄存器内完成。TMA A/W三阶段shared-memory pipeline仍然保留。
 
 晋升证据包括：reference与边界shape正确；24样本O1-vs-O0 MSE相对baseline满足
 `rtol=1e-5, atol=1e-12`；compute-only配对加速比bootstrap 95% CI下界>1；同一
@@ -538,7 +555,7 @@ W column scale 由 warp lane 加载并 shuffle 广播；INT32→FP32、scale 与
 原生 block-scaled MMA 中消费8组 K32 scale。因此不强制 O1/O2 完整 CTA 相同。
 
 
-### 12.1 优化目标
+### 12.1 已实施的优化路径
 
 保留当前 O1 已具备的设计：
 
@@ -551,7 +568,7 @@ W column scale 由 warp lane 加载并 shuffle 广播；INT32→FP32、scale 与
 - INT32 partial、FP32 最终累加和 FP32 输出；
 - 每个输出元素只写全局显存一次。
 
-寄存器候选只修改 partial 后处理路径：
+第一阶段把partial后处理改为：
 
 ```text
 baseline：
@@ -562,14 +579,24 @@ INT32 MMA register fragment
   -> scale
   -> FP32 accumulator register
 
-register candidate：
+register production：
 INT32 MMA result registers
   -> 直接匹配本线程所拥有元素的 row/column scale
   -> INT32-to-FP32 + scale
   -> FP32 accumulator registers
 ```
 
-“partial 留在寄存器”不表示完全不使用共享内存。TMA 搬入的 A/W tile 仍需要共享内存多阶段流水线；候选消除的是 `shared_storage.shared_partial` 以及围绕它的中转和 named barrier。
+“partial留在寄存器”不表示完全不使用共享内存。TMA搬入的A/W tile仍需要共享内存
+多阶段流水线；消除的是`shared_storage.shared_partial`及其named barrier。
+
+随后依次实施并消融：
+
+1. W scale由每个consumer warp重复解码改为producer每CTA/column/group解码一次；
+2. 用`__fmaf_rn`保持固定的FP32累加顺序；
+3. pipeline粒度由K32改为K64，一个stage承载两个数值独立的K32 group；
+4. 比较`64x32`、`128x32`、`64x64`、`128x64`和`128x128`输出tile；
+5. 根据CuTe fragment坐标把每线程A scale加载从16次去重到2个唯一row；
+6. 尝试只由warp-N拥有的lane读取W scale，但该候选慢约1.2%，未晋升。
 
 ### 12.2 为什么不能只删除 `store_matrix_sync`
 
@@ -581,16 +608,16 @@ s^A_{row}s^W_{column,group}/2
 
 因此必须知道每个 accumulator register 对应 tile 的哪一行、哪一列。`nvcuda::wmma::fragment` 内部元素映射不应作为稳定、公开的逻辑布局直接依赖，当前实现才使用 shared-memory row-major 中转恢复坐标。
 
-当前候选使用 CuTe 明确表达寄存器布局：
+当前production使用 CuTe 明确表达寄存器布局：
 
 1. `partition_C(identity_tensor)` 建立 accumulator register 的行列坐标；
 2. m16n8k32 atom 一次完成一个 K32 INT8 MMA；
-3. A row scale 预取，W column/group scale 由 warp shuffle 广播；
+3. A row scale按唯一row预取，W column/group scale由producer解码到stage-local shared；
 4. 在寄存器内完成 INT32→FP32、缩放和按 group 顺序累加。
 
-### 12.3 预期收益与仍然存在的成本
+### 12.3 实测收益与仍然存在的成本
 
-预期消除：
+已消除：
 
 - 约 16 GiB 量级的聚合 shared partial 读写；
 - 每 K32 围绕 partial 重分发的两次 consumer barrier；
@@ -605,28 +632,36 @@ s^A_{row}s^W_{column,group}/2
 - 每 K32 对 FP32 accumulator 的乘加；
 - 相比原生 block-scaled MMA 更复杂的软件数据通路。
 
-因此该优化应改善当前 O1 的结构性瓶颈，但不能预先保证 O1 一定快于 O0，也不应以“必须达到某个绝对延迟”作为正确性验收条件。
+实测当前production相对上一版O1平均加速约`1.94x`，相对O0平均加速约`1.20x`。
+它仍约为O2延迟的5倍，因为O2由原生block-scaled MMA消费scale，而O1仍执行大量
+INT32→FP32与软件FMA。这里不设置绝对延迟作为正确性门槛。
 
-### 12.4 晋升 production 的验收要求
+### 12.4 晋升 production 的验收状态
 
-候选必须重新执行：
+已经完成：
 
 1. 小规模 Python reference 对齐和边界 shape 测试；
-2. `4096^3` O1 正确性、四种 mode、缓存语义和 CV 验证；
+2. `4096^3` compute-only 24样本候选配对与CV定向重测；
 3. O1 相对 O0 的 MSE 回归，确认未改变 K32 scale 与累加语义；
 4. 生产 kernel 指令审计，确认同一 kernel 中仍有 TMA 和 IMMA；
 5. SASS/源码检查，确认不再有 partial shared-memory store/reload；
-6. 与当前 O1 的 compute-only、cold、steady-state 结果做前后对照。
+6. 与上一版 O1 的 compute-only 配对对照。
+
+production常量切换后仍需完成正式runner的四种mode、完整O0/O1/O2审计与四表四图
+再生成；这些属于结果封版，不改变候选晋升结论。
 
 候选结果元数据必须包含：
 
 ```text
 partial_storage = register
 shared_partial_redistribution = false
+cta_tile = [128,64,64]
+groups_per_pipeline_stage = 2
+row_scale_loads_per_thread = 2
 ```
 
-现有旧图表仍应标注为“shared-partial O1 baseline”。只有重新编译并由production元数据
-明确报告`register_64x32`的新run，才能作为优化后O1的正式结果。
+现有旧图表必须标注为旧O1结果。只有重新编译并由production元数据明确报告
+`register_128x64_k64_scale_shared_row_dedup`的新run，才能作为当前O1正式结果。
 
 ## 13. 指令审计与结果边界
 
@@ -644,7 +679,8 @@ shared_partial_redistribution = false
 1. 三种配置从完全相同的公共量化输入出发，最终输出统一为 FP32；
 2. O0 把 scale 前置到 FP16 反量化，随后执行高度优化的标准 GEMM；
 3. O1 使用 INT8 Tensor Core，但普通 INT8 MMA 不支持 UE8M0 block scale，必须逐 K32 软件缩放；
-4. 寄存器 partial 候选已实现但尚待 5090 A/B 晋升；历史 O1 数字仍是 shared-partial baseline；
+4. 当前O1已将partial留在寄存器，并通过K64 pipeline、CTA scale共享、128×64输出tile
+   与A row scale去重，在24样本配对测试中快于O0约1.20倍；
 5. O2 使用原生 block-scaled MXFP4 MMA，逐 K32 scale 由指令消费，GEMM 性能最高；
 6. O1 相对 O0 的 MSE 极小，O2 因激活再次量化而有更明显误差；
 7. 转换开销使用批量摊销，端到端 total 使用单次直接计时，不能简单把阶段 median 相加；

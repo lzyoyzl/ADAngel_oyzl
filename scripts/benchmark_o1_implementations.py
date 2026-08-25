@@ -11,7 +11,14 @@ import statistics
 from pathlib import Path
 
 
-IMPLEMENTATIONS = ("shared_partial", "register_64x32", "register_128x128")
+PRODUCTION_IMPLEMENTATION = "register_128x64_k64_scale_shared_row_dedup"
+PRIMARY_PAIR = ("register_64x32", PRODUCTION_IMPLEMENTATION)
+IMPLEMENTATIONS = (
+    "shared_partial",
+    "register_64x32",
+    PRODUCTION_IMPLEMENTATION,
+    "register_128x128",
+)
 MODES = ("compute_only", "cold", "steady_state")
 
 
@@ -40,7 +47,7 @@ def parse_args():
         type=int,
         default=0,
         help=(
-            "retry only unstable shared/register_64x32 sample-mode pairs; "
+            "retry only unstable old-production/new-production sample-mode pairs; "
             "0 disables targeted retries"
         ),
     )
@@ -177,7 +184,7 @@ def main() -> int:
     accepted_retries = []
     unresolved_retries = []
     if args.max_paired_retries:
-        primary_pair = ("shared_partial", "register_64x32")
+        primary_pair = PRIMARY_PAIR
         sample_by_id = {sample["sample_id"]: sample for sample in samples}
         unstable_targets = [
             (sample["sample_id"], mode)
@@ -243,14 +250,15 @@ def main() -> int:
                                 for stage in stage_summaries.values()
                             ),
                         }
+                    old_implementation, new_implementation = primary_pair
                     torch.testing.assert_close(
-                        pair_outputs["register_64x32"],
-                        pair_outputs["shared_partial"],
+                        pair_outputs[new_implementation],
+                        pair_outputs[old_implementation],
                         rtol=1e-3,
                         atol=1e-3,
                     )
-                    old_mse = pair_records["shared_partial"]["mse_vs_o0"]
-                    new_mse = pair_records["register_64x32"]["mse_vs_o0"]
+                    old_mse = pair_records[old_implementation]["mse_vs_o0"]
+                    new_mse = pair_records[new_implementation]["mse_vs_o0"]
                     mse_passed = abs(new_mse - old_mse) <= 1e-12 + 1e-5 * abs(old_mse)
                     pair_stable = all(
                         pair_records[implementation]["stable"]
@@ -387,8 +395,9 @@ def main() -> int:
             "enabled": bool(args.max_paired_retries),
             "max_attempts": args.max_paired_retries,
             "acceptance": (
-                "both shared_partial and register_64x32 have every stage CV below "
-                "threshold and pass MSE regression; latency is not an acceptance input"
+                "both register_64x32 and the 128x64 K64 production kernel have every "
+                "stage CV below threshold and pass MSE regression; latency is not an "
+                "acceptance input"
             ),
             "attempts": retry_attempts,
             "accepted": accepted_retries,

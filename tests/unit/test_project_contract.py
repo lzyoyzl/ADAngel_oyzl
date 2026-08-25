@@ -64,7 +64,9 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("producer_acquire", source)
         self.assertIn("consumer_wait", source)
         self.assertIn("consumer_release", source)
-        self.assertIn('kProductionO1Implementation[] = "register_64x32"', source)
+        self.assertIn(
+            '"register_128x64_k64_scale_shared_row_dedup";', source
+        )
         self.assertIn("adangel_o1_shared_partial_baseline", source)
         self.assertIn("NamedBarrier::sync", source)
         self.assertIn("shared_storage.shared_partial", source)
@@ -85,7 +87,9 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("tCrAccumulator", register_body)
         self.assertIn("__shfl_sync", register_body)
         self.assertIn('result["partial_storage"] = "register"', source)
-        self.assertIn('result["implementation"] =\n        "tma_warp_specialized_register_partial"', source)
+        self.assertIn('result["implementation"] =', source)
+        self.assertIn('"tma_warp_specialized_register_partial_scale_shared"', source)
+        self.assertIn('"tma_warp_specialized_register_partial"', source)
         self.assertIn('result["data_movement"] = "TMA"', source)
         self.assertIn('result["kernel_schedule"] = "cooperative_warp_specialized"', source)
         self.assertIn('result["global_partial_buffer"] = false', source)
@@ -99,9 +103,15 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("check_zero_stack_local_resource", audit)
         self.assertIn('o1_register_128_spill_check="DISQUALIFIED(local-memory spill)"', audit)
         self.assertIn('production_impl" == "register_128x128', audit)
+        self.assertIn(
+            "register_128x64_k64_scale_shared_row_dedup)", audit
+        )
         timing_body = source[
             source.index("py::dict measure_o1_implementation") :
-            source.index("template <class Config>", source.index("py::dict measure_o1_implementation"))
+            source.index(
+                "py::dict benchmark_register_implementation",
+                source.index("py::dict measure_o1_implementation"),
+            )
         ]
         self.assertLess(
             timing_body.index("events.reserve(repeats)"),
@@ -111,7 +121,10 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('"--max-paired-retries"', ab_script)
         self.assertIn('"--cv-policy"', ab_script)
         self.assertIn('choices=("diagnostic", "strict")', ab_script)
-        self.assertIn('primary_pair = ("shared_partial", "register_64x32")', ab_script)
+        self.assertIn(
+            'PRIMARY_PAIR = ("register_64x32", PRODUCTION_IMPLEMENTATION)',
+            ab_script,
+        )
         self.assertIn("pair_stable and mse_passed", ab_script)
         self.assertIn('"attempts": retry_attempts', ab_script)
         self.assertIn('"unresolved": unresolved_retries', ab_script)

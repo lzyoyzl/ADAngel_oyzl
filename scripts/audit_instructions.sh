@@ -48,7 +48,7 @@ find_ptx_symbol() {
     function finish_entry() {
       if (!opened) return
       if (family == "o1" &&
-          index(symbol, needle) != 0 &&
+          index(symbol, needle "IN") != 0 &&
           has_tma && has_mma) {
         print symbol
         found = 1
@@ -143,6 +143,9 @@ production_impl=$(sed -n 's/.*kProductionO1Implementation.*"\([^"]*\)".*/\1/p' \
 case "$production_impl" in
   shared_partial) production_needle=adangel_o1_shared_partial_baseline ;;
   register_64x32) production_needle=adangel_o1_register_partial_64x32 ;;
+  register_128x64_k64_scale_shared_row_dedup)
+    production_needle=adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup
+    ;;
   register_128x128) production_needle=adangel_o1_register_partial_128x128 ;;
   *) echo "unknown O1 production implementation: $production_impl" >&2; exit 1 ;;
 esac
