@@ -175,6 +175,8 @@ def test_o1_native_timing_modes(mode, expected_stages):
         "register_64x32_scale_shared",
         "register_64x32_k64_scale_shared",
         "register_128x32_k64_scale_shared",
+        "register_64x64_k64_scale_shared",
+        "register_128x64_k64_scale_shared",
         "register_128x128",
     ],
 )
@@ -215,10 +217,14 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
         "register_64x32_scale_shared",
         "register_64x32_k64_scale_shared",
         "register_128x32_k64_scale_shared",
+        "register_64x64_k64_scale_shared",
+        "register_128x64_k64_scale_shared",
     }
     pipeline_k64 = implementation in {
         "register_64x32_k64_scale_shared",
         "register_128x32_k64_scale_shared",
+        "register_64x64_k64_scale_shared",
+        "register_128x64_k64_scale_shared",
     }
     assert kernel["implementation"] == (
         "tma_warp_specialized_register_partial_scale_shared"
@@ -248,13 +254,23 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
         else (
             (128, 32, 64)
             if implementation == "register_128x32_k64_scale_shared"
-            else (64, 32, 64 if pipeline_k64 else 32)
+            else (
+                (64, 64, 64)
+                if implementation == "register_64x64_k64_scale_shared"
+                else (
+                    (128, 64, 64)
+                    if implementation == "register_128x64_k64_scale_shared"
+                    else (64, 32, 64 if pipeline_k64 else 32)
+                )
+            )
         )
     )
     assert kernel["consumer_warps"] == (
         16
         if implementation in {
             "register_128x32_k64_scale_shared",
+            "register_64x64_k64_scale_shared",
+            "register_128x64_k64_scale_shared",
             "register_128x128",
         }
         else 8
@@ -269,6 +285,8 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
         "register_64x32_scale_shared",
         "register_64x32_k64_scale_shared",
         "register_128x32_k64_scale_shared",
+        "register_64x64_k64_scale_shared",
+        "register_128x64_k64_scale_shared",
         "register_128x128",
     ],
 )

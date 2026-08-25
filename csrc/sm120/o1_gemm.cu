@@ -181,6 +181,68 @@ struct O1Register128x32K64Config {
       cute::Tile<cute::_128, cute::_32, cute::_32>>;
 };
 
+struct O1Register64x64K64Config {
+  static constexpr int kTileM = 64;
+  static constexpr int kTileN = 64;
+  static constexpr int kProducerWarps = 1;
+  static constexpr int kConsumerWarps = 16;
+  static constexpr int kProducerThreads = 32;
+  static constexpr int kConsumerThreads = 512;
+  static constexpr int kThreadsPerBlock = 544;
+  static constexpr int kGroupsPerStage = 2;
+  static constexpr int kAGroupElements = 64 * kGroupSize;
+  static constexpr int kBGroupElements = 64 * kGroupSize;
+  static constexpr int kAStageElements = kGroupsPerStage * kAGroupElements;
+  static constexpr int kBStageElements = kGroupsPerStage * kBGroupElements;
+  using Pipeline = cutlass::PipelineTmaAsync<kPipelineStages>;
+  using SmemLayoutA = decltype(cute::make_layout(
+      cute::make_shape(cute::_64{}, cute::_32{}, cute::_2{}, cute::_3{}),
+      cute::make_stride(
+          cute::_32{},
+          cute::_1{},
+          cute::Int<64 * 32>{},
+          cute::Int<2 * 64 * 32>{})));
+  using SmemLayoutB = SmemLayoutA;
+  using TiledMma = cute::TiledMMA<
+      cute::MMA_Atom<cute::SM80_16x8x32_S32S8S8S32_TN>,
+      cute::Layout<cute::Shape<cute::_4, cute::_4, cute::_1>>,
+      cute::Tile<cute::_64, cute::_64, cute::_32>>;
+};
+
+struct O1Register128x64K64Config {
+  static constexpr int kTileM = 128;
+  static constexpr int kTileN = 64;
+  static constexpr int kProducerWarps = 1;
+  static constexpr int kConsumerWarps = 16;
+  static constexpr int kProducerThreads = 32;
+  static constexpr int kConsumerThreads = 512;
+  static constexpr int kThreadsPerBlock = 544;
+  static constexpr int kGroupsPerStage = 2;
+  static constexpr int kAGroupElements = 128 * kGroupSize;
+  static constexpr int kBGroupElements = 64 * kGroupSize;
+  static constexpr int kAStageElements = kGroupsPerStage * kAGroupElements;
+  static constexpr int kBStageElements = kGroupsPerStage * kBGroupElements;
+  using Pipeline = cutlass::PipelineTmaAsync<kPipelineStages>;
+  using SmemLayoutA = decltype(cute::make_layout(
+      cute::make_shape(cute::_128{}, cute::_32{}, cute::_2{}, cute::_3{}),
+      cute::make_stride(
+          cute::_32{},
+          cute::_1{},
+          cute::Int<128 * 32>{},
+          cute::Int<2 * 128 * 32>{})));
+  using SmemLayoutB = decltype(cute::make_layout(
+      cute::make_shape(cute::_64{}, cute::_32{}, cute::_2{}, cute::_3{}),
+      cute::make_stride(
+          cute::_32{},
+          cute::_1{},
+          cute::Int<64 * 32>{},
+          cute::Int<2 * 64 * 32>{})));
+  using TiledMma = cute::TiledMMA<
+      cute::MMA_Atom<cute::SM80_16x8x32_S32S8S8S32_TN>,
+      cute::Layout<cute::Shape<cute::_8, cute::_2, cute::_1>>,
+      cute::Tile<cute::_128, cute::_64, cute::_32>>;
+};
+
 template <class Config>
 struct alignas(128) O1RegisterSharedStorage {
   alignas(128) uint8_t a[kPipelineStages * Config::kAStageElements];
@@ -206,12 +268,16 @@ enum class O1Implementation {
   kRegister64x32ScaleShared,
   kRegister64x32K64ScaleShared,
   kRegister128x32K64ScaleShared,
+  kRegister64x64K64ScaleShared,
+  kRegister128x64K64ScaleShared,
   kRegister128x128,
 };
 
 static_assert(O1Register64Config::kThreadsPerBlock == 288);
 static_assert(O1Register64K64Config::kThreadsPerBlock == 288);
 static_assert(O1Register128x32K64Config::kThreadsPerBlock == 544);
+static_assert(O1Register64x64K64Config::kThreadsPerBlock == 544);
+static_assert(O1Register128x64K64Config::kThreadsPerBlock == 544);
 static_assert(O1Register128Config::kThreadsPerBlock == 544);
 
 void check_cuda(cudaError_t status, const char* operation) {
@@ -1026,6 +1092,46 @@ void adangel_o1_register_partial_128x32_k64_scale_shared(
 }
 
 template <class TmaA, class TmaB>
+__global__ __launch_bounds__(O1Register64x64K64Config::kThreadsPerBlock)
+void adangel_o1_register_partial_64x64_k64_scale_shared(
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups) {
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& shared_storage =
+      *reinterpret_cast<O1RegisterScaleSharedStorage<
+          O1Register64x64K64Config>*>(shared_bytes);
+  adangel_o1_register_partial_k64_body<O1Register64x64K64Config>(
+      tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
+}
+
+template <class TmaA, class TmaB>
+__global__ __launch_bounds__(O1Register128x64K64Config::kThreadsPerBlock)
+void adangel_o1_register_partial_128x64_k64_scale_shared(
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups) {
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& shared_storage =
+      *reinterpret_cast<O1RegisterScaleSharedStorage<
+          O1Register128x64K64Config>*>(shared_bytes);
+  adangel_o1_register_partial_k64_body<O1Register128x64K64Config>(
+      tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
+}
+
+template <class TmaA, class TmaB>
 __global__ __launch_bounds__(O1Register128Config::kThreadsPerBlock)
 void adangel_o1_register_partial_128x128(
     CUTE_GRID_CONSTANT TmaA const tma_a,
@@ -1198,6 +1304,31 @@ void launch_register_o1(
         n,
         k,
         groups);
+  } else if constexpr (std::is_same_v<Config, O1Register64x64K64Config>) {
+    adangel_o1_register_partial_64x64_k64_scale_shared<<<
+        grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+        tma_a,
+        tma_b,
+        a_scale.data_ptr<float>(),
+        w_scale.data_ptr<uint8_t>(),
+        output.data_ptr<float>(),
+        m,
+        n,
+        k,
+        groups);
+  } else if constexpr (
+      std::is_same_v<Config, O1Register128x64K64Config>) {
+    adangel_o1_register_partial_128x64_k64_scale_shared<<<
+        grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+        tma_a,
+        tma_b,
+        a_scale.data_ptr<float>(),
+        w_scale.data_ptr<uint8_t>(),
+        output.data_ptr<float>(),
+        m,
+        n,
+        k,
+        groups);
   } else if constexpr (std::is_same_v<Config, O1Register64Config>) {
     if constexpr (kShareColumnScale) {
       adangel_o1_register_partial_64x32_scale_shared<<<
@@ -1255,6 +1386,12 @@ O1Implementation parse_o1_implementation(const std::string& implementation) {
   if (selected == "register_128x32_k64_scale_shared") {
     return O1Implementation::kRegister128x32K64ScaleShared;
   }
+  if (selected == "register_64x64_k64_scale_shared") {
+    return O1Implementation::kRegister64x64K64ScaleShared;
+  }
+  if (selected == "register_128x64_k64_scale_shared") {
+    return O1Implementation::kRegister128x64K64ScaleShared;
+  }
   if (selected == "register_128x128") return O1Implementation::kRegister128x128;
   TORCH_CHECK(false, "unknown O1 implementation: ", implementation);
   return O1Implementation::kSharedPartial;
@@ -1301,13 +1438,17 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
     const bool is_128 = implementation == O1Implementation::kRegister128x128;
     const bool is_128x32_k64 =
         implementation == O1Implementation::kRegister128x32K64ScaleShared;
+    const bool is_64x64_k64 =
+        implementation == O1Implementation::kRegister64x64K64ScaleShared;
+    const bool is_128x64_k64 =
+        implementation == O1Implementation::kRegister128x64K64ScaleShared;
     const bool scale_shared =
         implementation == O1Implementation::kRegister64x32ScaleShared ||
         implementation == O1Implementation::kRegister64x32K64ScaleShared ||
-        is_128x32_k64;
+        is_128x32_k64 || is_64x64_k64 || is_128x64_k64;
     const bool pipeline_k64 =
         implementation == O1Implementation::kRegister64x32K64ScaleShared ||
-        is_128x32_k64;
+        is_128x32_k64 || is_64x64_k64 || is_128x64_k64;
     result["library"] = "CUTLASS CuTe + CUDA";
     result["mma_api"] = "cute::MMA_Atom";
     result["mma_atom"] = "SM80_16x8x32_S32S8S8S32_TN";
@@ -1318,27 +1459,45 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
         : "tma_warp_specialized_register_partial";
     result["implementation_key"] = is_128x32_k64
         ? "register_128x32_k64_scale_shared"
+        : (is_64x64_k64
+        ? "register_64x64_k64_scale_shared"
+        : (is_128x64_k64
+        ? "register_128x64_k64_scale_shared"
         : (pipeline_k64
         ? "register_64x32_k64_scale_shared"
         : (scale_shared
         ? "register_64x32_scale_shared"
-        : (is_128 ? "register_128x128" : "register_64x32")));
+        : (is_128 ? "register_128x128" : "register_64x32")))));
     result["kernel_symbol"] = is_128x32_k64
         ? "adangel_o1_register_partial_128x32_k64_scale_shared"
+        : (is_64x64_k64
+        ? "adangel_o1_register_partial_64x64_k64_scale_shared"
+        : (is_128x64_k64
+        ? "adangel_o1_register_partial_128x64_k64_scale_shared"
         : (pipeline_k64
         ? "adangel_o1_register_partial_64x32_k64_scale_shared"
         : (scale_shared
         ? "adangel_o1_register_partial_64x32_scale_shared"
         : (is_128
               ? "adangel_o1_register_partial_128x128"
-              : "adangel_o1_register_partial_64x32")));
+              : "adangel_o1_register_partial_64x32")))));
     result["producer_warps"] = 1;
-    result["consumer_warps"] = (is_128 || is_128x32_k64) ? 16 : 8;
+    result["consumer_warps"] =
+        (is_128 || is_128x32_k64 || is_64x64_k64 || is_128x64_k64)
+        ? 16
+        : 8;
     result["cta_tile"] = is_128
         ? py::make_tuple(128, 128, kGroupSize)
         : (is_128x32_k64
               ? py::make_tuple(128, 32, 64)
-              : py::make_tuple(64, 32, pipeline_k64 ? 64 : kGroupSize));
+              : (is_64x64_k64
+                    ? py::make_tuple(64, 64, 64)
+                    : (is_128x64_k64
+                          ? py::make_tuple(128, 64, 64)
+                          : py::make_tuple(
+                                64,
+                                32,
+                                pipeline_k64 ? 64 : kGroupSize))));
     result["partial_storage"] = "register";
     result["shared_partial_redistribution"] = false;
     result["column_scale_load_scope"] =
@@ -1609,6 +1768,38 @@ py::dict benchmark_o1_selected(
   }
   if (implementation == O1Implementation::kRegister128x32K64ScaleShared) {
     return benchmark_register_implementation<O1Register128x32K64Config, true>(
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode_name,
+        mode,
+        implementation,
+        warmup,
+        repeats,
+        conversion_inner_repeats,
+        w_int8,
+        output,
+        stream);
+  }
+  if (implementation == O1Implementation::kRegister64x64K64ScaleShared) {
+    return benchmark_register_implementation<O1Register64x64K64Config, true>(
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode_name,
+        mode,
+        implementation,
+        warmup,
+        repeats,
+        conversion_inner_repeats,
+        w_int8,
+        output,
+        stream);
+  }
+  if (implementation == O1Implementation::kRegister128x64K64ScaleShared) {
+    return benchmark_register_implementation<O1Register128x64K64Config, true>(
         a_int8,
         a_scale,
         w_mxfp4,
