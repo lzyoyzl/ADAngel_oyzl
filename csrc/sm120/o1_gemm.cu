@@ -268,6 +268,7 @@ enum class O1Implementation {
   kRegister64x32ScaleShared,
   kRegister64x32K64ScaleShared,
   kRegister128x32K64ScaleShared,
+  kRegister128x32K64ScaleSharedRowDedup,
   kRegister64x64K64ScaleShared,
   kRegister128x64K64ScaleShared,
   kRegister128x128,
@@ -793,7 +794,7 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
 // K64 pipeline candidate: one producer/consumer pipeline state owns two adjacent
 // K32 groups.  The two INT8 MMAs and their UE8M0 scale applications remain
 // independent, so the public K32 block-scale semantics are unchanged.
-template <class Config, class TmaA, class TmaB>
+template <class Config, bool kDeduplicateRowScale, class TmaA, class TmaB>
 __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
     TmaA const& tma_a,
     TmaB const& tma_b,
@@ -925,11 +926,27 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
   auto tCrPartial = thr_mma.make_fragment_C(tCcC);
   auto tCrAccumulator = cute::make_fragment_like<float>(tCrPartial);
   auto tCrRowScale = cute::make_fragment_like<float>(tCrPartial);
+  float unique_row_scales[2] = {0.0f, 0.0f};
   cute::clear(tCrAccumulator);
-  for (int item = 0; item < cute::size(tCrRowScale); ++item) {
-    const int local_row = cute::get<0>(tCcC(item));
-    const int global_row = tile_row + local_row;
-    tCrRowScale(item) = global_row < m ? a_scale[global_row] : 0.0f;
+  if constexpr (kDeduplicateRowScale) {
+#pragma unroll
+    for (int row_slot = 0; row_slot < 2; ++row_slot) {
+      // The SM80 16x8 row accumulator layout owns two rows per thread.
+      // Items 0/1 use row slot 0 and items 2/3 use row slot 1; the
+      // pattern repeats every four items for larger N replication tiles.
+      const int representative_item = row_slot * 2;
+      const int local_row = cute::get<0>(tCcC(representative_item));
+      const int global_row = tile_row + local_row;
+      unique_row_scales[row_slot] =
+          global_row < m ? a_scale[global_row] : 0.0f;
+    }
+  } else {
+#pragma unroll
+    for (int item = 0; item < cute::size(tCrRowScale); ++item) {
+      const int local_row = cute::get<0>(tCcC(item));
+      const int global_row = tile_row + local_row;
+      tCrRowScale(item) = global_row < m ? a_scale[global_row] : 0.0f;
+    }
   }
 
   using SmemCopyAtom =
@@ -972,6 +989,7 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
                     Config::kTileN +
                 local_column];
       }
+#pragma unroll
       for (int item = 0; item < cute::size(tCrPartial); ++item) {
         const int local_column = cute::get<1>(tCcC(item));
         float column_scale = 0.0f;
@@ -981,7 +999,13 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
               0xffffffffu, warp_column_scales[round], local_column & 31);
           if ((local_column >> 5) == round) column_scale = candidate;
         }
-        const float scale = __fmul_rn(tCrRowScale(item), column_scale);
+        float row_scale = 0.0f;
+        if constexpr (kDeduplicateRowScale) {
+          row_scale = unique_row_scales[(item >> 1) & 1];
+        } else {
+          row_scale = tCrRowScale(item);
+        }
+        const float scale = __fmul_rn(row_scale, column_scale);
         tCrAccumulator(item) = __fmaf_rn(
             static_cast<float>(tCrPartial(item)),
             scale,
@@ -1067,7 +1091,7 @@ void adangel_o1_register_partial_64x32_k64_scale_shared(
   auto& shared_storage =
       *reinterpret_cast<O1RegisterScaleSharedStorage<
           O1Register64K64Config>*>(shared_bytes);
-  adangel_o1_register_partial_k64_body<O1Register64K64Config>(
+  adangel_o1_register_partial_k64_body<O1Register64K64Config, false>(
       tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
 }
 
@@ -1087,7 +1111,27 @@ void adangel_o1_register_partial_128x32_k64_scale_shared(
   auto& shared_storage =
       *reinterpret_cast<O1RegisterScaleSharedStorage<
           O1Register128x32K64Config>*>(shared_bytes);
-  adangel_o1_register_partial_k64_body<O1Register128x32K64Config>(
+  adangel_o1_register_partial_k64_body<O1Register128x32K64Config, false>(
+      tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
+}
+
+template <class TmaA, class TmaB>
+__global__ __launch_bounds__(O1Register128x32K64Config::kThreadsPerBlock)
+void adangel_o1_register_partial_128x32_k64_scale_shared_row_dedup(
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups) {
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& shared_storage =
+      *reinterpret_cast<O1RegisterScaleSharedStorage<
+          O1Register128x32K64Config>*>(shared_bytes);
+  adangel_o1_register_partial_k64_body<O1Register128x32K64Config, true>(
       tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
 }
 
@@ -1107,7 +1151,7 @@ void adangel_o1_register_partial_64x64_k64_scale_shared(
   auto& shared_storage =
       *reinterpret_cast<O1RegisterScaleSharedStorage<
           O1Register64x64K64Config>*>(shared_bytes);
-  adangel_o1_register_partial_k64_body<O1Register64x64K64Config>(
+  adangel_o1_register_partial_k64_body<O1Register64x64K64Config, false>(
       tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
 }
 
@@ -1127,7 +1171,7 @@ void adangel_o1_register_partial_128x64_k64_scale_shared(
   auto& shared_storage =
       *reinterpret_cast<O1RegisterScaleSharedStorage<
           O1Register128x64K64Config>*>(shared_bytes);
-  adangel_o1_register_partial_k64_body<O1Register128x64K64Config>(
+  adangel_o1_register_partial_k64_body<O1Register128x64K64Config, false>(
       tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
 }
 
@@ -1261,7 +1305,12 @@ auto make_register_tma_b(const at::Tensor& w_int8) {
   }
 }
 
-template <class Config, bool kShareColumnScale = false, class TmaA, class TmaB>
+template <
+    class Config,
+    bool kShareColumnScale = false,
+    bool kDeduplicateRowScale = false,
+    class TmaA,
+    class TmaB>
 void launch_register_o1(
     const at::Tensor& a_scale,
     const at::Tensor& w_scale,
@@ -1293,17 +1342,31 @@ void launch_register_o1(
         groups);
   } else if constexpr (
       std::is_same_v<Config, O1Register128x32K64Config>) {
-    adangel_o1_register_partial_128x32_k64_scale_shared<<<
-        grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
-        tma_a,
-        tma_b,
-        a_scale.data_ptr<float>(),
-        w_scale.data_ptr<uint8_t>(),
-        output.data_ptr<float>(),
-        m,
-        n,
-        k,
-        groups);
+    if constexpr (kDeduplicateRowScale) {
+      adangel_o1_register_partial_128x32_k64_scale_shared_row_dedup<<<
+          grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+          tma_a,
+          tma_b,
+          a_scale.data_ptr<float>(),
+          w_scale.data_ptr<uint8_t>(),
+          output.data_ptr<float>(),
+          m,
+          n,
+          k,
+          groups);
+    } else {
+      adangel_o1_register_partial_128x32_k64_scale_shared<<<
+          grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+          tma_a,
+          tma_b,
+          a_scale.data_ptr<float>(),
+          w_scale.data_ptr<uint8_t>(),
+          output.data_ptr<float>(),
+          m,
+          n,
+          k,
+          groups);
+    }
   } else if constexpr (std::is_same_v<Config, O1Register64x64K64Config>) {
     adangel_o1_register_partial_64x64_k64_scale_shared<<<
         grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
@@ -1386,6 +1449,9 @@ O1Implementation parse_o1_implementation(const std::string& implementation) {
   if (selected == "register_128x32_k64_scale_shared") {
     return O1Implementation::kRegister128x32K64ScaleShared;
   }
+  if (selected == "register_128x32_k64_scale_shared_row_dedup") {
+    return O1Implementation::kRegister128x32K64ScaleSharedRowDedup;
+  }
   if (selected == "register_64x64_k64_scale_shared") {
     return O1Implementation::kRegister64x64K64ScaleShared;
   }
@@ -1436,8 +1502,11 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
     result["shared_partial_redistribution"] = true;
   } else {
     const bool is_128 = implementation == O1Implementation::kRegister128x128;
+    const bool row_scale_dedup = implementation ==
+        O1Implementation::kRegister128x32K64ScaleSharedRowDedup;
     const bool is_128x32_k64 =
-        implementation == O1Implementation::kRegister128x32K64ScaleShared;
+        implementation == O1Implementation::kRegister128x32K64ScaleShared ||
+        row_scale_dedup;
     const bool is_64x64_k64 =
         implementation == O1Implementation::kRegister64x64K64ScaleShared;
     const bool is_128x64_k64 =
@@ -1457,7 +1526,9 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
         scale_shared
         ? "tma_warp_specialized_register_partial_scale_shared"
         : "tma_warp_specialized_register_partial";
-    result["implementation_key"] = is_128x32_k64
+    result["implementation_key"] = row_scale_dedup
+        ? "register_128x32_k64_scale_shared_row_dedup"
+        : (is_128x32_k64
         ? "register_128x32_k64_scale_shared"
         : (is_64x64_k64
         ? "register_64x64_k64_scale_shared"
@@ -1467,8 +1538,10 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
         ? "register_64x32_k64_scale_shared"
         : (scale_shared
         ? "register_64x32_scale_shared"
-        : (is_128 ? "register_128x128" : "register_64x32")))));
-    result["kernel_symbol"] = is_128x32_k64
+        : (is_128 ? "register_128x128" : "register_64x32"))))));
+    result["kernel_symbol"] = row_scale_dedup
+        ? "adangel_o1_register_partial_128x32_k64_scale_shared_row_dedup"
+        : (is_128x32_k64
         ? "adangel_o1_register_partial_128x32_k64_scale_shared"
         : (is_64x64_k64
         ? "adangel_o1_register_partial_64x64_k64_scale_shared"
@@ -1480,7 +1553,7 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
         ? "adangel_o1_register_partial_64x32_scale_shared"
         : (is_128
               ? "adangel_o1_register_partial_128x128"
-              : "adangel_o1_register_partial_64x32")))));
+              : "adangel_o1_register_partial_64x32"))))));
     result["producer_warps"] = 1;
     result["consumer_warps"] =
         (is_128 || is_128x32_k64 || is_64x64_k64 || is_128x64_k64)
@@ -1506,6 +1579,14 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
         scale_shared ? "stage_local_shared_fp32" : "warp_register";
     result["fp32_accumulation_op"] =
         scale_shared ? "fma_rn" : "mul_then_add_rn";
+    result["row_scale_load_scope"] = row_scale_dedup
+        ? "thread_once_per_unique_row"
+        : "fragment_item_once";
+    if (row_scale_dedup) {
+      result["row_scale_loads_per_thread"] = 2;
+    } else {
+      result["row_scale_loads_per_thread"] = py::none();
+    }
     result["groups_per_pipeline_stage"] = pipeline_k64 ? 2 : 1;
     result["pipeline_tile_k"] = pipeline_k64 ? 64 : 32;
   }
@@ -1629,7 +1710,10 @@ py::dict measure_o1_implementation(
   return result;
 }
 
-template <class Config, bool kShareColumnScale = false>
+template <
+    class Config,
+    bool kShareColumnScale = false,
+    bool kDeduplicateRowScale = false>
 py::dict benchmark_register_implementation(
     const at::Tensor& a_int8,
     const at::Tensor& a_scale,
@@ -1650,7 +1734,7 @@ py::dict benchmark_register_implementation(
   auto tma_a = make_register_tma_a<Config>(a_int8);
   auto tma_b = make_register_tma_b<Config>(w_int8);
   auto gemm = [&]() {
-    launch_register_o1<Config, kShareColumnScale>(
+    launch_register_o1<Config, kShareColumnScale, kDeduplicateRowScale>(
         a_scale, w_scale, output, m, n, k, tma_a, tma_b, stream);
   };
   return measure_o1_implementation(
@@ -1768,6 +1852,26 @@ py::dict benchmark_o1_selected(
   }
   if (implementation == O1Implementation::kRegister128x32K64ScaleShared) {
     return benchmark_register_implementation<O1Register128x32K64Config, true>(
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode_name,
+        mode,
+        implementation,
+        warmup,
+        repeats,
+        conversion_inner_repeats,
+        w_int8,
+        output,
+        stream);
+  }
+  if (implementation ==
+      O1Implementation::kRegister128x32K64ScaleSharedRowDedup) {
+    return benchmark_register_implementation<
+        O1Register128x32K64Config,
+        true,
+        true>(
         a_int8,
         a_scale,
         w_mxfp4,

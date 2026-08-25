@@ -26,6 +26,7 @@ def parse_args():
             "register_64x32_scale_shared",
             "register_64x32_k64_scale_shared",
             "register_128x32_k64_scale_shared",
+            "register_128x32_k64_scale_shared_row_dedup",
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
             "register_128x128",
@@ -188,19 +189,26 @@ def main() -> int:
         }
     else:
         is_128 = selected_key == "register_128x128"
-        is_128x32_k64 = selected_key == "register_128x32_k64_scale_shared"
+        row_scale_dedup = (
+            selected_key == "register_128x32_k64_scale_shared_row_dedup"
+        )
+        is_128x32_k64 = (
+            selected_key == "register_128x32_k64_scale_shared" or row_scale_dedup
+        )
         is_64x64_k64 = selected_key == "register_64x64_k64_scale_shared"
         is_128x64_k64 = selected_key == "register_128x64_k64_scale_shared"
         scale_shared = selected_key in {
             "register_64x32_scale_shared",
             "register_64x32_k64_scale_shared",
             "register_128x32_k64_scale_shared",
+            "register_128x32_k64_scale_shared_row_dedup",
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
         }
         pipeline_k64 = selected_key in {
             "register_64x32_k64_scale_shared",
             "register_128x32_k64_scale_shared",
+            "register_128x32_k64_scale_shared_row_dedup",
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
         }
@@ -215,24 +223,28 @@ def main() -> int:
                 else "tma_warp_specialized_register_partial"
             ),
             "kernel_symbol": (
-                "adangel_o1_register_partial_128x32_k64_scale_shared"
-                if is_128x32_k64
+                "adangel_o1_register_partial_128x32_k64_scale_shared_row_dedup"
+                if row_scale_dedup
                 else (
-                    "adangel_o1_register_partial_64x64_k64_scale_shared"
-                    if is_64x64_k64
+                    "adangel_o1_register_partial_128x32_k64_scale_shared"
+                    if is_128x32_k64
                     else (
-                        "adangel_o1_register_partial_128x64_k64_scale_shared"
-                        if is_128x64_k64
+                        "adangel_o1_register_partial_64x64_k64_scale_shared"
+                        if is_64x64_k64
                         else (
-                            "adangel_o1_register_partial_64x32_k64_scale_shared"
-                            if pipeline_k64
+                            "adangel_o1_register_partial_128x64_k64_scale_shared"
+                            if is_128x64_k64
                             else (
-                                "adangel_o1_register_partial_64x32_scale_shared"
-                                if scale_shared
+                                "adangel_o1_register_partial_64x32_k64_scale_shared"
+                                if pipeline_k64
                                 else (
-                                    "adangel_o1_register_partial_128x128"
-                                    if is_128
-                                    else "adangel_o1_register_partial_64x32"
+                                    "adangel_o1_register_partial_64x32_scale_shared"
+                                    if scale_shared
+                                    else (
+                                        "adangel_o1_register_partial_128x128"
+                                        if is_128
+                                        else "adangel_o1_register_partial_64x32"
+                                    )
                                 )
                             )
                         )
@@ -270,6 +282,12 @@ def main() -> int:
                 "stage_local_shared_fp32" if scale_shared else "warp_register"
             ),
             "fp32_accumulation_op": "fma_rn" if scale_shared else "mul_then_add_rn",
+            "row_scale_load_scope": (
+                "thread_once_per_unique_row"
+                if row_scale_dedup
+                else "fragment_item_once"
+            ),
+            "row_scale_loads_per_thread": 2 if row_scale_dedup else None,
             "groups_per_pipeline_stage": 2 if pipeline_k64 else 1,
             "pipeline_tile_k": 64 if pipeline_k64 else 32,
         }
