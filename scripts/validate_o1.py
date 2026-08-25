@@ -24,6 +24,7 @@ def parse_args():
             "shared_partial",
             "register_64x32",
             "register_64x32_scale_shared",
+            "register_64x32_k64_scale_shared",
             "register_128x128",
         ),
         default="production",
@@ -184,7 +185,11 @@ def main() -> int:
         }
     else:
         is_128 = selected_key == "register_128x128"
-        scale_shared = selected_key == "register_64x32_scale_shared"
+        scale_shared = selected_key in {
+            "register_64x32_scale_shared",
+            "register_64x32_k64_scale_shared",
+        }
+        pipeline_k64 = selected_key == "register_64x32_k64_scale_shared"
         implementation_metadata = {
             "library": "CUTLASS CuTe + CUDA",
             "mma_api": "cute::MMA_Atom",
@@ -196,12 +201,16 @@ def main() -> int:
                 else "tma_warp_specialized_register_partial"
             ),
             "kernel_symbol": (
-                "adangel_o1_register_partial_64x32_scale_shared"
-                if scale_shared
+                "adangel_o1_register_partial_64x32_k64_scale_shared"
+                if pipeline_k64
                 else (
-                    "adangel_o1_register_partial_128x128"
-                    if is_128
-                    else "adangel_o1_register_partial_64x32"
+                    "adangel_o1_register_partial_64x32_scale_shared"
+                    if scale_shared
+                    else (
+                        "adangel_o1_register_partial_128x128"
+                        if is_128
+                        else "adangel_o1_register_partial_64x32"
+                    )
                 )
             ),
             "consumer_warps": 16 if is_128 else 8,
@@ -214,6 +223,8 @@ def main() -> int:
                 "stage_local_shared_fp32" if scale_shared else "warp_register"
             ),
             "fp32_accumulation_op": "fma_rn" if scale_shared else "mul_then_add_rn",
+            "groups_per_pipeline_stage": 2 if pipeline_k64 else 1,
+            "pipeline_tile_k": 64 if pipeline_k64 else 32,
         }
     for key, value in {**common_metadata, **implementation_metadata}.items():
         if kernel.get(key) != value:

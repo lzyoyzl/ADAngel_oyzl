@@ -72,6 +72,7 @@ struct O1Register64Config {
   static constexpr int kProducerThreads = 32;
   static constexpr int kConsumerThreads = 256;
   static constexpr int kThreadsPerBlock = 288;
+  static constexpr int kGroupsPerStage = 1;
   static constexpr int kAStageElements = 64 * kGroupSize;
   static constexpr int kBStageElements = 32 * kGroupSize;
   using Pipeline = cutlass::PipelineTmaAsync<kPipelineStages>;
@@ -95,6 +96,7 @@ struct O1Register128Config {
   static constexpr int kProducerThreads = 32;
   static constexpr int kConsumerThreads = 512;
   static constexpr int kThreadsPerBlock = 544;
+  static constexpr int kGroupsPerStage = 1;
   static constexpr int kAStageElements = 128 * kGroupSize;
   static constexpr int kBStageElements = 128 * kGroupSize;
   using Pipeline = cutlass::PipelineTmaAsync<kPipelineStages>;
@@ -106,6 +108,40 @@ struct O1Register128Config {
       cute::MMA_Atom<cute::SM80_16x8x32_S32S8S8S32_TN>,
       cute::Layout<cute::Shape<cute::_4, cute::_4, cute::_1>>,
       cute::Tile<cute::_128, cute::_128, cute::_32>>;
+};
+
+struct O1Register64K64Config {
+  static constexpr int kTileM = 64;
+  static constexpr int kTileN = 32;
+  static constexpr int kProducerWarps = 1;
+  static constexpr int kConsumerWarps = 8;
+  static constexpr int kProducerThreads = 32;
+  static constexpr int kConsumerThreads = 256;
+  static constexpr int kThreadsPerBlock = 288;
+  static constexpr int kGroupsPerStage = 2;
+  static constexpr int kAGroupElements = 64 * kGroupSize;
+  static constexpr int kBGroupElements = 32 * kGroupSize;
+  static constexpr int kAStageElements = kGroupsPerStage * kAGroupElements;
+  static constexpr int kBStageElements = kGroupsPerStage * kBGroupElements;
+  using Pipeline = cutlass::PipelineTmaAsync<kPipelineStages>;
+  using SmemLayoutA = decltype(cute::make_layout(
+      cute::make_shape(cute::_64{}, cute::_32{}, cute::_2{}, cute::_3{}),
+      cute::make_stride(
+          cute::_32{},
+          cute::_1{},
+          cute::Int<64 * 32>{},
+          cute::Int<2 * 64 * 32>{})));
+  using SmemLayoutB = decltype(cute::make_layout(
+      cute::make_shape(cute::_32{}, cute::_32{}, cute::_2{}, cute::_3{}),
+      cute::make_stride(
+          cute::_32{},
+          cute::_1{},
+          cute::Int<32 * 32>{},
+          cute::Int<2 * 32 * 32>{})));
+  using TiledMma = cute::TiledMMA<
+      cute::MMA_Atom<cute::SM80_16x8x32_S32S8S8S32_TN>,
+      cute::Layout<cute::Shape<cute::_4, cute::_2, cute::_1>>,
+      cute::Tile<cute::_64, cute::_32, cute::_32>>;
 };
 
 template <class Config>
@@ -122,7 +158,8 @@ template <class Config>
 struct alignas(128) O1RegisterScaleSharedStorage {
   alignas(128) uint8_t a[kPipelineStages * Config::kAStageElements];
   alignas(128) uint8_t b[kPipelineStages * Config::kBStageElements];
-  alignas(128) float column_scale_factor[kPipelineStages * Config::kTileN];
+  alignas(128) float column_scale_factor[
+      kPipelineStages * Config::kGroupsPerStage * Config::kTileN];
   alignas(16) typename Config::Pipeline::SharedStorage pipeline;
 };
 
@@ -130,10 +167,12 @@ enum class O1Implementation {
   kSharedPartial,
   kRegister64x32,
   kRegister64x32ScaleShared,
+  kRegister64x32K64ScaleShared,
   kRegister128x128,
 };
 
 static_assert(O1Register64Config::kThreadsPerBlock == 288);
+static_assert(O1Register64K64Config::kThreadsPerBlock == 288);
 static_assert(O1Register128Config::kThreadsPerBlock == 544);
 
 void check_cuda(cudaError_t status, const char* operation) {
@@ -646,6 +685,216 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
   }
 }
 
+// K64 pipeline candidate: one producer/consumer pipeline state owns two adjacent
+// K32 groups.  The two INT8 MMAs and their UE8M0 scale applications remain
+// independent, so the public K32 block-scale semantics are unchanged.
+template <class TmaA, class TmaB>
+__device__ __forceinline__ void adangel_o1_register_partial_k64_body(
+    TmaA const& tma_a,
+    TmaB const& tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups,
+    O1RegisterScaleSharedStorage<O1Register64K64Config>& shared_storage) {
+  using Config = O1Register64K64Config;
+  auto mA = tma_a.get_tma_tensor(cute::make_shape(m, k));
+  auto mB = tma_b.get_tma_tensor(cute::make_shape(n, k));
+  auto cta_tiler = cute::make_shape(
+      cute::Int<Config::kTileM>{},
+      cute::Int<Config::kTileN>{},
+      cute::Int<kGroupSize>{});
+  auto cta_coord = cute::make_coord(
+      static_cast<int>(blockIdx.y), static_cast<int>(blockIdx.x), cute::_);
+  auto gA = cute::local_tile(
+      mA, cta_tiler, cta_coord, cute::Step<cute::_1, cute::X, cute::_1>{});
+  auto gB = cute::local_tile(
+      mB, cta_tiler, cta_coord, cute::Step<cute::X, cute::_1, cute::_1>{});
+  auto sA = cute::make_tensor(
+      cute::make_smem_ptr(shared_storage.a), Config::SmemLayoutA{});
+  auto sB = cute::make_tensor(
+      cute::make_smem_ptr(shared_storage.b), Config::SmemLayoutB{});
+  auto [tAgA, tAsA] = cute::tma_partition(
+      tma_a,
+      cute::Int<0>{},
+      cute::Layout<cute::_1>{},
+      cute::group_modes<0, 2>(sA),
+      cute::group_modes<0, 2>(gA));
+  auto [tBgB, tBsB] = cute::tma_partition(
+      tma_b,
+      cute::Int<0>{},
+      cute::Layout<cute::_1>{},
+      cute::group_modes<0, 2>(sB),
+      cute::group_modes<0, 2>(gB));
+
+  const int thread = static_cast<int>(threadIdx.x);
+  const int warp = thread >> 5;
+  const int lane = thread & 31;
+  typename Config::Pipeline::Params pipeline_params;
+  pipeline_params.num_consumers = Config::kConsumerThreads;
+  pipeline_params.transaction_bytes =
+      Config::kAStageElements + Config::kBStageElements;
+  pipeline_params.initializing_warp = 0;
+  if (warp == 0 && lane == 0) {
+    pipeline_params.role = Config::Pipeline::ThreadCategory::Producer;
+    pipeline_params.is_leader = 1;
+  } else if (warp > 0) {
+    pipeline_params.role = Config::Pipeline::ThreadCategory::Consumer;
+  }
+  typename Config::Pipeline pipeline(
+      shared_storage.pipeline,
+      pipeline_params,
+      cute::Shape<cute::_1, cute::_1, cute::_1>{});
+  cutlass::pipeline_init_wait(1);
+
+  const int pipeline_groups =
+      (groups + Config::kGroupsPerStage - 1) / Config::kGroupsPerStage;
+  if (warp == 0) {
+    auto write_state =
+        cutlass::make_producer_start_state<typename Config::Pipeline>();
+    for (int pipeline_group = 0;
+         pipeline_group < pipeline_groups;
+         ++pipeline_group) {
+      if (lane == 0) pipeline.producer_acquire(write_state);
+      __syncwarp();
+      const int write_stage = write_state.index();
+#pragma unroll
+      for (int subgroup = 0; subgroup < Config::kGroupsPerStage; ++subgroup) {
+        const int group =
+            pipeline_group * Config::kGroupsPerStage + subgroup;
+        const int local_column = lane;
+        const int global_column =
+            static_cast<int>(blockIdx.x) * Config::kTileN + local_column;
+        const float decoded = group < groups && global_column < n
+            ? adangel::decode_ue8m0(
+                  w_scale[global_column * groups + group])
+            : 0.0f;
+        shared_storage.column_scale_factor[
+            (write_stage * Config::kGroupsPerStage + subgroup) *
+                Config::kTileN +
+            local_column] = __fmul_rn(decoded, 0.5f);
+      }
+      __threadfence_block();
+      __syncwarp();
+      if (lane == 0) {
+        auto* tma_barrier = pipeline.producer_get_barrier(write_state);
+#pragma unroll
+        for (int subgroup = 0; subgroup < Config::kGroupsPerStage; ++subgroup) {
+          const int requested_group =
+              pipeline_group * Config::kGroupsPerStage + subgroup;
+          const int source_group = requested_group < groups ? requested_group : 0;
+          cute::copy(
+              tma_a.with(*tma_barrier),
+              tAgA(cute::_, source_group),
+              tAsA(cute::_, subgroup, write_stage));
+          cute::copy(
+              tma_b.with(*tma_barrier),
+              tBgB(cute::_, source_group),
+              tBsB(cute::_, subgroup, write_stage));
+        }
+      }
+      ++write_state;
+    }
+    if (lane == 0) pipeline.producer_tail(write_state);
+    return;
+  }
+
+  const int compute_thread = thread - Config::kProducerThreads;
+  const int tile_row = static_cast<int>(blockIdx.y) * Config::kTileM;
+  const int tile_column = static_cast<int>(blockIdx.x) * Config::kTileN;
+  typename Config::TiledMma tiled_mma;
+  auto thr_mma = tiled_mma.get_slice(compute_thread);
+  auto tCrA = thr_mma.partition_fragment_A(
+      sA(cute::_, cute::_, cute::Int<0>{}, cute::Int<0>{}));
+  auto tCrB = thr_mma.partition_fragment_B(
+      sB(cute::_, cute::_, cute::Int<0>{}, cute::Int<0>{}));
+  auto cC = cute::make_identity_tensor(
+      cute::make_shape(
+          cute::Int<Config::kTileM>{}, cute::Int<Config::kTileN>{}));
+  auto tCcC = thr_mma.partition_C(cC);
+  auto tCrPartial = thr_mma.make_fragment_C(tCcC);
+  auto tCrAccumulator = cute::make_fragment_like<float>(tCrPartial);
+  auto tCrRowScale = cute::make_fragment_like<float>(tCrPartial);
+  cute::clear(tCrAccumulator);
+  for (int item = 0; item < cute::size(tCrRowScale); ++item) {
+    const int local_row = cute::get<0>(tCcC(item));
+    const int global_row = tile_row + local_row;
+    tCrRowScale(item) = global_row < m ? a_scale[global_row] : 0.0f;
+  }
+
+  using SmemCopyAtom =
+      cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, uint8_t>;
+  SmemCopyAtom smem_copy_atom;
+  auto tiled_copy_a = cute::make_tiled_copy_A(smem_copy_atom, tiled_mma);
+  auto tiled_copy_b = cute::make_tiled_copy_B(smem_copy_atom, tiled_mma);
+  auto thr_copy_a = tiled_copy_a.get_slice(compute_thread);
+  auto thr_copy_b = tiled_copy_b.get_slice(compute_thread);
+  auto tXrA = thr_copy_a.retile_D(tCrA);
+  auto tXrB = thr_copy_b.retile_D(tCrB);
+
+  typename Config::Pipeline::PipelineState read_state;
+  for (int pipeline_group = 0;
+       pipeline_group < pipeline_groups;
+       ++pipeline_group) {
+    pipeline.consumer_wait(read_state);
+    const int read_stage = read_state.index();
+#pragma unroll
+    for (int subgroup = 0; subgroup < Config::kGroupsPerStage; ++subgroup) {
+      const int group =
+          pipeline_group * Config::kGroupsPerStage + subgroup;
+      if (group >= groups) continue;
+      auto tXsA = thr_copy_a.partition_S(
+          sA(cute::_, cute::_, subgroup, read_stage));
+      auto tXsB = thr_copy_b.partition_S(
+          sB(cute::_, cute::_, subgroup, read_stage));
+      cute::copy(smem_copy_atom, tXsA, tXrA);
+      cute::copy(smem_copy_atom, tXsB, tXrB);
+      cute::clear(tCrPartial);
+      cute::gemm(tiled_mma, tCrA, tCrB, tCrPartial);
+
+      const float warp_column_scale =
+          shared_storage.column_scale_factor[
+              (read_stage * Config::kGroupsPerStage + subgroup) *
+                  Config::kTileN +
+              lane];
+      for (int item = 0; item < cute::size(tCrPartial); ++item) {
+        const int local_column = cute::get<1>(tCcC(item));
+        const float column_scale = __shfl_sync(
+            0xffffffffu, warp_column_scale, local_column & 31);
+        const float scale = __fmul_rn(tCrRowScale(item), column_scale);
+        tCrAccumulator(item) = __fmaf_rn(
+            static_cast<float>(tCrPartial(item)),
+            scale,
+            tCrAccumulator(item));
+      }
+    }
+    pipeline.consumer_release(read_state);
+    ++read_state;
+  }
+
+  auto mC = cute::make_tensor(
+      cute::make_gmem_ptr(output),
+      cute::make_shape(m, n),
+      cute::make_stride(n, cute::Int<1>{}));
+  auto gC = cute::local_tile(
+      mC,
+      cute::make_shape(
+          cute::Int<Config::kTileM>{}, cute::Int<Config::kTileN>{}),
+      cute::make_coord(
+          static_cast<int>(blockIdx.y), static_cast<int>(blockIdx.x)));
+  auto tCgC = thr_mma.partition_C(gC);
+  for (int item = 0; item < cute::size(tCrAccumulator); ++item) {
+    const int local_row = cute::get<0>(tCcC(item));
+    const int local_column = cute::get<1>(tCcC(item));
+    if (tile_row + local_row < m && tile_column + local_column < n) {
+      tCgC(item) = tCrAccumulator(item);
+    }
+  }
+}
+
 template <class TmaA, class TmaB>
 __global__ __launch_bounds__(O1Register64Config::kThreadsPerBlock)
 void adangel_o1_register_partial_64x32(
@@ -682,6 +931,26 @@ void adangel_o1_register_partial_64x32_scale_shared(
       *reinterpret_cast<O1RegisterScaleSharedStorage<O1Register64Config>*>(
           shared_bytes);
   adangel_o1_register_partial_body<O1Register64Config, true>(
+      tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
+}
+
+template <class TmaA, class TmaB>
+__global__ __launch_bounds__(O1Register64K64Config::kThreadsPerBlock)
+void adangel_o1_register_partial_64x32_k64_scale_shared(
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups) {
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& shared_storage =
+      *reinterpret_cast<O1RegisterScaleSharedStorage<
+          O1Register64K64Config>*>(shared_bytes);
+  adangel_o1_register_partial_k64_body(
       tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
 }
 
@@ -772,12 +1041,21 @@ auto make_register_tma_a(const at::Tensor& a_int8) {
       cute::make_shape(m, k),
       cute::make_stride(k, cute::Int<1>{}));
   auto layout = typename Config::SmemLayoutA{};
-  return cute::make_tma_atom(
-      cute::SM90_TMA_LOAD{},
-      tensor,
-      layout(cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(
-          cute::Int<Config::kTileM>{}, cute::Int<kGroupSize>{}));
+  if constexpr (Config::kGroupsPerStage == 1) {
+    return cute::make_tma_atom(
+        cute::SM90_TMA_LOAD{},
+        tensor,
+        layout(cute::_, cute::_, cute::Int<0>{}),
+        cute::make_shape(
+            cute::Int<Config::kTileM>{}, cute::Int<kGroupSize>{}));
+  } else {
+    return cute::make_tma_atom(
+        cute::SM90_TMA_LOAD{},
+        tensor,
+        layout(cute::_, cute::_, cute::Int<0>{}, cute::Int<0>{}),
+        cute::make_shape(
+            cute::Int<Config::kTileM>{}, cute::Int<kGroupSize>{}));
+  }
 }
 
 template <class Config>
@@ -789,12 +1067,21 @@ auto make_register_tma_b(const at::Tensor& w_int8) {
       cute::make_shape(n, k),
       cute::make_stride(k, cute::Int<1>{}));
   auto layout = typename Config::SmemLayoutB{};
-  return cute::make_tma_atom(
-      cute::SM90_TMA_LOAD{},
-      tensor,
-      layout(cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(
-          cute::Int<Config::kTileN>{}, cute::Int<kGroupSize>{}));
+  if constexpr (Config::kGroupsPerStage == 1) {
+    return cute::make_tma_atom(
+        cute::SM90_TMA_LOAD{},
+        tensor,
+        layout(cute::_, cute::_, cute::Int<0>{}),
+        cute::make_shape(
+            cute::Int<Config::kTileN>{}, cute::Int<kGroupSize>{}));
+  } else {
+    return cute::make_tma_atom(
+        cute::SM90_TMA_LOAD{},
+        tensor,
+        layout(cute::_, cute::_, cute::Int<0>{}, cute::Int<0>{}),
+        cute::make_shape(
+            cute::Int<Config::kTileN>{}, cute::Int<kGroupSize>{}));
+  }
 }
 
 template <class Config, bool kShareColumnScale = false, class TmaA, class TmaB>
@@ -815,7 +1102,19 @@ void launch_register_o1(
   constexpr int shared_bytes = kShareColumnScale
       ? sizeof(O1RegisterScaleSharedStorage<Config>)
       : sizeof(O1RegisterSharedStorage<Config>);
-  if constexpr (std::is_same_v<Config, O1Register64Config>) {
+  if constexpr (std::is_same_v<Config, O1Register64K64Config>) {
+    adangel_o1_register_partial_64x32_k64_scale_shared<<<
+        grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+        tma_a,
+        tma_b,
+        a_scale.data_ptr<float>(),
+        w_scale.data_ptr<uint8_t>(),
+        output.data_ptr<float>(),
+        m,
+        n,
+        k,
+        groups);
+  } else if constexpr (std::is_same_v<Config, O1Register64Config>) {
     if constexpr (kShareColumnScale) {
       adangel_o1_register_partial_64x32_scale_shared<<<
           grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
@@ -866,6 +1165,9 @@ O1Implementation parse_o1_implementation(const std::string& implementation) {
   if (selected == "register_64x32_scale_shared") {
     return O1Implementation::kRegister64x32ScaleShared;
   }
+  if (selected == "register_64x32_k64_scale_shared") {
+    return O1Implementation::kRegister64x32K64ScaleShared;
+  }
   if (selected == "register_128x128") return O1Implementation::kRegister128x128;
   TORCH_CHECK(false, "unknown O1 implementation: ", implementation);
   return O1Implementation::kSharedPartial;
@@ -911,7 +1213,10 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
   } else {
     const bool is_128 = implementation == O1Implementation::kRegister128x128;
     const bool scale_shared =
-        implementation == O1Implementation::kRegister64x32ScaleShared;
+        implementation == O1Implementation::kRegister64x32ScaleShared ||
+        implementation == O1Implementation::kRegister64x32K64ScaleShared;
+    const bool pipeline_k64 =
+        implementation == O1Implementation::kRegister64x32K64ScaleShared;
     result["library"] = "CUTLASS CuTe + CUDA";
     result["mma_api"] = "cute::MMA_Atom";
     result["mma_atom"] = "SM80_16x8x32_S32S8S8S32_TN";
@@ -920,19 +1225,23 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
         scale_shared
         ? "tma_warp_specialized_register_partial_scale_shared"
         : "tma_warp_specialized_register_partial";
-    result["implementation_key"] = scale_shared
+    result["implementation_key"] = pipeline_k64
+        ? "register_64x32_k64_scale_shared"
+        : (scale_shared
         ? "register_64x32_scale_shared"
-        : (is_128 ? "register_128x128" : "register_64x32");
-    result["kernel_symbol"] = scale_shared
+        : (is_128 ? "register_128x128" : "register_64x32"));
+    result["kernel_symbol"] = pipeline_k64
+        ? "adangel_o1_register_partial_64x32_k64_scale_shared"
+        : (scale_shared
         ? "adangel_o1_register_partial_64x32_scale_shared"
         : (is_128
               ? "adangel_o1_register_partial_128x128"
-              : "adangel_o1_register_partial_64x32");
+              : "adangel_o1_register_partial_64x32"));
     result["producer_warps"] = 1;
     result["consumer_warps"] = is_128 ? 16 : 8;
     result["cta_tile"] = is_128
         ? py::make_tuple(128, 128, kGroupSize)
-        : py::make_tuple(64, 32, kGroupSize);
+        : py::make_tuple(64, 32, pipeline_k64 ? 64 : kGroupSize);
     result["partial_storage"] = "register";
     result["shared_partial_redistribution"] = false;
     result["column_scale_load_scope"] =
@@ -941,6 +1250,8 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
         scale_shared ? "stage_local_shared_fp32" : "warp_register";
     result["fp32_accumulation_op"] =
         scale_shared ? "fma_rn" : "mul_then_add_rn";
+    result["groups_per_pipeline_stage"] = pipeline_k64 ? 2 : 1;
+    result["pipeline_tile_k"] = pipeline_k64 ? 64 : 32;
   }
   return result;
 }
@@ -1169,6 +1480,22 @@ py::dict benchmark_o1_selected(
   }
   if (implementation == O1Implementation::kRegister64x32ScaleShared) {
     return benchmark_register_implementation<O1Register64Config, true>(
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode_name,
+        mode,
+        implementation,
+        warmup,
+        repeats,
+        conversion_inner_repeats,
+        w_int8,
+        output,
+        stream);
+  }
+  if (implementation == O1Implementation::kRegister64x32K64ScaleShared) {
+    return benchmark_register_implementation<O1Register64K64Config, true>(
         a_int8,
         a_scale,
         w_mxfp4,

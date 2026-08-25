@@ -170,7 +170,12 @@ def test_o1_native_timing_modes(mode, expected_stages):
 @pytest.mark.sm120
 @pytest.mark.parametrize(
     "implementation",
-    ["register_64x32", "register_64x32_scale_shared", "register_128x128"],
+    [
+        "register_64x32",
+        "register_64x32_scale_shared",
+        "register_64x32_k64_scale_shared",
+        "register_128x128",
+    ],
 )
 @pytest.mark.parametrize(
     ("m", "n", "k"),
@@ -205,7 +210,11 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
     )
     kernel = dict(result["kernel"])
     assert kernel["implementation_key"] == implementation
-    scale_shared = implementation == "register_64x32_scale_shared"
+    scale_shared = implementation in {
+        "register_64x32_scale_shared",
+        "register_64x32_k64_scale_shared",
+    }
+    pipeline_k64 = implementation == "register_64x32_k64_scale_shared"
     assert kernel["implementation"] == (
         "tma_warp_specialized_register_partial_scale_shared"
         if scale_shared
@@ -226,12 +235,19 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
     assert kernel["fp32_accumulation_op"] == (
         "fma_rn" if scale_shared else "mul_then_add_rn"
     )
+    assert kernel["groups_per_pipeline_stage"] == (2 if pipeline_k64 else 1)
+    assert kernel["pipeline_tile_k"] == (64 if pipeline_k64 else 32)
 
 
 @pytest.mark.sm120
 @pytest.mark.parametrize(
     "implementation",
-    ["register_64x32", "register_64x32_scale_shared", "register_128x128"],
+    [
+        "register_64x32",
+        "register_64x32_scale_shared",
+        "register_64x32_k64_scale_shared",
+        "register_128x128",
+    ],
 )
 @pytest.mark.parametrize("pattern", ["zero", "alternating", "saturated"])
 def test_o1_register_partial_scale_coordinate_patterns(implementation, pattern):
