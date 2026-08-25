@@ -178,6 +178,7 @@ def test_o1_native_timing_modes(mode, expected_stages):
         "register_128x32_k64_scale_shared_row_dedup",
         "register_64x64_k64_scale_shared",
         "register_128x64_k64_scale_shared",
+        "register_128x64_k64_scale_shared_row_dedup",
         "register_128x128",
     ],
 )
@@ -221,6 +222,7 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
         "register_128x32_k64_scale_shared_row_dedup",
         "register_64x64_k64_scale_shared",
         "register_128x64_k64_scale_shared",
+        "register_128x64_k64_scale_shared_row_dedup",
     }
     pipeline_k64 = implementation in {
         "register_64x32_k64_scale_shared",
@@ -228,6 +230,7 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
         "register_128x32_k64_scale_shared_row_dedup",
         "register_64x64_k64_scale_shared",
         "register_128x64_k64_scale_shared",
+        "register_128x64_k64_scale_shared_row_dedup",
     }
     assert kernel["implementation"] == (
         "tma_warp_specialized_register_partial_scale_shared"
@@ -249,9 +252,10 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
     assert kernel["fp32_accumulation_op"] == (
         "fma_rn" if scale_shared else "mul_then_add_rn"
     )
-    row_scale_dedup = (
-        implementation == "register_128x32_k64_scale_shared_row_dedup"
-    )
+    row_scale_dedup = implementation in {
+        "register_128x32_k64_scale_shared_row_dedup",
+        "register_128x64_k64_scale_shared_row_dedup",
+    }
     assert kernel["row_scale_load_scope"] == (
         "thread_once_per_unique_row" if row_scale_dedup else "fragment_item_once"
     )
@@ -273,7 +277,11 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
                 if implementation == "register_64x64_k64_scale_shared"
                 else (
                     (128, 64, 64)
-                    if implementation == "register_128x64_k64_scale_shared"
+                    if implementation
+                    in {
+                        "register_128x64_k64_scale_shared",
+                        "register_128x64_k64_scale_shared_row_dedup",
+                    }
                     else (64, 32, 64 if pipeline_k64 else 32)
                 )
             )
@@ -286,6 +294,7 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
             "register_128x32_k64_scale_shared_row_dedup",
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
+            "register_128x64_k64_scale_shared_row_dedup",
             "register_128x128",
         }
         else 8
@@ -303,6 +312,7 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
         "register_128x32_k64_scale_shared_row_dedup",
         "register_64x64_k64_scale_shared",
         "register_128x64_k64_scale_shared",
+        "register_128x64_k64_scale_shared_row_dedup",
         "register_128x128",
     ],
 )

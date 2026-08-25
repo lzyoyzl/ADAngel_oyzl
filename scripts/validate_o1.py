@@ -29,6 +29,7 @@ def parse_args():
             "register_128x32_k64_scale_shared_row_dedup",
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
+            "register_128x64_k64_scale_shared_row_dedup",
             "register_128x128",
         ),
         default="production",
@@ -189,14 +190,22 @@ def main() -> int:
         }
     else:
         is_128 = selected_key == "register_128x128"
-        row_scale_dedup = (
+        row_scale_dedup_128x32 = (
             selected_key == "register_128x32_k64_scale_shared_row_dedup"
         )
+        row_scale_dedup_128x64 = (
+            selected_key == "register_128x64_k64_scale_shared_row_dedup"
+        )
+        row_scale_dedup = row_scale_dedup_128x32 or row_scale_dedup_128x64
         is_128x32_k64 = (
-            selected_key == "register_128x32_k64_scale_shared" or row_scale_dedup
+            selected_key == "register_128x32_k64_scale_shared"
+            or row_scale_dedup_128x32
         )
         is_64x64_k64 = selected_key == "register_64x64_k64_scale_shared"
-        is_128x64_k64 = selected_key == "register_128x64_k64_scale_shared"
+        is_128x64_k64 = (
+            selected_key == "register_128x64_k64_scale_shared"
+            or row_scale_dedup_128x64
+        )
         scale_shared = selected_key in {
             "register_64x32_scale_shared",
             "register_64x32_k64_scale_shared",
@@ -204,6 +213,7 @@ def main() -> int:
             "register_128x32_k64_scale_shared_row_dedup",
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
+            "register_128x64_k64_scale_shared_row_dedup",
         }
         pipeline_k64 = selected_key in {
             "register_64x32_k64_scale_shared",
@@ -211,6 +221,7 @@ def main() -> int:
             "register_128x32_k64_scale_shared_row_dedup",
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
+            "register_128x64_k64_scale_shared_row_dedup",
         }
         implementation_metadata = {
             "library": "CUTLASS CuTe + CUDA",
@@ -224,26 +235,30 @@ def main() -> int:
             ),
             "kernel_symbol": (
                 "adangel_o1_register_partial_128x32_k64_scale_shared_row_dedup"
-                if row_scale_dedup
+                if row_scale_dedup_128x32
                 else (
-                    "adangel_o1_register_partial_128x32_k64_scale_shared"
-                    if is_128x32_k64
+                    "adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup"
+                    if row_scale_dedup_128x64
                     else (
-                        "adangel_o1_register_partial_64x64_k64_scale_shared"
-                        if is_64x64_k64
+                        "adangel_o1_register_partial_128x32_k64_scale_shared"
+                        if is_128x32_k64
                         else (
-                            "adangel_o1_register_partial_128x64_k64_scale_shared"
-                            if is_128x64_k64
+                            "adangel_o1_register_partial_64x64_k64_scale_shared"
+                            if is_64x64_k64
                             else (
-                                "adangel_o1_register_partial_64x32_k64_scale_shared"
-                                if pipeline_k64
+                                "adangel_o1_register_partial_128x64_k64_scale_shared"
+                                if is_128x64_k64
                                 else (
-                                    "adangel_o1_register_partial_64x32_scale_shared"
-                                    if scale_shared
+                                    "adangel_o1_register_partial_64x32_k64_scale_shared"
+                                    if pipeline_k64
                                     else (
-                                        "adangel_o1_register_partial_128x128"
-                                        if is_128
-                                        else "adangel_o1_register_partial_64x32"
+                                        "adangel_o1_register_partial_64x32_scale_shared"
+                                        if scale_shared
+                                        else (
+                                            "adangel_o1_register_partial_128x128"
+                                            if is_128
+                                            else "adangel_o1_register_partial_64x32"
+                                        )
                                     )
                                 )
                             )
