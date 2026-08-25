@@ -752,9 +752,9 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
   auto gB = cute::local_tile(
       mB, cta_tiler, cta_coord, cute::Step<cute::X, cute::_1, cute::_1>{});
   auto sA = cute::make_tensor(
-      cute::make_smem_ptr(shared_storage.a), Config::SmemLayoutA{});
+      cute::make_smem_ptr(shared_storage.a), typename Config::SmemLayoutA{});
   auto sB = cute::make_tensor(
-      cute::make_smem_ptr(shared_storage.b), Config::SmemLayoutB{});
+      cute::make_smem_ptr(shared_storage.b), typename Config::SmemLayoutB{});
   auto [tAgA, tAsA] = cute::tma_partition(
       tma_a,
       cute::Int<0>{},
