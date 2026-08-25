@@ -168,7 +168,10 @@ def test_o1_native_timing_modes(mode, expected_stages):
 
 
 @pytest.mark.sm120
-@pytest.mark.parametrize("implementation", ["register_64x32", "register_128x128"])
+@pytest.mark.parametrize(
+    "implementation",
+    ["register_64x32", "register_64x32_scale_shared", "register_128x128"],
+)
 @pytest.mark.parametrize(
     ("m", "n", "k"),
     [(16, 8, 32), (64, 32, 64), (68, 36, 96)],
@@ -202,7 +205,12 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
     )
     kernel = dict(result["kernel"])
     assert kernel["implementation_key"] == implementation
-    assert kernel["implementation"] == "tma_warp_specialized_register_partial"
+    scale_shared = implementation == "register_64x32_scale_shared"
+    assert kernel["implementation"] == (
+        "tma_warp_specialized_register_partial_scale_shared"
+        if scale_shared
+        else "tma_warp_specialized_register_partial"
+    )
     assert kernel["library"] == "CUTLASS CuTe + CUDA"
     assert kernel["mma_api"] == "cute::MMA_Atom"
     assert kernel["mma_atom"] == "SM80_16x8x32_S32S8S8S32_TN"
@@ -212,10 +220,19 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
     assert kernel["global_partial_buffer"] is False
     assert kernel["output_stores_per_element"] == 1
     assert kernel["production_selected"] is (implementation == "register_64x32")
+    assert kernel["column_scale_load_scope"] == (
+        "cta_once_per_column_group" if scale_shared else "consumer_warp"
+    )
+    assert kernel["fp32_accumulation_op"] == (
+        "fma_rn" if scale_shared else "mul_then_add_rn"
+    )
 
 
 @pytest.mark.sm120
-@pytest.mark.parametrize("implementation", ["register_64x32", "register_128x128"])
+@pytest.mark.parametrize(
+    "implementation",
+    ["register_64x32", "register_64x32_scale_shared", "register_128x128"],
+)
 @pytest.mark.parametrize("pattern", ["zero", "alternating", "saturated"])
 def test_o1_register_partial_scale_coordinate_patterns(implementation, pattern):
     import torch

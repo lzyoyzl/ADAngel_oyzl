@@ -115,9 +115,21 @@ struct alignas(128) O1RegisterSharedStorage {
   alignas(16) typename Config::Pipeline::SharedStorage pipeline;
 };
 
+// Candidate storage for CTA-wide W-scale reuse.  The producer warp decodes each
+// (column, K32 group) scale exactly once and publishes the FP32 scale/2 factor
+// through the same three-stage lifetime as the TMA operand buffers.
+template <class Config>
+struct alignas(128) O1RegisterScaleSharedStorage {
+  alignas(128) uint8_t a[kPipelineStages * Config::kAStageElements];
+  alignas(128) uint8_t b[kPipelineStages * Config::kBStageElements];
+  alignas(128) float column_scale_factor[kPipelineStages * Config::kTileN];
+  alignas(16) typename Config::Pipeline::SharedStorage pipeline;
+};
+
 enum class O1Implementation {
   kSharedPartial,
   kRegister64x32,
+  kRegister64x32ScaleShared,
   kRegister128x128,
 };
 
@@ -400,7 +412,7 @@ __global__ __launch_bounds__(kThreadsPerBlock) void adangel_o1_shared_partial_ba
   }
 }
 
-template <class Config, class TmaA, class TmaB>
+template <class Config, bool kShareColumnScale, class TmaA, class TmaB, class SharedStorage>
 __device__ __forceinline__ void adangel_o1_register_partial_body(
     TmaA const& tma_a,
     TmaB const& tma_b,
@@ -411,7 +423,7 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
     int n,
     int k,
     int groups,
-    O1RegisterSharedStorage<Config>& shared_storage) {
+    SharedStorage& shared_storage) {
   auto mA = tma_a.get_tma_tensor(cute::make_shape(m, k));
   auto mB = tma_b.get_tma_tensor(cute::make_shape(n, k));
   auto cta_tiler = cute::make_shape(
@@ -462,7 +474,43 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
   cutlass::pipeline_init_wait(1);
 
   if (warp == 0) {
-    if (lane == 0) {
+    if constexpr (kShareColumnScale) {
+      auto write_state =
+          cutlass::make_producer_start_state<typename Config::Pipeline>();
+      for (int group = 0; group < groups; ++group) {
+        if (lane == 0) pipeline.producer_acquire(write_state);
+        __syncwarp();
+        const int write_stage = write_state.index();
+        for (int local_column = lane;
+             local_column < Config::kTileN;
+             local_column += 32) {
+          const int global_column =
+              static_cast<int>(blockIdx.x) * Config::kTileN + local_column;
+          const float decoded = global_column < n
+              ? adangel::decode_ue8m0(
+                    w_scale[global_column * groups + group])
+              : 0.0f;
+          shared_storage.column_scale_factor[
+              write_stage * Config::kTileN + local_column] =
+              __fmul_rn(decoded, 0.5f);
+        }
+        __threadfence_block();
+        __syncwarp();
+        if (lane == 0) {
+          auto* tma_barrier = pipeline.producer_get_barrier(write_state);
+          cute::copy(
+              tma_a.with(*tma_barrier),
+              tAgA(cute::_, group),
+              tAsA(cute::_, write_stage));
+          cute::copy(
+              tma_b.with(*tma_barrier),
+              tBgB(cute::_, group),
+              tBsB(cute::_, write_stage));
+        }
+        ++write_state;
+      }
+      if (lane == 0) pipeline.producer_tail(write_state);
+    } else if (lane == 0) {
       auto write_state =
           cutlass::make_producer_start_state<typename Config::Pipeline>();
       for (int group = 0; group < groups; ++group) {
@@ -536,10 +584,16 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
     for (int round = 0; round < Config::kTileN / 32; ++round) {
       const int local_column = round * 32 + lane;
       const int global_column = tile_column + local_column;
-      warp_column_scales[round] = global_column < n
-          ? adangel::decode_ue8m0(
-                w_scale[global_column * groups + group])
-          : 0.0f;
+      if constexpr (kShareColumnScale) {
+        warp_column_scales[round] =
+            shared_storage.column_scale_factor[
+                read_stage * Config::kTileN + local_column];
+      } else {
+        warp_column_scales[round] = global_column < n
+            ? adangel::decode_ue8m0(
+                  w_scale[global_column * groups + group])
+            : 0.0f;
+      }
     }
 
     for (int item = 0; item < cute::size(tCrPartial); ++item) {
@@ -551,13 +605,21 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
             0xffffffffu, warp_column_scales[round], local_column & 31);
         if ((local_column >> 5) == round) column_scale = candidate;
       }
-      float scale = __fmul_rn(tCrRowScale(item), column_scale);
-      scale = __fmul_rn(scale, 0.5f);
-      const float contribution =
-          __fmul_rn(static_cast<float>(tCrPartial(item)), scale);
-      tCrAccumulator(item) = group == 0
-          ? contribution
-          : __fadd_rn(tCrAccumulator(item), contribution);
+      if constexpr (kShareColumnScale) {
+        const float scale = __fmul_rn(tCrRowScale(item), column_scale);
+        tCrAccumulator(item) = __fmaf_rn(
+            static_cast<float>(tCrPartial(item)),
+            scale,
+            tCrAccumulator(item));
+      } else {
+        float scale = __fmul_rn(tCrRowScale(item), column_scale);
+        scale = __fmul_rn(scale, 0.5f);
+        const float contribution =
+            __fmul_rn(static_cast<float>(tCrPartial(item)), scale);
+        tCrAccumulator(item) = group == 0
+            ? contribution
+            : __fadd_rn(tCrAccumulator(item), contribution);
+      }
     }
 
     pipeline.consumer_release(read_state);
@@ -599,7 +661,27 @@ void adangel_o1_register_partial_64x32(
   extern __shared__ __align__(128) uint8_t shared_bytes[];
   auto& shared_storage =
       *reinterpret_cast<O1RegisterSharedStorage<O1Register64Config>*>(shared_bytes);
-  adangel_o1_register_partial_body<O1Register64Config>(
+  adangel_o1_register_partial_body<O1Register64Config, false>(
+      tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
+}
+
+template <class TmaA, class TmaB>
+__global__ __launch_bounds__(O1Register64Config::kThreadsPerBlock)
+void adangel_o1_register_partial_64x32_scale_shared(
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
+    const float* a_scale,
+    const uint8_t* w_scale,
+    float* output,
+    int m,
+    int n,
+    int k,
+    int groups) {
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& shared_storage =
+      *reinterpret_cast<O1RegisterScaleSharedStorage<O1Register64Config>*>(
+          shared_bytes);
+  adangel_o1_register_partial_body<O1Register64Config, true>(
       tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
 }
 
@@ -618,7 +700,7 @@ void adangel_o1_register_partial_128x128(
   extern __shared__ __align__(128) uint8_t shared_bytes[];
   auto& shared_storage =
       *reinterpret_cast<O1RegisterSharedStorage<O1Register128Config>*>(shared_bytes);
-  adangel_o1_register_partial_body<O1Register128Config>(
+  adangel_o1_register_partial_body<O1Register128Config, false>(
       tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, shared_storage);
 }
 
@@ -715,7 +797,7 @@ auto make_register_tma_b(const at::Tensor& w_int8) {
           cute::Int<Config::kTileN>{}, cute::Int<kGroupSize>{}));
 }
 
-template <class Config, class TmaA, class TmaB>
+template <class Config, bool kShareColumnScale = false, class TmaA, class TmaB>
 void launch_register_o1(
     const at::Tensor& a_scale,
     const at::Tensor& w_scale,
@@ -730,19 +812,35 @@ void launch_register_o1(
   dim3 grid(
       (n + Config::kTileN - 1) / Config::kTileN,
       (m + Config::kTileM - 1) / Config::kTileM);
-  constexpr int shared_bytes = sizeof(O1RegisterSharedStorage<Config>);
+  constexpr int shared_bytes = kShareColumnScale
+      ? sizeof(O1RegisterScaleSharedStorage<Config>)
+      : sizeof(O1RegisterSharedStorage<Config>);
   if constexpr (std::is_same_v<Config, O1Register64Config>) {
-    adangel_o1_register_partial_64x32<<<
-        grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
-        tma_a,
-        tma_b,
-        a_scale.data_ptr<float>(),
-        w_scale.data_ptr<uint8_t>(),
-        output.data_ptr<float>(),
-        m,
-        n,
-        k,
-        groups);
+    if constexpr (kShareColumnScale) {
+      adangel_o1_register_partial_64x32_scale_shared<<<
+          grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+          tma_a,
+          tma_b,
+          a_scale.data_ptr<float>(),
+          w_scale.data_ptr<uint8_t>(),
+          output.data_ptr<float>(),
+          m,
+          n,
+          k,
+          groups);
+    } else {
+      adangel_o1_register_partial_64x32<<<
+          grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+          tma_a,
+          tma_b,
+          a_scale.data_ptr<float>(),
+          w_scale.data_ptr<uint8_t>(),
+          output.data_ptr<float>(),
+          m,
+          n,
+          k,
+          groups);
+    }
   } else {
     adangel_o1_register_partial_128x128<<<
         grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
@@ -765,6 +863,9 @@ O1Implementation parse_o1_implementation(const std::string& implementation) {
       : implementation;
   if (selected == "shared_partial") return O1Implementation::kSharedPartial;
   if (selected == "register_64x32") return O1Implementation::kRegister64x32;
+  if (selected == "register_64x32_scale_shared") {
+    return O1Implementation::kRegister64x32ScaleShared;
+  }
   if (selected == "register_128x128") return O1Implementation::kRegister128x128;
   TORCH_CHECK(false, "unknown O1 implementation: ", implementation);
   return O1Implementation::kSharedPartial;
@@ -808,25 +909,38 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
     result["partial_storage"] = "shared_memory";
     result["shared_partial_redistribution"] = true;
   } else {
-    const bool is_64 = implementation == O1Implementation::kRegister64x32;
+    const bool is_128 = implementation == O1Implementation::kRegister128x128;
+    const bool scale_shared =
+        implementation == O1Implementation::kRegister64x32ScaleShared;
     result["library"] = "CUTLASS CuTe + CUDA";
     result["mma_api"] = "cute::MMA_Atom";
     result["mma_atom"] = "SM80_16x8x32_S32S8S8S32_TN";
     result["mma_shape"] = "m16n8k32";
     result["implementation"] =
-        "tma_warp_specialized_register_partial";
-    result["implementation_key"] =
-        is_64 ? "register_64x32" : "register_128x128";
-    result["kernel_symbol"] = is_64
-        ? "adangel_o1_register_partial_64x32"
-        : "adangel_o1_register_partial_128x128";
+        scale_shared
+        ? "tma_warp_specialized_register_partial_scale_shared"
+        : "tma_warp_specialized_register_partial";
+    result["implementation_key"] = scale_shared
+        ? "register_64x32_scale_shared"
+        : (is_128 ? "register_128x128" : "register_64x32");
+    result["kernel_symbol"] = scale_shared
+        ? "adangel_o1_register_partial_64x32_scale_shared"
+        : (is_128
+              ? "adangel_o1_register_partial_128x128"
+              : "adangel_o1_register_partial_64x32");
     result["producer_warps"] = 1;
-    result["consumer_warps"] = is_64 ? 8 : 16;
-    result["cta_tile"] = is_64
-        ? py::make_tuple(64, 32, kGroupSize)
-        : py::make_tuple(128, 128, kGroupSize);
+    result["consumer_warps"] = is_128 ? 16 : 8;
+    result["cta_tile"] = is_128
+        ? py::make_tuple(128, 128, kGroupSize)
+        : py::make_tuple(64, 32, kGroupSize);
     result["partial_storage"] = "register";
     result["shared_partial_redistribution"] = false;
+    result["column_scale_load_scope"] =
+        scale_shared ? "cta_once_per_column_group" : "consumer_warp";
+    result["column_scale_storage"] =
+        scale_shared ? "stage_local_shared_fp32" : "warp_register";
+    result["fp32_accumulation_op"] =
+        scale_shared ? "fma_rn" : "mul_then_add_rn";
   }
   return result;
 }
@@ -948,7 +1062,7 @@ py::dict measure_o1_implementation(
   return result;
 }
 
-template <class Config>
+template <class Config, bool kShareColumnScale = false>
 py::dict benchmark_register_implementation(
     const at::Tensor& a_int8,
     const at::Tensor& a_scale,
@@ -969,7 +1083,7 @@ py::dict benchmark_register_implementation(
   auto tma_a = make_register_tma_a<Config>(a_int8);
   auto tma_b = make_register_tma_b<Config>(w_int8);
   auto gemm = [&]() {
-    launch_register_o1<Config>(
+    launch_register_o1<Config, kShareColumnScale>(
         a_scale, w_scale, output, m, n, k, tma_a, tma_b, stream);
   };
   return measure_o1_implementation(
@@ -1039,6 +1153,22 @@ py::dict benchmark_o1_selected(
   }
   if (implementation == O1Implementation::kRegister64x32) {
     return benchmark_register_implementation<O1Register64Config>(
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode_name,
+        mode,
+        implementation,
+        warmup,
+        repeats,
+        conversion_inner_repeats,
+        w_int8,
+        output,
+        stream);
+  }
+  if (implementation == O1Implementation::kRegister64x32ScaleShared) {
+    return benchmark_register_implementation<O1Register64Config, true>(
         a_int8,
         a_scale,
         w_mxfp4,

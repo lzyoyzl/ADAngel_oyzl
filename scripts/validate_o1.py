@@ -19,7 +19,13 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument(
         "--implementation",
-        choices=("production", "shared_partial", "register_64x32", "register_128x128"),
+        choices=(
+            "production",
+            "shared_partial",
+            "register_64x32",
+            "register_64x32_scale_shared",
+            "register_128x128",
+        ),
         default="production",
     )
     parser.add_argument("--max-compute-ms", type=float)
@@ -177,21 +183,37 @@ def main() -> int:
             "shared_partial_redistribution": True,
         }
     else:
-        is_64 = selected_key == "register_64x32"
+        is_128 = selected_key == "register_128x128"
+        scale_shared = selected_key == "register_64x32_scale_shared"
         implementation_metadata = {
             "library": "CUTLASS CuTe + CUDA",
             "mma_api": "cute::MMA_Atom",
             "mma_atom": "SM80_16x8x32_S32S8S8S32_TN",
             "mma_shape": "m16n8k32",
-            "implementation": "tma_warp_specialized_register_partial",
-            "kernel_symbol": (
-                "adangel_o1_register_partial_64x32"
-                if is_64
-                else "adangel_o1_register_partial_128x128"
+            "implementation": (
+                "tma_warp_specialized_register_partial_scale_shared"
+                if scale_shared
+                else "tma_warp_specialized_register_partial"
             ),
-            "consumer_warps": 8 if is_64 else 16,
+            "kernel_symbol": (
+                "adangel_o1_register_partial_64x32_scale_shared"
+                if scale_shared
+                else (
+                    "adangel_o1_register_partial_128x128"
+                    if is_128
+                    else "adangel_o1_register_partial_64x32"
+                )
+            ),
+            "consumer_warps": 16 if is_128 else 8,
             "partial_storage": "register",
             "shared_partial_redistribution": False,
+            "column_scale_load_scope": (
+                "cta_once_per_column_group" if scale_shared else "consumer_warp"
+            ),
+            "column_scale_storage": (
+                "stage_local_shared_fp32" if scale_shared else "warp_register"
+            ),
+            "fp32_accumulation_op": "fma_rn" if scale_shared else "mul_then_add_rn",
         }
     for key, value in {**common_metadata, **implementation_metadata}.items():
         if kernel.get(key) != value:
