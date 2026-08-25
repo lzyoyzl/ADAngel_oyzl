@@ -286,6 +286,8 @@ python scripts/retry_unstable_run.py \
 结果，也不会只重测某个variant；存在未解决target时不会替换正式`results.jsonl`。
 正式runner与重测脚本都会在初始化CUDA前通过`nvidia-smi`检查compute process；GPU
 非空闲时立即拒绝运行，避免把其他用户任务造成的离群写入正式结果。
+若外部任务在重测中途启动，可安全中止后用同一命令继续；脚本会从
+`retry_attempts.jsonl`恢复已经通过的第一次全稳定attempt，只补测未完成target。
 
 ```bash
 python scripts/validate_o2.py \

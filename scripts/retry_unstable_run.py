@@ -69,11 +69,12 @@ def main() -> int:
     results_path = run_dir / "results.jsonl"
     backup_path = run_dir / "results.initial.jsonl"
     audit_path = run_dir / "retry_audit.json"
+    partial_audit_path = run_dir / "retry_audit.partial.json"
     attempts_path = run_dir / "retry_attempts.jsonl"
     if not results_path.is_file():
         raise FileNotFoundError(f"results file is missing: {results_path}")
-    if backup_path.exists() or audit_path.exists() or attempts_path.exists():
-        raise FileExistsError("retry artifacts already exist; refusing to overwrite them")
+    if backup_path.exists() or audit_path.exists():
+        raise FileExistsError("a completed retry already exists; refusing to overwrite it")
 
     config = yaml.safe_load((run_dir / "config.yaml").read_text(encoding="utf-8"))
     manifest = json.loads((data_dir / "manifest.json").read_text(encoding="utf-8"))
@@ -112,12 +113,48 @@ def main() -> int:
         print(json.dumps({"passed": True, "targets": 0, "message": "no retries needed"}))
         return 0
 
+    previous_attempts = []
+    if attempts_path.exists():
+        previous_attempts = [
+            json.loads(line)
+            for line in attempts_path.read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+    previous_by_target = {}
+    for item in previous_attempts:
+        key = (item["sample_id"], item["mode"])
+        if key not in targets:
+            raise ValueError(f"retry log contains a target absent from the source run: {key}")
+        previous_by_target.setdefault(key, []).append(item)
+
     replacements = {}
     accepted = []
+    recovered_targets = set()
+    for key, items in previous_by_target.items():
+        for item in items:
+            if not bool(item["all_variants_stable"]):
+                continue
+            records_by_variant = {
+                record["variant"]: record for record in item["records"]
+            }
+            if set(records_by_variant) != set(variants):
+                raise ValueError(f"stable retry record has the wrong variant set: {key}")
+            for variant in variants:
+                replacements[(key[0], variant, key[1])] = records_by_variant[variant]
+            accepted.append(
+                {"sample_id": key[0], "mode": key[1], "attempt": item["attempt"]}
+            )
+            recovered_targets.add(key)
+            break
     unresolved = []
-    attempt_count = 0
-    with attempts_path.open("x", encoding="utf-8") as attempt_stream:
+    attempt_count = len(previous_attempts)
+    open_mode = "a" if attempts_path.exists() else "x"
+    with attempts_path.open(open_mode, encoding="utf-8") as attempt_stream:
         for target_index, (sample_id, mode) in enumerate(targets):
+            target = (sample_id, mode)
+            if target in recovered_targets:
+                print(f"{sample_id} {mode} recovered from retry log", flush=True)
+                continue
             sample = sample_by_id[sample_id]
             inputs = load_prepared(data_dir / sample["file"], device="cuda")
             reference_path = run_dir / "o0_outputs" / f"{sample_id}.pt"
@@ -127,7 +164,12 @@ def main() -> int:
                 weights_only=True,
             )
             accepted_records = None
-            for attempt in range(1, args.max_attempts + 1):
+            prior_for_target = previous_by_target.get(target, [])
+            first_attempt = max(
+                (int(item["attempt"]) for item in prior_for_target),
+                default=0,
+            ) + 1
+            for attempt in range(first_attempt, first_attempt + args.max_attempts):
                 order = list(variants)
                 shift = (target_index + attempt - 1) % len(order)
                 order = order[shift:] + order[:shift]
@@ -227,11 +269,15 @@ def main() -> int:
         "conversion_inner_repeats": conversion_inner_repeats,
         "targets": len(targets),
         "attempts": attempt_count,
+        "resumed_attempts": len(previous_attempts),
         "accepted": accepted,
         "unresolved": unresolved,
     }
-    audit_path.write_text(json.dumps(audit, indent=2) + "\n", encoding="utf-8")
     if unresolved:
+        partial_audit_path.write_text(
+            json.dumps(audit, indent=2) + "\n",
+            encoding="utf-8",
+        )
         print(json.dumps({"passed": False, **audit}, indent=2))
         return 1
 
@@ -250,6 +296,7 @@ def main() -> int:
             stream.write(json.dumps(record, ensure_ascii=False) + "\n")
     results_path.replace(backup_path)
     temporary_path.replace(results_path)
+    audit_path.write_text(json.dumps(audit, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"passed": True, **audit}, indent=2))
     return 0
 

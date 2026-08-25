@@ -136,6 +136,8 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("results.initial.jsonl", retry_script)
         self.assertIn("all_variants_stable", retry_script)
         self.assertIn("paired retry requires an idle GPU", retry_script)
+        self.assertIn("recovered from retry log", retry_script)
+        self.assertIn("resumed_attempts", retry_script)
         runner = (ROOT / "python/adangel/benchmark/runner.py").read_text()
         self.assertIn("_assert_gpu_idle_before_context()", runner)
         self.assertIn("formal runner requires an idle GPU", runner)
