@@ -33,6 +33,7 @@ def _run(args) -> None:
         sample_limit=args.samples,
         warmup_override=args.warmup,
         repeats_override=args.repeats,
+        require_idle_gpu=args.require_idle_gpu,
     )
     print(path)
 
@@ -45,6 +46,7 @@ def _analyze(args) -> None:
             args.run,
             args.output,
             stability_policy=args.stability_policy,
+            diagnostic_note=args.diagnostic_note,
         )
     )
 
@@ -78,6 +80,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--samples", type=int)
     run.add_argument("--warmup", type=int)
     run.add_argument("--repeats", type=int)
+    run.add_argument(
+        "--require-idle-gpu",
+        action="store_true",
+        help="opt in to rejecting the run when compute processes are already active",
+    )
     run.add_argument("--require-native", action="store_true", help="kept for explicit scripts; formal run always requires native")
     run.set_defaults(func=_run)
 
@@ -92,6 +99,10 @@ def build_parser() -> argparse.ArgumentParser:
             "strict rejects CV-failed records; diagnostic includes them, records a warning, "
             "and preserves stability columns in every table"
         ),
+    )
+    analyze.add_argument(
+        "--diagnostic-note",
+        help="free-form provenance note stored in report_metadata.json",
     )
     analyze.set_defaults(func=_analyze)
 

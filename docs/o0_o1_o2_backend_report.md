@@ -520,15 +520,38 @@ O2-W 统计自然 W scale 读取与有效 SFB scale 写入。O2-A 的三个 scal
 `[1.9075,1.9823]`。数值与上一版O1在容差内一致，逐样本O1-vs-O0 MSE仍在约
 `1e-12`到`3e-8`量级。
 
-上一版run的cold/steady-state与四表四图不得改写成当前O1结果；production切换后必须
-重新生成完整288条记录。任何性能数字都不是代码中的绝对延迟门槛。
+production切换后已经重新生成完整288条记录；其正式诊断结果见11.4。任何性能数字
+都不是代码中的绝对延迟门槛。
+
+### 11.4 当前 production 的正式24样本诊断结果
+
+当前production的完整run包含24样本、3个variant、4种mode，共288条记录。跨24样本
+的median-of-medians如下：
+
+| 口径 | O0 | 当前 O1 | O2 | O1相对O0 |
+|---|---:|---:|---:|---:|
+| compute-only GEMM | `0.768048 ms` | `0.629416 ms` | `0.136864 ms` | `1.220x` |
+| cold total | `0.838392 ms` | `0.667272 ms` | `0.197880 ms` | `1.256x` |
+| steady-state total | `0.807112 ms` | `0.623248 ms` | `0.208248 ms` | `1.295x` |
+
+compute-only等效吞吐的跨样本median为O0 `178.946 TFLOP/s`、O1
+`218.359 TFLOP/s`、O2 `1004.201 TFLOP/s`。O1相对O0的MSE median为
+`9.8234e-9`、max为`2.7278e-8`；O2相对O0的MSE median为`0.0037960`、
+max为`0.0154600`。
+
+该run在共享GPU上执行，288条记录中有49条因某个stage的`CV>=3%`被标为不稳定；
+运行期间观察到并发外部Python GPU workload，因此这些记录以调度/资源竞争离群解释。
+原始记录没有被过滤或由更快的重测结果替换。中位数整体与独立的24样本交错配对结果
+一致：后者给出O1相对O0平均配对加速`1.1975x`，95% CI
+`[1.1935,1.2024]`。因此本轮结论可作为“大致稳定准确”的共享GPU诊断结果，但不能
+宣称全部stage均满足CV门槛或运行期间GPU独占。
 
 ## 12. O1 寄存器 partial 候选与 CTA 消融
 
 > **状态：`register_128x64_k64_scale_shared_row_dedup` 已在RTX 5090通过正确性、
 > 24样本配对性能和候选TMA+IMMA/无spill审计，现已选为production。相对O0平均
-> 加速约`1.198x`，bootstrap 95% CI约为`[1.194,1.202]`。切换production后的完整
-> runner与正式审计仍须重新执行，旧图表不能冒充当前结果。**
+> 加速约`1.198x`，bootstrap 95% CI约为`[1.194,1.202]`。完整runner、正式审计与
+> 四表四图均已生成；共享GPU导致的CV离群按11.4诊断口径披露。**
 
 当前实现状态如下：
 
@@ -647,8 +670,9 @@ INT32→FP32与软件FMA。这里不设置绝对延迟作为正确性门槛。
 5. SASS/源码检查，确认不再有 partial shared-memory store/reload；
 6. 与上一版 O1 的 compute-only 配对对照。
 
-production常量切换后仍需完成正式runner的四种mode、完整O0/O1/O2审计与四表四图
-再生成；这些属于结果封版，不改变候选晋升结论。
+production常量切换后的四种mode正式runner、完整O0/O1/O2审计与四表四图均已完成。
+当前图表使用diagnostic稳定性口径，保留所有CV失败记录与离群原因；若未来取得独占GPU
+窗口，可再补充strict复现实验，但不改变候选晋升结论。
 
 候选结果元数据必须包含：
 
@@ -660,8 +684,8 @@ groups_per_pipeline_stage = 2
 row_scale_loads_per_thread = 2
 ```
 
-现有旧图表必须标注为旧O1结果。只有重新编译并由production元数据明确报告
-`register_128x64_k64_scale_shared_row_dedup`的新run，才能作为当前O1正式结果。
+旧图表必须标注为旧O1结果。当前正式run的production元数据已经明确报告
+`register_128x64_k64_scale_shared_row_dedup`，可作为当前O1诊断结果。
 
 ## 13. 指令审计与结果边界
 

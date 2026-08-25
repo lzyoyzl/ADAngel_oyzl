@@ -24,8 +24,10 @@
 
 ## 统计规则
 
-每项预热 50 次、测量 200 次；汇总 median、P5、P95、IQR、CV。正式主实验仍将
-`CV<3%` 作为稳定记录标准，并通过保持配置不变的成对重测处理偶发离群。
+每项预热 50 次、测量 200 次；汇总 median、P5、P95、IQR、CV。每条记录仍用
+`CV<3%` 标记是否稳定，但当前共享GPU实验把它作为诊断标记而非整次运行的硬阻断。
+少量离群应在报告中注明动态Boost、调度或并发GPU负载等已知原因；原始样本、CV失败
+stage和P5/P95必须完整保留，不因离群而单方面删除或替换。
 
 所有 CUDA Event 必须在预热开始前创建完毕；预热同步与第一条正式测量之间不得创建
 Event、申请显存或执行文件 I/O，避免CPU侧准备空档导致GPU降频后在测量区间重新升频。
@@ -40,11 +42,17 @@ O1 实现 A/B 在未锁频 RTX 5090 上采用 `cv_policy=diagnostic`：CV仍作�
 正式runner的定向重测以`(sample, mode)`为最小配对单元：只要其中任一variant失败，
 就同时重跑O0/O1/O2，并接受三者所有stage第一次同时`CV<3%`的attempt。原始JSONL、
 每次attempt、调用顺序和替换映射必须保留；禁止按延迟选attempt或只替换失败一侧。
+定向重测不是当前诊断报告的必需步骤；只有需要严格CV封版时才执行。
+
+正式runner默认允许共享GPU，并在`timing_preflight.json`记录启动时的compute process
+快照。该快照只能证明启动时状态，不能证明整个运行期间独占GPU。显式使用
+`--require-idle-gpu`可启用严格启动门槛，但也不能阻止其他任务在运行中途启动。
 
 四表四图分析默认仍为`stability_policy=strict`。用户明确选择不锁频时，可以显式采用
 `stability_policy=diagnostic`生成动态Boost诊断报告。该模式保留全部原始记录、
 `valid/stable_cv`、失败stage及最大CV，并在图标题和metadata中标记；不得把它描述为
-“所有阶段CV通过”的稳定性实验。
+“所有阶段CV通过”或“独占GPU”的稳定性实验。已知并发负载原因应通过
+`--diagnostic-note`写入`report_metadata.json`。
 
 转换组件统一采用独立批量CUDA Event计时。O0-W、O0-A、O1-W、O2-W-layout和
 O2-A在每个外层样本中连续执行

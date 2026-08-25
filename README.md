@@ -284,8 +284,10 @@ python scripts/retry_unstable_run.py \
 脚本将原始结果备份为`results.initial.jsonl`，把所有尝试写入
 `retry_attempts.jsonl`，把替换策略和SHA-256写入`retry_audit.json`。它不按延迟挑选
 结果，也不会只重测某个variant；存在未解决target时不会替换正式`results.jsonl`。
-正式runner与重测脚本都会在初始化CUDA前通过`nvidia-smi`检查compute process；GPU
-非空闲时立即拒绝运行，避免把其他用户任务造成的离群写入正式结果。
+正式runner与重测脚本会在初始化CUDA前通过`nvidia-smi`记录compute process，但默认
+允许共享GPU继续运行。正式run额外写出`timing_preflight.json`；若启动时已有并发任务，
+该文件会明确警告它们可能增加方差和离群。需要独占GPU的严格复现时才显式添加
+`--require-idle-gpu`，此时检测到compute process会立即拒绝运行。
 若外部任务在重测中途启动，可安全中止后用同一命令继续；脚本会从
 `retry_attempts.jsonl`恢复已经通过的第一次全稳定attempt，只补测未完成target。
 
@@ -389,12 +391,15 @@ python -m adangel analyze \
 python -m adangel analyze \
   --run runs/rtx5090_main \
   --output reports/rtx5090_main_dynamic \
-  --stability-policy diagnostic
+  --stability-policy diagnostic \
+  --diagnostic-note "Shared GPU run; concurrent workloads may explain isolated CV outliers."
 ```
 
 diagnostic不会删除或重写原始样本；四张主表保留`valid/stable_cv`列，额外生成
 `tables/00_stability.csv`和`report_metadata.json`，所有图片标题标明动态Boost诊断口径。
-该模式用于报告中位数与MSE，P5/P95和CV仍必须一并披露，不能称为锁频稳定性结果。
+`--diagnostic-note`会把已知的共享GPU、动态Boost或调度干扰原因写入metadata。该模式
+用于报告中位数与MSE，P5/P95和CV仍必须一并披露，不能称为独占GPU或全部CV通过的
+稳定性结果；不得删除离群样本或只保留更快的重测结果。
 
 输出：
 

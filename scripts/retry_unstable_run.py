@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 from pathlib import Path
 
 import yaml
@@ -17,6 +16,11 @@ def parse_args():
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--max-attempts", type=int, default=5)
+    parser.add_argument(
+        "--require-idle-gpu",
+        action="store_true",
+        help="opt in to rejecting retries when compute processes are already active",
+    )
     return parser.parse_args()
 
 
@@ -33,21 +37,13 @@ def main() -> int:
     if args.max_attempts <= 0:
         raise SystemExit("max-attempts must be positive")
 
-    completed = subprocess.run(
-        [
-            "nvidia-smi",
-            "--query-compute-apps=pid,process_name,used_memory",
-            "--format=csv,noheader",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    active = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
-    if active:
+    from adangel.benchmark.runner import _gpu_compute_processes_before_context
+
+    active = _gpu_compute_processes_before_context()
+    if args.require_idle_gpu and active:
         raise RuntimeError(
-            "paired retry requires an idle GPU before CUDA initialization; "
-            f"active compute processes: {active}"
+            "--require-idle-gpu was requested, but active compute processes were found "
+            f"before CUDA initialization: {active}"
         )
 
     import torch

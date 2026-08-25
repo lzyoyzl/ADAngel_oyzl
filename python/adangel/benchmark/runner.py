@@ -16,7 +16,7 @@ from .metadata import write_environment
 from .metrics import mse_fp64, summarize_samples
 
 
-def _assert_gpu_idle_before_context() -> None:
+def _gpu_compute_processes_before_context() -> list[str]:
     completed = subprocess.run(
         [
             "nvidia-smi",
@@ -27,12 +27,7 @@ def _assert_gpu_idle_before_context() -> None:
         capture_output=True,
         text=True,
     )
-    active = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
-    if active:
-        raise RuntimeError(
-            "formal runner requires an idle GPU before CUDA initialization; "
-            f"active compute processes: {active}"
-        )
+    return [line.strip() for line in completed.stdout.splitlines() if line.strip()]
 
 
 def _throughput_tflops(m: int, n: int, k: int, ms: float) -> float:
@@ -102,8 +97,14 @@ def run_experiment(
     sample_limit: int | None = None,
     warmup_override: int | None = None,
     repeats_override: int | None = None,
+    require_idle_gpu: bool = False,
 ) -> Path:
-    _assert_gpu_idle_before_context()
+    active_compute_processes = _gpu_compute_processes_before_context()
+    if require_idle_gpu and active_compute_processes:
+        raise RuntimeError(
+            "--require-idle-gpu was requested, but active compute processes were found "
+            f"before CUDA initialization: {active_compute_processes}"
+        )
     import torch
 
     require_native()
@@ -149,6 +150,31 @@ def run_experiment(
     resolved["timing"] = {**timing, "warmup": warmup, "repeats": repeats}
     (output_dir / "config.yaml").write_text(yaml.safe_dump(resolved, sort_keys=False), encoding="utf-8")
     write_environment(output_dir / "environment.json")
+    (output_dir / "timing_preflight.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "policy": (
+                    "strict_idle_required"
+                    if require_idle_gpu
+                    else "diagnostic_shared_gpu_allowed"
+                ),
+                "active_compute_processes_at_start": active_compute_processes,
+                "warning": (
+                    "Concurrent GPU workloads can increase variance and create timing outliers. "
+                    "Raw samples and CV diagnostics must be retained."
+                    if active_compute_processes
+                    else None
+                ),
+                "scope": (
+                    "This is a start-of-run snapshot only; processes may start or stop later."
+                ),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     o0_output_dir = output_dir / "o0_outputs"
     o0_output_dir.mkdir()

@@ -26,6 +26,7 @@ def generate_report(
     output_dir: str | Path,
     *,
     stability_policy: str = "strict",
+    diagnostic_note: str | None = None,
 ) -> Path:
     import matplotlib.pyplot as plt
     import pandas as pd
@@ -72,8 +73,10 @@ def generate_report(
                 "records": len(records),
                 "unstable_records": unstable_records,
                 "cv_threshold_percent": float(config["timing"]["max_cv_percent"]),
+                "diagnostic_note": diagnostic_note,
                 "warning": (
-                    "Timing medians include CV-failed records; inspect tables/00_stability.csv."
+                    "Timing medians include CV-failed records; inspect tables/00_stability.csv. "
+                    "No records were filtered or replaced."
                     if unstable_records
                     else None
                 ),
