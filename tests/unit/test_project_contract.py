@@ -130,6 +130,11 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('"unresolved": unresolved_retries', ab_script)
         self.assertIn('"performance_eligible_except_spill_audit"', ab_script)
         self.assertIn('"strict_eligible_except_spill_audit"', ab_script)
+        retry_script = (ROOT / "scripts/retry_unstable_run.py").read_text()
+        self.assertIn('"policy": "paired_first_all-stable_attempt"', retry_script)
+        self.assertIn("variants_rerun_together", retry_script)
+        self.assertIn("results.initial.jsonl", retry_script)
+        self.assertIn("all_variants_stable", retry_script)
 
     def test_o2_production_backend_contract(self):
         source = (ROOT / "csrc/sm120/o2_cutlass.cu").read_text()

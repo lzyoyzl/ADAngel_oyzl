@@ -37,6 +37,10 @@ O1 实现 A/B 在未锁频 RTX 5090 上采用 `cv_policy=diagnostic`：CV仍作�
 更快的一侧。
 锁频复现可改用`cv_policy=strict`，此时两边所有阶段必须同时`CV<3%`。
 
+正式runner的定向重测以`(sample, mode)`为最小配对单元：只要其中任一variant失败，
+就同时重跑O0/O1/O2，并接受三者所有stage第一次同时`CV<3%`的attempt。原始JSONL、
+每次attempt、调用顺序和替换映射必须保留；禁止按延迟选attempt或只替换失败一侧。
+
 四表四图分析默认仍为`stability_policy=strict`。用户明确选择不锁频时，可以显式采用
 `stability_policy=diagnostic`生成动态Boost诊断报告。该模式保留全部原始记录、
 `valid/stable_cv`、失败stage及最大CV，并在图标题和metadata中标记；不得把它描述为

@@ -271,6 +271,20 @@ bootstrap 95% CI 下界大于1，并通过无spill审计。需要锁频环境的
 两种策略都禁止删除单边慢样本或按延迟挑选重试结果。旧 shared-partial 和
 `register_64x32` run 不能冒充当前 `128x64x64` production 结果。
 
+若正式runner含偶发CV失败，使用成组定向重测；任一`(sample, mode)`失败时必须同时
+重跑O0/O1/O2，并只接受三者全部稳定的第一次尝试：
+
+```bash
+python scripts/retry_unstable_run.py \
+  --run runs/rtx5090_o1_128x64_production \
+  --data data/prepared/llama2_7b_prefill \
+  --max-attempts 5
+```
+
+脚本将原始结果备份为`results.initial.jsonl`，把所有尝试写入
+`retry_attempts.jsonl`，把替换策略和SHA-256写入`retry_audit.json`。它不按延迟挑选
+结果，也不会只重测某个variant；存在未解决target时不会替换正式`results.jsonl`。
+
 ```bash
 python scripts/validate_o2.py \
   --m 4096 --n 4096 --k 4096 \
