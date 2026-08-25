@@ -30,6 +30,7 @@ def parse_args():
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
             "register_128x64_k64_scale_shared_row_dedup",
+            "register_128x64_k64_scale_shared_row_dedup_sparse_scale",
             "register_128x128",
         ),
         default="production",
@@ -193,8 +194,13 @@ def main() -> int:
         row_scale_dedup_128x32 = (
             selected_key == "register_128x32_k64_scale_shared_row_dedup"
         )
+        sparse_column_scale_loads = (
+            selected_key
+            == "register_128x64_k64_scale_shared_row_dedup_sparse_scale"
+        )
         row_scale_dedup_128x64 = (
             selected_key == "register_128x64_k64_scale_shared_row_dedup"
+            or sparse_column_scale_loads
         )
         row_scale_dedup = row_scale_dedup_128x32 or row_scale_dedup_128x64
         is_128x32_k64 = (
@@ -214,6 +220,7 @@ def main() -> int:
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
             "register_128x64_k64_scale_shared_row_dedup",
+            "register_128x64_k64_scale_shared_row_dedup_sparse_scale",
         }
         pipeline_k64 = selected_key in {
             "register_64x32_k64_scale_shared",
@@ -222,6 +229,7 @@ def main() -> int:
             "register_64x64_k64_scale_shared",
             "register_128x64_k64_scale_shared",
             "register_128x64_k64_scale_shared_row_dedup",
+            "register_128x64_k64_scale_shared_row_dedup_sparse_scale",
         }
         implementation_metadata = {
             "library": "CUTLASS CuTe + CUDA",
@@ -237,27 +245,31 @@ def main() -> int:
                 "adangel_o1_register_partial_128x32_k64_scale_shared_row_dedup"
                 if row_scale_dedup_128x32
                 else (
-                    "adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup"
-                    if row_scale_dedup_128x64
+                    "adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup_sparse_scale"
+                    if sparse_column_scale_loads
                     else (
-                        "adangel_o1_register_partial_128x32_k64_scale_shared"
-                        if is_128x32_k64
+                        "adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup"
+                        if row_scale_dedup_128x64
                         else (
-                            "adangel_o1_register_partial_64x64_k64_scale_shared"
-                            if is_64x64_k64
+                            "adangel_o1_register_partial_128x32_k64_scale_shared"
+                            if is_128x32_k64
                             else (
-                                "adangel_o1_register_partial_128x64_k64_scale_shared"
-                                if is_128x64_k64
+                                "adangel_o1_register_partial_64x64_k64_scale_shared"
+                                if is_64x64_k64
                                 else (
-                                    "adangel_o1_register_partial_64x32_k64_scale_shared"
-                                    if pipeline_k64
+                                    "adangel_o1_register_partial_128x64_k64_scale_shared"
+                                    if is_128x64_k64
                                     else (
-                                        "adangel_o1_register_partial_64x32_scale_shared"
-                                        if scale_shared
+                                        "adangel_o1_register_partial_64x32_k64_scale_shared"
+                                        if pipeline_k64
                                         else (
-                                            "adangel_o1_register_partial_128x128"
-                                            if is_128
-                                            else "adangel_o1_register_partial_64x32"
+                                            "adangel_o1_register_partial_64x32_scale_shared"
+                                            if scale_shared
+                                            else (
+                                                "adangel_o1_register_partial_128x128"
+                                                if is_128
+                                                else "adangel_o1_register_partial_64x32"
+                                            )
                                         )
                                     )
                                 )
@@ -295,6 +307,11 @@ def main() -> int:
             ),
             "column_scale_storage": (
                 "stage_local_shared_fp32" if scale_shared else "warp_register"
+            ),
+            "column_scale_consumer_load_scope": (
+                "warp_n_owned_lanes"
+                if sparse_column_scale_loads
+                else "all_warp_lanes"
             ),
             "fp32_accumulation_op": "fma_rn" if scale_shared else "mul_then_add_rn",
             "row_scale_load_scope": (
