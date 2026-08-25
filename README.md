@@ -284,6 +284,8 @@ python scripts/retry_unstable_run.py \
 脚本将原始结果备份为`results.initial.jsonl`，把所有尝试写入
 `retry_attempts.jsonl`，把替换策略和SHA-256写入`retry_audit.json`。它不按延迟挑选
 结果，也不会只重测某个variant；存在未解决target时不会替换正式`results.jsonl`。
+正式runner与重测脚本都会在初始化CUDA前通过`nvidia-smi`检查compute process；GPU
+非空闲时立即拒绝运行，避免把其他用户任务造成的离群写入正式结果。
 
 ```bash
 python scripts/validate_o2.py \

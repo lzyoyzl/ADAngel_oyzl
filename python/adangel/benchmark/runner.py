@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -13,6 +14,25 @@ from ..ops.extension import require_native
 from ..trace.storage import load_prepared, sha256_file, validate_manifest
 from .metadata import write_environment
 from .metrics import mse_fp64, summarize_samples
+
+
+def _assert_gpu_idle_before_context() -> None:
+    completed = subprocess.run(
+        [
+            "nvidia-smi",
+            "--query-compute-apps=pid,process_name,used_memory",
+            "--format=csv,noheader",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    active = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    if active:
+        raise RuntimeError(
+            "formal runner requires an idle GPU before CUDA initialization; "
+            f"active compute processes: {active}"
+        )
 
 
 def _throughput_tflops(m: int, n: int, k: int, ms: float) -> float:
@@ -83,6 +103,7 @@ def run_experiment(
     warmup_override: int | None = None,
     repeats_override: int | None = None,
 ) -> Path:
+    _assert_gpu_idle_before_context()
     import torch
 
     require_native()

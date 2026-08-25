@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -31,6 +32,23 @@ def main() -> int:
     args = parse_args()
     if args.max_attempts <= 0:
         raise SystemExit("max-attempts must be positive")
+
+    completed = subprocess.run(
+        [
+            "nvidia-smi",
+            "--query-compute-apps=pid,process_name,used_memory",
+            "--format=csv,noheader",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    active = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    if active:
+        raise RuntimeError(
+            "paired retry requires an idle GPU before CUDA initialization; "
+            f"active compute processes: {active}"
+        )
 
     import torch
 

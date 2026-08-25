@@ -135,6 +135,10 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("variants_rerun_together", retry_script)
         self.assertIn("results.initial.jsonl", retry_script)
         self.assertIn("all_variants_stable", retry_script)
+        self.assertIn("paired retry requires an idle GPU", retry_script)
+        runner = (ROOT / "python/adangel/benchmark/runner.py").read_text()
+        self.assertIn("_assert_gpu_idle_before_context()", runner)
+        self.assertIn("formal runner requires an idle GPU", runner)
 
     def test_o2_production_backend_contract(self):
         source = (ROOT / "csrc/sm120/o2_cutlass.cu").read_text()
