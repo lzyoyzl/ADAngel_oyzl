@@ -214,11 +214,50 @@ RTX 5090、CUDA 12.8、CUTLASS 4.5.2 pinned commit 上：
 | production resource | REG 55, STACK 0, LOCAL 0 | REG 55, STACK 0, LOCAL 0 |
 | same-entry instruction audit | TMA + U4/S4/S4/S4 MMA | TMA + B1 AND-POPC BMMA |
 
-这些是后端验收 smoke 数据，不替代 24 个真实样本、warmup=50、repeats=200 的正式
-实验。O4 比 O3 慢不表示错误；它每个 G128 必须执行 32 个 plane-pair BMMA，而 O3
-只执行低/高两路 INT4 分解。
+这些是后端验收 smoke 数据。O4 比 O3 慢不表示错误；它每个 G128 必须执行 32 个
+plane-pair BMMA，而 O3 只执行低/高两路 INT4 分解。
 
-## 9. 复现命令
+## 9. 24 个真实样本正式结果
+
+正式 run 位于 `runs/rtx5090_o0_o4_main`，使用 24 个 Llama-2-7B FP16 prefill 样本、
+warmup=50、repeats=200、conversion inner repeats=100。初次运行有 3 个 O1/O2
+sample/mode 受到单个调度离群影响；按成组规则同时重跑 O0–O4，三个 target 均在
+attempt 1 全部通过。最终 480/480 条记录 `CV<3%`，审计见 `retry_audit.json`。
+
+跨 24 样本 median：
+
+| variant | GEMM-only ms | 等效 TFLOP/s | 相对 O0 | cold total ms | steady total ms |
+|---|---:|---:|---:|---:|---:|
+| O0 | 0.767584 | 179.05 | 1.000x | 0.839388 | 0.806176 |
+| O1 | 0.626312 | 219.44 | 1.224x | 0.673200 | 0.626216 |
+| O2 | 0.138528 | 992.14 | 5.541x | 0.206464 | 0.210160 |
+| O3 | 2.295248 | 59.88 | 0.334x | 2.370688 | 2.336520 |
+| O4 | 9.187984 | 14.96 | 0.0835x | 9.331952 | 9.293152 |
+
+conversion-only 跨样本 median：
+
+| variant | W conversion ms | A conversion ms | conversion total ms |
+|---|---:|---:|---:|
+| O0 | 0.017484 | 0.016245 | 0.036668 |
+| O1 | 0.032802 | — | 0.032802 |
+| O2 | 0.002087 | 0.069800 | 0.071590 |
+| O3 | 0.029893 | 0.016326 | 0.046228 |
+| O4 | 0.042007 | 0.072900 | 0.114907 |
+
+相对 O0 的 MSE：
+
+| variant | median | IQR | max | bootstrap median 95% CI |
+|---|---:|---:|---:|---:|
+| O1 | 9.8234e-09 | 1.8379e-08 | 2.7278e-08 | [2.2527e-09, 1.9066e-08] |
+| O2 | 3.7960e-03 | 9.8628e-03 | 1.5460e-02 | [1.6961e-03, 1.0210e-02] |
+| O3 | 6.6530e-03 | 1.3718e-02 | 1.8079e-02 | [6.1738e-04, 1.3785e-02] |
+| O4 | 6.6530e-03 | 1.3718e-02 | 1.8079e-02 | [6.1738e-04, 1.3785e-02] |
+
+O3/O4 的 24 个 MSE 逐样本完全相同，这是重要的正确性证据：两者使用同一 Q4/G128
+数值并精确计算同一个整数点积，只是 Tensor Core 分解路径不同。O3/O4 MSE 高于 O2
+主要来自更粗的 G128 scale 和 E2M1→Q4 映射，而不是 Split/Bitwise 重构误差。
+
+## 10. 复现命令
 
 ```bash
 ADANGEL_BUILD_CUDA=1 python -m pip install -v -e . --no-build-isolation --no-deps
