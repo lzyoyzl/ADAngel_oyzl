@@ -38,9 +38,6 @@ constexpr int kThreads = kProducerThreads + kConsumerThreads;
 constexpr int kAStageWords = kAPlanes * kTileM * kWordsPerGroup;
 constexpr int kBStageWords = kWPlanes * kTileN * kWordsPerGroup;
 
-constexpr int kAWeights[kAPlanes] = {1, 2, 4, 8, 16, 32, 64, -128};
-constexpr int kWWeights[kWPlanes] = {1, 2, 4, -8};
-
 using Pipeline = cutlass::PipelineTmaAsync<kStages>;
 using WordLayoutA = decltype(cute::make_layout(
     cute::make_shape(cute::_8{}, cute::_128{}, cute::_4{}, cute::_3{}),
@@ -166,8 +163,11 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
     int groups) {
   extern __shared__ __align__(128) uint8_t shared_bytes[];
   auto& storage = *reinterpret_cast<SharedStorage*>(shared_bytes);
-  auto mA = tma_a.get_tma_tensor(cute::make_shape(kAPlanes, m, k / 32));
-  auto mB = tma_b.get_tma_tensor(cute::make_shape(kWPlanes, n, k / 32));
+  // Keep the plane extents in the CuTe type system. Passing the namespace
+  // constexpr variables here makes nvcc materialize host symbols in device
+  // code instead of treating the extents as compile-time shape constants.
+  auto mA = tma_a.get_tma_tensor(cute::make_shape(cute::_8{}, m, k / 32));
+  auto mB = tma_b.get_tma_tensor(cute::make_shape(cute::_4{}, n, k / 32));
   auto gA = cute::local_tile(
       mA, cute::make_shape(cute::_8{}, cute::_128{}, cute::_4{}),
       cute::make_coord(cute::Int<0>{}, static_cast<int>(blockIdx.y), cute::_));
@@ -250,9 +250,9 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
     const int stage = read_state.index();
     int32_t group_accumulators[4] = {0, 0, 0, 0};
 #pragma unroll
-    for (int a_plane = 0; a_plane < kAPlanes; ++a_plane) {
+    for (int a_plane = 0; a_plane < 8; ++a_plane) {
 #pragma unroll
-      for (int w_plane = 0; w_plane < kWPlanes; ++w_plane) {
+      for (int w_plane = 0; w_plane < 4; ++w_plane) {
         // This is the CuTe SM80 B1 trait mapping written explicitly.  For
         // lane=(i,j), A registers are rows j/j+8 at K word i, B is column j at
         // K word i, and C owns (j,j+8)x(2i,2i+1).  Loading complete b32 words
@@ -269,7 +269,12 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
             (warp_n * 8 + lane_j) * kWordsPerGroup + lane_i];
         uint32_t d0, d1, d2, d3;
         BinaryMma::fma(d0, d1, d2, d3, a0, a1, b0, 0u, 0u, 0u, 0u);
-        const int coefficient = kAWeights[a_plane] * kWWeights[w_plane];
+        // Two's-complement bit-plane coefficients. Keeping this expression
+        // local allows the unrolled loop to constant-fold every coefficient
+        // without referencing host-only lookup tables from device code.
+        const int a_weight = a_plane == 7 ? -128 : (1 << a_plane);
+        const int w_weight = w_plane == 3 ? -8 : (1 << w_plane);
+        const int coefficient = a_weight * w_weight;
         group_accumulators[0] += coefficient * static_cast<int32_t>(d0);
         group_accumulators[1] += coefficient * static_cast<int32_t>(d1);
         group_accumulators[2] += coefficient * static_cast<int32_t>(d2);
