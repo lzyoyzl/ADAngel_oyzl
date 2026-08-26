@@ -39,8 +39,13 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("consumer_wait", o3)
         self.assertIn('result["partial_storage"] = "register"', o3)
         self.assertIn("SM80_16x8x128_S32U1U1S32_TN_ANDPOPC", o4)
-        self.assertIn("kAWeights[kAPlanes] = {1, 2, 4, 8, 16, 32, 64, -128}", o4)
-        self.assertIn("kWWeights[kWPlanes] = {1, 2, 4, -8}", o4)
+        self.assertIn(
+            'result["activation_bit_weights"] = py::make_tuple(1, 2, 4, 8, 16, 32, 64, -128)',
+            o4,
+        )
+        self.assertIn(
+            'result["weight_bit_weights"] = py::make_tuple(1, 2, 4, -8)', o4
+        )
         self.assertIn('result["logical_mma_per_group"] = 32', o4)
         self.assertIn('module.def("run_o3", &adangel_run_o3)', bindings)
         self.assertIn('module.def("run_o4", &adangel_run_o4)', bindings)

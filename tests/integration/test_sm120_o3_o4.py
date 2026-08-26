@@ -46,9 +46,7 @@ def test_arbitrary_bit_backend_matches_semantic_reference(variant):
     assert kernel["tensor_core"] is True
     assert kernel["data_movement"] == "TMA"
     assert kernel["kernel_schedule"] == "cooperative_warp_specialized"
-    assert tuple(kernel["cta_tile"]) == (
-        (128, 64, 128) if variant == "o3" else (128, 16, 128)
-    )
+    assert tuple(kernel["cta_tile"]) == (128, 16, 128)
     assert kernel["partial_storage"] == "register"
     assert kernel["global_partial_buffer"] is False
     assert kernel["output_stores_per_element"] == 1
