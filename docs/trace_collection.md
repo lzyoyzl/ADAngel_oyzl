@@ -1,7 +1,7 @@
 # 双服务器 Trace 采集指南
 
 本指南用于在存有本地 Llama-2-7B 的模型服务器采集真实 FP16 prefill trace，再把 trace
-传到 RTX 5090 服务器完成公共量化准备和 O0/O1/O2 实验。模型文件不需要传到 5090。
+传到 RTX 5090 服务器完成公共量化准备和 O0–O4 实验。模型文件不需要传到 5090。
 
 这条数据链路只新增 Python 采集、校验和准备步骤，不修改 `csrc/sm120/`、CUTLASS、
 后端能力位或指令审计逻辑，也不要求重新编译已经通过验收的 O0/O1/O2 扩展。
@@ -10,8 +10,8 @@
 
 | 服务器 | 工作 | 不执行 |
 |---|---|---|
-| 模型服务器（H100 80GB） | 加载本地 Llama-2-7B、下载或读取 WikiText、采集 24 个 FP16 样本、生成 manifest | SM120 构建、CUTLASS 获取、O0/O1/O2 benchmark |
-| RTX 5090 服务器 | 校验传输完整性、生成公共 INT8/MXFP4 输入、运行 O0/O1/O2 | 加载或下载 Llama-2-7B |
+| 模型服务器（H100 80GB） | 加载本地 Llama-2-7B、下载或读取 WikiText、采集 24 个 FP16 样本、生成 manifest | SM120 构建、CUTLASS 获取、O0–O4 benchmark |
+| RTX 5090 服务器 | 校验传输完整性、生成公共 INT8/MXFP4/G128/Q4 输入、运行 O0–O4 | 加载或下载 Llama-2-7B |
 
 数据流为：
 
@@ -180,8 +180,8 @@ python scripts/validate_raw_trace.py \
 
 python scripts/prepare_trace.py \
   --input data/raw/llama2_7b_prefill \
-  --output data/prepared/llama2_7b_prefill \
-  --config configs/experiment/o0_o1_o2_4096.yaml \
+  --output data/prepared/llama2_7b_prefill_o0_o4 \
+  --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml \
   --trace-config configs/trace/llama2_7b_prefill.yaml
 ```
 
@@ -192,9 +192,12 @@ A_int8   [4096,4096] int8
 A_scale  [4096]      fp32
 W_mxfp4  [4096,2048] packed uint8
 W_scale  [4096,128]  UE8M0 uint8
+W_mxfp4_g128 [4096,2048] packed uint8
+W_scale_g128 [4096,32]   UE8M0 uint8
+W_q4         [4096,2048] packed uint8
 ```
 
-公共准备耗时不进入 O0/O1/O2 结果。prepared `manifest.json` 会嵌入原始 manifest 的
+公共准备耗时不进入 O0–O4 结果。prepared `manifest.json` 会嵌入原始 manifest 的
 SHA-256、数据集 revision、token 起点和 input ID hash、模型文件 hash、采集环境及推理设置。
 
 如果 `data/prepared/llama2_7b_prefill` 已非空，准备命令会拒绝覆盖。需要重做时请先人工

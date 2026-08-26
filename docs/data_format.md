@@ -103,6 +103,9 @@ data/prepared/llama2_7b_prefill/
     "A_scale": Tensor[4096],         # torch.float32
     "W_mxfp4": Tensor[4096, 2048],   # packed E2M1, torch.uint8
     "W_scale": Tensor[4096, 128],    # UE8M0, torch.uint8
+    "W_mxfp4_g128": Tensor[4096, 2048], # G128 packed E2M1, torch.uint8
+    "W_scale_g128": Tensor[4096, 32],   # G128 UE8M0, torch.uint8
+    "W_q4": Tensor[4096, 2048],         # packed signed Q4, torch.uint8
     "shape": [4096, 4096, 4096],
 }
 ```
@@ -111,22 +114,32 @@ data/prepared/llama2_7b_prefill/
 
 - 激活：逐行对称 INT8，范围 `[-127,127]`，零行 scale 为 1；
 - 权重：E2M1 + UE8M0，K32 分组；
+- O3/O4 权重副本：E2M1 + UE8M0，G128 分组，并用 RNE 映射为 Q4（F=0）；
 - rounding：round-to-nearest, ties-to-even；
 - packed MXFP4 的偶数 K 在低 nibble，奇数 K 在高 nibble；
 - UE8M0 code 255 禁止出现。
 
-prepared `manifest.json` 顶层格式为：
+仅含 O0/O1/O2 的旧 prepared 数据继续接受 v2：
 
 ```text
 version = 2
 format  = adangel-prepared-mxfp4-k32
 ```
 
+包含 O3/O4 的正式 prepared 数据使用：
+
+```text
+version = 3
+format  = adangel-prepared-mxfp4-k32-g128-q4
+```
+
 除 24 个样本的 SHA-256 外，还包含矩阵 shape、dtype、量化规则和 `source_trace`。
 `source_trace.manifest_sha256` 指向原始 `trace_manifest.json`，并复制数据集、tokenization、
 模型、runtime、inference 和环境来源信息，从而能从任意实验 run 追溯到采集输入。
 
-公共 FP16 -> INT8/MXFP4 准备只执行一次，其耗时不属于 O0/O1/O2 的量化或反量化开销。
+公共 FP16 -> INT8/MXFP4/Q4 准备只执行一次，其耗时不属于 O0–O4 的量化或反量化
+开销。v2 数据不能运行 O3/O4；应从同一 raw trace 重新生成 v3 新目录，而不是在运行时
+临时补字段。
 
 ## 3. 正式 run 结果
 
@@ -141,5 +154,5 @@ runs/<run_id>/
 ```
 
 每条 `results.jsonl` 记录包括样本 ID、variant、计时模式、阶段延迟、吞吐、MSE 和运行环境。
-O0 FP32 输出作为唯一 MSE 主参考；O1/O2 的 reduction 转为 FP64 计算。结果与报告格式详见
+O0 FP32 输出作为唯一 MSE 主参考；O1/O2/O3/O4 的 reduction 转为 FP64 计算。结果与报告格式详见
 `docs/experiment_protocol.md`。

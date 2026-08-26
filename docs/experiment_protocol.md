@@ -2,7 +2,7 @@
 
 ## 控制变量
 
-所有配置消费同一份已准备的 `A_int8/A_scale/W_mxfp4/W_scale`，计算
+所有配置消费同一份已准备的 activation 以及各自规定的 K32/G128 权重表示，计算
 `Y=A@W.T`。矩阵尺寸、样本顺序、CUDA stream、预热次数和测量次数完全相同。
 公共 FP16 trace 的初始量化不计入任何配置。
 
@@ -17,10 +17,20 @@
 - O2-W-layout：自然顺序的 `W_scale[N,K/32]` → CUTLASS SFB physical layout；
   packed MXFP4 权重数值本身不转换。
 - O2-GEMM：MXFP4 block-scaled MMA 与 FP32 累加。
+- O3-W-convert：G128 MXFP4 E2M1 nibble 通过 RNE 映射为 signed Q4。
+- O3-A-split：A8 two's-complement 原始位拆为 U4 low 与 S4 high packed tensor。
+- O3-GEMM：每个 G128 分别执行 U4×S4 与 S4×S4 INT4 MMA，寄存器内重构
+  `P_low+16*P_high`、应用 `A_scale*W_scale_g128` 并 FP32 累加。
+- O4-W-convert：G128 MXFP4→Q4，再生成 4 个 two's-complement 权重 bitplane。
+- O4-A-bitplanes：A8 生成 8 个 two's-complement activation bitplane。
+- O4-GEMM：每个 G128 执行 8×4=32 个 B1 AND-POPC BMMA，按
+  `[1,2,4,8,16,32,64,-128] × [1,2,4,-8]` 在寄存器中重构并 FP32 累加。
 
 `conversion_only` 分别测转换 kernel；`compute_only` 预先完成 A 量化、SFA 与 SFB
 重排，只测 GEMM；`cold` 包含该 variant 的所有转换；`steady_state` 缓存静态权重
 转换。对 O2，steady-state 因而只保留在线 A 量化/SFA 重排与 GEMM。
+对 O3，steady-state 缓存 Q4 权重，只保留在线 A Split 与 GEMM；对 O4，steady-state
+缓存 Q4/权重 bitplane，只保留在线 A bitplane 生成与 GEMM。
 
 ## 统计规则
 
@@ -70,10 +80,13 @@ O2-A 按 M*K + 4*M + M*K/2 + 3*M*(K/32) 字节计算；未触碰的物理布局 
 
 ## 正确性
 
-每个样本只保存一次 O0 FP32 输出。O1/O2 输出转 FP64 后计算 MSE，O0 对自身为
+每个样本只保存一次 O0 FP32 输出。O1/O2/O3/O4 输出转 FP64 后计算 MSE，O0 对自身为
 0。对 24 个 MSE 报告逐样本值、median、IQR、max 和 bootstrap 95% CI。
 
-正式运行前执行一次指令审计。审计证明使用目标 Tensor Core 指令，但不进入主结果。
+正式运行前执行一次指令审计。审计在同一正式 kernel entry 内确认：O1 TMA+IMMA、
+O2 TMA+MXFP4 block-scaled MMA、O3 TMA+两类 INT4 MMA、O4 TMA+B1 AND-POPC
+BMMA，并要求 O1/O3/O4 production 无 local-memory spill。审计证明使用目标 Tensor
+Core 指令，但不进入主结果。
 
 ## O1 实现 A/B 与 CTA 消融
 
@@ -128,3 +141,41 @@ compute-only 配对测试相对O0平均加速约`1.198x`，bootstrap 95% CI约�
 可选消融若出现 `LDL/STL`、非零 `STACK` 或 `LOCAL`，必须标记为 `DISQUALIFIED`，且
 不得晋升，但不应阻断已经满足全部门槛的production。任何被选为production的实现都
 必须通过无spill门槛。
+
+## O3/O4 论文对齐口径
+
+O3/O4 使用与 O1 相同的工程骨架：单 kernel tiled GEMM、三阶段 TMA pipeline、
+1 个 producer warp、16 个 consumer warp、寄存器 partial、FP32 最终累加/输出和
+每个输出元素一次 global store。两者固定 CTA 为 `128x16x128`；这是 16 个 warp
+各自执行 `m16n8` MMA 时能够无重复、无缺口覆盖的自然输出 tile。CTA 形状不要求与
+O1/O2 相同，公平性由输入、数学语义、计时边界和运行方法控制。
+
+论文对齐分两层说明：
+
+1. **算术语义完全对齐**：O3 使用 Split 的 U4/S4 两路重构；O4 使用 A8 的 8 个
+   two's-complement plane 和 Q4 的 4 个 plane，共 32 个 AND-POPC BMMA。O4 不采用
+   7×(Q-1)=21 的幅值/符号变体。
+2. **实验化适配明确披露**：为了单独统计量化/拆分开销，当前 O4 在 GEMM 前用独立
+   GPU kernel 生成 bitplane；因此不宣称实现论文可能采用的 selective fusion。
+
+O3/O4 权重都从同一 G128 MXFP4 副本开始。E2M1 private value 在 F=0、Q=4 下用
+round-to-nearest ties-to-even 映射到 signed Q4；packed 权重偶数 K 在低 nibble、奇数
+K 在高 nibble。G128 UE8M0 scale 保持不变。每个 G128 的整数 partial 必须在应用该
+组 scale 后再进入 FP32 累加，禁止跨组先合并 partial 再统一缩放。
+
+O3/O4 正式结果必须记录：
+
+```text
+kernel_symbol
+mma_family / mma_atom(s)
+mma_shape
+cta_tile
+pipeline_stages
+producer_warps / consumer_warps
+group_size / group_count
+partial_storage
+logical_mma_per_group        # O4 = 32
+activation_bit_weights      # O4
+weight_bit_weights          # O4
+paper_alignment
+```

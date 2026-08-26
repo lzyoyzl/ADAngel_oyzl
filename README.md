@@ -1,11 +1,11 @@
-# ADAngel SM120 MXFP4 实验
+# ADAngel SM120 MXFP4 / 任意比特实验
 
-本仓库实现 RTX 5090（SM120）上的 O0/O1/O2 对照实验。固定计算
+本仓库实现 RTX 5090（SM120）上的 O0/O1/O2/O3/O4 对照实验。固定计算
 `Y = A @ W.T`，`M=N=K=4096`，最终累加与输出均为 FP32。实验只统计：
 
 1. 量化/反量化转换开销；
 2. GEMM-only 与 cold/steady-state 端到端性能；
-3. O1、O2 相对 O0 输出的 MSE。
+3. O1、O2、O3、O4 相对 O0 输出的 MSE。
 
 显存占用、Roofline 和完整 GPU Profiling 不属于本实验。仓库只提供一次性的
 SASS/PTX 指令审计，防止某个实现静默退化为 CUDA Core 或软件模拟。
@@ -15,7 +15,7 @@ SASS/PTX 指令审计，防止某个实现静默退化为 CUDA Core 或软件模
 
 ## 当前实现状态
 
-数据采集/准备、三配置语义参考、正式调度、统计、MSE、四表四图和防误跑能力门
+数据采集/准备、五配置语义参考、正式调度、统计、MSE、四表四图和防误跑能力门
 已经实现。O0 正式后端使用预分配 CUDA kernel 完成 MXFP4→FP16 权重
 反量化和 INT8→FP16 激活反量化，再由 cuBLASLt 执行行主序 FP16×FP16、FP32
 累加/输出的 GEMM。算法搜索在计时区间外完成，并只接受同时声明 HMMA、FP16 输入和
@@ -44,7 +44,20 @@ UE8M0 scale、执行 E2M1 RNE 量化并完成 nibble packing；随后把自然�
 `KernelTmaWarpSpecializedCooperative`，执行原生 MXFP4 block-scaled MMA、FP32
 累加和输出。W 的 packed MXFP4 数值不复制、不转置。
 
-O0/O1/O2 capability 均已在源码中启用，但任何新源码仍必须在目标 RTX 5090 上重新
+O3/O4 使用独立的 G128 权重副本，并按论文的 Split/Bitwise 算术实现。O3 将 A8
+按 two's-complement 原始位拆成低 U4 和高 S4，满足
+`A8=A_low_u4+16*A_high_s4`；G128 MXFP4 权重用 RNE 映射到 Q4。正式 kernel 采用
+`128x16x128` CTA、三阶段 TMA、1 producer/16 consumer、两类 `m16n8k64`
+INT4 MMA，在寄存器中重构两个 partial、应用 G128 scale，并只写一次 FP32 输出。
+
+O4 将 A8 拆成系数 `[1,2,4,8,16,32,64,-128]` 的 8 个 bitplane，将 Q4 权重拆成
+系数 `[1,2,4,-8]` 的 4 个 bitplane；每个 G128 执行 8×4=32 个
+`m16n8k128.b1.and.popc` BMMA 并在寄存器中重构。O4 同样采用 `128x16x128` CTA、
+TMA 和 cooperative warp specialization。为保留转换开销实验口径，当前 bitplane
+生成作为独立 GPU conversion 计时；它对齐论文 Bitwise 算术，但不宣称实现论文的
+selective fusion。
+
+O0/O1/O2/O3/O4 capability 均已在源码中启用，但任何新源码仍必须在目标 RTX 5090 上重新
 编译，并通过下述数值、计时与同 kernel 指令审计后才能生成正式结果。验收成功时
 `python -m adangel doctor --require-native` 应报告 `available: true`；这个门不能用
 reference 或 ISA probe 绕过。
@@ -59,20 +72,20 @@ ADAngel_oyzl/
 │   └── trace/            # Llama-2-7B 层与 projection 采样清单
 ├── csrc/
 │   ├── common/           # CUDA 公共校验与辅助代码
-│   └── sm120/            # O0/O1/O2 转换、GEMM、绑定与 PTX microkernel
+│   └── sm120/            # O0–O4 转换、GEMM、绑定与 PTX microkernel
 ├── environment/          # Miniconda 环境定义；不包含驱动或系统 CUDA
 ├── include/adangel/      # C++/CUDA 公共数据结构和原生接口声明
 ├── python/adangel/
 │   ├── analysis/         # 聚合 JSONL，生成四张主表和四张主图
 │   ├── benchmark/        # CUDA Event 计时、MSE、环境与实验调度
 │   ├── ops/              # 原生扩展加载、能力检查和统一 dispatch
-│   ├── quantization/     # INT8、E2M1、UE8M0、K32 packing 参考实现
-│   ├── reference/        # O0/O1/O2 可读的 FP32 语义参考实现
+│   ├── quantization/     # INT8、MXFP4、Q4、Split 和 bitplane 参考实现
+│   ├── reference/        # O0–O4 可读的 FP32 语义参考实现
 │   └── trace/            # trace 采集、样本 schema 和磁盘格式
 ├── scripts/              # 环境激活、检查、采集、准备、运行、汇总与指令审计入口
 ├── tests/
 │   ├── unit/             # 16 种 E2M1 编码、UE8M0、mapping、指标测试
-│   └── integration/      # 小矩阵 O0/O1/O2 与参考实现交叉验证
+│   └── integration/      # 小矩阵 O0–O4 与参考实现交叉验证
 ├── third_party/cutlass/  # CUTLASS 固定版本/commit 元数据
 ├── third_party/cutlass-src/ # fetch 脚本生成的源码目录（不提交）
 ├── data/                 # 本地 trace/量化样本；默认不提交大文件
@@ -83,11 +96,13 @@ ADAngel_oyzl/
 
 ## 实验语义
 
-公共输入均已提前准备好，公共准备时间不计入 O0/O1/O2：
+公共输入均已提前准备好，公共准备时间不计入 O0–O4：
 
 ```text
 A_int8    [4096, 4096] int8     A_scale [4096]      fp32
 W_mxfp4   [4096, 2048] uint8    W_scale [4096,128]  UE8M0 uint8
+W_mxfp4_g128 [4096,2048] uint8  W_scale_g128 [4096,32] UE8M0 uint8
+W_q4      [4096, 2048] uint8
 Y         [4096, 4096] fp32
 ```
 
@@ -97,9 +112,14 @@ Y         [4096, 4096] fp32
   块执行 INT8 MMA，INT32 partial 转 FP32 后乘 `A_scale*W_scale/2` 并累加。
 - **O2**：A 先反缩放再按 K32 重量化为 MXFP4；W 保持 MXFP4，执行
   SM120 block-scaled MXFP4 MMA，FP32 累加/输出。
+- **O3**：A8 拆为 U4 low/S4 high，G128 MXFP4→Q4；每组用两条 INT4 MMA 路径
+  重构 `P_low+16*P_high`，再乘 `A_scale*W_scale_g128`。
+- **O4**：A8/Q4 分别拆为 8/4 个 two's-complement bitplane；每个 G128 用
+  32 个 AND-POPC BMMA 重构整数点积，再乘相同的 G128 scale。
 
 详细定义见 [实验协议](docs/experiment_protocol.md)、[数据格式](docs/data_format.md)、
 [O0/O1/O2 后端与测量报告](docs/o0_o1_o2_backend_report.md)、
+[O3/O4 Split/Bitwise 后端报告](docs/o3_o4_backend_report.md)、
 [Miniconda 配置指南](docs/miniconda_setup.md)、[本机验证记录](docs/local_validation.md)
 和 [SM120 microscale layout](docs/mxfp4_scale_layout.md)。
 
@@ -185,16 +205,22 @@ rsync -avP --partial \
 
 ## 2. 生成公共输入
 
+原 O0/O1/O2 prepared 目录保持不变。O3/O4 需要重新从同一份原始 FP16 trace
+生成包含 K32 与 G128 两套权重表示的 v3 数据，建议使用新目录，避免覆盖既有结果：
+
 ```bash
 python scripts/prepare_trace.py \
   --input data/raw/llama2_7b_prefill \
-  --output data/prepared/llama2_7b_prefill \
-  --config configs/experiment/o0_o1_o2_4096.yaml \
+  --output data/prepared/llama2_7b_prefill_o0_o4 \
+  --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml \
   --trace-config configs/trace/llama2_7b_prefill.yaml
 ```
 
-该步骤执行 FP16→逐行 INT8 和 FP16→K32 MXFP4，只执行一次。它输出
-`A_int8/A_scale/W_mxfp4/W_scale` 以及样本 manifest；其耗时不会进入三种配置。
+该步骤执行 FP16→逐行 INT8、FP16→K32 MXFP4、FP16→G128 MXFP4 和
+G128 MXFP4→Q4，只执行一次。它输出
+`A_int8/A_scale/W_mxfp4/W_scale/W_mxfp4_g128/W_scale_g128/W_q4` 以及样本
+manifest；其耗时不会进入任何 variant。O3/O4 在线转换仍从公共 `A_int8` 和
+G128 MXFP4 权重开始，并按实验模式单独计时。
 
 ## 3. 正确性测试
 
@@ -204,7 +230,7 @@ CPU 上可先运行不依赖 GPU 的编码测试：
 python -m unittest discover -s tests/unit -p 'test_*.py' -v
 ```
 
-修改任一原生后端后，先在 RTX 5090 上重新构建，再运行不需要模型或 trace 的三组专项验收：
+修改任一原生后端后，先在 RTX 5090 上重新构建，再运行不需要模型或 trace 的专项验收：
 
 ```bash
 ADANGEL_BUILD_CUDA=1 python -m pip install -v -e . --no-build-isolation --no-deps
@@ -215,10 +241,14 @@ python scripts/validate_o1.py
 python -m pytest tests/integration/test_sm120_o1.py -q --run-sm120
 python scripts/validate_o2.py
 python -m pytest tests/integration/test_sm120_o2.py -q --run-sm120
+python scripts/validate_o3.py
+python scripts/validate_o4.py
+python -m pytest tests/integration/test_sm120_o3_o4.py -q --run-sm120
 ```
 
 预期 `o0_fp16_tc`、`o1_int8_tc`、`o2_mxf4_block_scale` 和
-`o2_cutlass_tiled` 均为 `true`，三个验证脚本必须输出 `"passed": true`。
+`o2_cutlass_tiled`、`o3_int4_tc`、`o3_tma_warp_specialized`、`o4_int1_tc` 和
+`o4_tma_warp_specialized` 均为 `true`，五个验证脚本必须输出 `"passed": true`。
 O0 元数据必须报告 HMMA、`CUBLAS_COMPUTE_32F` 和 FP32 输出；
 O1 production 必须报告
 `implementation_key=register_128x64_k64_scale_shared_row_dedup`、
@@ -231,7 +261,8 @@ O1 production 必须报告
 O1 验证会逐元素核对 MXFP4→INT8 映射，并用 `rtol=1e-3, atol=1e-3` 对照可扩展
 语义参考。O2 验证会逐元素核对激活 E2M1 编码、RNE、packing 和 UE8M0 scale，
 执行 SFA/SFB layout probe，并检查 CUTLASS TMA cooperative warp-specialized 元数据。
-三个脚本都会验证四种计时模式的阶段集合。全部通过后，
+O3/O4 还会逐元素核对 Q4/Split/bitplane 转换，并分别对照 G128 INT4 和
+8×4 BMMA 语义参考。五个脚本都会验证四种计时模式的阶段集合。全部通过后，
 `python -m adangel doctor --require-native` 应报告整体可用。
 
 小矩阵通过后再执行 O1/O2 正式形状验收：
@@ -296,6 +327,16 @@ python scripts/validate_o2.py \
   --m 4096 --n 4096 --k 4096 \
   --warmup 50 --repeats 200 --max-cv-percent 3.0 \
   | tee reports/o2_4096_validation.json
+
+python scripts/validate_o3.py \
+  --m 4096 --n 4096 --k 4096 \
+  --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o3_4096_validation.json
+
+python scripts/validate_o4.py \
+  --m 4096 --n 4096 --k 4096 \
+  --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o4_4096_validation.json
 ```
 
 
@@ -316,8 +357,9 @@ EXTENSION_DIR=$(python -c "import torch, pathlib; import adangel._sm120 as m; pr
 bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 ```
 
-审计应找到：O0 的 FP16 Tensor Core 指令、O1 的 INT8 Tensor Core 指令，以及
-O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA。脚本要求 O1 的 TMA 与 signed INT8
+审计应找到：O0 的 FP16 Tensor Core 指令、O1 的 INT8 Tensor Core 指令、
+O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA、O3 的 U4×S4/S4×S4 INT4 MMA，
+以及 O4 的 B1 AND-POPC BMMA。脚本要求 O1 的 TMA 与 signed INT8
 MMA 位于选定的 production entry；保留的寄存器候选也必须在各自同一 entry 内包含
 TMA+IMMA。O1 production `register_128x64_k64_scale_shared_row_dedup` 必须满足
 SASS 无 `LDL/STL` 且 resource usage 为 `STACK=0, LOCAL=0`。`register_128x128` 是
@@ -326,7 +368,8 @@ SASS 无 `LDL/STL` 且 resource usage 为 `STACK=0, LOCAL=0`。`register_128x128
 spill的128×128实现选为production，审计仍会失败。O2 的
 TMA 与 MXFP4 block-scaled MMA 位于同一个正式 CUTLASS PTX/SASS entry，并明确排除
 `o2_mxf4_layout_probe`。summary 记录 production/candidate symbol、spill 检查与
-`status=PASS`，资源使用写入 `extension.resources.txt`。该审计不是完整 profiling。
+`status=PASS`，资源使用写入 `extension.resources.txt`。O3/O4 同样要求 TMA 和目标
+MMA 位于各自正式 symbol 内，并要求 `STACK=0, LOCAL=0`。该审计不是完整 profiling。
 
 ## 5. 正式运行
 
@@ -334,9 +377,9 @@ TMA 与 MXFP4 block-scaled MMA 位于同一个正式 CUTLASS PTX/SASS entry，�
 
 ```bash
 python -m adangel run \
-  --config configs/experiment/o0_o1_o2_4096.yaml \
-  --data data/prepared/llama2_7b_prefill \
-  --output runs/smoke \
+  --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --output runs/smoke_o0_o4 \
   --samples 1 --warmup 5 --repeats 10 --require-native
 ```
 
@@ -344,13 +387,13 @@ python -m adangel run \
 
 ```bash
 python -m adangel run \
-  --config configs/experiment/o0_o1_o2_4096.yaml \
-  --data data/prepared/llama2_7b_prefill \
-  --output runs/rtx5090_main \
+  --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --output runs/rtx5090_o0_o4_main \
   --require-native
 ```
 
-运行顺序按样本交错 O0/O1/O2；使用单 stream、CUDA Event、预热 50 次、测量
+运行顺序按样本交错 O0/O1/O2/O3/O4；使用单 stream、CUDA Event、预热 50 次、测量
 200 次。计时Event必须在预热前完成创建，预热同步与第一条正式测量之间不得创建
 Event、分配显存或做文件 I/O，避免GPU降频后在测量区间重新升频。每个 run 生成：
 
@@ -416,18 +459,18 @@ reports/rtx5090_main/figures/
   04_mse_boxplot.png
 ```
 
-MSE 以每个样本保存的一次 O0 FP32 输出为唯一主参考，O1/O2 转 FP64 后做
+MSE 以每个样本保存的一次 O0 FP32 输出为唯一主参考，O1/O2/O3/O4 转 FP64 后做
 reduction；报告逐样本值以及 24 样本的 median、IQR、最大值和 bootstrap 95% CI。
 
 ## 常用诊断
 
 ```bash
 python -m adangel doctor
-python -m adangel show-config --config configs/experiment/o0_o1_o2_4096.yaml
+python -m adangel show-config --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml
 python -m adangel run --help
 ```
 
-如果机器不是 RTX 5090、原生扩展未编译、CUTLASS commit 不匹配或 O2 kernel
+如果机器不是 RTX 5090、原生扩展未编译、CUTLASS commit 不匹配或任一正式 kernel
 未报告 block-scaled MMA 能力，`--require-native` 会停止运行。小矩阵开发验证可在
-Python API 的 `run_o0/run_o1/run_o2` 中显式传入 `backend="reference"`；reference
+Python API 的 `run_o0/run_o1/run_o2/run_o3/run_o4` 中显式传入 `backend="reference"`；reference
 后端禁止 M=N=K=4096 的正式计时，也不会生成可汇总的正式性能结果。

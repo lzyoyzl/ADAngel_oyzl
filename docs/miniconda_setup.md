@@ -202,11 +202,11 @@ python -m adangel doctor
 python -m unittest discover -s tests/unit -p 'test_*.py' -v
 ```
 
-O0/O1/O2 正式后端均已实现并启用独立 capability。重新构建后，
+O0/O1/O2/O3/O4 正式后端均已实现并启用独立 capability。重新构建后，
 `python -m adangel doctor --require-native` 应报告 `available: true`；若不是，应停止
 正式 benchmark 并按 capability 缺失项排查，不能用 reference 后端绕过。
 
-先独立验收 O0/O1/O2（不需要模型和 trace）：
+先独立验收 O0–O4（不需要模型和 trace）：
 
 ```bash
 python -c "import torch; import adangel._sm120 as m; print(dict(m.capabilities()))"
@@ -216,16 +216,20 @@ python scripts/validate_o1.py
 python -m pytest tests/integration/test_sm120_o1.py -q --run-sm120
 python scripts/validate_o2.py
 python -m pytest tests/integration/test_sm120_o2.py -q --run-sm120
+python scripts/validate_o3.py
+python scripts/validate_o4.py
+python -m pytest tests/integration/test_sm120_o3_o4.py -q --run-sm120
 ```
 
-预期四个后端能力位均为 true，三个验证脚本都输出 `passed=true`。
+预期所有后端能力位均为 true，五个验证脚本都输出 `passed=true`。
 O0 会核对反量化、FP32 输出和 cuBLASLt HMMA；O1 会核对精确 E2M1→INT8 映射、
 `tma_warp_specialized` TMA + signed-INT8 WMMA、逐 K32 INT32 partial/FP32 寄存器累加、无全局 partial
 buffer 以及单次最终输出写回。O2 会核对激活 MXFP4 编码、SFA/SFB layout、原生
-block-scaled MMA、TMA 与 cooperative warp specialization。三者都会验证四种计时模式。
+block-scaled MMA、TMA 与 cooperative warp specialization。O3/O4 分别核对论文 Split
+INT4 和 8×4 Bitwise BMMA 语义。五者都会验证四种计时模式。
 若源码是在 editable install 之后更新的，必须先重新构建；只重启 Python 不会更新 `.so`。
 
-专项小矩阵通过后，使用 `4096^3` 对 O1/O2 做正式形状验收：
+专项小矩阵通过后，使用 `4096^3` 对 O1–O4 做正式形状验收；O3/O4 命令为：
 
 ```bash
 python scripts/validate_o1.py --m 4096 --n 4096 --k 4096 --warmup 50 --repeats 200 \
@@ -238,6 +242,13 @@ python scripts/validate_o2.py \
   --m 4096 --n 4096 --k 4096 \
   --warmup 50 --repeats 200 --max-cv-percent 3.0 \
   | tee reports/o2_4096_validation.json
+
+python scripts/validate_o3.py --m 4096 --n 4096 --k 4096 \
+  --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o3_4096_validation.json
+python scripts/validate_o4.py --m 4096 --n 4096 --k 4096 \
+  --warmup 50 --repeats 200 --max-cv-percent 3.0 \
+  | tee reports/o4_4096_validation.json
 ```
 
 最后执行完整验收与同 kernel 指令审计：
