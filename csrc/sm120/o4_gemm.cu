@@ -30,9 +30,9 @@ constexpr int kWordsPerGroup = 4;
 constexpr int kAPlanes = 8;
 constexpr int kWPlanes = 4;
 constexpr int kTileM = 128;
-constexpr int kTileN = 16;
+constexpr int kTileN = 64;
 constexpr int kNReplicas = kTileN / 16;
-constexpr int kGroupsPerStage = 1;
+constexpr int kGroupsPerStage = 2;
 constexpr int kStages = 2;
 constexpr int kProducerThreads = 32;
 constexpr int kConsumerThreads = 512;
@@ -44,14 +44,14 @@ constexpr int kBStageWords = kWPlanes * kTileN * kPipelineWords;
 
 using Pipeline = cutlass::PipelineTmaAsync<kStages>;
 using WordLayoutA = decltype(cute::make_layout(
-    cute::make_shape(cute::_8{}, cute::_128{}, cute::_4{}, cute::_2{}),
+    cute::make_shape(cute::_8{}, cute::_128{}, cute::_8{}, cute::_2{}),
     cute::make_stride(
-        cute::Int<kTileM * kPipelineWords>{}, cute::_4{}, cute::_1{},
+        cute::Int<kTileM * kPipelineWords>{}, cute::_8{}, cute::_1{},
         cute::Int<kAStageWords>{})));
 using WordLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_4{}, cute::_16{}, cute::_4{}, cute::_2{}),
+    cute::make_shape(cute::_4{}, cute::_64{}, cute::_8{}, cute::_2{}),
     cute::make_stride(
-        cute::Int<kTileN * kPipelineWords>{}, cute::_4{}, cute::_1{},
+        cute::Int<kTileN * kPipelineWords>{}, cute::_8{}, cute::_1{},
         cute::Int<kBStageWords>{})));
 using BinaryMma = cute::SM80_16x8x128_S32U1U1S32_TN_ANDPOPC;
 
@@ -173,10 +173,10 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
   auto mA = tma_a.get_tma_tensor(cute::make_shape(cute::_8{}, m, k / 32));
   auto mB = tma_b.get_tma_tensor(cute::make_shape(cute::_4{}, n, k / 32));
   auto gA = cute::local_tile(
-      mA, cute::make_shape(cute::_8{}, cute::_128{}, cute::_4{}),
+      mA, cute::make_shape(cute::_8{}, cute::_128{}, cute::_8{}),
       cute::make_coord(cute::Int<0>{}, static_cast<int>(blockIdx.y), cute::_));
   auto gB = cute::local_tile(
-      mB, cute::make_shape(cute::_4{}, cute::_16{}, cute::_4{}),
+      mB, cute::make_shape(cute::_4{}, cute::_64{}, cute::_8{}),
       cute::make_coord(cute::Int<0>{}, static_cast<int>(blockIdx.x), cute::_));
   auto sAWord = cute::make_tensor(cute::make_smem_ptr(storage.a), WordLayoutA{});
   auto sBWord = cute::make_tensor(cute::make_smem_ptr(storage.b), WordLayoutB{});
@@ -354,7 +354,7 @@ auto make_tma_a(const at::Tensor& planes) {
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor,
       layout(cute::_, cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_8{}, cute::_128{}, cute::_4{}));
+      cute::make_shape(cute::_8{}, cute::_128{}, cute::_8{}));
 }
 
 auto make_tma_b(const at::Tensor& planes) {
@@ -368,7 +368,7 @@ auto make_tma_b(const at::Tensor& planes) {
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor,
       layout(cute::_, cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_4{}, cute::_16{}, cute::_4{}));
+      cute::make_shape(cute::_4{}, cute::_64{}, cute::_8{}));
 }
 
 template <class TmaA, class TmaB>
@@ -393,7 +393,8 @@ void launch_gemm(
 py::dict kernel_metadata(int groups) {
   py::dict result;
   result["library"] = "CUTLASS CuTe + CUDA";
-  result["implementation"] = "paper_bitwise_twos_complement_g128_tma_warp_specialized";
+  result["implementation"] =
+      "paper_bitwise_twos_complement_g128_tma_warp_specialized_reuse_n64_k256";
   result["kernel_symbol"] = "adangel_o4_bitwise_tma_ws";
   result["tensor_core"] = true;
   result["mma_family"] = "BMMA";

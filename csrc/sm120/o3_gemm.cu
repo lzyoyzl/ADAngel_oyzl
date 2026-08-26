@@ -383,7 +383,7 @@ void launch_gemm(
     int m, int n, int k, TmaLow const& low, TmaHigh const& high, TmaB const& b,
     cudaStream_t stream) {
   dim3 grid((n + kTileN - 1) / kTileN, (m + kTileM - 1) / kTileM);
-  // The three-stage Split pipeline uses more than CUDA's default dynamic
+  // The staged Split pipeline uses more than CUDA's default dynamic
   // shared-memory allowance. Opt this exact template specialization into the
   // device limit before launch; otherwise CUDA reports invalid argument.
   check_cuda(
@@ -401,7 +401,8 @@ void launch_gemm(
 py::dict kernel_metadata(int groups) {
   py::dict result;
   result["library"] = "CUTLASS CuTe + CUDA";
-  result["implementation"] = "paper_split_g128_tma_warp_specialized_register_partial";
+  result["implementation"] =
+      "paper_split_g128_tma_warp_specialized_register_partial_occupancy_n16";
   result["kernel_symbol"] = "adangel_o3_split_tma_ws";
   result["tensor_core"] = true;
   result["mma_family"] = "IMMA_INT4";

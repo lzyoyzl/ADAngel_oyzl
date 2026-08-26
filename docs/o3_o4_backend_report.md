@@ -78,14 +78,20 @@ Y     += FP32(P_g) * A_scale * W_scale_g128[g]
 CTA tile          128 x 16 x 128
 producer warps    1
 consumer warps    16
-pipeline stages   3
+pipeline stages   2
+groups per stage  1
 MMA               m16n8k64 U4xS4 + S4xS4
 ```
 
 16 个 consumer warp 排列为 8 个 M warp tile × 2 个 N warp tile。每个 warp 覆盖
 `16x8` 输出，因此合计恰好覆盖 `128x16`，无重复、无缺口。producer warp 用 TMA
-把 low/high A tile 和 Q4 W tile 搬到三阶段 shared-memory pipeline，并为每个
+把 low/high A tile 和 Q4 W tile 搬到两阶段 shared-memory pipeline，并为每个
 column/group 解码一次 W scale。
+
+该 CTA 是在 RTX 5090 上完成 N16/N64 与 pipeline K128/K256 消融后的选择。N64
+虽然减少 CTA 数并提高 A tile 复用，但需要 96 registers/thread 和约 83 KiB dynamic
+shared memory，只允许 1 CTA/SM；N16 使用 53 registers/thread 和约 35 KiB dynamic
+shared memory，可驻留 2 CTA/SM，实测 occupancy 约 69.8%，因此整体更快。
 
 subbyte operand 的寄存器装载不依赖猜测的 `ldmatrix` 组合，而是直接按 pinned CUTLASS
 中 `SM80_16x8x64` MMA trait 推导 lane→A/B/C 寄存器坐标。正式 PTX/SASS 仍执行
@@ -133,16 +139,23 @@ Y   += FP32(P_g) * A_scale * W_scale_g128[g]
 ### 4.3 Tile 与 pipeline
 
 ```text
-CTA tile          128 x 16 x 128
+CTA tile          128 x 64 x 256
 producer warps    1
 consumer warps    16
-pipeline stages   3
+pipeline stages   2
+groups per stage  2 (independent G128 scales)
 MMA               m16n8k128 B1 AND-POPC
 ```
 
-warp 排列、一次输出写回和 O3 相同。A/W bitplane 按 32 bit 打包；TMA 每 stage
-搬入完整 G128 的 8 个 A plane 和 4 个 W plane。lane mapping 直接来自 pinned CuTe
+每个 consumer warp 复用相同 A fragment，计算四个相邻的 N8 输出 fragment；最终仍只
+写回一次输出。A/W bitplane 按 32 bit 打包；TMA 每 stage 搬入两个连续 G128 的 8 个
+A plane 和 4 个 W plane，但两个 G128 的整数重构、scale 与 FP32 FMA 仍严格分开并按顺序
+执行。lane mapping 直接来自 pinned CuTe
 B1 MMA trait，避免 bit、lane、row/column 或转置错误。
+
+N16 两 CTA驻留方案达到约 69.6% occupancy，但会在四个相邻 N tile 间重复搬运 A
+bitplane，实测略慢于 N64。O4 的主项是每 G128 固定 32 个 BMMA，因此选择 N64 优先
+A/bitplane 复用；把两个 G128 合并到一个 pipeline stage 只减少同步，不合并 scale。
 
 当前实现为了回答“bitplane 转换开销是多少”，在 GEMM 前用独立 GPU kernel 生成
 bitplane，并在 conversion-only/cold/steady-state 中显式计量。这与论文 Bitwise
@@ -154,7 +167,7 @@ bitplane，并在 conversion-only/cold/steady-state 中显式计量。这与论�
 共同部分：
 
 - TMA + cooperative warp specialization；
-- 三阶段 shared-memory operand pipeline；
+- staged shared-memory operand pipeline；
 - 单 kernel tiled GEMM；
 - partial 保留在寄存器；
 - 按分组 scale 后做 FP32 累加；
@@ -171,7 +184,7 @@ bitplane，并在 conversion-only/cold/steady-state 中显式计量。这与论�
 | Tensor Core | INT8 IMMA | 两类 INT4 IMMA | B1 AND-POPC BMMA |
 | 每组核心分解 | 1 次 K32 MMA | 2 路×2 个 K64 | 32 plane pairs |
 | scale | 软件 K32 | 软件 G128 | 软件 G128 |
-| CTA | 128x64x64 | 128x16x128 | 128x16x128 |
+| CTA | 128x64x64 | 128x16x128 | 128x64x256 |
 
 CTA 不强制相同。不同 MMA atom、每组工作量和自然 warp coverage 决定了不同的合理
 tile；强行统一 CTA 会改变资源压力或产生未覆盖输出，反而降低可比性。

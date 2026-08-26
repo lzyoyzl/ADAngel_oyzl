@@ -47,13 +47,14 @@ UE8M0 scale、执行 E2M1 RNE 量化并完成 nibble packing；随后把自然�
 O3/O4 使用独立的 G128 权重副本，并按论文的 Split/Bitwise 算术实现。O3 将 A8
 按 two's-complement 原始位拆成低 U4 和高 S4，满足
 `A8=A_low_u4+16*A_high_s4`；G128 MXFP4 权重用 RNE 映射到 Q4。正式 kernel 采用
-`128x16x128` CTA、三阶段 TMA、1 producer/16 consumer、两类 `m16n8k64`
+`128x16x128` CTA、两阶段 TMA、1 producer/16 consumer、两类 `m16n8k64`
 INT4 MMA，在寄存器中重构两个 partial、应用 G128 scale，并只写一次 FP32 输出。
 
 O4 将 A8 拆成系数 `[1,2,4,8,16,32,64,-128]` 的 8 个 bitplane，将 Q4 权重拆成
 系数 `[1,2,4,-8]` 的 4 个 bitplane；每个 G128 执行 8×4=32 个
-`m16n8k128.b1.and.popc` BMMA 并在寄存器中重构。O4 同样采用 `128x16x128` CTA、
-TMA 和 cooperative warp specialization。为保留转换开销实验口径，当前 bitplane
+`m16n8k128.b1.and.popc` BMMA 并在寄存器中重构。O4 采用 `128x64x256` CTA，
+每个两阶段 TMA pipeline stage 搬运两个连续但仍独立缩放的 G128；每个 consumer
+warp 复用 A fragment 计算四个 N8 输出 fragment。为保留转换开销实验口径，当前 bitplane
 生成作为独立 GPU conversion 计时；它对齐论文 Bitwise 算术，但不宣称实现论文的
 selective fusion。
 

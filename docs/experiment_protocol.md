@@ -144,10 +144,13 @@ compute-only 配对测试相对O0平均加速约`1.198x`，bootstrap 95% CI约�
 
 ## O3/O4 论文对齐口径
 
-O3/O4 使用与 O1 相同的工程骨架：单 kernel tiled GEMM、三阶段 TMA pipeline、
+O3/O4 使用与 O1 相同的工程骨架：单 kernel tiled GEMM、staged TMA pipeline、
 1 个 producer warp、16 个 consumer warp、寄存器 partial、FP32 最终累加/输出和
-每个输出元素一次 global store。两者固定 CTA 为 `128x16x128`；这是 16 个 warp
-各自执行 `m16n8` MMA 时能够无重复、无缺口覆盖的自然输出 tile。CTA 形状不要求与
+每个输出元素一次 global store。O3 固定 CTA 为 `128x16x128`、两阶段且每 stage 一个
+G128；O4 固定 CTA 为 `128x64x256`、两阶段且每 stage 两个独立 G128。这是 RTX 5090
+上完成 CTA/occupancy 消融后的选择，不强制 O3/O4 使用相同 CTA。两者均使用 16 个
+consumer warp；O3 每 warp 覆盖一个 `m16n8` fragment，O4 每 warp 覆盖四个相邻
+`m16n8` fragment，均无重复、无缺口。CTA 形状不要求与
 O1/O2 相同，公平性由输入、数学语义、计时边界和运行方法控制。
 
 论文对齐分两层说明：
