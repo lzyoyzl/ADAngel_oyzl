@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 from ..quantization.int8 import quantize_int8_per_row
-from ..quantization.mxfp4 import quantize_mxfp4
+from ..quantization.mxfp4 import mxfp4_to_q4_packed, quantize_mxfp4
 from .raw import RAW_MANIFEST_NAME, validate_raw_trace, validate_trace_config
 from .schema import PreparedInputs
 from .storage import save_prepared, sha256_file, write_manifest
@@ -29,6 +29,13 @@ def _validate_configs(experiment: dict, trace: dict) -> tuple[list[int], list[st
     weight = quantization.get("weight", {})
     if weight.get("format") != "mxfp4_e2m1_ue8m0" or weight.get("group_size") != 32:
         raise ValueError("weight quantization must be MXFP4 E2M1/UE8M0 K32")
+    arbitrary = quantization.get("arbitrary_bit_weight", {})
+    if arbitrary and (
+        arbitrary.get("format") != "mxfp4_e2m1_ue8m0"
+        or arbitrary.get("group_size") != 128
+        or arbitrary.get("fixed_point_bits") != 4
+    ):
+        raise ValueError("arbitrary-bit weight must be G128 MXFP4 mapped to Q4")
     layers, projections, _, _ = validate_trace_config(trace)
     return layers, projections
 
@@ -105,8 +112,22 @@ def prepare_trace(
         raw = _load_and_validate_raw(input_dir / filename, layer, projection)
         a_int8, a_scale = quantize_int8_per_row(raw["activation_fp16"])
         w_mxfp4, w_scale = quantize_mxfp4(raw["weight_fp16"])
+        w_mxfp4_g128, w_scale_g128 = quantize_mxfp4(
+            raw["weight_fp16"], group_size=128
+        )
+        w_q4 = mxfp4_to_q4_packed(w_mxfp4_g128)
         record = save_prepared(
-            PreparedInputs(raw["sample_id"], a_int8, a_scale, w_mxfp4, w_scale), output_dir
+            PreparedInputs(
+                raw["sample_id"],
+                a_int8,
+                a_scale,
+                w_mxfp4,
+                w_scale,
+                w_mxfp4_g128,
+                w_scale_g128,
+                w_q4,
+            ),
+            output_dir,
         )
         record.update({"layer": layer, "projection": projection})
         records.append(record)
@@ -121,10 +142,14 @@ def prepare_trace(
                 "A_scale": "torch.float32",
                 "W_mxfp4": "torch.uint8",
                 "W_scale": "torch.uint8",
+                "W_mxfp4_g128": "torch.uint8",
+                "W_scale_g128": "torch.uint8",
+                "W_q4": "torch.uint8",
             },
             "quantization": {
                 "activation": "int8_symmetric_per_row",
                 "weight": "mxfp4_e2m1_ue8m0_k32",
+                "arbitrary_bit_weight": "mxfp4_e2m1_ue8m0_k128_to_q4_rne",
                 "rounding": "round_ties_to_even",
             },
             "trace": {

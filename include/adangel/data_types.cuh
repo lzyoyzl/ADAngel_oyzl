@@ -21,6 +21,14 @@ __host__ __device__ inline int8_t e2m1_to_int8_base(uint8_t code) {
   return (code & 8) ? -value : value;
 }
 
+// Q=4 fixed-point mapping used by O3/O4.  F=Q-4=0, so this is RNE of
+// the private E2M1 value followed by two's-complement Q4 packing.
+__host__ __device__ inline int8_t e2m1_to_q4(uint8_t code) {
+  constexpr int8_t table[8] = {0, 0, 1, 2, 2, 3, 4, 6};
+  int8_t value = table[code & 7];
+  return (code & 8) ? -value : value;
+}
+
 // OCP E2M1 round-to-nearest, ties-to-even encoder. The code parity is the
 // significand parity at every positive midpoint.
 __host__ __device__ inline uint8_t encode_e2m1_rne(float value) {

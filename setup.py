@@ -58,6 +58,8 @@ def extensions():
         "csrc/sm120/o1_gemm.cu",
         "csrc/sm120/o2_microkernel.cu",
         "csrc/sm120/o2_cutlass.cu",
+        "csrc/sm120/o3_gemm.cu",
+        "csrc/sm120/o4_gemm.cu",
     ]
     extension = CUDAExtension(
         "adangel._sm120",

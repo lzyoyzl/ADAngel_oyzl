@@ -17,6 +17,34 @@ class TestProjectContract(unittest.TestCase):
         self.assertEqual(config["timing"]["conversion_inner_repeats"], 100)
         self.assertEqual(config["backend"]["cuda_arch"], "sm_120a")
 
+        arbitrary = yaml.safe_load(
+            (ROOT / "configs/experiment/o0_o1_o2_o3_o4_4096.yaml").read_text()
+        )
+        self.assertEqual(arbitrary["variants"], ["o0", "o1", "o2", "o3", "o4"])
+        self.assertEqual(
+            arbitrary["quantization"]["arbitrary_bit_weight"]["group_size"], 128
+        )
+        self.assertEqual(
+            arbitrary["quantization"]["arbitrary_bit_weight"]["fixed_point_bits"], 4
+        )
+
+    def test_o3_o4_production_backend_contract(self):
+        o3 = (ROOT / "csrc/sm120/o3_gemm.cu").read_text()
+        o4 = (ROOT / "csrc/sm120/o4_gemm.cu").read_text()
+        bindings = (ROOT / "csrc/bindings.cpp").read_text()
+        self.assertIn("SM80_16x8x64_S32U4S4S32_TN", o3)
+        self.assertIn("SM80_16x8x64_S32S4S4S32_TN", o3)
+        self.assertIn("A8=A_low_u4+16*A_high_s4", o3)
+        self.assertIn("PipelineTmaAsync", o3)
+        self.assertIn("consumer_wait", o3)
+        self.assertIn('result["partial_storage"] = "register"', o3)
+        self.assertIn("SM80_16x8x128_S32U1U1S32_TN_ANDPOPC", o4)
+        self.assertIn("kAWeights[kAPlanes] = {1, 2, 4, 8, 16, 32, 64, -128}", o4)
+        self.assertIn("kWWeights[kWPlanes] = {1, 2, 4, -8}", o4)
+        self.assertIn('result["logical_mma_per_group"] = 32', o4)
+        self.assertIn('module.def("run_o3", &adangel_run_o3)', bindings)
+        self.assertIn('module.def("run_o4", &adangel_run_o4)', bindings)
+
     def test_target_o2_instruction_is_present(self):
         source = (ROOT / "csrc/sm120/o2_microkernel.cu").read_text()
         self.assertIn("kind::mxf4.block_scale.scale_vec::2X", source)

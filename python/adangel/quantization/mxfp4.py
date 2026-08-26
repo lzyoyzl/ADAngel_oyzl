@@ -12,7 +12,9 @@ from typing import Iterable, Sequence
 E2M1_POSITIVE = (0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0)
 E2M1_DECODE = E2M1_POSITIVE + tuple(-x for x in E2M1_POSITIVE)
 E2M1_TO_INT8_BASE = (0, 1, 2, 3, 4, 6, 8, 12, 0, -1, -2, -3, -4, -6, -8, -12)
+E2M1_TO_Q4 = tuple(int(round(value)) for value in E2M1_DECODE)
 GROUP_SIZE = 32
+ARBITRARY_BIT_GROUP_SIZE = 128
 UE8M0_BIAS = 127
 UE8M0_NAN = 255
 
@@ -41,6 +43,13 @@ def e2m1_to_int8_base(code: int) -> int:
     if not 0 <= int(code) <= 15:
         raise ValueError(f"E2M1 code must be in [0,15], got {code}")
     return E2M1_TO_INT8_BASE[int(code)]
+
+
+def e2m1_to_q4(code: int) -> int:
+    """Map an E2M1 private value to signed Q4 with RNE and F=Q-4=0."""
+    if not 0 <= int(code) <= 15:
+        raise ValueError(f"E2M1 code must be in [0,15], got {code}")
+    return E2M1_TO_Q4[int(code)]
 
 
 def decode_ue8m0(code: int) -> float:
@@ -147,8 +156,8 @@ def _torch():
 def quantize_mxfp4(x, group_size: int = GROUP_SIZE):
     """Quantize the last dimension and return packed uint8 values plus UE8M0 uint8 scales."""
     torch = _torch()
-    if group_size != GROUP_SIZE:
-        raise ValueError("SM120 MXFP4 experiment requires group_size=32")
+    if group_size not in {GROUP_SIZE, ARBITRARY_BIT_GROUP_SIZE}:
+        raise ValueError("MXFP4 group_size must be 32 or 128")
     if x.ndim != 2 or x.shape[1] % group_size:
         raise ValueError("x must be rank-2 and K must be divisible by 32")
     x32 = x.to(torch.float32)
@@ -212,13 +221,48 @@ def mxfp4_to_int8_base(packed):
     return lut[codes.to(torch.long)].contiguous()
 
 
-def dequantize_mxfp4(packed, scale_codes, dtype=None):
+def mxfp4_to_q4_packed(packed):
+    """Convert packed E2M1 codes to packed signed Q4 private values.
+
+    The low/high nibble order is preserved. Signed Q4 values use two's
+    complement and are represented by their raw four-bit codes in uint8.
+    """
+    torch = _torch()
+    codes = unpack_e2m1_tensor(packed)
+    lut = torch.tensor(
+        [value & 0xF for value in E2M1_TO_Q4],
+        dtype=torch.uint8,
+        device=packed.device,
+    )
+    q4 = lut[codes.to(torch.long)]
+    return (q4[:, 0::2] | (q4[:, 1::2] << 4)).contiguous()
+
+
+def unpack_int4_tensor(packed):
+    """Unpack two's-complement Q4 nibbles into a contiguous int8 tensor."""
+    torch = _torch()
+    if packed.dtype != torch.uint8 or packed.ndim != 2:
+        raise ValueError("packed Q4 values must be a rank-2 uint8 tensor")
+    nibbles = unpack_e2m1_tensor(packed).to(torch.int16)
+    signed = torch.where(nibbles >= 8, nibbles - 16, nibbles)
+    return signed.to(torch.int8).contiguous()
+
+
+def dequantize_mxfp4(packed, scale_codes, dtype=None, group_size: int | None = None):
     torch = _torch()
     values = decode_e2m1_tensor(unpack_e2m1_tensor(packed))
-    if values.shape[1] % GROUP_SIZE:
-        raise ValueError("unpacked K must be divisible by 32")
-    if tuple(scale_codes.shape) != (values.shape[0], values.shape[1] // GROUP_SIZE):
+    if group_size is None:
+        if scale_codes.ndim != 2 or scale_codes.shape[0] != values.shape[0]:
+            raise ValueError("scale shape does not match packed values")
+        if scale_codes.shape[1] == 0 or values.shape[1] % scale_codes.shape[1]:
+            raise ValueError("scale shape does not divide unpacked K")
+        group_size = values.shape[1] // scale_codes.shape[1]
+    if group_size not in {GROUP_SIZE, ARBITRARY_BIT_GROUP_SIZE}:
+        raise ValueError("MXFP4 group_size must be 32 or 128")
+    if values.shape[1] % group_size:
+        raise ValueError("unpacked K must be divisible by group_size")
+    if tuple(scale_codes.shape) != (values.shape[0], values.shape[1] // group_size):
         raise ValueError("scale shape does not match packed values")
-    values = values.reshape(values.shape[0], -1, GROUP_SIZE)
+    values = values.reshape(values.shape[0], -1, group_size)
     result = (values * decode_ue8m0_tensor(scale_codes).unsqueeze(-1)).reshape(values.shape[0], -1)
     return result.to(dtype or torch.float32)

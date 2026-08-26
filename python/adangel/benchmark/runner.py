@@ -48,6 +48,10 @@ def _conversion_bytes(variant: str, stage: str, m: int, n: int, k: int) -> int:
             m * k + 4 * m + m * k // 2 + 3 * natural_sfa
         ),
         ("o2", "weight_conversion"): 2 * natural_sfb,
+        ("o3", "weight_conversion"): n * k,
+        ("o3", "activation_conversion"): 2 * m * k,
+        ("o4", "weight_conversion"): 2 * n * k,
+        ("o4", "activation_conversion"): 2 * m * k,
     }
     return sizes.get((variant, stage), 0)
 
@@ -124,7 +128,14 @@ def run_experiment(
 
     manifest_path = data_dir / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    validate_manifest(manifest, formal=True)
+    require_arbitrary_bits = any(
+        variant in {"o3", "o4"} for variant in config["variants"]
+    )
+    validate_manifest(
+        manifest,
+        formal=True,
+        require_arbitrary_bits=require_arbitrary_bits,
+    )
     matrix = config["matrix"]
     configured_shape = [int(matrix["m"]), int(matrix["n"]), int(matrix["k"])]
     if manifest["matrix_shape"] != configured_shape:

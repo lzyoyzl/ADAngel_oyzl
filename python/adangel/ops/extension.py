@@ -52,6 +52,10 @@ def native_status() -> NativeStatus:
         "o1_int8_tc",
         "o2_mxf4_block_scale",
         "o2_cutlass_tiled",
+        "o3_int4_tc",
+        "o3_tma_warp_specialized",
+        "o4_int1_tc",
+        "o4_tma_warp_specialized",
         "compiled_sm120a",
     )
     missing = [key for key in required if not capabilities.get(key, False)]
@@ -102,6 +106,8 @@ def require_variant(variant: str):
         "o0": ("o0_fp16_tc",),
         "o1": ("o1_int8_tc",),
         "o2": ("o2_mxf4_block_scale", "o2_cutlass_tiled"),
+        "o3": ("o3_int4_tc", "o3_tma_warp_specialized"),
+        "o4": ("o4_int1_tc", "o4_tma_warp_specialized"),
     }
     if variant not in required:
         raise ValueError(f"unknown variant: {variant}")

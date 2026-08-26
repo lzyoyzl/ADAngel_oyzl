@@ -109,6 +109,8 @@ def generate_report(
         "o0": ["weight_conversion", "activation_conversion"],
         "o1": ["weight_conversion"],
         "o2": ["weight_conversion", "activation_conversion"],
+        "o3": ["weight_conversion", "activation_conversion"],
+        "o4": ["weight_conversion", "activation_conversion"],
     }
     conv = frame[frame["mode"].eq("conversion_only")].copy()
     conv = conv[conv.apply(lambda row: row["stage"] in conversion_names[row["variant"]], axis=1)]
@@ -175,7 +177,7 @@ def generate_report(
     ax.figure.savefig(figure_dir / "03_end_to_end_breakdown.png", dpi=180)
     plt.close(ax.figure)
 
-    plot_mse = mse_frame[mse_frame["variant"].isin(["o1", "o2"])]
+    plot_mse = mse_frame[mse_frame["variant"].isin(["o1", "o2", "o3", "o4"])]
     ax = plot_mse.boxplot(column="mse_vs_o0", by="variant", grid=False)
     ax.set_ylabel("MSE vs O0")
     ax.set_title("MSE vs O0" + figure_note)

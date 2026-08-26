@@ -47,9 +47,35 @@ def formal_manifest():
     }
 
 
+def extended_formal_manifest():
+    manifest = copy.deepcopy(formal_manifest())
+    manifest["version"] = 3
+    manifest["format"] = "adangel-prepared-mxfp4-k32-g128-q4"
+    manifest["dtypes"].update(
+        {
+            "W_mxfp4_g128": "torch.uint8",
+            "W_scale_g128": "torch.uint8",
+            "W_q4": "torch.uint8",
+        }
+    )
+    manifest["quantization"]["arbitrary_bit_weight"] = (
+        "mxfp4_e2m1_ue8m0_k128_to_q4_rne"
+    )
+    return manifest
+
+
 class TestManifestContract(unittest.TestCase):
     def test_formal_manifest(self):
         validate_manifest(formal_manifest(), formal=True)
+        validate_manifest(
+            extended_formal_manifest(), formal=True, require_arbitrary_bits=True
+        )
+
+    def test_legacy_manifest_rejected_for_o3_o4(self):
+        with self.assertRaisesRegex(ValueError, "extended"):
+            validate_manifest(
+                formal_manifest(), formal=True, require_arbitrary_bits=True
+            )
 
     def test_missing_sample_is_rejected(self):
         manifest = formal_manifest()

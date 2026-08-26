@@ -9,8 +9,10 @@ from pathlib import Path
 
 from .schema import PreparedInputs, validate_prepared
 
-MANIFEST_VERSION = 2
-PREPARED_FORMAT = "adangel-prepared-mxfp4-k32"
+MANIFEST_VERSION = 3
+PREPARED_FORMAT = "adangel-prepared-mxfp4-k32-g128-q4"
+LEGACY_MANIFEST_VERSION = 2
+LEGACY_PREPARED_FORMAT = "adangel-prepared-mxfp4-k32"
 
 
 def sha256_file(path: Path) -> str:
@@ -27,17 +29,19 @@ def save_prepared(inputs: PreparedInputs, output_dir: Path) -> dict:
     validate_prepared(inputs)
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / f"{inputs.sample_id}.pt"
-    torch.save(
-        {
-            "sample_id": inputs.sample_id,
-            "A_int8": inputs.A_int8.cpu(),
-            "A_scale": inputs.A_scale.cpu(),
-            "W_mxfp4": inputs.W_mxfp4.cpu(),
-            "W_scale": inputs.W_scale.cpu(),
-            "shape": list(inputs.shape),
-        },
-        path,
-    )
+    payload = {
+        "sample_id": inputs.sample_id,
+        "A_int8": inputs.A_int8.cpu(),
+        "A_scale": inputs.A_scale.cpu(),
+        "W_mxfp4": inputs.W_mxfp4.cpu(),
+        "W_scale": inputs.W_scale.cpu(),
+        "shape": list(inputs.shape),
+    }
+    for name in ("W_mxfp4_g128", "W_scale_g128", "W_q4"):
+        tensor = getattr(inputs, name)
+        if tensor is not None:
+            payload[name] = tensor.cpu()
+    torch.save(payload, path)
     return {
         "sample_id": inputs.sample_id,
         "file": path.name,
@@ -51,7 +55,14 @@ def load_prepared(path: Path, device: str = "cuda") -> PreparedInputs:
 
     record = torch.load(path, map_location=device, weights_only=True)
     inputs = PreparedInputs(
-        record["sample_id"], record["A_int8"], record["A_scale"], record["W_mxfp4"], record["W_scale"]
+        record["sample_id"],
+        record["A_int8"],
+        record["A_scale"],
+        record["W_mxfp4"],
+        record["W_scale"],
+        record.get("W_mxfp4_g128"),
+        record.get("W_scale_g128"),
+        record.get("W_q4"),
     )
     validate_prepared(inputs)
     if list(inputs.shape) != list(record.get("shape", [])):
@@ -59,9 +70,19 @@ def load_prepared(path: Path, device: str = "cuda") -> PreparedInputs:
     return inputs
 
 
-def validate_manifest(manifest: dict, *, formal: bool = False) -> None:
-    if manifest.get("version") != MANIFEST_VERSION or manifest.get("format") != PREPARED_FORMAT:
+def validate_manifest(
+    manifest: dict,
+    *,
+    formal: bool = False,
+    require_arbitrary_bits: bool = False,
+) -> None:
+    identity = (manifest.get("version"), manifest.get("format"))
+    legacy = identity == (LEGACY_MANIFEST_VERSION, LEGACY_PREPARED_FORMAT)
+    extended = identity == (MANIFEST_VERSION, PREPARED_FORMAT)
+    if not (legacy or extended):
         raise ValueError("unsupported prepared manifest version/format")
+    if require_arbitrary_bits and not extended:
+        raise ValueError("O3/O4 require the extended G128/Q4 prepared manifest")
     samples = manifest.get("samples")
     if not isinstance(samples, list) or not samples:
         raise ValueError("manifest samples must be a non-empty list")
@@ -93,11 +114,24 @@ def validate_manifest(manifest: dict, *, formal: bool = False) -> None:
         "W_mxfp4": "torch.uint8",
         "W_scale": "torch.uint8",
     }
+    if extended:
+        expected_dtypes.update(
+            {
+                "W_mxfp4_g128": "torch.uint8",
+                "W_scale_g128": "torch.uint8",
+                "W_q4": "torch.uint8",
+            }
+        )
     if manifest.get("dtypes") != expected_dtypes:
         raise ValueError("formal manifest dtype contract mismatch")
     quantization = manifest.get("quantization", {})
     if quantization.get("activation") != "int8_symmetric_per_row" or quantization.get("weight") != "mxfp4_e2m1_ue8m0_k32":
         raise ValueError("formal manifest quantization contract mismatch")
+    if extended and (
+        quantization.get("arbitrary_bit_weight")
+        != "mxfp4_e2m1_ue8m0_k128_to_q4_rne"
+    ):
+        raise ValueError("formal manifest G128/Q4 quantization contract mismatch")
     trace = manifest.get("trace", {})
     layers = trace.get("layers")
     projections = trace.get("projections")

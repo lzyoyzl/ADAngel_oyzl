@@ -44,6 +44,7 @@ find_ptx_symbol() {
       opened = 0
       has_tma = 0
       has_mma = 0
+      has_mma_second = 0
     }
     function finish_entry() {
       if (!opened) return
@@ -56,6 +57,20 @@ find_ptx_symbol() {
       }
       if (family == "o2" &&
           symbol !~ /o2_mxf4_layout_probe/ &&
+          has_tma && has_mma) {
+        print symbol
+        found = 1
+        exit 0
+      }
+      if (family == "o3" &&
+          index(symbol, needle) != 0 &&
+          has_tma && has_mma && has_mma_second) {
+        print symbol
+        found = 1
+        exit 0
+      }
+      if (family == "o4" &&
+          index(symbol, needle) != 0 &&
           has_tma && has_mma) {
         print symbol
         found = 1
@@ -82,6 +97,9 @@ find_ptx_symbol() {
       if (family == "o2" &&
           (/mma.*kind::mxf4.*block_scale/ ||
            /mma.*block_scale.*kind::mxf4/)) has_mma = 1
+      if (family == "o3" && /mma.*s32.*u4.*s4.*s32/) has_mma = 1
+      if (family == "o3" && /mma.*s32.*s4.*s4.*s32/) has_mma_second = 1
+      if (family == "o4" && /mma.*s32.*b1.*b1.*s32.*and\.popc/) has_mma = 1
       if (opened && depth == 0) finish_entry()
     }
     END { if (!found) exit 1 }
@@ -99,6 +117,8 @@ check_sass_symbol() {
     inside && /UTMALDG|UTMA/ { has_tma = 1 }
     inside && family == "o1" && /IMMA/ { has_mma = 1 }
     inside && family == "o2" && /OMMA/ { has_mma = 1 }
+    inside && family == "o3" && /IMMA/ { has_mma = 1 }
+    inside && family == "o4" && /BMMA|IMMA/ { has_mma = 1 }
     inside && /LDL|STL/ { has_local = 1 }
     END { exit (has_tma && has_mma) ? 0 : 1 }
   ' "$output_dir/extension.sass"
@@ -166,6 +186,14 @@ o2_symbol=$(find_ptx_symbol o2) || {
   echo 'O2 production kernel must contain both TMA load and MXFP4 block-scaled MMA in the same PTX entry' >&2
   exit 1
 }
+o3_symbol=$(find_ptx_symbol o3 adangel_o3_split_tma_ws) || {
+  echo 'O3 production kernel must contain same-entry TMA, U4xS4 MMA, and S4xS4 MMA' >&2
+  exit 1
+}
+o4_symbol=$(find_ptx_symbol o4 adangel_o4_bitwise_tma_ws) || {
+  echo 'O4 production kernel must contain same-entry TMA and B1 AND-POPC MMA' >&2
+  exit 1
+}
 
 check_sass_symbol "$o1_symbol" o1 || {
   echo "O1 production SASS entry lacks TMA or IMMA: $o1_symbol" >&2
@@ -218,6 +246,30 @@ check_sass_symbol "$o2_symbol" o2 || {
   echo "O2 production SASS entry lacks TMA or OMMA: $o2_symbol" >&2
   exit 1
 }
+check_sass_symbol "$o3_symbol" o3 || {
+  echo "O3 production SASS entry lacks TMA or INT4 IMMA: $o3_symbol" >&2
+  exit 1
+}
+check_sass_symbol "$o4_symbol" o4 || {
+  echo "O4 production SASS entry lacks TMA or binary MMA: $o4_symbol" >&2
+  exit 1
+}
+o3_resource=$(resource_usage_for_symbol "$o3_symbol") || {
+  echo "O3 production resource usage not found: $o3_symbol" >&2
+  exit 1
+}
+o4_resource=$(resource_usage_for_symbol "$o4_symbol") || {
+  echo "O4 production resource usage not found: $o4_symbol" >&2
+  exit 1
+}
+check_no_local_sass "$o3_symbol" && check_zero_stack_local_resource "$o3_resource" || {
+  echo "O3 production kernel spills to local memory: $o3_symbol ($o3_resource)" >&2
+  exit 1
+}
+check_no_local_sass "$o4_symbol" && check_zero_stack_local_resource "$o4_resource" || {
+  echo "O4 production kernel spills to local memory: $o4_symbol ($o4_resource)" >&2
+  exit 1
+}
 
 audit_complete=1
 trap - EXIT
@@ -234,6 +286,10 @@ trap - EXIT
   echo "o1_register_128_resource=$o1_register_128_resource"
   echo "o1_register_128_spill_check=$o1_register_128_spill_check"
   echo "o2_production_symbol=$o2_symbol"
-  echo "verified=O0 Tensor Core; O1 same-entry TMA+INT8 MMA; O2 same-entry TMA+MXFP4 block-scaled MMA"
+  echo "o3_production_symbol=$o3_symbol"
+  echo "o3_production_resource=$o3_resource"
+  echo "o4_production_symbol=$o4_symbol"
+  echo "o4_production_resource=$o4_resource"
+  echo "verified=O0 Tensor Core; O1 same-entry TMA+INT8 MMA; O2 same-entry TMA+MXFP4 block-scaled MMA; O3 same-entry TMA+U4/S4 INT4 MMA; O4 same-entry TMA+B1 AND-POPC MMA"
 } > "$summary_file"
 echo "instruction audit passed; review $output_dir/summary.txt and extension.sass"

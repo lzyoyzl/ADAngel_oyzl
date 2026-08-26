@@ -15,7 +15,11 @@ py::dict capabilities() {
   result["o1_int8_tc"] = adangel_o1_is_implemented();
   result["o2_mxf4_block_scale"] = adangel_o2_cutlass_is_implemented();
   result["o2_cutlass_tiled"] = adangel_o2_cutlass_is_implemented();
-  result["status"] = "O0/O1/O2 production adapters are implemented";
+  result["o3_int4_tc"] = adangel_o3_is_implemented();
+  result["o3_tma_warp_specialized"] = adangel_o3_is_implemented();
+  result["o4_int1_tc"] = adangel_o4_is_implemented();
+  result["o4_tma_warp_specialized"] = adangel_o4_is_implemented();
+  result["status"] = "O0/O1/O2/O3/O4 production adapters are implemented";
   return result;
 }
 
@@ -62,6 +66,28 @@ py::dict benchmark(
         repeats,
         conversion_inner_repeats);
   }
+  if (variant == "o3") {
+    return adangel_benchmark_o3(
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode,
+        warmup,
+        repeats,
+        conversion_inner_repeats);
+  }
+  if (variant == "o4") {
+    return adangel_benchmark_o4(
+        a_int8,
+        a_scale,
+        w_mxfp4,
+        w_scale,
+        mode,
+        warmup,
+        repeats,
+        conversion_inner_repeats);
+  }
   TORCH_CHECK(
       false,
       "The ",
@@ -86,6 +112,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
   module.def("run_o0", &adangel_run_o0);
   module.def("run_o1", &adangel_run_o1);
   module.def("run_o2", &adangel_run_o2);
+  module.def("run_o3", &adangel_run_o3);
+  module.def("run_o4", &adangel_run_o4);
   module.def(
       "benchmark",
       &benchmark,
