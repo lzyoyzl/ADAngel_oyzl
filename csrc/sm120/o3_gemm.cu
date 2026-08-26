@@ -29,7 +29,7 @@ constexpr int kGroupSize = 128;
 constexpr int kMmaK = 64;
 constexpr int kKSubgroups = 2;
 constexpr int kTileM = 128;
-constexpr int kTileN = 64;
+constexpr int kTileN = 16;
 constexpr int kStages = 3;
 constexpr int kProducerThreads = 32;
 constexpr int kConsumerThreads = 512;
@@ -43,24 +43,24 @@ using ByteLayoutA = decltype(cute::make_layout(
     cute::make_shape(cute::_128{}, cute::_64{}, cute::_3{}),
     cute::make_stride(cute::_64{}, cute::_1{}, cute::Int<kAStageBytes>{})));
 using ByteLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_64{}, cute::_64{}, cute::_3{}),
+    cute::make_shape(cute::_16{}, cute::_64{}, cute::_3{}),
     cute::make_stride(cute::_64{}, cute::_1{}, cute::Int<kBStageBytes>{})));
 using NibbleLayoutA = decltype(cute::make_layout(
     cute::make_shape(cute::_128{}, cute::_64{}, cute::_2{}, cute::_3{}),
     cute::make_stride(
         cute::_128{}, cute::_1{}, cute::_64{}, cute::Int<kTileM * kGroupSize>{})));
 using NibbleLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_64{}, cute::_64{}, cute::_2{}, cute::_3{}),
+    cute::make_shape(cute::_16{}, cute::_64{}, cute::_2{}, cute::_3{}),
     cute::make_stride(
         cute::_128{}, cute::_1{}, cute::_64{}, cute::Int<kTileN * kGroupSize>{})));
 using LowTiledMma = cute::TiledMMA<
     cute::MMA_Atom<cute::SM80_16x8x64_S32U4S4S32_TN>,
     cute::Layout<cute::Shape<cute::_8, cute::_2, cute::_1>>,
-    cute::Tile<cute::_128, cute::_64, cute::_64>>;
+    cute::Tile<cute::_128, cute::_16, cute::_64>>;
 using HighTiledMma = cute::TiledMMA<
     cute::MMA_Atom<cute::SM80_16x8x64_S32S4S4S32_TN>,
     cute::Layout<cute::Shape<cute::_8, cute::_2, cute::_1>>,
-    cute::Tile<cute::_128, cute::_64, cute::_64>>;
+    cute::Tile<cute::_128, cute::_16, cute::_64>>;
 
 struct alignas(128) SharedStorage {
   alignas(128) uint8_t a_low[kStages * kAStageBytes];
@@ -187,7 +187,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   auto b_coord = cute::make_coord(static_cast<int>(blockIdx.x), cute::_);
   auto gLow = cute::local_tile(mLow, byte_tiler, a_coord);
   auto gHigh = cute::local_tile(mHigh, byte_tiler, a_coord);
-  auto gB = cute::local_tile(mB, cute::make_shape(cute::_64{}, cute::_64{}), b_coord);
+  auto gB = cute::local_tile(mB, cute::make_shape(cute::_16{}, cute::_64{}), b_coord);
   auto sLowBytes = cute::make_tensor(cute::make_smem_ptr(storage.a_low), ByteLayoutA{});
   auto sHighBytes = cute::make_tensor(cute::make_smem_ptr(storage.a_high), ByteLayoutA{});
   auto sBBytes = cute::make_tensor(cute::make_smem_ptr(storage.b), ByteLayoutB{});
@@ -259,7 +259,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   HighTiledMma high_mma;
   auto low_thr = low_mma.get_slice(compute_thread);
   auto high_thr = high_mma.get_slice(compute_thread);
-  auto cC = cute::make_identity_tensor(cute::make_shape(cute::_128{}, cute::_64{}));
+  auto cC = cute::make_identity_tensor(cute::make_shape(cute::_128{}, cute::_16{}));
   auto tCcC = low_thr.partition_C(cC);
   auto tCrLow = low_thr.make_fragment_C(tCcC);
   auto tCrHigh = high_thr.make_fragment_C(tCcC);
@@ -318,22 +318,11 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
       cute::gemm(high_mma, high_a_frag, high_b_frag, tCrHigh);
     }
 
-    float warp_scales[kTileN / 32];
-#pragma unroll
-    for (int round = 0; round < kTileN / 32; ++round) {
-      warp_scales[round] = storage.column_scale[
-          stage * kTileN + round * 32 + lane];
-    }
 #pragma unroll
     for (int item = 0; item < cute::size(tCrLow); ++item) {
       const int local_column = cute::get<1>(tCcC(item));
-      float column_scale = 0.0f;
-#pragma unroll
-      for (int round = 0; round < kTileN / 32; ++round) {
-        const float candidate = __shfl_sync(
-            0xffffffffu, warp_scales[round], local_column & 31);
-        if ((local_column >> 5) == round) column_scale = candidate;
-      }
+      const float column_scale =
+          storage.column_scale[stage * kTileN + local_column];
       const float scale = __fmul_rn(tCrRowScale(item), column_scale);
       const int32_t partial = static_cast<int32_t>(tCrLow(item)) +
           16 * static_cast<int32_t>(tCrHigh(item));
@@ -347,7 +336,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   auto mC = cute::make_tensor(
       cute::make_gmem_ptr(output), cute::make_shape(m, n), cute::make_stride(n, cute::_1{}));
   auto gC = cute::local_tile(
-      mC, cute::make_shape(cute::_128{}, cute::_64{}),
+      mC, cute::make_shape(cute::_128{}, cute::_16{}),
       cute::make_coord(static_cast<int>(blockIdx.y), static_cast<int>(blockIdx.x)));
   auto tCgC = low_thr.partition_C(gC);
 #pragma unroll
@@ -377,7 +366,7 @@ auto make_tma_b(const at::Tensor& q4) {
   auto layout = ByteLayoutB{};
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor, layout(cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_64{}, cute::_64{}));
+      cute::make_shape(cute::_16{}, cute::_64{}));
 }
 
 template <class TmaLow, class TmaHigh, class TmaB>
