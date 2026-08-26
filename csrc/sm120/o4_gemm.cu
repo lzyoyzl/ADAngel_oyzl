@@ -32,30 +32,33 @@ constexpr int kWPlanes = 4;
 constexpr int kTileM = 128;
 constexpr int kTileN = 64;
 constexpr int kNReplicas = kTileN / 16;
-constexpr int kStages = 3;
+constexpr int kGroupsPerStage = 2;
+constexpr int kStages = 2;
 constexpr int kProducerThreads = 32;
 constexpr int kConsumerThreads = 512;
 constexpr int kThreads = kProducerThreads + kConsumerThreads;
-constexpr int kAStageWords = kAPlanes * kTileM * kWordsPerGroup;
-constexpr int kBStageWords = kWPlanes * kTileN * kWordsPerGroup;
+constexpr int kPipelineWords = kGroupsPerStage * kWordsPerGroup;
+constexpr int kPipelineK = kGroupsPerStage * kGroupSize;
+constexpr int kAStageWords = kAPlanes * kTileM * kPipelineWords;
+constexpr int kBStageWords = kWPlanes * kTileN * kPipelineWords;
 
 using Pipeline = cutlass::PipelineTmaAsync<kStages>;
 using WordLayoutA = decltype(cute::make_layout(
-    cute::make_shape(cute::_8{}, cute::_128{}, cute::_4{}, cute::_3{}),
+    cute::make_shape(cute::_8{}, cute::_128{}, cute::_8{}, cute::_2{}),
     cute::make_stride(
-        cute::Int<kTileM * kWordsPerGroup>{}, cute::_4{}, cute::_1{},
+        cute::Int<kTileM * kPipelineWords>{}, cute::_8{}, cute::_1{},
         cute::Int<kAStageWords>{})));
 using WordLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_4{}, cute::_64{}, cute::_4{}, cute::_3{}),
+    cute::make_shape(cute::_4{}, cute::_64{}, cute::_8{}, cute::_2{}),
     cute::make_stride(
-        cute::Int<kTileN * kWordsPerGroup>{}, cute::_4{}, cute::_1{},
+        cute::Int<kTileN * kPipelineWords>{}, cute::_8{}, cute::_1{},
         cute::Int<kBStageWords>{})));
 using BinaryMma = cute::SM80_16x8x128_S32U1U1S32_TN_ANDPOPC;
 
 struct alignas(128) SharedStorage {
   alignas(128) uint32_t a[kStages * kAStageWords];
   alignas(128) uint32_t b[kStages * kBStageWords];
-  alignas(128) float column_scale[kStages * kTileN];
+  alignas(128) float column_scale[kStages * kGroupsPerStage * kTileN];
   alignas(16) Pipeline::SharedStorage pipeline;
 };
 
@@ -170,10 +173,10 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
   auto mA = tma_a.get_tma_tensor(cute::make_shape(cute::_8{}, m, k / 32));
   auto mB = tma_b.get_tma_tensor(cute::make_shape(cute::_4{}, n, k / 32));
   auto gA = cute::local_tile(
-      mA, cute::make_shape(cute::_8{}, cute::_128{}, cute::_4{}),
+      mA, cute::make_shape(cute::_8{}, cute::_128{}, cute::_8{}),
       cute::make_coord(cute::Int<0>{}, static_cast<int>(blockIdx.y), cute::_));
   auto gB = cute::local_tile(
-      mB, cute::make_shape(cute::_4{}, cute::_64{}, cute::_4{}),
+      mB, cute::make_shape(cute::_4{}, cute::_64{}, cute::_8{}),
       cute::make_coord(cute::Int<0>{}, static_cast<int>(blockIdx.x), cute::_));
   auto sAWord = cute::make_tensor(cute::make_smem_ptr(storage.a), WordLayoutA{});
   auto sBWord = cute::make_tensor(cute::make_smem_ptr(storage.b), WordLayoutB{});
@@ -202,22 +205,31 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
 
   if (warp == 0) {
     auto write_state = cutlass::make_producer_start_state<Pipeline>();
-    for (int group = 0; group < groups; ++group) {
+    const int pipeline_groups = (groups + kGroupsPerStage - 1) / kGroupsPerStage;
+    for (int pipeline_group = 0; pipeline_group < pipeline_groups; ++pipeline_group) {
       if (lane == 0) pipeline.producer_acquire(write_state);
       __syncwarp();
       const int stage = write_state.index();
-      for (int column = lane; column < kTileN; column += 32) {
-        const int global_column = static_cast<int>(blockIdx.x) * kTileN + column;
-        storage.column_scale[stage * kTileN + column] = global_column < n
-            ? adangel::decode_ue8m0(w_scale[global_column * groups + group])
-            : 0.0f;
+#pragma unroll
+      for (int inner_group = 0; inner_group < kGroupsPerStage; ++inner_group) {
+        const int group = pipeline_group * kGroupsPerStage + inner_group;
+        for (int column = lane; column < kTileN; column += 32) {
+          const int global_column = static_cast<int>(blockIdx.x) * kTileN + column;
+          storage.column_scale[
+              (stage * kGroupsPerStage + inner_group) * kTileN + column] =
+              global_column < n && group < groups
+              ? adangel::decode_ue8m0(w_scale[global_column * groups + group])
+              : 0.0f;
+        }
       }
       __threadfence_block();
       __syncwarp();
       if (lane == 0) {
         auto* barrier = pipeline.producer_get_barrier(write_state);
-        cute::copy(tma_a.with(*barrier), tAgA(cute::_, group), tAsA(cute::_, stage));
-        cute::copy(tma_b.with(*barrier), tBgB(cute::_, group), tBsB(cute::_, stage));
+        cute::copy(
+            tma_a.with(*barrier), tAgA(cute::_, pipeline_group), tAsA(cute::_, stage));
+        cute::copy(
+            tma_b.with(*barrier), tBgB(cute::_, pipeline_group), tBsB(cute::_, stage));
       }
       ++write_state;
     }
@@ -242,20 +254,25 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
   float accumulators[kNReplicas][4] = {};
 
   Pipeline::PipelineState read_state;
-  for (int group = 0; group < groups; ++group) {
+  const int pipeline_groups = (groups + kGroupsPerStage - 1) / kGroupsPerStage;
+  for (int pipeline_group = 0; pipeline_group < pipeline_groups; ++pipeline_group) {
     pipeline.consumer_wait(read_state);
     const int stage = read_state.index();
-    int32_t group_accumulators[kNReplicas][4] = {};
 #pragma unroll
-    for (int a_plane = 0; a_plane < 8; ++a_plane) {
-      const uint32_t a0 = storage.a[
-          stage * kAStageWords + a_plane * kTileM * kWordsPerGroup +
-          local_row0 * kWordsPerGroup + lane_i];
-      const uint32_t a1 = storage.a[
-          stage * kAStageWords + a_plane * kTileM * kWordsPerGroup +
-          local_row1 * kWordsPerGroup + lane_i];
+    for (int inner_group = 0; inner_group < kGroupsPerStage; ++inner_group) {
+      const int group = pipeline_group * kGroupsPerStage + inner_group;
+      if (group >= groups) break;
+      int32_t group_accumulators[kNReplicas][4] = {};
 #pragma unroll
-      for (int w_plane = 0; w_plane < 4; ++w_plane) {
+      for (int a_plane = 0; a_plane < 8; ++a_plane) {
+        const uint32_t a0 = storage.a[
+            stage * kAStageWords + a_plane * kTileM * kPipelineWords +
+            local_row0 * kPipelineWords + inner_group * kWordsPerGroup + lane_i];
+        const uint32_t a1 = storage.a[
+            stage * kAStageWords + a_plane * kTileM * kPipelineWords +
+            local_row1 * kPipelineWords + inner_group * kWordsPerGroup + lane_i];
+#pragma unroll
+        for (int w_plane = 0; w_plane < 4; ++w_plane) {
         // This is the CuTe SM80 B1 trait mapping written explicitly.  For
         // lane=(i,j), A registers are rows j/j+8 at K word i, B is column j at
         // K word i, and C owns (j,j+8)x(2i,2i+1).  Loading complete b32 words
@@ -264,44 +281,47 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
         // Two's-complement bit-plane coefficients. Keeping this expression
         // local allows the unrolled loop to constant-fold every coefficient
         // without referencing host-only lookup tables from device code.
-        const int a_weight = a_plane == 7 ? -128 : (1 << a_plane);
-        const int w_weight = w_plane == 3 ? -8 : (1 << w_plane);
-        const int coefficient = a_weight * w_weight;
+          const int a_weight = a_plane == 7 ? -128 : (1 << a_plane);
+          const int w_weight = w_plane == 3 ? -8 : (1 << w_plane);
+          const int coefficient = a_weight * w_weight;
 #pragma unroll
-        for (int replica = 0; replica < kNReplicas; ++replica) {
-          const int atom_n = warp_n * kNReplicas + replica;
-          const uint32_t b0 = storage.b[
-              stage * kBStageWords + w_plane * kTileN * kWordsPerGroup +
-              (atom_n * 8 + lane_j) * kWordsPerGroup + lane_i];
-          uint32_t d0, d1, d2, d3;
-          BinaryMma::fma(d0, d1, d2, d3, a0, a1, b0, 0u, 0u, 0u, 0u);
-          group_accumulators[replica][0] += coefficient * static_cast<int32_t>(d0);
-          group_accumulators[replica][1] += coefficient * static_cast<int32_t>(d1);
-          group_accumulators[replica][2] += coefficient * static_cast<int32_t>(d2);
-          group_accumulators[replica][3] += coefficient * static_cast<int32_t>(d3);
+          for (int replica = 0; replica < kNReplicas; ++replica) {
+            const int atom_n = warp_n * kNReplicas + replica;
+            const uint32_t b0 = storage.b[
+                stage * kBStageWords + w_plane * kTileN * kPipelineWords +
+                (atom_n * 8 + lane_j) * kPipelineWords +
+                inner_group * kWordsPerGroup + lane_i];
+            uint32_t d0, d1, d2, d3;
+            BinaryMma::fma(d0, d1, d2, d3, a0, a1, b0, 0u, 0u, 0u, 0u);
+            group_accumulators[replica][0] += coefficient * static_cast<int32_t>(d0);
+            group_accumulators[replica][1] += coefficient * static_cast<int32_t>(d1);
+            group_accumulators[replica][2] += coefficient * static_cast<int32_t>(d2);
+            group_accumulators[replica][3] += coefficient * static_cast<int32_t>(d3);
+          }
         }
       }
-    }
 
 #pragma unroll
-    for (int replica = 0; replica < kNReplicas; ++replica) {
-      const int atom_n = warp_n * kNReplicas + replica;
-      const int local_column0 = atom_n * 8 + 2 * lane_i;
-      const int local_column1 = local_column0 + 1;
-      const float column_scale0 = storage.column_scale[stage * kTileN + local_column0];
-      const float column_scale1 = storage.column_scale[stage * kTileN + local_column1];
-      accumulators[replica][0] = __fmaf_rn(
-          static_cast<float>(group_accumulators[replica][0]),
-          __fmul_rn(row_scale0, column_scale0), accumulators[replica][0]);
-      accumulators[replica][1] = __fmaf_rn(
-          static_cast<float>(group_accumulators[replica][1]),
-          __fmul_rn(row_scale0, column_scale1), accumulators[replica][1]);
-      accumulators[replica][2] = __fmaf_rn(
-          static_cast<float>(group_accumulators[replica][2]),
-          __fmul_rn(row_scale1, column_scale0), accumulators[replica][2]);
-      accumulators[replica][3] = __fmaf_rn(
-          static_cast<float>(group_accumulators[replica][3]),
-          __fmul_rn(row_scale1, column_scale1), accumulators[replica][3]);
+      for (int replica = 0; replica < kNReplicas; ++replica) {
+        const int atom_n = warp_n * kNReplicas + replica;
+        const int local_column0 = atom_n * 8 + 2 * lane_i;
+        const int local_column1 = local_column0 + 1;
+        const int scale_base = (stage * kGroupsPerStage + inner_group) * kTileN;
+        const float column_scale0 = storage.column_scale[scale_base + local_column0];
+        const float column_scale1 = storage.column_scale[scale_base + local_column1];
+        accumulators[replica][0] = __fmaf_rn(
+            static_cast<float>(group_accumulators[replica][0]),
+            __fmul_rn(row_scale0, column_scale0), accumulators[replica][0]);
+        accumulators[replica][1] = __fmaf_rn(
+            static_cast<float>(group_accumulators[replica][1]),
+            __fmul_rn(row_scale0, column_scale1), accumulators[replica][1]);
+        accumulators[replica][2] = __fmaf_rn(
+            static_cast<float>(group_accumulators[replica][2]),
+            __fmul_rn(row_scale1, column_scale0), accumulators[replica][2]);
+        accumulators[replica][3] = __fmaf_rn(
+            static_cast<float>(group_accumulators[replica][3]),
+            __fmul_rn(row_scale1, column_scale1), accumulators[replica][3]);
+      }
     }
     pipeline.consumer_release(read_state);
     ++read_state;
@@ -334,7 +354,7 @@ auto make_tma_a(const at::Tensor& planes) {
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor,
       layout(cute::_, cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_8{}, cute::_128{}, cute::_4{}));
+      cute::make_shape(cute::_8{}, cute::_128{}, cute::_8{}));
 }
 
 auto make_tma_b(const at::Tensor& planes) {
@@ -348,7 +368,7 @@ auto make_tma_b(const at::Tensor& planes) {
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor,
       layout(cute::_, cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_4{}, cute::_64{}, cute::_4{}));
+      cute::make_shape(cute::_4{}, cute::_64{}, cute::_8{}));
 }
 
 template <class TmaA, class TmaB>
@@ -386,8 +406,9 @@ py::dict kernel_metadata(int groups) {
   result["weight_bit_weights"] = py::make_tuple(1, 2, 4, -8);
   result["data_movement"] = "TMA";
   result["kernel_schedule"] = "cooperative_warp_specialized";
-  result["cta_tile"] = py::make_tuple(kTileM, kTileN, kGroupSize);
+  result["cta_tile"] = py::make_tuple(kTileM, kTileN, kPipelineK);
   result["pipeline_stages"] = kStages;
+  result["groups_per_pipeline_stage"] = kGroupsPerStage;
   result["producer_warps"] = 1;
   result["consumer_warps"] = 16;
   result["group_size"] = kGroupSize;
