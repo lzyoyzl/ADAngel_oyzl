@@ -260,19 +260,6 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
     row_scales[slot] = global_row < m ? a_scale[global_row] : 0.0f;
   }
 
-  // One B1 MMA A fragment contains two b32 registers while B contains one.
-  // Match the ldmatrix width to those exact register footprints; U32x4 is
-  // intentionally not used because its TV layout cannot compose with the
-  // m16n8k128 binary MMA atom.
-  using ABitCopy = cute::Copy_Atom<cute::SM75_U32x2_LDSM_N, cutlass::uint1b_t>;
-  using BBitCopy = cute::Copy_Atom<cute::SM75_U32x1_LDSM_N, cutlass::uint1b_t>;
-  ABitCopy a_bit_copy;
-  BBitCopy b_bit_copy;
-  auto tiled_copy_a = cute::make_tiled_copy_A(a_bit_copy, tiled_mma);
-  auto tiled_copy_b = cute::make_tiled_copy_B(b_bit_copy, tiled_mma);
-  auto copy_a_thr = tiled_copy_a.get_slice(compute_thread);
-  auto copy_b_thr = tiled_copy_b.get_slice(compute_thread);
-
   Pipeline::PipelineState read_state;
   for (int group = 0; group < groups; ++group) {
     pipeline.consumer_wait(read_state);
@@ -282,14 +269,16 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
     for (int a_plane = 0; a_plane < kAPlanes; ++a_plane) {
 #pragma unroll
       for (int w_plane = 0; w_plane < kWPlanes; ++w_plane) {
-        auto a_frag = thr_mma.partition_fragment_A(sA(a_plane, cute::_, cute::_, stage));
-        auto b_frag = thr_mma.partition_fragment_B(sB(w_plane, cute::_, cute::_, stage));
-        auto a_src = copy_a_thr.partition_S(sA(a_plane, cute::_, cute::_, stage));
-        auto b_src = copy_b_thr.partition_S(sB(w_plane, cute::_, cute::_, stage));
-        auto a_dst = copy_a_thr.retile_D(a_frag);
-        auto b_dst = copy_b_thr.retile_D(b_frag);
-        cute::copy(a_bit_copy, a_src, a_dst);
-        cute::copy(b_bit_copy, b_src, b_dst);
+        // Binary MMA fragments are packed b32 registers.  The B1 atom's TV
+        // layouts are not compatible with the ldmatrix copy atoms used by the
+        // INT8/INT4 paths, so partition by the MMA coordinates and let CuTe's
+        // generic sub-byte copy materialize the exact packed register view.
+        auto a_src = thr_mma.partition_A(sA(a_plane, cute::_, cute::_, stage));
+        auto b_src = thr_mma.partition_B(sB(w_plane, cute::_, cute::_, stage));
+        auto a_frag = TiledMma::make_fragment_A(a_src);
+        auto b_frag = TiledMma::make_fragment_B(b_src);
+        cute::copy(a_src, a_frag);
+        cute::copy(b_src, b_frag);
         cute::clear(tCrPartial);
         cute::gemm(tiled_mma, a_frag, b_frag, tCrPartial);
         const int coefficient = kAWeights[a_plane] * kWWeights[w_plane];
