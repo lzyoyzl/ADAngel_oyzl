@@ -31,7 +31,6 @@ constexpr int kAPlanes = 8;
 constexpr int kWPlanes = 4;
 constexpr int kTileM = 128;
 constexpr int kTileN = 16;
-constexpr int kScaleRounds = (kTileN + 31) / 32;
 constexpr int kStages = 3;
 constexpr int kProducerThreads = 32;
 constexpr int kConsumerThreads = 512;
@@ -53,19 +52,7 @@ using WordLayoutB = decltype(cute::make_layout(
     cute::make_stride(
         cute::Int<kTileN * kWordsPerGroup>{}, cute::_4{}, cute::_1{},
         cute::Int<kBStageWords>{})));
-using BitLayoutA = decltype(cute::make_layout(
-    cute::make_shape(cute::_8{}, cute::_128{}, cute::_128{}, cute::_3{}),
-    cute::make_stride(
-        cute::Int<kTileM * kGroupSize>{}, cute::_128{}, cute::_1{},
-        cute::Int<kAPlanes * kTileM * kGroupSize>{})));
-using BitLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_4{}, cute::_16{}, cute::_128{}, cute::_3{}),
-    cute::make_stride(
-        cute::Int<kTileN * kGroupSize>{}, cute::_128{}, cute::_1{},
-        cute::Int<kWPlanes * kTileN * kGroupSize>{})));
-using TiledMma = cute::TiledMMA<
-    cute::MMA_Atom<cute::SM80_16x8x128_S32U1U1S32_TN_ANDPOPC>,
-    cute::Layout<cute::Shape<cute::_8, cute::_2, cute::_1>>>;
+using BinaryMma = cute::SM80_16x8x128_S32U1U1S32_TN_ANDPOPC;
 
 struct alignas(128) SharedStorage {
   alignas(128) uint32_t a[kStages * kAStageWords];
@@ -238,95 +225,84 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
   }
 
   const int compute_thread = thread - kProducerThreads;
+  const int consumer_warp = compute_thread >> 5;
+  const int lane_i = lane & 3;
+  const int lane_j = lane >> 2;
+  const int warp_m = consumer_warp & 7;
+  const int warp_n = consumer_warp >> 3;
   const int tile_row = static_cast<int>(blockIdx.y) * kTileM;
   const int tile_column = static_cast<int>(blockIdx.x) * kTileN;
-  auto sA = cute::make_tensor(
-      cute::make_smem_ptr(reinterpret_cast<cutlass::uint1b_t*>(storage.a)), BitLayoutA{});
-  auto sB = cute::make_tensor(
-      cute::make_smem_ptr(reinterpret_cast<cutlass::uint1b_t*>(storage.b)), BitLayoutB{});
-  TiledMma tiled_mma;
-  auto thr_mma = tiled_mma.get_slice(compute_thread);
-  auto cC = cute::make_identity_tensor(cute::make_shape(cute::_128{}, cute::_16{}));
-  auto tCcC = thr_mma.partition_C(cC);
-  auto tCrPartial = thr_mma.make_fragment_C(tCcC);
-  auto tCrGroup = cute::make_fragment_like<int32_t>(tCrPartial);
-  auto tCrAccumulator = cute::make_fragment_like<float>(tCrPartial);
-  cute::clear(tCrAccumulator);
-  float row_scales[2] = {0.0f, 0.0f};
-#pragma unroll
-  for (int slot = 0; slot < 2; ++slot) {
-    const int local_row = cute::get<0>(tCcC(slot * 2));
-    const int global_row = tile_row + local_row;
-    row_scales[slot] = global_row < m ? a_scale[global_row] : 0.0f;
-  }
+  const int local_row0 = warp_m * 16 + lane_j;
+  const int local_row1 = local_row0 + 8;
+  const int local_column0 = warp_n * 8 + 2 * lane_i;
+  const int local_column1 = local_column0 + 1;
+  const int global_row0 = tile_row + local_row0;
+  const int global_row1 = tile_row + local_row1;
+  const int global_column0 = tile_column + local_column0;
+  const int global_column1 = tile_column + local_column1;
+  const float row_scale0 = global_row0 < m ? a_scale[global_row0] : 0.0f;
+  const float row_scale1 = global_row1 < m ? a_scale[global_row1] : 0.0f;
+  float accumulators[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
   Pipeline::PipelineState read_state;
   for (int group = 0; group < groups; ++group) {
     pipeline.consumer_wait(read_state);
     const int stage = read_state.index();
-    cute::clear(tCrGroup);
+    int32_t group_accumulators[4] = {0, 0, 0, 0};
 #pragma unroll
     for (int a_plane = 0; a_plane < kAPlanes; ++a_plane) {
 #pragma unroll
       for (int w_plane = 0; w_plane < kWPlanes; ++w_plane) {
-        // Binary MMA fragments are packed b32 registers.  The B1 atom's TV
-        // layouts are not compatible with the ldmatrix copy atoms used by the
-        // INT8/INT4 paths, so partition by the MMA coordinates and let CuTe's
-        // generic sub-byte copy materialize the exact packed register view.
-        auto a_src = thr_mma.partition_A(sA(a_plane, cute::_, cute::_, stage));
-        auto b_src = thr_mma.partition_B(sB(w_plane, cute::_, cute::_, stage));
-        auto a_frag = TiledMma::make_fragment_A(a_src);
-        auto b_frag = TiledMma::make_fragment_B(b_src);
-        cute::copy(a_src, a_frag);
-        cute::copy(b_src, b_frag);
-        cute::clear(tCrPartial);
-        cute::gemm(tiled_mma, a_frag, b_frag, tCrPartial);
+        // This is the CuTe SM80 B1 trait mapping written explicitly.  For
+        // lane=(i,j), A registers are rows j/j+8 at K word i, B is column j at
+        // K word i, and C owns (j,j+8)x(2i,2i+1).  Loading complete b32 words
+        // preserves the coalesced bitplane layout and avoids any guessed
+        // per-bit lane mapping.
+        const uint32_t a0 = storage.a[
+            stage * kAStageWords + a_plane * kTileM * kWordsPerGroup +
+            local_row0 * kWordsPerGroup + lane_i];
+        const uint32_t a1 = storage.a[
+            stage * kAStageWords + a_plane * kTileM * kWordsPerGroup +
+            local_row1 * kWordsPerGroup + lane_i];
+        const uint32_t b0 = storage.b[
+            stage * kBStageWords + w_plane * kTileN * kWordsPerGroup +
+            (warp_n * 8 + lane_j) * kWordsPerGroup + lane_i];
+        uint32_t d0, d1, d2, d3;
+        BinaryMma::fma(d0, d1, d2, d3, a0, a1, b0, 0u, 0u, 0u, 0u);
         const int coefficient = kAWeights[a_plane] * kWWeights[w_plane];
-#pragma unroll
-        for (int item = 0; item < cute::size(tCrPartial); ++item) {
-          tCrGroup(item) += coefficient * static_cast<int32_t>(tCrPartial(item));
-        }
+        group_accumulators[0] += coefficient * static_cast<int32_t>(d0);
+        group_accumulators[1] += coefficient * static_cast<int32_t>(d1);
+        group_accumulators[2] += coefficient * static_cast<int32_t>(d2);
+        group_accumulators[3] += coefficient * static_cast<int32_t>(d3);
       }
     }
 
-    float warp_scales[kScaleRounds];
-#pragma unroll
-    for (int round = 0; round < kScaleRounds; ++round) {
-      const int column = round * 32 + lane;
-      warp_scales[round] = column < kTileN
-          ? storage.column_scale[stage * kTileN + column]
-          : 0.0f;
-    }
-#pragma unroll
-    for (int item = 0; item < cute::size(tCrGroup); ++item) {
-      const int local_column = cute::get<1>(tCcC(item));
-      float column_scale = 0.0f;
-#pragma unroll
-      for (int round = 0; round < kScaleRounds; ++round) {
-        const float candidate = __shfl_sync(
-            0xffffffffu, warp_scales[round], local_column & 31);
-        if ((local_column >> 5) == round) column_scale = candidate;
-      }
-      const float scale = __fmul_rn(row_scales[(item >> 1) & 1], column_scale);
-      tCrAccumulator(item) = __fmaf_rn(
-          static_cast<float>(tCrGroup(item)), scale, tCrAccumulator(item));
-    }
+    const float column_scale0 = storage.column_scale[stage * kTileN + local_column0];
+    const float column_scale1 = storage.column_scale[stage * kTileN + local_column1];
+    accumulators[0] = __fmaf_rn(
+        static_cast<float>(group_accumulators[0]),
+        __fmul_rn(row_scale0, column_scale0), accumulators[0]);
+    accumulators[1] = __fmaf_rn(
+        static_cast<float>(group_accumulators[1]),
+        __fmul_rn(row_scale0, column_scale1), accumulators[1]);
+    accumulators[2] = __fmaf_rn(
+        static_cast<float>(group_accumulators[2]),
+        __fmul_rn(row_scale1, column_scale0), accumulators[2]);
+    accumulators[3] = __fmaf_rn(
+        static_cast<float>(group_accumulators[3]),
+        __fmul_rn(row_scale1, column_scale1), accumulators[3]);
     pipeline.consumer_release(read_state);
     ++read_state;
   }
 
-  auto mC = cute::make_tensor(
-      cute::make_gmem_ptr(output), cute::make_shape(m, n), cute::make_stride(n, cute::_1{}));
-  auto gC = cute::local_tile(
-      mC, cute::make_shape(cute::_128{}, cute::_16{}),
-      cute::make_coord(static_cast<int>(blockIdx.y), static_cast<int>(blockIdx.x)));
-  auto tCgC = thr_mma.partition_C(gC);
-#pragma unroll
-  for (int item = 0; item < cute::size(tCrAccumulator); ++item) {
-    const int row = cute::get<0>(tCcC(item));
-    const int column = cute::get<1>(tCcC(item));
-    if (tile_row + row < m && tile_column + column < n) tCgC(item) = tCrAccumulator(item);
-  }
+  if (global_row0 < m && global_column0 < n)
+    output[static_cast<int64_t>(global_row0) * n + global_column0] = accumulators[0];
+  if (global_row0 < m && global_column1 < n)
+    output[static_cast<int64_t>(global_row0) * n + global_column1] = accumulators[1];
+  if (global_row1 < m && global_column0 < n)
+    output[static_cast<int64_t>(global_row1) * n + global_column0] = accumulators[2];
+  if (global_row1 < m && global_column1 < n)
+    output[static_cast<int64_t>(global_row1) * n + global_column1] = accumulators[3];
 }
 
 auto make_tma_a(const at::Tensor& planes) {
@@ -375,7 +351,7 @@ py::dict kernel_metadata(int groups) {
   result["kernel_symbol"] = "adangel_o4_bitwise_tma_ws";
   result["tensor_core"] = true;
   result["mma_family"] = "BMMA";
-  result["mma_api"] = "cute::MMA_Atom";
+  result["mma_api"] = "cute::arch MMA wrapper with trait-derived lane mapping";
   result["mma_atom"] = "SM80_16x8x128_S32U1U1S32_TN_ANDPOPC";
   result["mma_shape"] = "m16n8k128";
   result["bit_operator"] = "and.popc";
