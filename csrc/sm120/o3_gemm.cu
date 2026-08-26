@@ -279,12 +279,14 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
 
   using LowCopy = cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::uint4b_t>;
   using HighCopy = cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::int4b_t>;
+  using BCopy = cute::Copy_Atom<cute::SM75_U32x2_LDSM_N, cutlass::int4b_t>;
   LowCopy low_copy;
   HighCopy high_copy;
+  BCopy b_copy;
   auto tiled_low_a = cute::make_tiled_copy_A(low_copy, low_mma);
   auto tiled_high_a = cute::make_tiled_copy_A(high_copy, high_mma);
-  auto tiled_low_b = cute::make_tiled_copy_B(high_copy, low_mma);
-  auto tiled_high_b = cute::make_tiled_copy_B(high_copy, high_mma);
+  auto tiled_low_b = cute::make_tiled_copy_B(b_copy, low_mma);
+  auto tiled_high_b = cute::make_tiled_copy_B(b_copy, high_mma);
   auto low_copy_a_thr = tiled_low_a.get_slice(compute_thread);
   auto high_copy_a_thr = tiled_high_a.get_slice(compute_thread);
   auto low_copy_b_thr = tiled_low_b.get_slice(compute_thread);
@@ -312,8 +314,8 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
       auto high_b_dst = high_copy_b_thr.retile_D(high_b_frag);
       cute::copy(low_copy, low_a_src, low_a_dst);
       cute::copy(high_copy, high_a_src, high_a_dst);
-      cute::copy(high_copy, low_b_src, low_b_dst);
-      cute::copy(high_copy, high_b_src, high_b_dst);
+      cute::copy(b_copy, low_b_src, low_b_dst);
+      cute::copy(b_copy, high_b_src, high_b_dst);
       cute::gemm(low_mma, low_a_frag, low_b_frag, tCrLow);
       cute::gemm(high_mma, high_a_frag, high_b_frag, tCrHigh);
     }
