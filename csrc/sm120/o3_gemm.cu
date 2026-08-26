@@ -29,9 +29,9 @@ constexpr int kGroupSize = 128;
 constexpr int kMmaK = 64;
 constexpr int kKSubgroups = 2;
 constexpr int kTileM = 128;
-constexpr int kTileN = 64;
+constexpr int kTileN = 16;
 constexpr int kNReplicas = kTileN / 16;
-constexpr int kGroupsPerStage = 2;
+constexpr int kGroupsPerStage = 1;
 constexpr int kStages = 2;
 constexpr int kProducerThreads = 32;
 constexpr int kConsumerThreads = 512;
@@ -44,11 +44,11 @@ constexpr int kBStageBytes = kTileN * kPipelinePackedK;
 
 using Pipeline = cutlass::PipelineTmaAsync<kStages>;
 using ByteLayoutA = decltype(cute::make_layout(
-    cute::make_shape(cute::_128{}, cute::_128{}, cute::_2{}),
-    cute::make_stride(cute::_128{}, cute::_1{}, cute::Int<kAStageBytes>{})));
+    cute::make_shape(cute::_128{}, cute::_64{}, cute::_2{}),
+    cute::make_stride(cute::_64{}, cute::_1{}, cute::Int<kAStageBytes>{})));
 using ByteLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_64{}, cute::_128{}, cute::_2{}),
-    cute::make_stride(cute::_128{}, cute::_1{}, cute::Int<kBStageBytes>{})));
+    cute::make_shape(cute::_16{}, cute::_64{}, cute::_2{}),
+    cute::make_stride(cute::_64{}, cute::_1{}, cute::Int<kBStageBytes>{})));
 using LowMma = cute::SM80_16x8x64_S32U4S4S32_TN;
 using HighMma = cute::SM80_16x8x64_S32S4S4S32_TN;
 
@@ -172,12 +172,12 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   auto mLow = tma_low.get_tma_tensor(cute::make_shape(m, k / 2));
   auto mHigh = tma_high.get_tma_tensor(cute::make_shape(m, k / 2));
   auto mB = tma_b.get_tma_tensor(cute::make_shape(n, k / 2));
-  auto byte_tiler = cute::make_shape(cute::_128{}, cute::_128{});
+  auto byte_tiler = cute::make_shape(cute::_128{}, cute::_64{});
   auto a_coord = cute::make_coord(static_cast<int>(blockIdx.y), cute::_);
   auto b_coord = cute::make_coord(static_cast<int>(blockIdx.x), cute::_);
   auto gLow = cute::local_tile(mLow, byte_tiler, a_coord);
   auto gHigh = cute::local_tile(mHigh, byte_tiler, a_coord);
-  auto gB = cute::local_tile(mB, cute::make_shape(cute::_64{}, cute::_128{}), b_coord);
+  auto gB = cute::local_tile(mB, cute::make_shape(cute::_16{}, cute::_64{}), b_coord);
   auto sLowBytes = cute::make_tensor(cute::make_smem_ptr(storage.a_low), ByteLayoutA{});
   auto sHighBytes = cute::make_tensor(cute::make_smem_ptr(storage.a_high), ByteLayoutA{});
   auto sBBytes = cute::make_tensor(cute::make_smem_ptr(storage.b), ByteLayoutB{});
@@ -363,7 +363,7 @@ auto make_tma_a(const at::Tensor& split, int row_offset) {
   auto layout = ByteLayoutA{};
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor, layout(cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_128{}, cute::_128{}));
+      cute::make_shape(cute::_128{}, cute::_64{}));
 }
 
 auto make_tma_b(const at::Tensor& q4) {
@@ -374,7 +374,7 @@ auto make_tma_b(const at::Tensor& q4) {
   auto layout = ByteLayoutB{};
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor, layout(cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_64{}, cute::_128{}));
+      cute::make_shape(cute::_16{}, cute::_64{}));
 }
 
 template <class TmaLow, class TmaHigh, class TmaB>
