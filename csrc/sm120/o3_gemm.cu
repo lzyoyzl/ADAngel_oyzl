@@ -45,22 +45,8 @@ using ByteLayoutA = decltype(cute::make_layout(
 using ByteLayoutB = decltype(cute::make_layout(
     cute::make_shape(cute::_16{}, cute::_64{}, cute::_3{}),
     cute::make_stride(cute::_64{}, cute::_1{}, cute::Int<kBStageBytes>{})));
-using NibbleLayoutA = decltype(cute::make_layout(
-    cute::make_shape(cute::_128{}, cute::_64{}, cute::_2{}, cute::_3{}),
-    cute::make_stride(
-        cute::_128{}, cute::_1{}, cute::_64{}, cute::Int<kTileM * kGroupSize>{})));
-using NibbleLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_16{}, cute::_64{}, cute::_2{}, cute::_3{}),
-    cute::make_stride(
-        cute::_128{}, cute::_1{}, cute::_64{}, cute::Int<kTileN * kGroupSize>{})));
-using LowTiledMma = cute::TiledMMA<
-    cute::MMA_Atom<cute::SM80_16x8x64_S32U4S4S32_TN>,
-    cute::Layout<cute::Shape<cute::_8, cute::_2, cute::_1>>,
-    cute::Tile<cute::_128, cute::_16, cute::_64>>;
-using HighTiledMma = cute::TiledMMA<
-    cute::MMA_Atom<cute::SM80_16x8x64_S32S4S4S32_TN>,
-    cute::Layout<cute::Shape<cute::_8, cute::_2, cute::_1>>,
-    cute::Tile<cute::_128, cute::_16, cute::_64>>;
+using LowMma = cute::SM80_16x8x64_S32U4S4S32_TN;
+using HighMma = cute::SM80_16x8x64_S32S4S4S32_TN;
 
 struct alignas(128) SharedStorage {
   alignas(128) uint8_t a_low[kStages * kAStageBytes];
@@ -244,109 +230,89 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   }
 
   const int compute_thread = thread - kProducerThreads;
+  const int consumer_warp = compute_thread >> 5;
+  const int lane_i = lane & 3;
+  const int lane_j = lane >> 2;
+  const int warp_m = consumer_warp & 7;
+  const int warp_n = consumer_warp >> 3;
   const int tile_row = static_cast<int>(blockIdx.y) * kTileM;
   const int tile_column = static_cast<int>(blockIdx.x) * kTileN;
-  auto sLow = cute::make_tensor(
-      cute::make_smem_ptr(reinterpret_cast<cutlass::uint4b_t*>(storage.a_low)),
-      NibbleLayoutA{});
-  auto sHigh = cute::make_tensor(
-      cute::make_smem_ptr(reinterpret_cast<cutlass::int4b_t*>(storage.a_high)),
-      NibbleLayoutA{});
-  auto sB = cute::make_tensor(
-      cute::make_smem_ptr(reinterpret_cast<cutlass::int4b_t*>(storage.b)),
-      NibbleLayoutB{});
-  LowTiledMma low_mma;
-  HighTiledMma high_mma;
-  auto low_thr = low_mma.get_slice(compute_thread);
-  auto high_thr = high_mma.get_slice(compute_thread);
-  auto cC = cute::make_identity_tensor(cute::make_shape(cute::_128{}, cute::_16{}));
-  auto tCcC = low_thr.partition_C(cC);
-  auto tCrLow = low_thr.make_fragment_C(tCcC);
-  auto tCrHigh = high_thr.make_fragment_C(tCcC);
-  auto tCrAccumulator = cute::make_fragment_like<float>(tCrLow);
-  cute::clear(tCrAccumulator);
-
-  // Accumulator-value order is defined by the CuTe MMA atom and is not a
-  // simple pair-of-rows sequence. Bind the scale to every accumulator value
-  // through the same partition_C coordinate tensor used by the MMA/store.
-  auto tCrRowScale = cute::make_fragment_like<float>(tCrLow);
-#pragma unroll
-  for (int item = 0; item < cute::size(tCrRowScale); ++item) {
-    const int local_row = cute::get<0>(tCcC(item));
-    const int global_row = tile_row + local_row;
-    tCrRowScale(item) = global_row < m ? a_scale[global_row] : 0.0f;
-  }
-
-  using LowCopy = cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::uint4b_t>;
-  using HighCopy = cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::int4b_t>;
-  using BCopy = cute::Copy_Atom<cute::SM75_U32x2_LDSM_N, cutlass::int4b_t>;
-  LowCopy low_copy;
-  HighCopy high_copy;
-  BCopy b_copy;
-  auto tiled_low_a = cute::make_tiled_copy_A(low_copy, low_mma);
-  auto tiled_high_a = cute::make_tiled_copy_A(high_copy, high_mma);
-  auto tiled_low_b = cute::make_tiled_copy_B(b_copy, low_mma);
-  auto tiled_high_b = cute::make_tiled_copy_B(b_copy, high_mma);
-  auto low_copy_a_thr = tiled_low_a.get_slice(compute_thread);
-  auto high_copy_a_thr = tiled_high_a.get_slice(compute_thread);
-  auto low_copy_b_thr = tiled_low_b.get_slice(compute_thread);
-  auto high_copy_b_thr = tiled_high_b.get_slice(compute_thread);
+  const int local_row0 = warp_m * 16 + lane_j;
+  const int local_row1 = local_row0 + 8;
+  const int local_column0 = warp_n * 8 + 2 * lane_i;
+  const int local_column1 = local_column0 + 1;
+  const int global_row0 = tile_row + local_row0;
+  const int global_row1 = tile_row + local_row1;
+  const int global_column0 = tile_column + local_column0;
+  const int global_column1 = tile_column + local_column1;
+  const float row_scale0 = global_row0 < m ? a_scale[global_row0] : 0.0f;
+  const float row_scale1 = global_row1 < m ? a_scale[global_row1] : 0.0f;
+  float accumulators[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
   Pipeline::PipelineState read_state;
   for (int group = 0; group < groups; ++group) {
     pipeline.consumer_wait(read_state);
     const int stage = read_state.index();
-    cute::clear(tCrLow);
-    cute::clear(tCrHigh);
+    uint32_t low[4] = {0u, 0u, 0u, 0u};
+    uint32_t high[4] = {0u, 0u, 0u, 0u};
+    const auto* low_words = reinterpret_cast<const uint32_t*>(
+        storage.a_low + stage * kAStageBytes);
+    const auto* high_words = reinterpret_cast<const uint32_t*>(
+        storage.a_high + stage * kAStageBytes);
+    const auto* b_words = reinterpret_cast<const uint32_t*>(
+        storage.b + stage * kBStageBytes);
+    constexpr int kAWordsPerRow = kPackedK / 4;
+    constexpr int kBWordsPerRow = kPackedK / 4;
 #pragma unroll
     for (int subgroup = 0; subgroup < kKSubgroups; ++subgroup) {
-      auto low_a_frag = low_thr.partition_fragment_A(sLow(cute::_, cute::_, subgroup, stage));
-      auto high_a_frag = high_thr.partition_fragment_A(sHigh(cute::_, cute::_, subgroup, stage));
-      auto low_b_frag = low_thr.partition_fragment_B(sB(cute::_, cute::_, subgroup, stage));
-      auto high_b_frag = high_thr.partition_fragment_B(sB(cute::_, cute::_, subgroup, stage));
-      auto low_a_src = low_copy_a_thr.partition_S(sLow(cute::_, cute::_, subgroup, stage));
-      auto high_a_src = high_copy_a_thr.partition_S(sHigh(cute::_, cute::_, subgroup, stage));
-      auto low_b_src = low_copy_b_thr.partition_S(sB(cute::_, cute::_, subgroup, stage));
-      auto high_b_src = high_copy_b_thr.partition_S(sB(cute::_, cute::_, subgroup, stage));
-      auto low_a_dst = low_copy_a_thr.retile_D(low_a_frag);
-      auto high_a_dst = high_copy_a_thr.retile_D(high_a_frag);
-      auto low_b_dst = low_copy_b_thr.retile_D(low_b_frag);
-      auto high_b_dst = high_copy_b_thr.retile_D(high_b_frag);
-      cute::copy(low_copy, low_a_src, low_a_dst);
-      cute::copy(high_copy, high_a_src, high_a_dst);
-      cute::copy(b_copy, low_b_src, low_b_dst);
-      cute::copy(b_copy, high_b_src, high_b_dst);
-      cute::gemm(low_mma, low_a_frag, low_b_frag, tCrLow);
-      cute::gemm(high_mma, high_a_frag, high_b_frag, tCrHigh);
+      const int word_base = subgroup * 8 + lane_i;
+      const uint32_t la0 = low_words[local_row0 * kAWordsPerRow + word_base];
+      const uint32_t la1 = low_words[local_row1 * kAWordsPerRow + word_base];
+      const uint32_t la2 = low_words[local_row0 * kAWordsPerRow + word_base + 4];
+      const uint32_t la3 = low_words[local_row1 * kAWordsPerRow + word_base + 4];
+      const uint32_t ha0 = high_words[local_row0 * kAWordsPerRow + word_base];
+      const uint32_t ha1 = high_words[local_row1 * kAWordsPerRow + word_base];
+      const uint32_t ha2 = high_words[local_row0 * kAWordsPerRow + word_base + 4];
+      const uint32_t ha3 = high_words[local_row1 * kAWordsPerRow + word_base + 4];
+      const int b_row = warp_n * 8 + lane_j;
+      const uint32_t b0 = b_words[b_row * kBWordsPerRow + word_base];
+      const uint32_t b1 = b_words[b_row * kBWordsPerRow + word_base + 4];
+      LowMma::fma(
+          low[0], low[1], low[2], low[3],
+          la0, la1, la2, la3, b0, b1,
+          low[0], low[1], low[2], low[3]);
+      HighMma::fma(
+          high[0], high[1], high[2], high[3],
+          ha0, ha1, ha2, ha3, b0, b1,
+          high[0], high[1], high[2], high[3]);
     }
 
-#pragma unroll
-    for (int item = 0; item < cute::size(tCrLow); ++item) {
-      const int local_column = cute::get<1>(tCcC(item));
-      const float column_scale =
-          storage.column_scale[stage * kTileN + local_column];
-      const float scale = __fmul_rn(tCrRowScale(item), column_scale);
-      const int32_t partial = static_cast<int32_t>(tCrLow(item)) +
-          16 * static_cast<int32_t>(tCrHigh(item));
-      tCrAccumulator(item) = __fmaf_rn(
-          static_cast<float>(partial), scale, tCrAccumulator(item));
-    }
+    const float column_scale0 = storage.column_scale[stage * kTileN + local_column0];
+    const float column_scale1 = storage.column_scale[stage * kTileN + local_column1];
+    const int32_t partial0 = static_cast<int32_t>(low[0]) + 16 * static_cast<int32_t>(high[0]);
+    const int32_t partial1 = static_cast<int32_t>(low[1]) + 16 * static_cast<int32_t>(high[1]);
+    const int32_t partial2 = static_cast<int32_t>(low[2]) + 16 * static_cast<int32_t>(high[2]);
+    const int32_t partial3 = static_cast<int32_t>(low[3]) + 16 * static_cast<int32_t>(high[3]);
+    accumulators[0] = __fmaf_rn(
+        static_cast<float>(partial0), __fmul_rn(row_scale0, column_scale0), accumulators[0]);
+    accumulators[1] = __fmaf_rn(
+        static_cast<float>(partial1), __fmul_rn(row_scale0, column_scale1), accumulators[1]);
+    accumulators[2] = __fmaf_rn(
+        static_cast<float>(partial2), __fmul_rn(row_scale1, column_scale0), accumulators[2]);
+    accumulators[3] = __fmaf_rn(
+        static_cast<float>(partial3), __fmul_rn(row_scale1, column_scale1), accumulators[3]);
     pipeline.consumer_release(read_state);
     ++read_state;
   }
 
-  auto mC = cute::make_tensor(
-      cute::make_gmem_ptr(output), cute::make_shape(m, n), cute::make_stride(n, cute::_1{}));
-  auto gC = cute::local_tile(
-      mC, cute::make_shape(cute::_128{}, cute::_16{}),
-      cute::make_coord(static_cast<int>(blockIdx.y), static_cast<int>(blockIdx.x)));
-  auto tCgC = low_thr.partition_C(gC);
-#pragma unroll
-  for (int item = 0; item < cute::size(tCrAccumulator); ++item) {
-    const int row = cute::get<0>(tCcC(item));
-    const int column = cute::get<1>(tCcC(item));
-    if (tile_row + row < m && tile_column + column < n) tCgC(item) = tCrAccumulator(item);
-  }
+  if (global_row0 < m && global_column0 < n)
+    output[static_cast<int64_t>(global_row0) * n + global_column0] = accumulators[0];
+  if (global_row0 < m && global_column1 < n)
+    output[static_cast<int64_t>(global_row0) * n + global_column1] = accumulators[1];
+  if (global_row1 < m && global_column0 < n)
+    output[static_cast<int64_t>(global_row1) * n + global_column0] = accumulators[2];
+  if (global_row1 < m && global_column1 < n)
+    output[static_cast<int64_t>(global_row1) * n + global_column1] = accumulators[3];
 }
 
 auto make_tma_a(const at::Tensor& split, int row_offset) {
@@ -399,7 +365,7 @@ py::dict kernel_metadata(int groups) {
   result["kernel_symbol"] = "adangel_o3_split_tma_ws";
   result["tensor_core"] = true;
   result["mma_family"] = "IMMA_INT4";
-  result["mma_api"] = "cute::MMA_Atom";
+  result["mma_api"] = "cute::arch MMA wrapper with trait-derived lane mapping";
   result["mma_atoms"] = py::make_tuple(
       "SM80_16x8x64_S32U4S4S32_TN", "SM80_16x8x64_S32S4S4S32_TN");
   result["mma_shape"] = "m16n8k64";
