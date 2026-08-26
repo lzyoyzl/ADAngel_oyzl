@@ -383,6 +383,15 @@ void launch_gemm(
     int m, int n, int k, TmaLow const& low, TmaHigh const& high, TmaB const& b,
     cudaStream_t stream) {
   dim3 grid((n + kTileN - 1) / kTileN, (m + kTileM - 1) / kTileM);
+  // The three-stage Split pipeline uses more than CUDA's default dynamic
+  // shared-memory allowance. Opt this exact template specialization into the
+  // device limit before launch; otherwise CUDA reports invalid argument.
+  check_cuda(
+      cudaFuncSetAttribute(
+          adangel_o3_split_tma_ws<TmaLow, TmaHigh, TmaB>,
+          cudaFuncAttributeMaxDynamicSharedMemorySize,
+          static_cast<int>(sizeof(SharedStorage))),
+      "O3 set dynamic shared-memory limit");
   adangel_o3_split_tma_ws<<<grid, kThreads, sizeof(SharedStorage), stream>>>(
       low, high, b, a_scale.data_ptr<float>(), w_scale.data_ptr<uint8_t>(),
       output.data_ptr<float>(), m, n, k, k / kGroupSize);

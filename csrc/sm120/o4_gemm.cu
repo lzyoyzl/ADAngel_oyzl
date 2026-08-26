@@ -343,6 +343,14 @@ void launch_gemm(
     const at::Tensor& a_scale, const at::Tensor& w_scale, at::Tensor& output,
     int m, int n, int k, TmaA const& tma_a, TmaB const& tma_b, cudaStream_t stream) {
   dim3 grid((n + kTileN - 1) / kTileN, (m + kTileM - 1) / kTileM);
+  // The staged bit-plane tiles also exceed the default dynamic shared-memory
+  // allowance. Request the device-supported opt-in limit for this kernel.
+  check_cuda(
+      cudaFuncSetAttribute(
+          adangel_o4_bitwise_tma_ws<TmaA, TmaB>,
+          cudaFuncAttributeMaxDynamicSharedMemorySize,
+          static_cast<int>(sizeof(SharedStorage))),
+      "O4 set dynamic shared-memory limit");
   adangel_o4_bitwise_tma_ws<<<grid, kThreads, sizeof(SharedStorage), stream>>>(
       tma_a, tma_b, a_scale.data_ptr<float>(), w_scale.data_ptr<uint8_t>(),
       output.data_ptr<float>(), m, n, k, k / kGroupSize);
