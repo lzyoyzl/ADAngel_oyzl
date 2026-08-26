@@ -30,7 +30,8 @@ constexpr int kWordsPerGroup = 4;
 constexpr int kAPlanes = 8;
 constexpr int kWPlanes = 4;
 constexpr int kTileM = 128;
-constexpr int kTileN = 64;
+constexpr int kTileN = 16;
+constexpr int kScaleRounds = (kTileN + 31) / 32;
 constexpr int kStages = 3;
 constexpr int kProducerThreads = 32;
 constexpr int kConsumerThreads = 512;
@@ -48,7 +49,7 @@ using WordLayoutA = decltype(cute::make_layout(
         cute::Int<kTileM * kWordsPerGroup>{}, cute::_4{}, cute::_1{},
         cute::Int<kAStageWords>{})));
 using WordLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_4{}, cute::_64{}, cute::_4{}, cute::_3{}),
+    cute::make_shape(cute::_4{}, cute::_16{}, cute::_4{}, cute::_3{}),
     cute::make_stride(
         cute::Int<kTileN * kWordsPerGroup>{}, cute::_4{}, cute::_1{},
         cute::Int<kBStageWords>{})));
@@ -58,14 +59,13 @@ using BitLayoutA = decltype(cute::make_layout(
         cute::Int<kTileM * kGroupSize>{}, cute::_128{}, cute::_1{},
         cute::Int<kAPlanes * kTileM * kGroupSize>{})));
 using BitLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_4{}, cute::_64{}, cute::_128{}, cute::_3{}),
+    cute::make_shape(cute::_4{}, cute::_16{}, cute::_128{}, cute::_3{}),
     cute::make_stride(
         cute::Int<kTileN * kGroupSize>{}, cute::_128{}, cute::_1{},
         cute::Int<kWPlanes * kTileN * kGroupSize>{})));
 using TiledMma = cute::TiledMMA<
     cute::MMA_Atom<cute::SM80_16x8x128_S32U1U1S32_TN_ANDPOPC>,
-    cute::Layout<cute::Shape<cute::_8, cute::_2, cute::_1>>,
-    cute::Tile<cute::_128, cute::_64, cute::_128>>;
+    cute::Layout<cute::Shape<cute::_8, cute::_2, cute::_1>>>;
 
 struct alignas(128) SharedStorage {
   alignas(128) uint32_t a[kStages * kAStageWords];
@@ -185,7 +185,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
       mA, cute::make_shape(cute::_8{}, cute::_128{}, cute::_4{}),
       cute::make_coord(cute::Int<0>{}, static_cast<int>(blockIdx.y), cute::_));
   auto gB = cute::local_tile(
-      mB, cute::make_shape(cute::_4{}, cute::_64{}, cute::_4{}),
+      mB, cute::make_shape(cute::_4{}, cute::_16{}, cute::_4{}),
       cute::make_coord(cute::Int<0>{}, static_cast<int>(blockIdx.x), cute::_));
   auto sAWord = cute::make_tensor(cute::make_smem_ptr(storage.a), WordLayoutA{});
   auto sBWord = cute::make_tensor(cute::make_smem_ptr(storage.b), WordLayoutB{});
@@ -246,7 +246,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
       cute::make_smem_ptr(reinterpret_cast<cutlass::uint1b_t*>(storage.b)), BitLayoutB{});
   TiledMma tiled_mma;
   auto thr_mma = tiled_mma.get_slice(compute_thread);
-  auto cC = cute::make_identity_tensor(cute::make_shape(cute::_128{}, cute::_64{}));
+  auto cC = cute::make_identity_tensor(cute::make_shape(cute::_128{}, cute::_16{}));
   auto tCcC = thr_mma.partition_C(cC);
   auto tCrPartial = thr_mma.make_fragment_C(tCcC);
   auto tCrGroup = cute::make_fragment_like<int32_t>(tCrPartial);
@@ -289,17 +289,20 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
       }
     }
 
-    float warp_scales[kTileN / 32];
+    float warp_scales[kScaleRounds];
 #pragma unroll
-    for (int round = 0; round < kTileN / 32; ++round) {
-      warp_scales[round] = storage.column_scale[stage * kTileN + round * 32 + lane];
+    for (int round = 0; round < kScaleRounds; ++round) {
+      const int column = round * 32 + lane;
+      warp_scales[round] = column < kTileN
+          ? storage.column_scale[stage * kTileN + column]
+          : 0.0f;
     }
 #pragma unroll
     for (int item = 0; item < cute::size(tCrGroup); ++item) {
       const int local_column = cute::get<1>(tCcC(item));
       float column_scale = 0.0f;
 #pragma unroll
-      for (int round = 0; round < kTileN / 32; ++round) {
+      for (int round = 0; round < kScaleRounds; ++round) {
         const float candidate = __shfl_sync(
             0xffffffffu, warp_scales[round], local_column & 31);
         if ((local_column >> 5) == round) column_scale = candidate;
@@ -315,7 +318,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
   auto mC = cute::make_tensor(
       cute::make_gmem_ptr(output), cute::make_shape(m, n), cute::make_stride(n, cute::_1{}));
   auto gC = cute::local_tile(
-      mC, cute::make_shape(cute::_128{}, cute::_64{}),
+      mC, cute::make_shape(cute::_128{}, cute::_16{}),
       cute::make_coord(static_cast<int>(blockIdx.y), static_cast<int>(blockIdx.x)));
   auto tCgC = thr_mma.partition_C(gC);
 #pragma unroll
@@ -351,7 +354,7 @@ auto make_tma_b(const at::Tensor& planes) {
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor,
       layout(cute::_, cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_4{}, cute::_64{}, cute::_4{}));
+      cute::make_shape(cute::_4{}, cute::_16{}, cute::_4{}));
 }
 
 template <class TmaA, class TmaB>
