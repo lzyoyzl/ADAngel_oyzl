@@ -260,10 +260,16 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
     row_scales[slot] = global_row < m ? a_scale[global_row] : 0.0f;
   }
 
-  using BitCopy = cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::uint1b_t>;
-  BitCopy bit_copy;
-  auto tiled_copy_a = cute::make_tiled_copy_A(bit_copy, tiled_mma);
-  auto tiled_copy_b = cute::make_tiled_copy_B(bit_copy, tiled_mma);
+  // One B1 MMA A fragment contains two b32 registers while B contains one.
+  // Match the ldmatrix width to those exact register footprints; U32x4 is
+  // intentionally not used because its TV layout cannot compose with the
+  // m16n8k128 binary MMA atom.
+  using ABitCopy = cute::Copy_Atom<cute::SM75_U32x2_LDSM_N, cutlass::uint1b_t>;
+  using BBitCopy = cute::Copy_Atom<cute::SM75_U32x1_LDSM_N, cutlass::uint1b_t>;
+  ABitCopy a_bit_copy;
+  BBitCopy b_bit_copy;
+  auto tiled_copy_a = cute::make_tiled_copy_A(a_bit_copy, tiled_mma);
+  auto tiled_copy_b = cute::make_tiled_copy_B(b_bit_copy, tiled_mma);
   auto copy_a_thr = tiled_copy_a.get_slice(compute_thread);
   auto copy_b_thr = tiled_copy_b.get_slice(compute_thread);
 
@@ -282,8 +288,8 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
         auto b_src = copy_b_thr.partition_S(sB(w_plane, cute::_, cute::_, stage));
         auto a_dst = copy_a_thr.retile_D(a_frag);
         auto b_dst = copy_b_thr.retile_D(b_frag);
-        cute::copy(bit_copy, a_src, a_dst);
-        cute::copy(bit_copy, b_src, b_dst);
+        cute::copy(a_bit_copy, a_src, a_dst);
+        cute::copy(b_bit_copy, b_src, b_dst);
         cute::clear(tCrPartial);
         cute::gemm(tiled_mma, a_frag, b_frag, tCrPartial);
         const int coefficient = kAWeights[a_plane] * kWWeights[w_plane];
@@ -528,9 +534,11 @@ py::dict adangel_run_o4(
   for (auto name : {"weight_conversion", "activation_conversion", "gemm", "total"}) {
     if (timings.contains(name)) {
       auto samples = timings[name].cast<std::vector<float>>();
-      measured[std::string(name) + "_ms"] = samples.front();
+      const std::string key = std::string(name) + "_ms";
+      measured[key.c_str()] = samples.front();
     } else {
-      measured[std::string(name) + "_ms"] = 0.0f;
+      const std::string key = std::string(name) + "_ms";
+      measured[key.c_str()] = 0.0f;
     }
   }
   return measured;

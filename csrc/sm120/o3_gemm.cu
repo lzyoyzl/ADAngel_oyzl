@@ -540,9 +540,11 @@ py::dict adangel_run_o3(
   for (auto name : {"weight_conversion", "activation_conversion", "gemm", "total"}) {
     if (timings.contains(name)) {
       auto samples = timings[name].cast<std::vector<float>>();
-      measured[std::string(name) + "_ms"] = samples.front();
+      const std::string key = std::string(name) + "_ms";
+      measured[key.c_str()] = samples.front();
     } else {
-      measured[std::string(name) + "_ms"] = 0.0f;
+      const std::string key = std::string(name) + "_ms";
+      measured[key.c_str()] = 0.0f;
     }
   }
   return measured;
