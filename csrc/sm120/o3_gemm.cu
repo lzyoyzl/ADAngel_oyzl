@@ -266,12 +266,15 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   auto tCrAccumulator = cute::make_fragment_like<float>(tCrLow);
   cute::clear(tCrAccumulator);
 
-  float row_scales[2] = {0.0f, 0.0f};
+  // Accumulator-value order is defined by the CuTe MMA atom and is not a
+  // simple pair-of-rows sequence. Bind the scale to every accumulator value
+  // through the same partition_C coordinate tensor used by the MMA/store.
+  auto tCrRowScale = cute::make_fragment_like<float>(tCrLow);
 #pragma unroll
-  for (int slot = 0; slot < 2; ++slot) {
-    const int local_row = cute::get<0>(tCcC(slot * 2));
+  for (int item = 0; item < cute::size(tCrRowScale); ++item) {
+    const int local_row = cute::get<0>(tCcC(item));
     const int global_row = tile_row + local_row;
-    row_scales[slot] = global_row < m ? a_scale[global_row] : 0.0f;
+    tCrRowScale(item) = global_row < m ? a_scale[global_row] : 0.0f;
   }
 
   using LowCopy = cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::uint4b_t>;
@@ -331,7 +334,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
             0xffffffffu, warp_scales[round], local_column & 31);
         if ((local_column >> 5) == round) column_scale = candidate;
       }
-      const float scale = __fmul_rn(row_scales[(item >> 1) & 1], column_scale);
+      const float scale = __fmul_rn(tCrRowScale(item), column_scale);
       const int32_t partial = static_cast<int32_t>(tCrLow(item)) +
           16 * static_cast<int32_t>(tCrHigh(item));
       tCrAccumulator(item) = __fmaf_rn(
