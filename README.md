@@ -390,9 +390,14 @@ python -m adangel run \
 python -m adangel run \
   --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml \
   --data data/prepared/llama2_7b_prefill_o0_o4 \
-  --output runs/rtx5090_o0_o4_main \
+  --output runs/rtx5090_o0_o4_optimized \
   --require-native
 ```
+
+当前 RTX 5090 优化后 24 样本 GEMM-only median 为：O1 `0.622248 ms`、
+O3 `2.228024 ms`、O4 `8.254144 ms`。相对优化前 production，O3/O4 的逐样本
+配对加速中位数分别为 `1.0303x` 和 `1.1131x`；详细 CTA 消融、profiler 证据、
+性能边界与 MSE 见 `docs/o3_o4_backend_report.md`。
 
 运行顺序按样本交错 O0/O1/O2/O3/O4；使用单 stream、CUDA Event、预热 50 次、测量
 200 次。计时Event必须在预热前完成创建，预热同步与第一条正式测量之间不得创建

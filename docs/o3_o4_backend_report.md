@@ -222,9 +222,9 @@ RTX 5090、CUDA 12.8、CUTLASS 4.5.2 pinned commit 上：
 |---|---:|---:|
 | 128³ max abs error vs semantic reference | 0 | 0 |
 | 4096³ max abs error vs semantic reference | 9.1553e-05 | 9.1553e-05 |
-| 4096³ smoke compute median | 2.1455 ms | 8.9760 ms |
-| 4096³ smoke compute CV | 0.121% | 0.354% |
-| production resource | REG 55, STACK 0, LOCAL 0 | REG 55, STACK 0, LOCAL 0 |
+| 4096³ compute median（50/200） | 2.1855 ms | 8.1077 ms |
+| 4096³ compute CV | 0.688% | 0.190% |
+| production resource | REG 53, STACK 0, LOCAL 0 | REG 90, STACK 0, LOCAL 0 |
 | same-entry instruction audit | TMA + U4/S4/S4/S4 MMA | TMA + B1 AND-POPC BMMA |
 
 这些是后端验收 smoke 数据。O4 比 O3 慢不表示错误；它每个 G128 必须执行 32 个
@@ -232,30 +232,31 @@ plane-pair BMMA，而 O3 只执行低/高两路 INT4 分解。
 
 ## 9. 24 个真实样本正式结果
 
-正式 run 位于 `runs/rtx5090_o0_o4_main`，使用 24 个 Llama-2-7B FP16 prefill 样本、
-warmup=50、repeats=200、conversion inner repeats=100。初次运行有 3 个 O1/O2
-sample/mode 受到单个调度离群影响；按成组规则同时重跑 O0–O4，三个 target 均在
-attempt 1 全部通过。最终 480/480 条记录 `CV<3%`，审计见 `retry_audit.json`。
+优化后正式 run 位于 `runs/rtx5090_o0_o4_optimized`，使用 24 个 Llama-2-7B FP16
+prefill 样本、warmup=50、repeats=200、conversion inner repeats=100。初次运行有 3 个
+O0/O2 sample/mode 的极短转换阶段受到调度离群影响；按成组规则同时重跑 O0–O4，
+其中一个 target 在 attempt 2 通过，另外两个在 attempt 1 通过。最终 480/480 条记录
+`CV<3%`，审计见该 run 的 `retry_audit.json`。
 
 跨 24 样本 median：
 
 | variant | GEMM-only ms | 等效 TFLOP/s | 相对 O0 | cold total ms | steady total ms |
 |---|---:|---:|---:|---:|---:|
-| O0 | 0.767584 | 179.05 | 1.000x | 0.839388 | 0.806176 |
-| O1 | 0.626312 | 219.44 | 1.224x | 0.673200 | 0.626216 |
-| O2 | 0.138528 | 992.14 | 5.541x | 0.206464 | 0.210160 |
-| O3 | 2.295248 | 59.88 | 0.334x | 2.370688 | 2.336520 |
-| O4 | 9.187984 | 14.96 | 0.0835x | 9.331952 | 9.293152 |
+| O0 | 0.767320 | 179.12 | 1.000x | 0.838936 | 0.807112 |
+| O1 | 0.622248 | 220.87 | 1.232x | 0.668528 | 0.621152 |
+| O2 | 0.138560 | 991.91 | 5.538x | 0.204512 | 0.214288 |
+| O3 | 2.228024 | 61.69 | 0.344x | 2.305216 | 2.265344 |
+| O4 | 8.254144 | 16.65 | 0.0930x | 8.373968 | 8.329648 |
 
 conversion-only 跨样本 median：
 
 | variant | W conversion ms | A conversion ms | conversion total ms |
 |---|---:|---:|---:|
-| O0 | 0.017484 | 0.016245 | 0.036668 |
-| O1 | 0.032802 | — | 0.032802 |
-| O2 | 0.002087 | 0.069800 | 0.071590 |
-| O3 | 0.029893 | 0.016326 | 0.046228 |
-| O4 | 0.042007 | 0.072900 | 0.114907 |
+| O0 | 0.017456 | 0.016232 | 0.035857 |
+| O1 | 0.032821 | — | 0.032821 |
+| O2 | 0.002082 | 0.069618 | 0.071407 |
+| O3 | 0.029904 | 0.016326 | 0.046236 |
+| O4 | 0.042036 | 0.072891 | 0.114924 |
 
 相对 O0 的 MSE：
 
@@ -270,6 +271,26 @@ O3/O4 的 24 个 MSE 逐样本完全相同，这是重要的正确性证据：�
 数值并精确计算同一个整数点积，只是 Tensor Core 分解路径不同。O3/O4 MSE 高于 O2
 主要来自更粗的 G128 scale 和 E2M1→Q4 映射，而不是 Split/Bitwise 重构误差。
 
+### 9.1 优化收益与无法追平 O1 的原因
+
+相对优化前 `runs/rtx5090_o0_o4_main` 做逐样本配对：
+
+| variant | 优化前 GEMM median | 优化后 GEMM median | 配对加速中位数 | bootstrap 95% CI | 优化后/O1 延迟 |
+|---|---:|---:|---:|---:|---:|
+| O3 | 2.295248 ms | 2.228024 ms | 1.0303x | [1.0301x, 1.0307x] | 3.56x |
+| O4 | 9.187984 ms | 8.254144 ms | 1.1131x | [1.1115x, 1.1146x] | 13.20x |
+
+O3/O4 已完成 TMA、cooperative warp specialization、寄存器 partial、A/scale 复用、
+多 G128 pipeline 和 CTA/occupancy 消融。剩余差距不能靠不改变算法的小型 tile 调参消除：
+
+- O3 每个 G128 必须执行 low U4 与 high S4 两条路径，各含两个 K64 INT4 MMA，并做
+  `P_low + 16*P_high` 软件重构；最终 kernel 的 Compute throughput 已约 91.8%。
+- O4 按选定的精确 8×4 two's-complement Bitwise 语义，每 G128 固定 32 个 B1
+  AND-POPC BMMA，再做带符号系数重构；profiler 的 Compute/Memory throughput 已约
+  96.8%。相比 O1 每 G128 只需四个 K32 INT8 MMA，指令工作量存在结构性倍数差异。
+- 用 O3 替代 O4、减少 bitplane、改用 21-term 近似或合并不同 G128 后再统一 scale，
+  都会改变用户选定的论文算术或实验语义，因此不属于本轮“合理优化”。
+
 ## 10. 复现命令
 
 ```bash
@@ -282,6 +303,17 @@ python scripts/validate_o3.py --m 4096 --n 4096 --k 4096 \
   --warmup 50 --repeats 200 | tee reports/o3_4096_validation.json
 python scripts/validate_o4.py --m 4096 --n 4096 --k 4096 \
   --warmup 50 --repeats 200 | tee reports/o4_4096_validation.json
+
+python -m adangel run \
+  --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --output runs/rtx5090_o0_o4_optimized --require-native
+python scripts/retry_unstable_run.py \
+  --run runs/rtx5090_o0_o4_optimized \
+  --data data/prepared/llama2_7b_prefill_o0_o4 --max-attempts 3
+python scripts/analyze_results.py \
+  --run runs/rtx5090_o0_o4_optimized \
+  --output reports/rtx5090_o0_o4_optimized --stability-policy strict
 
 EXTENSION_DIR=$(python -c "import torch,pathlib; import adangel._sm120 as m; print(pathlib.Path(m.__file__).parent)")
 bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit_o34
