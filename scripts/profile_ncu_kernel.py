@@ -26,7 +26,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--data",
         type=Path,
-        default=Path("data/prepared/llama2_7b_prefill"),
+        default=Path("data/prepared/llama2_7b_prefill_o0_o4"),
         help="prepared trace directory",
     )
     parser.add_argument("--sample-id", default="layer_00_q_proj")

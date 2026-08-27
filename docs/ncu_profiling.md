@@ -20,7 +20,7 @@ python scripts/profile_ncu_kernel.py --help
 
 ```bash
 python scripts/profile_ncu_kernel.py \
-  --data data/prepared/llama2_7b_prefill \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
   --sample-id layer_00_q_proj \
   --variant o3 \
   --warmup 5 --repeats 1
@@ -63,7 +63,7 @@ ncu \
   --export reports/ncu/<variant>_basic \
   --force-overwrite \
   python scripts/profile_ncu_kernel.py \
-    --data data/prepared/llama2_7b_prefill \
+    --data data/prepared/llama2_7b_prefill_o0_o4 \
     --sample-id layer_00_q_proj \
     --variant <variant> --warmup 5 --repeats 1
 ```
@@ -83,7 +83,7 @@ ncu \
   --export reports/ncu/<variant>_compute \
   --force-overwrite \
   python scripts/profile_ncu_kernel.py \
-    --data data/prepared/llama2_7b_prefill \
+    --data data/prepared/llama2_7b_prefill_o0_o4 \
     --sample-id layer_00_q_proj \
     --variant <variant> --warmup 5 --repeats 1
 ```
@@ -102,7 +102,7 @@ ncu \
   --export reports/ncu/<variant>_memory \
   --force-overwrite \
   python scripts/profile_ncu_kernel.py \
-    --data data/prepared/llama2_7b_prefill \
+    --data data/prepared/llama2_7b_prefill_o0_o4 \
     --sample-id layer_00_q_proj \
     --variant <variant> --warmup 5 --repeats 1
 ```

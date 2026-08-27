@@ -43,6 +43,9 @@ class NcuProfileDriverTest(unittest.TestCase):
         self.assertEqual(args.warmup, 7)
         self.assertEqual(args.repeats, 1)
         self.assertEqual(args.sample_id, "layer_00_q_proj")
+        self.assertEqual(
+            args.data.as_posix(), "data/prepared/llama2_7b_prefill_o0_o4"
+        )
 
 
 if __name__ == "__main__":
