@@ -525,6 +525,7 @@ py::dict kernel_metadata(
       Config::kTileM, Config::kTileN, Config::kPipelineK);
   result["pipeline_stages"] = Config::kStages;
   result["groups_per_pipeline_stage"] = Config::kGroupsPerStage;
+  result["dynamic_shared_memory_bytes"] = sizeof(typename Config::SharedStorage);
   result["bmma_accumulator_chains"] = Config::kAccumulatorChains;
   result["b_fragment_cached"] = Config::kCacheBFragments;
   result["warp_layout"] = py::make_tuple(Config::kWarpM, Config::kWarpN);

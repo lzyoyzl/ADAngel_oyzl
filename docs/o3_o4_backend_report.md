@@ -139,23 +139,33 @@ Y   += FP32(P_g) * A_scale * W_scale_g128[g]
 ### 4.3 Tile 与 pipeline
 
 ```text
-CTA tile          128 x 64 x 256
+CTA tile          64 x 64 x 512
 producer warps    1
 consumer warps    16
 pipeline stages   2
-groups per stage  2 (independent G128 scales)
+groups per stage  4 (independent G128 scales)
+consumer layout   4 M warps x 4 N warps
+N fragments/warp  2
+BMMA chains       2
+B fragment cache  enabled
 MMA               m16n8k128 B1 AND-POPC
 ```
 
-每个 consumer warp 复用相同 A fragment，计算四个相邻的 N8 输出 fragment；最终仍只
-写回一次输出。A/W bitplane 按 32 bit 打包；TMA 每 stage 搬入两个连续 G128 的 8 个
-A plane 和 4 个 W plane，但两个 G128 的整数重构、scale 与 FP32 FMA 仍严格分开并按顺序
-执行。lane mapping 直接来自 pinned CuTe
+每个 consumer warp 复用相同 A fragment，计算两个相邻的 N8 输出 fragment；最终仍只
+写回一次输出。A/W bitplane 按 32 bit 打包；TMA 每 stage 搬入四个连续 G128 的 8 个
+A plane 和 4 个 W plane，但四个 G128 的整数重构、scale 与 FP32 FMA 仍严格分开并按顺序
+执行。每个 G128 的四个 W plane fragment 在 activation-plane 循环外加载一次，供 8 个
+A plane 复用；A plane 按奇偶编号进入两条独立 INT32 reconstruction chain，组末再精确
+相加，从而缩短连续 BMMA 后处理的依赖链。lane mapping 直接来自 pinned CuTe
 B1 MMA trait，避免 bit、lane、row/column 或转置错误。
 
-N16 两 CTA驻留方案达到约 69.6% occupancy，但会在四个相邻 N tile 间重复搬运 A
-bitplane，实测略慢于 N64。O4 的主项是每 G128 固定 32 个 BMMA，因此选择 N64 优先
-A/bitplane 复用；把两个 G128 合并到一个 pipeline stage 只减少同步，不合并 scale。
+上一版 `128x64x256` 已优先 N64 复用，但单独拆成两条 reconstruction chain 会产生
+stack/local spill，单样本 compute-only 从约 `8.05 ms` 退化到 `31.78 ms`；只缓存 B
+fragment 也因 `REG=96` 压力略慢。`64x64x512` 把 M tile 减半以容纳四个 G128 stage，
+单独使用时约 `9.27 ms`；只有与 B fragment 复用和双链同时组合后，才在保持
+`REG=92, STACK=0, LOCAL=0` 的前提下降到约 `7.33 ms`。因此收益来自 tile、K pipeline、
+fragment reuse 与依赖链的联合作用，不能归因于单一技巧。四个 G128 合并到一个
+pipeline stage 只减少同步与提高流水粒度，不合并 scale。
 
 当前实现为了回答“bitplane 转换开销是多少”，在 GEMM 前用独立 GPU kernel 生成
 bitplane，并在 conversion-only/cold/steady-state 中显式计量。这与论文 Bitwise
@@ -184,7 +194,7 @@ bitplane，并在 conversion-only/cold/steady-state 中显式计量。这与论�
 | Tensor Core | INT8 IMMA | 两类 INT4 IMMA | B1 AND-POPC BMMA |
 | 每组核心分解 | 1 次 K32 MMA | 2 路×2 个 K64 | 32 plane pairs |
 | scale | 软件 K32 | 软件 G128 | 软件 G128 |
-| CTA | 128x64x64 | 128x16x128 | 128x64x256 |
+| CTA | 128x64x64 | 128x16x128 | 64x64x512 |
 
 CTA 不强制相同。不同 MMA atom、每组工作量和自然 warp coverage 决定了不同的合理
 tile；强行统一 CTA 会改变资源压力或产生未覆盖输出，反而降低可比性。
@@ -222,9 +232,9 @@ RTX 5090、CUDA 12.8、CUTLASS 4.5.2 pinned commit 上：
 |---|---:|---:|
 | 128³ max abs error vs semantic reference | 0 | 0 |
 | 4096³ max abs error vs semantic reference | 9.1553e-05 | 9.1553e-05 |
-| 4096³ compute median（50/200） | 2.1855 ms | 8.1077 ms |
-| 4096³ compute CV | 0.688% | 0.190% |
-| production resource | REG 53, STACK 0, LOCAL 0 | REG 90, STACK 0, LOCAL 0 |
+| 4096³ compute median（50/200） | 2.1855 ms | 7.4606 ms |
+| 4096³ compute CV | 0.688% | 0.127% |
+| production resource | REG 53, STACK 0, LOCAL 0 | REG 92, STACK 0, LOCAL 0 |
 | same-entry instruction audit | TMA + U4/S4/S4/S4 MMA | TMA + B1 AND-POPC BMMA |
 
 这些是后端验收 smoke 数据。O4 比 O3 慢不表示错误；它每个 G128 必须执行 32 个
@@ -232,31 +242,29 @@ plane-pair BMMA，而 O3 只执行低/高两路 INT4 分解。
 
 ## 9. 24 个真实样本正式结果
 
-优化后正式 run 位于 `runs/rtx5090_o0_o4_optimized`，使用 24 个 Llama-2-7B FP16
-prefill 样本、warmup=50、repeats=200、conversion inner repeats=100。初次运行有 3 个
-O0/O2 sample/mode 的极短转换阶段受到调度离群影响；按成组规则同时重跑 O0–O4，
-其中一个 target 在 attempt 2 通过，另外两个在 attempt 1 通过。最终 480/480 条记录
-`CV<3%`，审计见该 run 的 `retry_audit.json`。
+最新正式 run 位于 `runs/rtx5090_o0_o4_k512`，使用 24 个 Llama-2-7B FP16
+prefill 样本、warmup=50、repeats=200、conversion inner repeats=100。该次运行不锁频，
+按样本交错 O0–O4；全部 480/480 条记录一次通过 `CV<3%`，无需 targeted retry。
 
 跨 24 样本 median：
 
 | variant | GEMM-only ms | 等效 TFLOP/s | 相对 O0 | cold total ms | steady total ms |
 |---|---:|---:|---:|---:|---:|
-| O0 | 0.767320 | 179.12 | 1.000x | 0.838936 | 0.807112 |
-| O1 | 0.622248 | 220.87 | 1.232x | 0.668528 | 0.621152 |
-| O2 | 0.138560 | 991.91 | 5.538x | 0.204512 | 0.214288 |
-| O3 | 2.228024 | 61.69 | 0.344x | 2.305216 | 2.265344 |
-| O4 | 8.254144 | 16.65 | 0.0930x | 8.373968 | 8.329648 |
+| O0 | 0.767520 | 179.07 | 1.000x | 0.838944 | 0.806664 |
+| O1 | 0.622136 | 220.91 | 1.234x | 0.668376 | 0.622192 |
+| O2 | 0.138512 | 992.25 | 5.541x | 0.204984 | 0.214224 |
+| O3 | 2.223352 | 61.82 | 0.345x | 2.300128 | 2.263328 |
+| O4 | 7.632488 | 18.01 | 0.101x | 7.758064 | 7.712608 |
 
 conversion-only 跨样本 median：
 
 | variant | W conversion ms | A conversion ms | conversion total ms |
 |---|---:|---:|---:|
-| O0 | 0.017456 | 0.016232 | 0.035857 |
+| O0 | 0.017455 | 0.016207 | 0.035777 |
 | O1 | 0.032821 | — | 0.032821 |
-| O2 | 0.002082 | 0.069618 | 0.071407 |
-| O3 | 0.029904 | 0.016326 | 0.046236 |
-| O4 | 0.042036 | 0.072891 | 0.114924 |
+| O2 | 0.002086 | 0.069422 | 0.071246 |
+| O3 | 0.029893 | 0.016325 | 0.046227 |
+| O4 | 0.042017 | 0.072890 | 0.114902 |
 
 相对 O0 的 MSE：
 
@@ -273,15 +281,36 @@ O3/O4 的 24 个 MSE 逐样本完全相同，这是重要的正确性证据：�
 
 ### 9.1 优化收益与无法追平 O1 的原因
 
-相对优化前 `runs/rtx5090_o0_o4_main` 做逐样本配对：
+本轮 O3 对 24 个真实样本做同进程配对消融；速度比定义为旧 production latency /
+candidate latency，因此小于 1 表示候选更慢：
 
-| variant | 优化前 GEMM median | 优化后 GEMM median | 配对加速中位数 | bootstrap 95% CI | 优化后/O1 延迟 |
-|---|---:|---:|---:|---:|---:|
-| O3 | 2.295248 ms | 2.228024 ms | 1.0303x | [1.0301x, 1.0307x] | 3.56x |
-| O4 | 9.187984 ms | 8.254144 ms | 1.1131x | [1.1115x, 1.1146x] | 13.20x |
+| O3 implementation | 24 样本 GEMM median | 配对加速几何均值 | bootstrap 95% CI | 结论 |
+|---|---:|---:|---:|---|
+| `n16_k128` | 2.234768 ms | 1.0000x | — | 保留 production |
+| `n16_k256` | 2.344280 ms | 0.9533x | [0.9522x, 0.9543x] | 双 G128 stage 退化 |
+| `n32_k128` | 2.267608 ms | 0.9817x | [0.9775x, 0.9850x] | 扩大 N tile 退化 |
+| `n16_k128_dual` | 2.350640 ms | 0.9501x | [0.9493x, 0.9508x] | 退化且 STACK=8/LDL-STL |
+| `n32_k256_dual` | 2.251032 ms | 0.9896x | [0.9857x, 0.9926x] | 无 spill，但 CI 上界仍小于 1 |
+
+O4 先对全部组合做一个 4096³ 真实样本 smoke；单独拆链或单独缓存 fragment 均无收益，
+其中两种双链 N64 配置产生 spill。只有组合候选进入 24 样本正式配对：
+
+| O4 implementation | smoke GEMM | resource | 结论 |
+|---|---:|---|---|
+| `n64_k256` | 8.053376 ms | REG90/STACK0 | 旧 production |
+| `n64_k256_split2` | 31.775376 ms | REG96/STACK56 | spill，淘汰 |
+| `n64_k256_cache_b` | 8.361600 ms | REG96/STACK0 | 略慢，淘汰 |
+| `n64_k256_split2_cache_b` | 32.142496 ms | REG96/STACK104 | spill，淘汰 |
+| `m64_n64_k512` | 9.270944 ms | REG56/STACK0 | K512 单独退化 |
+| `m64_n64_k512_optimized` | 7.330464 ms | REG92/STACK0 | 进入正式配对 |
+
+24 样本中，`m64_n64_k512_optimized` 相对 `n64_k256` 的 compute-only 配对加速
+几何均值为 `1.0806x`，bootstrap 95% CI `[1.0789x, 1.0827x]`；cold 为
+`1.0793x`，steady-state 为 `1.0798x`。所有阶段 CV 均低于 3%，逐样本 MSE 回归
+完全一致，且同入口 TMA/B1 MMA 与无 spill 审计通过，因此将其提升为 production。
 
 O3/O4 已完成 TMA、cooperative warp specialization、寄存器 partial、A/scale 复用、
-多 G128 pipeline 和 CTA/occupancy 消融。剩余差距不能靠不改变算法的小型 tile 调参消除：
+多 G128 pipeline、依赖链和 CTA/occupancy 消融。剩余差距不能靠不改变算法的小型 tile 调参消除：
 
 - O3 每个 G128 必须执行 low U4 与 high S4 两条路径，各含两个 K64 INT4 MMA，并做
   `P_low + 16*P_high` 软件重构；最终 kernel 的 Compute throughput 已约 91.8%。
@@ -304,18 +333,23 @@ python scripts/validate_o3.py --m 4096 --n 4096 --k 4096 \
 python scripts/validate_o4.py --m 4096 --n 4096 --k 4096 \
   --warmup 50 --repeats 200 | tee reports/o4_4096_validation.json
 
+python scripts/benchmark_o3_o4_implementations.py \
+  --variant o3 --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --output reports/optimization/o3_candidates_24samples.json
+python scripts/benchmark_o3_o4_implementations.py \
+  --variant o4 --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --implementations m64_n64_k512_optimized \
+  --output reports/optimization/o4_winner_24samples.json
+
 python -m adangel run \
   --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml \
   --data data/prepared/llama2_7b_prefill_o0_o4 \
-  --output runs/rtx5090_o0_o4_optimized --require-native
-python scripts/retry_unstable_run.py \
-  --run runs/rtx5090_o0_o4_optimized \
-  --data data/prepared/llama2_7b_prefill_o0_o4 --max-attempts 3
+  --output runs/rtx5090_o0_o4_k512 --require-native
 python scripts/analyze_results.py \
-  --run runs/rtx5090_o0_o4_optimized \
-  --output reports/rtx5090_o0_o4_optimized --stability-policy strict
+  --run runs/rtx5090_o0_o4_k512 \
+  --output reports/rtx5090_o0_o4_k512 --stability-policy strict
 
 EXTENSION_DIR=$(python -c "import torch,pathlib; import adangel._sm120 as m; print(pathlib.Path(m.__file__).parent)")
-bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit_o34
+bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit_o34_k512
 python -m adangel doctor --require-native
 ```

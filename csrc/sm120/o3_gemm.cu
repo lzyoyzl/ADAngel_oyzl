@@ -536,6 +536,7 @@ py::dict kernel_metadata(
       Config::kTileM, Config::kTileN, Config::kPipelineK);
   result["pipeline_stages"] = Config::kStages;
   result["groups_per_pipeline_stage"] = Config::kGroupsPerStage;
+  result["dynamic_shared_memory_bytes"] = sizeof(typename Config::SharedStorage);
   result["instruction_double_buffer"] = Config::kDualK64Chains;
   result["independent_k64_accumulator_chains"] =
       Config::kDualK64Chains ? kKSubgroups : 1;

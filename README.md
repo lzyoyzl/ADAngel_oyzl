@@ -52,9 +52,11 @@ INT4 MMA，在寄存器中重构两个 partial、应用 G128 scale，并只写�
 
 O4 将 A8 拆成系数 `[1,2,4,8,16,32,64,-128]` 的 8 个 bitplane，将 Q4 权重拆成
 系数 `[1,2,4,-8]` 的 4 个 bitplane；每个 G128 执行 8×4=32 个
-`m16n8k128.b1.and.popc` BMMA 并在寄存器中重构。O4 采用 `128x64x256` CTA，
-每个两阶段 TMA pipeline stage 搬运两个连续但仍独立缩放的 G128；每个 consumer
-warp 复用 A fragment 计算四个 N8 输出 fragment。为保留转换开销实验口径，当前 bitplane
+`m16n8k128.b1.and.popc` BMMA 并在寄存器中重构。正式实现
+`m64_n64_k512_optimized` 采用 `64x64x512` CTA；每个两阶段 TMA pipeline stage
+搬运四个连续但仍独立缩放的 G128。16 个 consumer warp 排列为 `4x4`，每 warp
+覆盖两个相邻 N8 fragment；每个 G128 的四个 W bitplane fragment 只加载一次，
+并用两条独立 INT32 reconstruction chain 缩短 BMMA 后处理依赖。为保留转换开销实验口径，当前 bitplane
 生成作为独立 GPU conversion 计时；它对齐论文 Bitwise 算术，但不宣称实现论文的
 selective fusion。
 
@@ -247,6 +249,24 @@ python scripts/validate_o4.py
 python -m pytest tests/integration/test_sm120_o3_o4.py -q --run-sm120
 ```
 
+O3/O4 内部候选只用于配对消融，不改变公开 `run_o3/run_o4` 接口。可先用
+`--samples 1 --warmup 5 --repeats 20` 做 smoke，再按 24 样本正式口径执行：
+
+```bash
+python scripts/benchmark_o3_o4_implementations.py \
+  --variant o3 --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --output reports/optimization/o3_candidates_24samples.json
+
+python scripts/benchmark_o3_o4_implementations.py \
+  --variant o4 --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --implementations m64_n64_k512_optimized \
+  --output reports/optimization/o4_winner_24samples.json
+```
+
+正式提升要求：候选输出/MSE 回归通过，compute-only 配对加速 bootstrap 95% CI
+下界大于 1，同一 PTX/SASS entry 包含 TMA 与目标 MMA，并且无 `LDL/STL`、
+`STACK=0, LOCAL=0`。未满足者保留为内部消融，不得写入 production 结果。
+
 预期 `o0_fp16_tc`、`o1_int8_tc`、`o2_mxf4_block_scale` 和
 `o2_cutlass_tiled`、`o3_int4_tc`、`o3_tma_warp_specialized`、`o4_int1_tc` 和
 `o4_tma_warp_specialized` 均为 `true`，五个验证脚本必须输出 `"passed": true`。
@@ -369,8 +389,11 @@ SASS 无 `LDL/STL` 且 resource usage 为 `STACK=0, LOCAL=0`。`register_128x128
 spill的128×128实现选为production，审计仍会失败。O2 的
 TMA 与 MXFP4 block-scaled MMA 位于同一个正式 CUTLASS PTX/SASS entry，并明确排除
 `o2_mxf4_layout_probe`。summary 记录 production/candidate symbol、spill 检查与
-`status=PASS`，资源使用写入 `extension.resources.txt`。O3/O4 同样要求 TMA 和目标
-MMA 位于各自正式 symbol 内，并要求 `STACK=0, LOCAL=0`。该审计不是完整 profiling。
+`status=PASS`，资源使用写入 `extension.resources.txt`。O3/O4 审计会按模板配置精确
+定位 production entry，并逐一列出内部候选的寄存器/stack/local 状态；正式 O3/O4
+要求同一 entry 内同时出现 TMA 和目标 MMA，且无 `LDL/STL`、
+`STACK=0, LOCAL=0`。有 spill 的候选标记为 `DISQUALIFIED`，不影响已通过的
+production。该审计不是完整 profiling。
 
 ## 5. 正式运行
 
@@ -390,14 +413,16 @@ python -m adangel run \
 python -m adangel run \
   --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml \
   --data data/prepared/llama2_7b_prefill_o0_o4 \
-  --output runs/rtx5090_o0_o4_optimized \
+  --output runs/rtx5090_o0_o4_k512 \
   --require-native
 ```
 
-当前 RTX 5090 优化后 24 样本 GEMM-only median 为：O1 `0.622248 ms`、
-O3 `2.228024 ms`、O4 `8.254144 ms`。相对优化前 production，O3/O4 的逐样本
-配对加速中位数分别为 `1.0303x` 和 `1.1131x`；详细 CTA 消融、profiler 证据、
-性能边界与 MSE 见 `docs/o3_o4_backend_report.md`。
+当前 RTX 5090 的 `runs/rtx5090_o0_o4_k512` 24 样本 GEMM-only median 为：
+O1 `0.622136 ms`、O3 `2.223352 ms`、O4 `7.632488 ms`。最新 O4 候选相对上一版
+`128x64x256` production 的逐样本配对几何平均加速为 `1.0806x`，bootstrap 95% CI
+为 `[1.0789x, 1.0827x]`；O3 的双 G128、扩大 N tile 与双 K64 chain 候选均未超过
+原 `128x16x128` production。详细消融、资源审计、性能边界与 MSE 见
+`docs/o3_o4_backend_report.md`。
 
 运行顺序按样本交错 O0/O1/O2/O3/O4；使用单 stream、CUDA Event、预热 50 次、测量
 200 次。计时Event必须在预热前完成创建，预热同步与第一条正式测量之间不得创建

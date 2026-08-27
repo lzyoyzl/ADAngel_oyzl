@@ -147,11 +147,15 @@ compute-only 配对测试相对O0平均加速约`1.198x`，bootstrap 95% CI约�
 O3/O4 使用与 O1 相同的工程骨架：单 kernel tiled GEMM、staged TMA pipeline、
 1 个 producer warp、16 个 consumer warp、寄存器 partial、FP32 最终累加/输出和
 每个输出元素一次 global store。O3 固定 CTA 为 `128x16x128`、两阶段且每 stage 一个
-G128；O4 固定 CTA 为 `128x64x256`、两阶段且每 stage 两个独立 G128。这是 RTX 5090
-上完成 CTA/occupancy 消融后的选择，不强制 O3/O4 使用相同 CTA。两者均使用 16 个
-consumer warp；O3 每 warp 覆盖一个 `m16n8` fragment，O4 每 warp 覆盖四个相邻
+G128；O4 固定 CTA 为 `64x64x512`、两阶段且每 stage 四个独立 G128。这是 RTX 5090
+上完成 CTA/pipeline/fragment reuse 消融后的选择，不强制 O3/O4 使用相同 CTA。两者均使用 16 个
+consumer warp；O3 每 warp 覆盖一个 `m16n8` fragment，O4 每 warp 覆盖两个相邻
 `m16n8` fragment，均无重复、无缺口。CTA 形状不要求与
 O1/O2 相同，公平性由输入、数学语义、计时边界和运行方法控制。
+
+O4 production 还固定使用两条独立 BMMA reconstruction chain，并把当前 G128 的
+四个 W bitplane fragment 缓存在寄存器中供 8 个 activation plane 复用。四个 G128
+只共享同一 TMA stage，不共享 scale，也不改变逐 G128 重构与 FP32 累加顺序。
 
 论文对齐分两层说明：
 
