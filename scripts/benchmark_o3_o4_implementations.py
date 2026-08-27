@@ -44,6 +44,13 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=20250805)
     parser.add_argument("--samples", type=int, default=0, help="0 uses all manifest samples")
     parser.add_argument(
+        "--implementations",
+        nargs="+",
+        help=(
+            "optional candidate subset; the variant baseline is always included first"
+        ),
+    )
+    parser.add_argument(
         "--cv-policy", choices=("diagnostic", "strict"), default="diagnostic"
     )
     return parser.parse_args()
@@ -92,8 +99,20 @@ def main() -> int:
     benchmark = (
         native._benchmark_o3_impl if args.variant == "o3" else native._benchmark_o4_impl
     )
-    implementations = IMPLEMENTATIONS[args.variant]
-    baseline = implementations[0]
+    available = IMPLEMENTATIONS[args.variant]
+    baseline = available[0]
+    if args.implementations:
+        unknown = sorted(set(args.implementations) - set(available))
+        if unknown:
+            raise SystemExit(f"unknown {args.variant} implementations: {unknown}")
+        implementations = (baseline,) + tuple(
+            implementation
+            for implementation in args.implementations
+            if implementation != baseline
+        )
+        implementations = tuple(dict.fromkeys(implementations))
+    else:
+        implementations = available
     manifest = json.loads((args.data / "manifest.json").read_text(encoding="utf-8"))
     validate_manifest(manifest, formal=args.samples == 0)
     samples = manifest["samples"][: args.samples or None]
