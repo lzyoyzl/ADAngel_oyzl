@@ -18,6 +18,19 @@ def arguments():
     parser.add_argument("--conversion-inner-repeats", type=int, default=100)
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--max-cv-percent", type=float, default=3.0)
+    parser.add_argument(
+        "--implementation",
+        default="production",
+        choices=(
+            "production",
+            "n64_k256",
+            "n64_k256_split2",
+            "n64_k256_cache_b",
+            "n64_k256_split2_cache_b",
+            "m64_n64_k512",
+            "m64_n64_k512_optimized",
+        ),
+    )
     return parser.parse_args()
 
 
@@ -77,8 +90,8 @@ def main() -> int:
         "steady_state": {"activation_conversion", "gemm", "total"},
     }
     for mode, stages in expected_stages.items():
-        payload = native.benchmark(
-            "o4", mode, a_cuda, a_scale_cuda, w_g128.cuda(), scale_cuda,
+        payload = native._benchmark_o4_impl(
+            args.implementation, mode, a_cuda, a_scale_cuda, w_g128.cuda(), scale_cuda,
             args.warmup, args.repeats, args.conversion_inner_repeats,
         )
         timings = dict(payload["timings_ms"])
@@ -115,6 +128,7 @@ def main() -> int:
     print(json.dumps({
         "passed": not violations,
         "shape": [args.m, args.n, args.k],
+        "implementation_requested": args.implementation,
         "output_dtype": str(payload["output"].dtype),
         "max_abs_error": max_error,
         "kernel": kernel,

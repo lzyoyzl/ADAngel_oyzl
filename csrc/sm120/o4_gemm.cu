@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "adangel/data_types.cuh"
@@ -29,38 +30,93 @@ constexpr int kGroupSize = 128;
 constexpr int kWordsPerGroup = 4;
 constexpr int kAPlanes = 8;
 constexpr int kWPlanes = 4;
-constexpr int kTileM = 128;
-constexpr int kTileN = 64;
-constexpr int kNReplicas = kTileN / 16;
-constexpr int kGroupsPerStage = 2;
-constexpr int kStages = 2;
 constexpr int kProducerThreads = 32;
 constexpr int kConsumerThreads = 512;
 constexpr int kThreads = kProducerThreads + kConsumerThreads;
-constexpr int kPipelineWords = kGroupsPerStage * kWordsPerGroup;
-constexpr int kPipelineK = kGroupsPerStage * kGroupSize;
-constexpr int kAStageWords = kAPlanes * kTileM * kPipelineWords;
-constexpr int kBStageWords = kWPlanes * kTileN * kPipelineWords;
-
-using Pipeline = cutlass::PipelineTmaAsync<kStages>;
-using WordLayoutA = decltype(cute::make_layout(
-    cute::make_shape(cute::_8{}, cute::_128{}, cute::_8{}, cute::_2{}),
-    cute::make_stride(
-        cute::Int<kTileM * kPipelineWords>{}, cute::_8{}, cute::_1{},
-        cute::Int<kAStageWords>{})));
-using WordLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_4{}, cute::_64{}, cute::_8{}, cute::_2{}),
-    cute::make_stride(
-        cute::Int<kTileN * kPipelineWords>{}, cute::_8{}, cute::_1{},
-        cute::Int<kBStageWords>{})));
 using BinaryMma = cute::SM80_16x8x128_S32U1U1S32_TN_ANDPOPC;
 
-struct alignas(128) SharedStorage {
-  alignas(128) uint32_t a[kStages * kAStageWords];
-  alignas(128) uint32_t b[kStages * kBStageWords];
-  alignas(128) float column_scale[kStages * kGroupsPerStage * kTileN];
-  alignas(16) Pipeline::SharedStorage pipeline;
+template <
+    int TileM,
+    int TileN,
+    int GroupsPerStage,
+    int WarpM,
+    int AccumulatorChains,
+    bool CacheBFragments>
+struct O4Config {
+  static constexpr int kTileM = TileM;
+  static constexpr int kTileN = TileN;
+  static constexpr int kGroupsPerStage = GroupsPerStage;
+  static constexpr int kStages = 2;
+  static constexpr int kWarpM = WarpM;
+  static constexpr int kWarpN = (kConsumerThreads / 32) / kWarpM;
+  static constexpr int kNReplicas = kTileN / (kWarpN * 8);
+  static constexpr int kAccumulatorChains = AccumulatorChains;
+  static constexpr bool kCacheBFragments = CacheBFragments;
+  static constexpr int kPipelineWords = kGroupsPerStage * kWordsPerGroup;
+  static constexpr int kPipelineK = kGroupsPerStage * kGroupSize;
+  static constexpr int kAStageWords = kAPlanes * kTileM * kPipelineWords;
+  static constexpr int kBStageWords = kWPlanes * kTileN * kPipelineWords;
+  using Pipeline = cutlass::PipelineTmaAsync<kStages>;
+  using WordLayoutA = decltype(cute::make_layout(
+      cute::make_shape(
+          cute::Int<kAPlanes>{}, cute::Int<kTileM>{},
+          cute::Int<kPipelineWords>{}, cute::Int<kStages>{}),
+      cute::make_stride(
+          cute::Int<kTileM * kPipelineWords>{}, cute::Int<kPipelineWords>{},
+          cute::_1{}, cute::Int<kAStageWords>{})));
+  using WordLayoutB = decltype(cute::make_layout(
+      cute::make_shape(
+          cute::Int<kWPlanes>{}, cute::Int<kTileN>{},
+          cute::Int<kPipelineWords>{}, cute::Int<kStages>{}),
+      cute::make_stride(
+          cute::Int<kTileN * kPipelineWords>{}, cute::Int<kPipelineWords>{},
+          cute::_1{}, cute::Int<kBStageWords>{})));
+
+  struct alignas(128) SharedStorage {
+    alignas(128) uint32_t a[kStages * kAStageWords];
+    alignas(128) uint32_t b[kStages * kBStageWords];
+    alignas(128) float column_scale[kStages * kGroupsPerStage * kTileN];
+    alignas(16) typename Pipeline::SharedStorage pipeline;
+  };
+
+  static_assert(kTileM == kWarpM * 16);
+  static_assert(kTileN == kWarpN * kNReplicas * 8);
+  static_assert(kNReplicas > 0);
+  static_assert(kAccumulatorChains == 1 || kAccumulatorChains == 2);
 };
+
+using O4N64K256Config = O4Config<128, 64, 2, 8, 1, false>;
+using O4N64K256Split2Config = O4Config<128, 64, 2, 8, 2, false>;
+using O4N64K256CacheBConfig = O4Config<128, 64, 2, 8, 1, true>;
+using O4N64K256Split2CacheBConfig = O4Config<128, 64, 2, 8, 2, true>;
+using O4M64N64K512Config = O4Config<64, 64, 4, 4, 1, false>;
+using O4M64N64K512OptimizedConfig = O4Config<64, 64, 4, 4, 2, true>;
+
+constexpr const char* kProductionO4Implementation = "n64_k256";
+
+enum class O4Implementation {
+  kN64K256,
+  kN64K256Split2,
+  kN64K256CacheB,
+  kN64K256Split2CacheB,
+  kM64N64K512,
+  kM64N64K512Optimized,
+};
+
+O4Implementation parse_o4_implementation(const std::string& implementation) {
+  const std::string selected = implementation == "production"
+      ? kProductionO4Implementation : implementation;
+  if (selected == "n64_k256") return O4Implementation::kN64K256;
+  if (selected == "n64_k256_split2") return O4Implementation::kN64K256Split2;
+  if (selected == "n64_k256_cache_b") return O4Implementation::kN64K256CacheB;
+  if (selected == "n64_k256_split2_cache_b")
+    return O4Implementation::kN64K256Split2CacheB;
+  if (selected == "m64_n64_k512") return O4Implementation::kM64N64K512;
+  if (selected == "m64_n64_k512_optimized")
+    return O4Implementation::kM64N64K512Optimized;
+  TORCH_CHECK(false, "unknown O4 implementation: ", implementation);
+  return O4Implementation::kN64K256;
+}
 
 void check_cuda(cudaError_t status, const char* operation) {
   TORCH_CHECK(status == cudaSuccess, operation, " failed: ", cudaGetErrorString(status));
@@ -154,7 +210,7 @@ void validate_inputs(
   TORCH_CHECK(w_scale.sizes() == at::IntArrayRef({n, k / 128}), "invalid O4 W scale shape");
 }
 
-template <class TmaA, class TmaB>
+template <class Config, class TmaA, class TmaB>
 __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
     CUTE_GRID_CONSTANT TmaA const tma_a,
     CUTE_GRID_CONSTANT TmaB const tma_b,
@@ -165,6 +221,17 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
     int n,
     int k,
     int groups) {
+  using Pipeline = typename Config::Pipeline;
+  using SharedStorage = typename Config::SharedStorage;
+  using WordLayoutA = typename Config::WordLayoutA;
+  using WordLayoutB = typename Config::WordLayoutB;
+  constexpr int kTileM = Config::kTileM;
+  constexpr int kTileN = Config::kTileN;
+  constexpr int kNReplicas = Config::kNReplicas;
+  constexpr int kGroupsPerStage = Config::kGroupsPerStage;
+  constexpr int kPipelineWords = Config::kPipelineWords;
+  constexpr int kAStageWords = Config::kAStageWords;
+  constexpr int kBStageWords = Config::kBStageWords;
   extern __shared__ __align__(128) uint8_t shared_bytes[];
   auto& storage = *reinterpret_cast<SharedStorage*>(shared_bytes);
   // Keep the plane extents in the CuTe type system. Passing the namespace
@@ -173,10 +240,14 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
   auto mA = tma_a.get_tma_tensor(cute::make_shape(cute::_8{}, m, k / 32));
   auto mB = tma_b.get_tma_tensor(cute::make_shape(cute::_4{}, n, k / 32));
   auto gA = cute::local_tile(
-      mA, cute::make_shape(cute::_8{}, cute::_128{}, cute::_8{}),
+      mA, cute::make_shape(
+          cute::Int<kAPlanes>{}, cute::Int<kTileM>{},
+          cute::Int<kPipelineWords>{}),
       cute::make_coord(cute::Int<0>{}, static_cast<int>(blockIdx.y), cute::_));
   auto gB = cute::local_tile(
-      mB, cute::make_shape(cute::_4{}, cute::_64{}, cute::_8{}),
+      mB, cute::make_shape(
+          cute::Int<kWPlanes>{}, cute::Int<kTileN>{},
+          cute::Int<kPipelineWords>{}),
       cute::make_coord(cute::Int<0>{}, static_cast<int>(blockIdx.x), cute::_));
   auto sAWord = cute::make_tensor(cute::make_smem_ptr(storage.a), WordLayoutA{});
   auto sBWord = cute::make_tensor(cute::make_smem_ptr(storage.b), WordLayoutB{});
@@ -241,8 +312,8 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
   const int consumer_warp = compute_thread >> 5;
   const int lane_i = lane & 3;
   const int lane_j = lane >> 2;
-  const int warp_m = consumer_warp & 7;
-  const int warp_n = consumer_warp >> 3;
+  const int warp_m = consumer_warp % Config::kWarpM;
+  const int warp_n = consumer_warp / Config::kWarpM;
   const int tile_row = static_cast<int>(blockIdx.y) * kTileM;
   const int tile_column = static_cast<int>(blockIdx.x) * kTileN;
   const int local_row0 = warp_m * 16 + lane_j;
@@ -262,7 +333,21 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
     for (int inner_group = 0; inner_group < kGroupsPerStage; ++inner_group) {
       const int group = pipeline_group * kGroupsPerStage + inner_group;
       if (group >= groups) break;
-      int32_t group_accumulators[kNReplicas][4] = {};
+      int32_t group_accumulators[Config::kAccumulatorChains][kNReplicas][4] = {};
+      uint32_t cached_b[kWPlanes][kNReplicas] = {};
+      if constexpr (Config::kCacheBFragments) {
+#pragma unroll
+        for (int w_plane = 0; w_plane < kWPlanes; ++w_plane) {
+#pragma unroll
+          for (int replica = 0; replica < kNReplicas; ++replica) {
+            const int atom_n = warp_n * kNReplicas + replica;
+            cached_b[w_plane][replica] = storage.b[
+                stage * kBStageWords + w_plane * kTileN * kPipelineWords +
+                (atom_n * 8 + lane_j) * kPipelineWords +
+                inner_group * kWordsPerGroup + lane_i];
+          }
+        }
+      }
 #pragma unroll
       for (int a_plane = 0; a_plane < 8; ++a_plane) {
         const uint32_t a0 = storage.a[
@@ -287,16 +372,23 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
 #pragma unroll
           for (int replica = 0; replica < kNReplicas; ++replica) {
             const int atom_n = warp_n * kNReplicas + replica;
-            const uint32_t b0 = storage.b[
-                stage * kBStageWords + w_plane * kTileN * kPipelineWords +
-                (atom_n * 8 + lane_j) * kPipelineWords +
-                inner_group * kWordsPerGroup + lane_i];
+            const uint32_t b0 = Config::kCacheBFragments
+                ? cached_b[w_plane][replica]
+                : storage.b[
+                    stage * kBStageWords + w_plane * kTileN * kPipelineWords +
+                    (atom_n * 8 + lane_j) * kPipelineWords +
+                    inner_group * kWordsPerGroup + lane_i];
             uint32_t d0, d1, d2, d3;
             BinaryMma::fma(d0, d1, d2, d3, a0, a1, b0, 0u, 0u, 0u, 0u);
-            group_accumulators[replica][0] += coefficient * static_cast<int32_t>(d0);
-            group_accumulators[replica][1] += coefficient * static_cast<int32_t>(d1);
-            group_accumulators[replica][2] += coefficient * static_cast<int32_t>(d2);
-            group_accumulators[replica][3] += coefficient * static_cast<int32_t>(d3);
+            const int chain = a_plane % Config::kAccumulatorChains;
+            group_accumulators[chain][replica][0] +=
+                coefficient * static_cast<int32_t>(d0);
+            group_accumulators[chain][replica][1] +=
+                coefficient * static_cast<int32_t>(d1);
+            group_accumulators[chain][replica][2] +=
+                coefficient * static_cast<int32_t>(d2);
+            group_accumulators[chain][replica][3] +=
+                coefficient * static_cast<int32_t>(d3);
           }
         }
       }
@@ -309,17 +401,25 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
         const int scale_base = (stage * kGroupsPerStage + inner_group) * kTileN;
         const float column_scale0 = storage.column_scale[scale_base + local_column0];
         const float column_scale1 = storage.column_scale[scale_base + local_column1];
+        int32_t reconstructed[4] = {};
+#pragma unroll
+        for (int chain = 0; chain < Config::kAccumulatorChains; ++chain) {
+#pragma unroll
+          for (int item = 0; item < 4; ++item) {
+            reconstructed[item] += group_accumulators[chain][replica][item];
+          }
+        }
         accumulators[replica][0] = __fmaf_rn(
-            static_cast<float>(group_accumulators[replica][0]),
+            static_cast<float>(reconstructed[0]),
             __fmul_rn(row_scale0, column_scale0), accumulators[replica][0]);
         accumulators[replica][1] = __fmaf_rn(
-            static_cast<float>(group_accumulators[replica][1]),
+            static_cast<float>(reconstructed[1]),
             __fmul_rn(row_scale0, column_scale1), accumulators[replica][1]);
         accumulators[replica][2] = __fmaf_rn(
-            static_cast<float>(group_accumulators[replica][2]),
+            static_cast<float>(reconstructed[2]),
             __fmul_rn(row_scale1, column_scale0), accumulators[replica][2]);
         accumulators[replica][3] = __fmaf_rn(
-            static_cast<float>(group_accumulators[replica][3]),
+            static_cast<float>(reconstructed[3]),
             __fmul_rn(row_scale1, column_scale1), accumulators[replica][3]);
       }
     }
@@ -343,6 +443,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o4_bitwise_tma_ws(
   }
 }
 
+template <class Config>
 auto make_tma_a(const at::Tensor& planes) {
   const int m = static_cast<int>(planes.size(1));
   const int words = static_cast<int>(planes.size(2));
@@ -350,13 +451,16 @@ auto make_tma_a(const at::Tensor& planes) {
       reinterpret_cast<const uint32_t*>(planes.data_ptr<int32_t>()),
       cute::make_shape(kAPlanes, m, words),
       cute::make_stride(m * words, words, cute::_1{}));
-  auto layout = WordLayoutA{};
+  auto layout = typename Config::WordLayoutA{};
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor,
       layout(cute::_, cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_8{}, cute::_128{}, cute::_8{}));
+      cute::make_shape(
+          cute::Int<kAPlanes>{}, cute::Int<Config::kTileM>{},
+          cute::Int<Config::kPipelineWords>{}));
 }
 
+template <class Config>
 auto make_tma_b(const at::Tensor& planes) {
   const int n = static_cast<int>(planes.size(1));
   const int words = static_cast<int>(planes.size(2));
@@ -364,38 +468,48 @@ auto make_tma_b(const at::Tensor& planes) {
       reinterpret_cast<const uint32_t*>(planes.data_ptr<int32_t>()),
       cute::make_shape(kWPlanes, n, words),
       cute::make_stride(n * words, words, cute::_1{}));
-  auto layout = WordLayoutB{};
+  auto layout = typename Config::WordLayoutB{};
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor,
       layout(cute::_, cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_4{}, cute::_64{}, cute::_8{}));
+      cute::make_shape(
+          cute::Int<kWPlanes>{}, cute::Int<Config::kTileN>{},
+          cute::Int<Config::kPipelineWords>{}));
 }
 
-template <class TmaA, class TmaB>
+template <class Config, class TmaA, class TmaB>
 void launch_gemm(
     const at::Tensor& a_scale, const at::Tensor& w_scale, at::Tensor& output,
     int m, int n, int k, TmaA const& tma_a, TmaB const& tma_b, cudaStream_t stream) {
-  dim3 grid((n + kTileN - 1) / kTileN, (m + kTileM - 1) / kTileM);
+  using SharedStorage = typename Config::SharedStorage;
+  dim3 grid(
+      (n + Config::kTileN - 1) / Config::kTileN,
+      (m + Config::kTileM - 1) / Config::kTileM);
   // The staged bit-plane tiles also exceed the default dynamic shared-memory
   // allowance. Request the device-supported opt-in limit for this kernel.
   check_cuda(
       cudaFuncSetAttribute(
-          adangel_o4_bitwise_tma_ws<TmaA, TmaB>,
+          adangel_o4_bitwise_tma_ws<Config, TmaA, TmaB>,
           cudaFuncAttributeMaxDynamicSharedMemorySize,
           static_cast<int>(sizeof(SharedStorage))),
       "O4 set dynamic shared-memory limit");
-  adangel_o4_bitwise_tma_ws<<<grid, kThreads, sizeof(SharedStorage), stream>>>(
+  adangel_o4_bitwise_tma_ws<Config><<<grid, kThreads, sizeof(SharedStorage), stream>>>(
       tma_a, tma_b, a_scale.data_ptr<float>(), w_scale.data_ptr<uint8_t>(),
       output.data_ptr<float>(), m, n, k, k / kGroupSize);
   check_cuda(cudaGetLastError(), "O4 Bitwise TMA warp-specialized launch");
 }
 
-py::dict kernel_metadata(int groups) {
+template <class Config>
+py::dict kernel_metadata(
+    int groups, const char* implementation_key, const char* kernel_symbol) {
   py::dict result;
   result["library"] = "CUTLASS CuTe + CUDA";
   result["implementation"] =
-      "paper_bitwise_twos_complement_g128_tma_warp_specialized_reuse_n64_k256";
-  result["kernel_symbol"] = "adangel_o4_bitwise_tma_ws";
+      "paper_bitwise_twos_complement_g128_tma_warp_specialized_candidate_matrix";
+  result["implementation_key"] = implementation_key;
+  result["production_selected"] =
+      std::string(implementation_key) == kProductionO4Implementation;
+  result["kernel_symbol"] = kernel_symbol;
   result["tensor_core"] = true;
   result["mma_family"] = "BMMA";
   result["mma_api"] = "cute::arch MMA wrapper with trait-derived lane mapping";
@@ -407,9 +521,13 @@ py::dict kernel_metadata(int groups) {
   result["weight_bit_weights"] = py::make_tuple(1, 2, 4, -8);
   result["data_movement"] = "TMA";
   result["kernel_schedule"] = "cooperative_warp_specialized";
-  result["cta_tile"] = py::make_tuple(kTileM, kTileN, kPipelineK);
-  result["pipeline_stages"] = kStages;
-  result["groups_per_pipeline_stage"] = kGroupsPerStage;
+  result["cta_tile"] = py::make_tuple(
+      Config::kTileM, Config::kTileN, Config::kPipelineK);
+  result["pipeline_stages"] = Config::kStages;
+  result["groups_per_pipeline_stage"] = Config::kGroupsPerStage;
+  result["bmma_accumulator_chains"] = Config::kAccumulatorChains;
+  result["b_fragment_cached"] = Config::kCacheBFragments;
+  result["warp_layout"] = py::make_tuple(Config::kWarpM, Config::kWarpN);
   result["producer_warps"] = 1;
   result["consumer_warps"] = 16;
   result["group_size"] = kGroupSize;
@@ -429,11 +547,14 @@ py::dict kernel_metadata(int groups) {
 
 bool adangel_o4_is_implemented() { return true; }
 
-py::dict adangel_benchmark_o4(
+template <class Config>
+py::dict benchmark_o4_config(
     const at::Tensor& a_int8,
     const at::Tensor& a_scale,
     const at::Tensor& w_mxfp4_g128,
     const at::Tensor& w_scale_g128,
+    const char* implementation_key,
+    const char* kernel_symbol,
     const std::string& mode_name,
     int warmup,
     int repeats,
@@ -458,10 +579,11 @@ py::dict adangel_benchmark_o4(
   };
   auto convert_a = [&]() { adangel_launch_int8_bitplanes(a_int8, a_planes, stream); };
   convert_w(); convert_a();
-  auto tma_a = make_tma_a(a_planes);
-  auto tma_b = make_tma_b(w_planes);
+  auto tma_a = make_tma_a<Config>(a_planes);
+  auto tma_b = make_tma_b<Config>(w_planes);
   auto gemm = [&]() {
-    launch_gemm(a_scale, w_scale_g128, output, m, n, k, tma_a, tma_b, stream);
+    launch_gemm<Config>(
+        a_scale, w_scale_g128, output, m, n, k, tma_a, tma_b, stream);
   };
   const TimingMode mode = parse_mode(mode_name);
   for (int i = 0; i < warmup; ++i) {
@@ -533,8 +655,73 @@ py::dict adangel_benchmark_o4(
   result["converted_activation"] = a_planes;
   result["timings_ms"] = timings;
   result["timing_method"] = timing_metadata(mode_name, conversion_inner_repeats);
-  result["kernel"] = kernel_metadata(k / kGroupSize);
+  result["kernel"] =
+      kernel_metadata<Config>(k / kGroupSize, implementation_key, kernel_symbol);
   return result;
+}
+
+py::dict adangel_benchmark_o4_impl(
+    const std::string& implementation,
+    const std::string& mode_name,
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4_g128,
+    const at::Tensor& w_scale_g128,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats) {
+  const O4Implementation selected = parse_o4_implementation(implementation);
+  if (selected == O4Implementation::kN64K256Split2) {
+    return benchmark_o4_config<O4N64K256Split2Config>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n64_k256_split2", "adangel_o4_bitwise_tma_ws<O4Config<128,64,2,8,2,false>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O4Implementation::kN64K256CacheB) {
+    return benchmark_o4_config<O4N64K256CacheBConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n64_k256_cache_b", "adangel_o4_bitwise_tma_ws<O4Config<128,64,2,8,1,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O4Implementation::kN64K256Split2CacheB) {
+    return benchmark_o4_config<O4N64K256Split2CacheBConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n64_k256_split2_cache_b",
+        "adangel_o4_bitwise_tma_ws<O4Config<128,64,2,8,2,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O4Implementation::kM64N64K512) {
+    return benchmark_o4_config<O4M64N64K512Config>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "m64_n64_k512", "adangel_o4_bitwise_tma_ws<O4Config<64,64,4,4,1,false>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O4Implementation::kM64N64K512Optimized) {
+    return benchmark_o4_config<O4M64N64K512OptimizedConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "m64_n64_k512_optimized",
+        "adangel_o4_bitwise_tma_ws<O4Config<64,64,4,4,2,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  return benchmark_o4_config<O4N64K256Config>(
+      a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+      "n64_k256", "adangel_o4_bitwise_tma_ws<O4Config<128,64,2,8,1,false>>",
+      mode_name, warmup, repeats, conversion_inner_repeats);
+}
+
+py::dict adangel_benchmark_o4(
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4_g128,
+    const at::Tensor& w_scale_g128,
+    const std::string& mode_name,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats) {
+  return adangel_benchmark_o4_impl(
+      kProductionO4Implementation, mode_name,
+      a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+      warmup, repeats, conversion_inner_repeats);
 }
 
 py::dict adangel_run_o4(

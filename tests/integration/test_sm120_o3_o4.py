@@ -142,3 +142,64 @@ def test_arbitrary_bit_twos_complement_extremes(variant):
     actual = run_o3(cuda, mode="compute_only") if variant == "o3" else run_o4(cuda, mode="compute_only")
     torch.cuda.synchronize()
     torch.testing.assert_close(actual["output"].cpu(), expected["output"], rtol=1e-3, atol=1e-3)
+
+
+@pytest.mark.sm120
+@pytest.mark.parametrize(
+    "implementation",
+    ("n16_k128", "n16_k256", "n32_k128", "n16_k128_dual", "n32_k256_dual"),
+)
+def test_o3_internal_optimization_candidates_match_production(implementation):
+    import torch
+
+    from adangel.ops.extension import require_variant
+
+    _, inputs = _inputs(m=33, n=35, k=256)
+    native = require_variant("o3")
+    baseline = native._benchmark_o3_impl(
+        "n16_k128", "compute_only", inputs.A_int8, inputs.A_scale,
+        inputs.W_mxfp4_g128, inputs.W_scale_g128, 1, 1, 100,
+    )
+    candidate = native._benchmark_o3_impl(
+        implementation, "compute_only", inputs.A_int8, inputs.A_scale,
+        inputs.W_mxfp4_g128, inputs.W_scale_g128, 1, 1, 100,
+    )
+    torch.cuda.synchronize()
+    torch.testing.assert_close(candidate["output"], baseline["output"], rtol=1e-3, atol=1e-3)
+    kernel = dict(candidate["kernel"])
+    assert kernel["implementation_key"] == implementation
+    assert kernel["partial_storage"] == "register"
+
+
+@pytest.mark.sm120
+@pytest.mark.parametrize(
+    "implementation",
+    (
+        "n64_k256",
+        "n64_k256_split2",
+        "n64_k256_cache_b",
+        "n64_k256_split2_cache_b",
+        "m64_n64_k512",
+        "m64_n64_k512_optimized",
+    ),
+)
+def test_o4_internal_optimization_candidates_match_production(implementation):
+    import torch
+
+    from adangel.ops.extension import require_variant
+
+    _, inputs = _inputs(m=67, n=69, k=512)
+    native = require_variant("o4")
+    baseline = native._benchmark_o4_impl(
+        "n64_k256", "compute_only", inputs.A_int8, inputs.A_scale,
+        inputs.W_mxfp4_g128, inputs.W_scale_g128, 1, 1, 100,
+    )
+    candidate = native._benchmark_o4_impl(
+        implementation, "compute_only", inputs.A_int8, inputs.A_scale,
+        inputs.W_mxfp4_g128, inputs.W_scale_g128, 1, 1, 100,
+    )
+    torch.cuda.synchronize()
+    torch.testing.assert_close(candidate["output"], baseline["output"], rtol=1e-3, atol=1e-3)
+    kernel = dict(candidate["kernel"])
+    assert kernel["implementation_key"] == implementation
+    assert kernel["partial_storage"] == "register"

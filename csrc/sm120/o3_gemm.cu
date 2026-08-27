@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "adangel/data_types.cuh"
@@ -28,37 +29,73 @@ namespace {
 constexpr int kGroupSize = 128;
 constexpr int kMmaK = 64;
 constexpr int kKSubgroups = 2;
-constexpr int kTileM = 128;
-constexpr int kTileN = 16;
-constexpr int kNReplicas = kTileN / 16;
-constexpr int kGroupsPerStage = 1;
-constexpr int kStages = 2;
 constexpr int kProducerThreads = 32;
 constexpr int kConsumerThreads = 512;
 constexpr int kThreads = kProducerThreads + kConsumerThreads;
 constexpr int kPackedK = kGroupSize / 2;
-constexpr int kPipelinePackedK = kGroupsPerStage * kPackedK;
-constexpr int kPipelineK = kGroupsPerStage * kGroupSize;
-constexpr int kAStageBytes = kTileM * kPipelinePackedK;
-constexpr int kBStageBytes = kTileN * kPipelinePackedK;
-
-using Pipeline = cutlass::PipelineTmaAsync<kStages>;
-using ByteLayoutA = decltype(cute::make_layout(
-    cute::make_shape(cute::_128{}, cute::_64{}, cute::_2{}),
-    cute::make_stride(cute::_64{}, cute::_1{}, cute::Int<kAStageBytes>{})));
-using ByteLayoutB = decltype(cute::make_layout(
-    cute::make_shape(cute::_16{}, cute::_64{}, cute::_2{}),
-    cute::make_stride(cute::_64{}, cute::_1{}, cute::Int<kBStageBytes>{})));
 using LowMma = cute::SM80_16x8x64_S32U4S4S32_TN;
 using HighMma = cute::SM80_16x8x64_S32S4S4S32_TN;
 
-struct alignas(128) SharedStorage {
-  alignas(128) uint8_t a_low[kStages * kAStageBytes];
-  alignas(128) uint8_t a_high[kStages * kAStageBytes];
-  alignas(128) uint8_t b[kStages * kBStageBytes];
-  alignas(128) float column_scale[kStages * kGroupsPerStage * kTileN];
-  alignas(16) Pipeline::SharedStorage pipeline;
+template <int TileN, int GroupsPerStage, bool DualK64Chains>
+struct O3Config {
+  static constexpr int kTileM = 128;
+  static constexpr int kTileN = TileN;
+  static constexpr int kNReplicas = TileN / 16;
+  static constexpr int kGroupsPerStage = GroupsPerStage;
+  static constexpr int kStages = 2;
+  static constexpr int kPipelinePackedK = GroupsPerStage * kPackedK;
+  static constexpr int kPipelineK = GroupsPerStage * kGroupSize;
+  static constexpr int kAStageBytes = kTileM * kPipelinePackedK;
+  static constexpr int kBStageBytes = kTileN * kPipelinePackedK;
+  static constexpr bool kDualK64Chains = DualK64Chains;
+  using Pipeline = cutlass::PipelineTmaAsync<kStages>;
+  using ByteLayoutA = decltype(cute::make_layout(
+      cute::make_shape(
+          cute::Int<kTileM>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{}),
+      cute::make_stride(
+          cute::Int<kPipelinePackedK>{}, cute::_1{}, cute::Int<kAStageBytes>{})));
+  using ByteLayoutB = decltype(cute::make_layout(
+      cute::make_shape(
+          cute::Int<kTileN>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{}),
+      cute::make_stride(
+          cute::Int<kPipelinePackedK>{}, cute::_1{}, cute::Int<kBStageBytes>{})));
+
+  struct alignas(128) SharedStorage {
+    alignas(128) uint8_t a_low[kStages * kAStageBytes];
+    alignas(128) uint8_t a_high[kStages * kAStageBytes];
+    alignas(128) uint8_t b[kStages * kBStageBytes];
+    alignas(128) float column_scale[kStages * kGroupsPerStage * kTileN];
+    alignas(16) typename Pipeline::SharedStorage pipeline;
+  };
 };
+
+using O3N16K128Config = O3Config<16, 1, false>;
+using O3N16K256Config = O3Config<16, 2, false>;
+using O3N32K128Config = O3Config<32, 1, false>;
+using O3N16K128DualConfig = O3Config<16, 1, true>;
+using O3N32K256DualConfig = O3Config<32, 2, true>;
+
+constexpr const char* kProductionO3Implementation = "n16_k128";
+
+enum class O3Implementation {
+  kN16K128,
+  kN16K256,
+  kN32K128,
+  kN16K128Dual,
+  kN32K256Dual,
+};
+
+O3Implementation parse_o3_implementation(const std::string& implementation) {
+  const std::string selected = implementation == "production"
+      ? kProductionO3Implementation : implementation;
+  if (selected == "n16_k128") return O3Implementation::kN16K128;
+  if (selected == "n16_k256") return O3Implementation::kN16K256;
+  if (selected == "n32_k128") return O3Implementation::kN32K128;
+  if (selected == "n16_k128_dual") return O3Implementation::kN16K128Dual;
+  if (selected == "n32_k256_dual") return O3Implementation::kN32K256Dual;
+  TORCH_CHECK(false, "unknown O3 implementation: ", implementation);
+  return O3Implementation::kN16K128;
+}
 
 static_assert(kThreads == 544);
 
@@ -154,7 +191,7 @@ void validate_inputs(
   TORCH_CHECK(w_scale.sizes() == at::IntArrayRef({n, k / 128}), "invalid O3 W scale shape");
 }
 
-template <class TmaLow, class TmaHigh, class TmaB>
+template <class Config, class TmaLow, class TmaHigh, class TmaB>
 __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
     CUTE_GRID_CONSTANT TmaLow const tma_low,
     CUTE_GRID_CONSTANT TmaHigh const tma_high,
@@ -166,18 +203,32 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
     int n,
     int k,
     int groups) {
+  using Pipeline = typename Config::Pipeline;
+  using SharedStorage = typename Config::SharedStorage;
+  using ByteLayoutA = typename Config::ByteLayoutA;
+  using ByteLayoutB = typename Config::ByteLayoutB;
+  constexpr int kTileM = Config::kTileM;
+  constexpr int kTileN = Config::kTileN;
+  constexpr int kNReplicas = Config::kNReplicas;
+  constexpr int kGroupsPerStage = Config::kGroupsPerStage;
+  constexpr int kPipelinePackedK = Config::kPipelinePackedK;
+  constexpr int kPipelineK = Config::kPipelineK;
+  constexpr int kAStageBytes = Config::kAStageBytes;
+  constexpr int kBStageBytes = Config::kBStageBytes;
   extern __shared__ __align__(128) uint8_t shared_bytes[];
   auto& storage = *reinterpret_cast<SharedStorage*>(shared_bytes);
 
   auto mLow = tma_low.get_tma_tensor(cute::make_shape(m, k / 2));
   auto mHigh = tma_high.get_tma_tensor(cute::make_shape(m, k / 2));
   auto mB = tma_b.get_tma_tensor(cute::make_shape(n, k / 2));
-  auto byte_tiler = cute::make_shape(cute::_128{}, cute::_64{});
+  auto byte_tiler = cute::make_shape(
+      cute::Int<kTileM>{}, cute::Int<kPipelinePackedK>{});
   auto a_coord = cute::make_coord(static_cast<int>(blockIdx.y), cute::_);
   auto b_coord = cute::make_coord(static_cast<int>(blockIdx.x), cute::_);
   auto gLow = cute::local_tile(mLow, byte_tiler, a_coord);
   auto gHigh = cute::local_tile(mHigh, byte_tiler, a_coord);
-  auto gB = cute::local_tile(mB, cute::make_shape(cute::_16{}, cute::_64{}), b_coord);
+  auto gB = cute::local_tile(
+      mB, cute::make_shape(cute::Int<kTileN>{}, cute::Int<kPipelinePackedK>{}), b_coord);
   auto sLowBytes = cute::make_tensor(cute::make_smem_ptr(storage.a_low), ByteLayoutA{});
   auto sHighBytes = cute::make_tensor(cute::make_smem_ptr(storage.a_high), ByteLayoutA{});
   auto sBBytes = cute::make_tensor(cute::make_smem_ptr(storage.b), ByteLayoutB{});
@@ -275,33 +326,88 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
     for (int inner_group = 0; inner_group < kGroupsPerStage; ++inner_group) {
       const int group = pipeline_group * kGroupsPerStage + inner_group;
       if (group >= groups) break;
-      uint32_t low[kNReplicas][4] = {};
-      uint32_t high[kNReplicas][4] = {};
+      uint32_t low[kKSubgroups][kNReplicas][4] = {};
+      uint32_t high[kKSubgroups][kNReplicas][4] = {};
+      if constexpr (Config::kDualK64Chains) {
+        // Explicitly preload both independent K64 fragments before issuing MMA.
+        // Each K64 subgroup accumulates into its own register chain, removing the
+        // read-after-write dependency between the two MMAs.  The chains are
+        // reconstructed only after both instructions have completed.
+        uint32_t low_a[kKSubgroups][4];
+        uint32_t high_a[kKSubgroups][4];
+        uint32_t b_fragment[kKSubgroups][kNReplicas][2];
 #pragma unroll
-      for (int subgroup = 0; subgroup < kKSubgroups; ++subgroup) {
-        const int word_base = inner_group * (kPackedK / 4) + subgroup * 8 + lane_i;
-        const uint32_t la0 = low_words[local_row0 * kAWordsPerRow + word_base];
-        const uint32_t la1 = low_words[local_row1 * kAWordsPerRow + word_base];
-        const uint32_t la2 = low_words[local_row0 * kAWordsPerRow + word_base + 4];
-        const uint32_t la3 = low_words[local_row1 * kAWordsPerRow + word_base + 4];
-        const uint32_t ha0 = high_words[local_row0 * kAWordsPerRow + word_base];
-        const uint32_t ha1 = high_words[local_row1 * kAWordsPerRow + word_base];
-        const uint32_t ha2 = high_words[local_row0 * kAWordsPerRow + word_base + 4];
-        const uint32_t ha3 = high_words[local_row1 * kAWordsPerRow + word_base + 4];
+        for (int subgroup = 0; subgroup < kKSubgroups; ++subgroup) {
+          const int word_base = inner_group * (kPackedK / 4) + subgroup * 8 + lane_i;
+          low_a[subgroup][0] = low_words[local_row0 * kAWordsPerRow + word_base];
+          low_a[subgroup][1] = low_words[local_row1 * kAWordsPerRow + word_base];
+          low_a[subgroup][2] = low_words[local_row0 * kAWordsPerRow + word_base + 4];
+          low_a[subgroup][3] = low_words[local_row1 * kAWordsPerRow + word_base + 4];
+          high_a[subgroup][0] = high_words[local_row0 * kAWordsPerRow + word_base];
+          high_a[subgroup][1] = high_words[local_row1 * kAWordsPerRow + word_base];
+          high_a[subgroup][2] = high_words[local_row0 * kAWordsPerRow + word_base + 4];
+          high_a[subgroup][3] = high_words[local_row1 * kAWordsPerRow + word_base + 4];
 #pragma unroll
-        for (int replica = 0; replica < kNReplicas; ++replica) {
-          const int atom_n = warp_n * kNReplicas + replica;
-          const int b_row = atom_n * 8 + lane_j;
-          const uint32_t b0 = b_words[b_row * kBWordsPerRow + word_base];
-          const uint32_t b1 = b_words[b_row * kBWordsPerRow + word_base + 4];
-          LowMma::fma(
-              low[replica][0], low[replica][1], low[replica][2], low[replica][3],
-              la0, la1, la2, la3, b0, b1,
-              low[replica][0], low[replica][1], low[replica][2], low[replica][3]);
-          HighMma::fma(
-              high[replica][0], high[replica][1], high[replica][2], high[replica][3],
-              ha0, ha1, ha2, ha3, b0, b1,
-              high[replica][0], high[replica][1], high[replica][2], high[replica][3]);
+          for (int replica = 0; replica < kNReplicas; ++replica) {
+            const int atom_n = warp_n * kNReplicas + replica;
+            const int b_row = atom_n * 8 + lane_j;
+            b_fragment[subgroup][replica][0] =
+                b_words[b_row * kBWordsPerRow + word_base];
+            b_fragment[subgroup][replica][1] =
+                b_words[b_row * kBWordsPerRow + word_base + 4];
+          }
+        }
+#pragma unroll
+        for (int subgroup = 0; subgroup < kKSubgroups; ++subgroup) {
+#pragma unroll
+          for (int replica = 0; replica < kNReplicas; ++replica) {
+            LowMma::fma(
+                low[subgroup][replica][0], low[subgroup][replica][1],
+                low[subgroup][replica][2], low[subgroup][replica][3],
+                low_a[subgroup][0], low_a[subgroup][1],
+                low_a[subgroup][2], low_a[subgroup][3],
+                b_fragment[subgroup][replica][0], b_fragment[subgroup][replica][1],
+                0u, 0u, 0u, 0u);
+            HighMma::fma(
+                high[subgroup][replica][0], high[subgroup][replica][1],
+                high[subgroup][replica][2], high[subgroup][replica][3],
+                high_a[subgroup][0], high_a[subgroup][1],
+                high_a[subgroup][2], high_a[subgroup][3],
+                b_fragment[subgroup][replica][0], b_fragment[subgroup][replica][1],
+                0u, 0u, 0u, 0u);
+          }
+        }
+      } else {
+#pragma unroll
+        for (int subgroup = 0; subgroup < kKSubgroups; ++subgroup) {
+          const int word_base = inner_group * (kPackedK / 4) + subgroup * 8 + lane_i;
+          const uint32_t la0 = low_words[local_row0 * kAWordsPerRow + word_base];
+          const uint32_t la1 = low_words[local_row1 * kAWordsPerRow + word_base];
+          const uint32_t la2 = low_words[local_row0 * kAWordsPerRow + word_base + 4];
+          const uint32_t la3 = low_words[local_row1 * kAWordsPerRow + word_base + 4];
+          const uint32_t ha0 = high_words[local_row0 * kAWordsPerRow + word_base];
+          const uint32_t ha1 = high_words[local_row1 * kAWordsPerRow + word_base];
+          const uint32_t ha2 = high_words[local_row0 * kAWordsPerRow + word_base + 4];
+          const uint32_t ha3 = high_words[local_row1 * kAWordsPerRow + word_base + 4];
+#pragma unroll
+          for (int replica = 0; replica < kNReplicas; ++replica) {
+            const int atom_n = warp_n * kNReplicas + replica;
+            const int b_row = atom_n * 8 + lane_j;
+            const uint32_t b0 = b_words[b_row * kBWordsPerRow + word_base];
+            const uint32_t b1 = b_words[b_row * kBWordsPerRow + word_base + 4];
+            LowMma::fma(
+                low[0][replica][0], low[0][replica][1],
+                low[0][replica][2], low[0][replica][3],
+                la0, la1, la2, la3, b0, b1,
+                low[0][replica][0], low[0][replica][1],
+                low[0][replica][2], low[0][replica][3]);
+            HighMma::fma(
+                high[0][replica][0], high[0][replica][1],
+                high[0][replica][2], high[0][replica][3],
+                ha0, ha1, ha2, ha3, b0, b1,
+                high[0][replica][0], high[0][replica][1],
+                high[0][replica][2], high[0][replica][3]);
+          }
         }
       }
 
@@ -313,25 +419,27 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
         const int scale_base = (stage * kGroupsPerStage + inner_group) * kTileN;
         const float column_scale0 = storage.column_scale[scale_base + local_column0];
         const float column_scale1 = storage.column_scale[scale_base + local_column1];
-        const int32_t partial0 = static_cast<int32_t>(low[replica][0])
-            + 16 * static_cast<int32_t>(high[replica][0]);
-        const int32_t partial1 = static_cast<int32_t>(low[replica][1])
-            + 16 * static_cast<int32_t>(high[replica][1]);
-        const int32_t partial2 = static_cast<int32_t>(low[replica][2])
-            + 16 * static_cast<int32_t>(high[replica][2]);
-        const int32_t partial3 = static_cast<int32_t>(low[replica][3])
-            + 16 * static_cast<int32_t>(high[replica][3]);
+        const int chain_count = Config::kDualK64Chains ? kKSubgroups : 1;
+        int32_t partial[4] = {};
+#pragma unroll
+        for (int chain = 0; chain < chain_count; ++chain) {
+#pragma unroll
+          for (int item = 0; item < 4; ++item) {
+            partial[item] += static_cast<int32_t>(low[chain][replica][item])
+                + 16 * static_cast<int32_t>(high[chain][replica][item]);
+          }
+        }
         accumulators[replica][0] = __fmaf_rn(
-            static_cast<float>(partial0), __fmul_rn(row_scale0, column_scale0),
+            static_cast<float>(partial[0]), __fmul_rn(row_scale0, column_scale0),
             accumulators[replica][0]);
         accumulators[replica][1] = __fmaf_rn(
-            static_cast<float>(partial1), __fmul_rn(row_scale0, column_scale1),
+            static_cast<float>(partial[1]), __fmul_rn(row_scale0, column_scale1),
             accumulators[replica][1]);
         accumulators[replica][2] = __fmaf_rn(
-            static_cast<float>(partial2), __fmul_rn(row_scale1, column_scale0),
+            static_cast<float>(partial[2]), __fmul_rn(row_scale1, column_scale0),
             accumulators[replica][2]);
         accumulators[replica][3] = __fmaf_rn(
-            static_cast<float>(partial3), __fmul_rn(row_scale1, column_scale1),
+            static_cast<float>(partial[3]), __fmul_rn(row_scale1, column_scale1),
             accumulators[replica][3]);
       }
     }
@@ -355,55 +463,67 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   }
 }
 
+template <class Config>
 auto make_tma_a(const at::Tensor& split, int row_offset) {
   const int m = static_cast<int>(split.size(0) / 2);
   const int packed_k = static_cast<int>(split.size(1));
   const uint8_t* pointer = split.data_ptr<uint8_t>() + static_cast<int64_t>(row_offset) * packed_k;
   auto tensor = cute::make_tensor(pointer, cute::make_shape(m, packed_k), cute::make_stride(packed_k, cute::_1{}));
-  auto layout = ByteLayoutA{};
+  auto layout = typename Config::ByteLayoutA{};
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor, layout(cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_128{}, cute::_64{}));
+      cute::make_shape(
+          cute::Int<Config::kTileM>{}, cute::Int<Config::kPipelinePackedK>{}));
 }
 
+template <class Config>
 auto make_tma_b(const at::Tensor& q4) {
   const int n = static_cast<int>(q4.size(0));
   const int packed_k = static_cast<int>(q4.size(1));
   auto tensor = cute::make_tensor(
       q4.data_ptr<uint8_t>(), cute::make_shape(n, packed_k), cute::make_stride(packed_k, cute::_1{}));
-  auto layout = ByteLayoutB{};
+  auto layout = typename Config::ByteLayoutB{};
   return cute::make_tma_atom(
       cute::SM90_TMA_LOAD{}, tensor, layout(cute::_, cute::_, cute::Int<0>{}),
-      cute::make_shape(cute::_16{}, cute::_64{}));
+      cute::make_shape(
+          cute::Int<Config::kTileN>{}, cute::Int<Config::kPipelinePackedK>{}));
 }
 
-template <class TmaLow, class TmaHigh, class TmaB>
+template <class Config, class TmaLow, class TmaHigh, class TmaB>
 void launch_gemm(
     const at::Tensor& a_scale, const at::Tensor& w_scale, at::Tensor& output,
     int m, int n, int k, TmaLow const& low, TmaHigh const& high, TmaB const& b,
     cudaStream_t stream) {
-  dim3 grid((n + kTileN - 1) / kTileN, (m + kTileM - 1) / kTileM);
+  using SharedStorage = typename Config::SharedStorage;
+  dim3 grid(
+      (n + Config::kTileN - 1) / Config::kTileN,
+      (m + Config::kTileM - 1) / Config::kTileM);
   // The staged Split pipeline uses more than CUDA's default dynamic
   // shared-memory allowance. Opt this exact template specialization into the
   // device limit before launch; otherwise CUDA reports invalid argument.
   check_cuda(
       cudaFuncSetAttribute(
-          adangel_o3_split_tma_ws<TmaLow, TmaHigh, TmaB>,
+          adangel_o3_split_tma_ws<Config, TmaLow, TmaHigh, TmaB>,
           cudaFuncAttributeMaxDynamicSharedMemorySize,
           static_cast<int>(sizeof(SharedStorage))),
       "O3 set dynamic shared-memory limit");
-  adangel_o3_split_tma_ws<<<grid, kThreads, sizeof(SharedStorage), stream>>>(
+  adangel_o3_split_tma_ws<Config><<<grid, kThreads, sizeof(SharedStorage), stream>>>(
       low, high, b, a_scale.data_ptr<float>(), w_scale.data_ptr<uint8_t>(),
       output.data_ptr<float>(), m, n, k, k / kGroupSize);
   check_cuda(cudaGetLastError(), "O3 Split TMA warp-specialized launch");
 }
 
-py::dict kernel_metadata(int groups) {
+template <class Config>
+py::dict kernel_metadata(
+    int groups, const char* implementation_key, const char* kernel_symbol) {
   py::dict result;
   result["library"] = "CUTLASS CuTe + CUDA";
   result["implementation"] =
-      "paper_split_g128_tma_warp_specialized_register_partial_occupancy_n16";
-  result["kernel_symbol"] = "adangel_o3_split_tma_ws";
+      "paper_split_g128_tma_warp_specialized_register_partial_candidate_matrix";
+  result["implementation_key"] = implementation_key;
+  result["production_selected"] =
+      std::string(implementation_key) == kProductionO3Implementation;
+  result["kernel_symbol"] = kernel_symbol;
   result["tensor_core"] = true;
   result["mma_family"] = "IMMA_INT4";
   result["mma_api"] = "cute::arch MMA wrapper with trait-derived lane mapping";
@@ -412,9 +532,13 @@ py::dict kernel_metadata(int groups) {
   result["mma_shape"] = "m16n8k64";
   result["data_movement"] = "TMA";
   result["kernel_schedule"] = "cooperative_warp_specialized";
-  result["cta_tile"] = py::make_tuple(kTileM, kTileN, kPipelineK);
-  result["pipeline_stages"] = kStages;
-  result["groups_per_pipeline_stage"] = kGroupsPerStage;
+  result["cta_tile"] = py::make_tuple(
+      Config::kTileM, Config::kTileN, Config::kPipelineK);
+  result["pipeline_stages"] = Config::kStages;
+  result["groups_per_pipeline_stage"] = Config::kGroupsPerStage;
+  result["instruction_double_buffer"] = Config::kDualK64Chains;
+  result["independent_k64_accumulator_chains"] =
+      Config::kDualK64Chains ? kKSubgroups : 1;
   result["producer_warps"] = 1;
   result["consumer_warps"] = 16;
   result["group_size"] = kGroupSize;
@@ -433,11 +557,14 @@ py::dict kernel_metadata(int groups) {
 
 bool adangel_o3_is_implemented() { return true; }
 
-py::dict adangel_benchmark_o3(
+template <class Config>
+py::dict benchmark_o3_config(
     const at::Tensor& a_int8,
     const at::Tensor& a_scale,
     const at::Tensor& w_mxfp4_g128,
     const at::Tensor& w_scale_g128,
+    const char* implementation_key,
+    const char* kernel_symbol,
     const std::string& mode_name,
     int warmup,
     int repeats,
@@ -458,11 +585,13 @@ py::dict adangel_benchmark_o3(
   auto convert_a = [&]() { adangel_launch_split_int8_to_int4(a_int8, split, stream); };
   convert_w();
   convert_a();
-  auto tma_low = make_tma_a(split, 0);
-  auto tma_high = make_tma_a(split, m);
-  auto tma_b = make_tma_b(q4);
+  auto tma_low = make_tma_a<Config>(split, 0);
+  auto tma_high = make_tma_a<Config>(split, m);
+  auto tma_b = make_tma_b<Config>(q4);
   auto gemm = [&]() {
-    launch_gemm(a_scale, w_scale_g128, output, m, n, k, tma_low, tma_high, tma_b, stream);
+    launch_gemm<Config>(
+        a_scale, w_scale_g128, output, m, n, k,
+        tma_low, tma_high, tma_b, stream);
   };
   const TimingMode mode = parse_mode(mode_name);
   for (int i = 0; i < warmup; ++i) {
@@ -534,8 +663,65 @@ py::dict adangel_benchmark_o3(
   result["converted_activation"] = split;
   result["timings_ms"] = timings;
   result["timing_method"] = timing_metadata(mode_name, conversion_inner_repeats);
-  result["kernel"] = kernel_metadata(k / kGroupSize);
+  result["kernel"] =
+      kernel_metadata<Config>(k / kGroupSize, implementation_key, kernel_symbol);
   return result;
+}
+
+py::dict adangel_benchmark_o3_impl(
+    const std::string& implementation,
+    const std::string& mode_name,
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4_g128,
+    const at::Tensor& w_scale_g128,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats) {
+  const O3Implementation selected = parse_o3_implementation(implementation);
+  if (selected == O3Implementation::kN16K256) {
+    return benchmark_o3_config<O3N16K256Config>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k256", "adangel_o3_split_tma_ws<O3Config<16,2,false>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN32K128) {
+    return benchmark_o3_config<O3N32K128Config>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n32_k128", "adangel_o3_split_tma_ws<O3Config<32,1,false>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128Dual) {
+    return benchmark_o3_config<O3N16K128DualConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_dual", "adangel_o3_split_tma_ws<O3Config<16,1,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN32K256Dual) {
+    return benchmark_o3_config<O3N32K256DualConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n32_k256_dual", "adangel_o3_split_tma_ws<O3Config<32,2,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  return benchmark_o3_config<O3N16K128Config>(
+      a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+      "n16_k128", "adangel_o3_split_tma_ws<O3Config<16,1,false>>",
+      mode_name, warmup, repeats, conversion_inner_repeats);
+}
+
+py::dict adangel_benchmark_o3(
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4_g128,
+    const at::Tensor& w_scale_g128,
+    const std::string& mode_name,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats) {
+  return adangel_benchmark_o3_impl(
+      kProductionO3Implementation, mode_name,
+      a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+      warmup, repeats, conversion_inner_repeats);
 }
 
 py::dict adangel_run_o3(
