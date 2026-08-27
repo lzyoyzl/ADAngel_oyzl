@@ -15,7 +15,7 @@ from pathlib import Path
 
 NCU_KERNEL_FILTERS = {
     "o1": "regex:adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup",
-    "o2": "regex:cutlass::device_kernel",
+    "o2": "regex:^device_kernel$",
     "o3": "regex:adangel_o3_split_tma_ws",
     "o4": "regex:adangel_o4_bitwise_tma_ws",
 }

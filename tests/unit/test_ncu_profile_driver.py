@@ -19,7 +19,7 @@ class NcuProfileDriverTest(unittest.TestCase):
             "adangel_o1_register_partial_128x64",
             MODULE.NCU_KERNEL_FILTERS["o1"],
         )
-        self.assertIn("cutlass::device_kernel", MODULE.NCU_KERNEL_FILTERS["o2"])
+        self.assertEqual(MODULE.NCU_KERNEL_FILTERS["o2"], "regex:^device_kernel$")
         self.assertIn("adangel_o3_split_tma_ws", MODULE.NCU_KERNEL_FILTERS["o3"])
         self.assertIn("adangel_o4_bitwise_tma_ws", MODULE.NCU_KERNEL_FILTERS["o4"])
 

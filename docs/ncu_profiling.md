@@ -1,6 +1,7 @@
 # O1/O2/O3/O4 Nsight Compute profiling
 
-本页规定 RTX 5090 上的 NCU 采集接口。正式延迟仍以 CUDA Event 实验为准；NCU 的
+本页规定 RTX 5090 上的 NCU 采集接口。已完成的瓶颈分析与关键指标见
+[O3/O4 NCU 性能瓶颈分析报告](o3_o4_ncu_bottleneck_report.md)。正式延迟仍以 CUDA Event 实验为准；NCU 的
 kernel replay、cache control、clock control 和软件 patch 会改变运行时间，因此报告中的
 Duration 只用于同一采集设置下的诊断。
 
@@ -40,12 +41,13 @@ measured production GEMM。因此NCU必须使用：
 | Variant | NCU `--kernel-name` |
 |---|---|
 | O1 | `regex:adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup` |
-| O2 | `regex:cutlass::device_kernel` |
+| O2 | `regex:^device_kernel$` |
 | O3 | `regex:adangel_o3_split_tma_ws` |
 | O4 | `regex:adangel_o4_bitwise_tma_ws` |
 
-O2驱动在目标launch之前不执行其他CUTLASS GEMM，因此该过滤器只会匹配正式O2
-MXFP4 kernel。每次报告还必须检查NCU显示的kernel name与驱动输出的`kernel_symbol`。
+NCU 2025.1.1默认以简化function name匹配O2，实际名称为`device_kernel`。O2驱动在
+目标launch之前不执行其他同名kernel，因此该锚定过滤器只会匹配正式O2 MXFP4
+kernel。每次报告还必须检查NCU显示的完整kernel name与驱动输出的`kernel_symbol`。
 
 ## 3. 分层采集
 
@@ -60,6 +62,7 @@ ncu \
   --kernel-name '<VARIANT_FILTER>' \
   --launch-skip 5 --launch-count 1 \
   --clock-control none \
+  --cache-control all \
   --export reports/ncu/<variant>_basic \
   --force-overwrite \
   python scripts/profile_ncu_kernel.py \
@@ -80,6 +83,7 @@ ncu \
   --kernel-name '<VARIANT_FILTER>' \
   --launch-skip 5 --launch-count 1 \
   --clock-control none \
+  --cache-control all \
   --export reports/ncu/<variant>_compute \
   --force-overwrite \
   python scripts/profile_ncu_kernel.py \
@@ -99,6 +103,7 @@ ncu \
   --kernel-name '<VARIANT_FILTER>' \
   --launch-skip 5 --launch-count 1 \
   --clock-control none \
+  --cache-control all \
   --export reports/ncu/<variant>_memory \
   --force-overwrite \
   python scripts/profile_ncu_kernel.py \
@@ -120,3 +125,25 @@ ncu \
   `--cache-control none`，不得与默认报告混合比较；
 - NCU Duration不得写入正式CUDA Event性能表；
 - 报告必须保留原始`.ncu-rep`、命令、NCU版本和导出的关键指标。
+
+steady-state cache 复核使用 application replay，避免 kernel replay 的各 pass 共享不同
+cache 状态：
+
+```bash
+ncu \
+  --set basic \
+  --replay-mode application \
+  --kernel-name '<VARIANT_FILTER>' \
+  --launch-skip 5 --launch-count 1 \
+  --clock-control none \
+  --cache-control none \
+  --export reports/ncu/<variant>_steady_basic \
+  --force-overwrite \
+  python scripts/profile_ncu_kernel.py \
+    --data data/prepared/llama2_7b_prefill_o0_o4 \
+    --sample-id layer_00_q_proj \
+    --variant <variant> --warmup 5 --repeats 1
+```
+
+application replay 中程序自身打印的 CUDA Event 时间包含 NCU 重跑/patch 影响，不得
+进入正式性能表；只读取合并后的 `.ncu-rep` 硬件计数器。
