@@ -56,7 +56,9 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('using O3N32K128Config = O3Config<32, 1, false>', o3)
         self.assertIn('using O3N16K128DualConfig = O3Config<16, 1, true>', o3)
         self.assertIn('independent_k64_accumulator_chains', o3)
-        self.assertIn('kProductionO4Implementation = "n64_k256"', o4)
+        self.assertIn(
+            'kProductionO4Implementation = "m64_n64_k512_optimized"', o4
+        )
         self.assertIn('O4M64N64K512Config = O4Config<64, 64, 4, 4, 1, false>', o4)
         self.assertIn('O4N64K256Split2Config', o4)
         self.assertIn('O4N64K256CacheBConfig', o4)

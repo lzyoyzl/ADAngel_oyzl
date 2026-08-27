@@ -170,6 +170,33 @@ case "$production_impl" in
   *) echo "unknown O1 production implementation: $production_impl" >&2; exit 1 ;;
 esac
 
+o3_production_impl=$(sed -n 's/.*kProductionO3Implementation.*"\([^"]*\)".*/\1/p' \
+  "$source_root/csrc/sm120/o3_gemm.cu" | head -n 1)
+case "$o3_production_impl" in
+  n16_k128) o3_production_needle=O3ConfigILi16ELi1ELb0 ;;
+  n16_k256) o3_production_needle=O3ConfigILi16ELi2ELb0 ;;
+  n32_k128) o3_production_needle=O3ConfigILi32ELi1ELb0 ;;
+  n16_k128_dual) o3_production_needle=O3ConfigILi16ELi1ELb1 ;;
+  n32_k256_dual) o3_production_needle=O3ConfigILi32ELi2ELb1 ;;
+  *) echo "unknown O3 production implementation: $o3_production_impl" >&2; exit 1 ;;
+esac
+
+o4_production_impl=$(sed -n 's/.*kProductionO4Implementation.*"\([^"]*\)".*/\1/p' \
+  "$source_root/csrc/sm120/o4_gemm.cu" | head -n 1)
+case "$o4_production_impl" in
+  n64_k256) o4_production_needle=O4ConfigILi128ELi64ELi2ELi8ELi1ELb0 ;;
+  n64_k256_split2) o4_production_needle=O4ConfigILi128ELi64ELi2ELi8ELi2ELb0 ;;
+  n64_k256_cache_b) o4_production_needle=O4ConfigILi128ELi64ELi2ELi8ELi1ELb1 ;;
+  n64_k256_split2_cache_b)
+    o4_production_needle=O4ConfigILi128ELi64ELi2ELi8ELi2ELb1
+    ;;
+  m64_n64_k512) o4_production_needle=O4ConfigILi64ELi64ELi4ELi4ELi1ELb0 ;;
+  m64_n64_k512_optimized)
+    o4_production_needle=O4ConfigILi64ELi64ELi4ELi4ELi2ELb1
+    ;;
+  *) echo "unknown O4 production implementation: $o4_production_impl" >&2; exit 1 ;;
+esac
+
 o1_symbol=$(find_ptx_symbol o1 "$production_needle") || {
   echo 'O1 production kernel must contain both TMA load and INT8 MMA in the same PTX entry' >&2
   exit 1
@@ -186,11 +213,11 @@ o2_symbol=$(find_ptx_symbol o2) || {
   echo 'O2 production kernel must contain both TMA load and MXFP4 block-scaled MMA in the same PTX entry' >&2
   exit 1
 }
-o3_symbol=$(find_ptx_symbol o3 adangel_o3_split_tma_ws) || {
+o3_symbol=$(find_ptx_symbol o3 "$o3_production_needle") || {
   echo 'O3 production kernel must contain same-entry TMA, U4xS4 MMA, and S4xS4 MMA' >&2
   exit 1
 }
-o4_symbol=$(find_ptx_symbol o4 adangel_o4_bitwise_tma_ws) || {
+o4_symbol=$(find_ptx_symbol o4 "$o4_production_needle") || {
   echo 'O4 production kernel must contain same-entry TMA and B1 AND-POPC MMA' >&2
   exit 1
 }
@@ -271,6 +298,48 @@ check_no_local_sass "$o4_symbol" && check_zero_stack_local_resource "$o4_resourc
   exit 1
 }
 
+declare -a o34_candidate_audit_lines=()
+audit_o34_candidate() {
+  local family=$1
+  local key=$2
+  local needle=$3
+  local symbol resource status
+  symbol=$(find_ptx_symbol "$family" "$needle") || {
+    echo "$family candidate $key lacks same-entry TMA and target MMA" >&2
+    exit 1
+  }
+  check_sass_symbol "$symbol" "$family" || {
+    echo "$family candidate $key lacks TMA or target MMA in SASS" >&2
+    exit 1
+  }
+  resource=$(resource_usage_for_symbol "$symbol") || {
+    echo "$family candidate $key resource usage was not found" >&2
+    exit 1
+  }
+  status="PASS(no LDL/STL; STACK=0; LOCAL=0)"
+  if ! check_no_local_sass "$symbol" ||
+     ! check_zero_stack_local_resource "$resource"; then
+    status="DISQUALIFIED(local-memory spill)"
+  fi
+  o34_candidate_audit_lines+=(
+    "${family}_candidate_${key}_audit=${status}; ${resource}"
+  )
+}
+
+audit_o34_candidate o3 n16_k128 O3ConfigILi16ELi1ELb0
+audit_o34_candidate o3 n16_k256 O3ConfigILi16ELi2ELb0
+audit_o34_candidate o3 n32_k128 O3ConfigILi32ELi1ELb0
+audit_o34_candidate o3 n16_k128_dual O3ConfigILi16ELi1ELb1
+audit_o34_candidate o3 n32_k256_dual O3ConfigILi32ELi2ELb1
+audit_o34_candidate o4 n64_k256 O4ConfigILi128ELi64ELi2ELi8ELi1ELb0
+audit_o34_candidate o4 n64_k256_split2 O4ConfigILi128ELi64ELi2ELi8ELi2ELb0
+audit_o34_candidate o4 n64_k256_cache_b O4ConfigILi128ELi64ELi2ELi8ELi1ELb1
+audit_o34_candidate o4 n64_k256_split2_cache_b \
+  O4ConfigILi128ELi64ELi2ELi8ELi2ELb1
+audit_o34_candidate o4 m64_n64_k512 O4ConfigILi64ELi64ELi4ELi4ELi1ELb0
+audit_o34_candidate o4 m64_n64_k512_optimized \
+  O4ConfigILi64ELi64ELi4ELi4ELi2ELb1
+
 audit_complete=1
 trap - EXIT
 {
@@ -286,10 +355,13 @@ trap - EXIT
   echo "o1_register_128_resource=$o1_register_128_resource"
   echo "o1_register_128_spill_check=$o1_register_128_spill_check"
   echo "o2_production_symbol=$o2_symbol"
+  echo "o3_production_implementation=$o3_production_impl"
   echo "o3_production_symbol=$o3_symbol"
   echo "o3_production_resource=$o3_resource"
+  echo "o4_production_implementation=$o4_production_impl"
   echo "o4_production_symbol=$o4_symbol"
   echo "o4_production_resource=$o4_resource"
+  printf '%s\n' "${o34_candidate_audit_lines[@]}"
   echo "verified=O0 Tensor Core; O1 same-entry TMA+INT8 MMA; O2 same-entry TMA+MXFP4 block-scaled MMA; O3 same-entry TMA+U4/S4 INT4 MMA; O4 same-entry TMA+B1 AND-POPC MMA"
 } > "$summary_file"
 echo "instruction audit passed; review $output_dir/summary.txt and extension.sass"

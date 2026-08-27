@@ -92,7 +92,7 @@ using O4N64K256Split2CacheBConfig = O4Config<128, 64, 2, 8, 2, true>;
 using O4M64N64K512Config = O4Config<64, 64, 4, 4, 1, false>;
 using O4M64N64K512OptimizedConfig = O4Config<64, 64, 4, 4, 2, true>;
 
-constexpr const char* kProductionO4Implementation = "n64_k256";
+constexpr const char* kProductionO4Implementation = "m64_n64_k512_optimized";
 
 enum class O4Implementation {
   kN64K256,
