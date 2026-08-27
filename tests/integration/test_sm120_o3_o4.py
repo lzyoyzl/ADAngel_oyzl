@@ -47,7 +47,7 @@ def test_arbitrary_bit_backend_matches_semantic_reference(variant):
     assert kernel["data_movement"] == "TMA"
     assert kernel["kernel_schedule"] == "cooperative_warp_specialized"
     assert tuple(kernel["cta_tile"]) == (
-        (128, 16, 128) if variant == "o3" else (128, 64, 256)
+        (128, 16, 128) if variant == "o3" else (64, 64, 512)
     )
     assert kernel["pipeline_stages"] == 2
     assert kernel["groups_per_pipeline_stage"] == (1 if variant == "o3" else 2)
