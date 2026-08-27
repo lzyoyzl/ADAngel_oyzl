@@ -245,7 +245,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   const int thread = static_cast<int>(threadIdx.x);
   const int warp = thread >> 5;
   const int lane = thread & 31;
-  Pipeline::Params params;
+  typename Pipeline::Params params;
   params.num_consumers = kConsumerThreads;
   params.transaction_bytes = 2 * kAStageBytes + kBStageBytes;
   params.initializing_warp = 0;
@@ -309,7 +309,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   const float row_scale1 = global_row1 < m ? a_scale[global_row1] : 0.0f;
   float accumulators[kNReplicas][4] = {};
 
-  Pipeline::PipelineState read_state;
+  typename Pipeline::PipelineState read_state;
   const int pipeline_groups = (groups + kGroupsPerStage - 1) / kGroupsPerStage;
   for (int pipeline_group = 0; pipeline_group < pipeline_groups; ++pipeline_group) {
     pipeline.consumer_wait(read_state);
