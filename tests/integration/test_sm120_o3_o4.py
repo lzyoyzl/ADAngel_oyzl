@@ -50,7 +50,7 @@ def test_arbitrary_bit_backend_matches_semantic_reference(variant):
         (128, 16, 128) if variant == "o3" else (64, 64, 512)
     )
     assert kernel["pipeline_stages"] == 2
-    assert kernel["groups_per_pipeline_stage"] == (1 if variant == "o3" else 2)
+    assert kernel["groups_per_pipeline_stage"] == (1 if variant == "o3" else 4)
     assert kernel["partial_storage"] == "register"
     assert kernel["global_partial_buffer"] is False
     assert kernel["output_stores_per_element"] == 1
@@ -65,6 +65,8 @@ def test_arbitrary_bit_backend_matches_semantic_reference(variant):
         assert kernel["mma_family"] == "BMMA"
         assert kernel["mma_atom"] == "SM80_16x8x128_S32U1U1S32_TN_ANDPOPC"
         assert kernel["logical_mma_per_group"] == 32
+        assert kernel["bmma_accumulator_chains"] == 2
+        assert kernel["b_fragment_cached"] is True
         assert tuple(kernel["activation_bit_weights"]) == (1, 2, 4, 8, 16, 32, 64, -128)
         assert tuple(kernel["weight_bit_weights"]) == (1, 2, 4, -8)
 
