@@ -1,5 +1,7 @@
 # ADAngel 文档索引
 
+- [O0–O4 最终实现与正式实验结果](o0_o4_final_results_report.md)：当前五个 production 后端、24 样本性能、转换开销、MSE、验收结果与性能差异分析；不包含历史候选或消融数据。
+- [O1–O4 Nsight Compute profiling](ncu_profiling.md)：单真实样本、单 production kernel 的 NCU 驱动、过滤器、分层采集命令和可比性规则。
 - [O0/O1/O2 后端实现、差异与实验测量说明](o0_o1_o2_backend_report.md)：面向汇报的后端原理、MSE、计时口径及 O1 寄存器 partial 拟议优化。
 - [O3/O4 Split 与 Bitwise 后端实现报告](o3_o4_backend_report.md)：论文对齐语义、G128/Q4、tile、计时、MSE 与 RTX 5090 验收。
 - [实验协议](experiment_protocol.md)

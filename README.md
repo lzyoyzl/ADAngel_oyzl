@@ -121,6 +121,8 @@ Y         [4096, 4096] fp32
   32 个 AND-POPC BMMA 重构整数点积，再乘相同的 G128 scale。
 
 详细定义见 [实验协议](docs/experiment_protocol.md)、[数据格式](docs/data_format.md)、
+[O0–O4 最终实现与正式实验结果](docs/o0_o4_final_results_report.md)、
+[O1–O4 Nsight Compute profiling](docs/ncu_profiling.md)、
 [O0/O1/O2 后端与测量报告](docs/o0_o1_o2_backend_report.md)、
 [O3/O4 Split/Bitwise 后端报告](docs/o3_o4_backend_report.md)、
 [Miniconda 配置指南](docs/miniconda_setup.md)、[本机验证记录](docs/local_validation.md)
