@@ -89,6 +89,19 @@ def bootstrap_mean_ci(values, *, resamples, seed):
     ]
 
 
+def bootstrap_median_ci(values, *, resamples, seed):
+    values = list(values)
+    rng = random.Random(seed)
+    estimates = sorted(
+        statistics.median(rng.choice(values) for _ in values)
+        for _ in range(resamples)
+    )
+    return [
+        estimates[math.floor(0.025 * (resamples - 1))],
+        estimates[math.ceil(0.975 * (resamples - 1))],
+    ]
+
+
 def mse64(actual, reference):
     return float((actual.double() - reference.double()).square().mean().item())
 
@@ -197,10 +210,16 @@ def main() -> int:
                     statistics.fmean(math.log(value) for value in speedups)
                 ),
                 "paired_speedup_mean": statistics.fmean(speedups),
+                "paired_speedup_median": statistics.median(speedups),
                 "paired_speedup_bootstrap_95ci": bootstrap_mean_ci(
                     speedups,
                     resamples=args.bootstrap_resamples,
                     seed=args.seed + 17 * candidate_index + mode_index,
+                ),
+                "paired_speedup_median_bootstrap_95ci": bootstrap_median_ci(
+                    speedups,
+                    resamples=args.bootstrap_resamples,
+                    seed=args.seed + 101 + 17 * candidate_index + mode_index,
                 ),
             }
         mse_passed = all(

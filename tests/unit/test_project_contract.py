@@ -51,7 +51,7 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('module.def("run_o4", &adangel_run_o4)', bindings)
         self.assertIn('"_benchmark_o3_impl"', bindings)
         self.assertIn('"_benchmark_o4_impl"', bindings)
-        self.assertIn('kProductionO3Implementation = "n16_k128"', o3)
+        self.assertIn('kProductionO3Implementation = "n16_k128_cute_ldsm"', o3)
         self.assertIn('using O3N16K256Config = O3Config<16, 2, false>', o3)
         self.assertIn('using O3N32K128Config = O3Config<32, 1, false>', o3)
         self.assertIn('using O3N16K128DualConfig = O3Config<16, 1, true>', o3)

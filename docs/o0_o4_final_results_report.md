@@ -153,7 +153,7 @@ Y     += P * A_scale[row] * W_scale_g128[column,group]
 当前 production：
 
 ```text
-implementation       n16_k128
+implementation       n16_k128_cute_ldsm
 CTA tile             128×16×128
 producer/consumer    1 warp / 16 warps
 pipeline             2 stages，1个G128/stage
@@ -161,6 +161,7 @@ MMA                  m16n8k64 U4×S4 和 S4×S4
 data movement        TMA
 schedule             cooperative warp specialization
 partial              register
+shared→register      explicit LDSM fragment load
 accumulator/output   FP32/FP32
 dynamic shared       35,072 bytes
 ```

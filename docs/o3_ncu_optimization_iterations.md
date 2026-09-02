@@ -259,3 +259,24 @@ kernel 的审计 needle 从宽前缀收紧为完整模板参数，避免误命�
 目标是降低每个输出对应的 A LDSM、A TMA 和 producer 开销，同时继续保留 G128
 独立 scale、两路 INT4 MMA、寄存器 partial 与单次输出写回。候选仍需依次通过编译、
 小规模正确性、4096³、资源/指令审计和真实样本配对验证。
+
+### Iteration 7 结果与 production 决策
+
+`n32_k128_cute_ldsm` 通过逐元素正确性与无 spill 审计（73 regs/thread，`STACK=0`、
+`LOCAL=0`），但稳定单样本 A/B 的 compute-only 中位延迟为 `2.170208 ms`，慢于
+生产基线 `2.097760 ms`；`n16_k128_cute_ldsm` 同轮为 `2.040368 ms`。因此扩大 N
+tile 被淘汰：A fragment 复用不足以抵消更多 accumulator/B fragment 与寄存器压力。
+
+最终选择 `n16_k128_cute_ldsm` 作为 production。两次独立24样本测试中，它分别在
+21/24和19/24个样本胜出，配对速度中位数为 `1.0245x` 与 `1.0313x`；中位数
+bootstrap 95% CI 分别为 `[1.0223,1.0281]` 与 `[1.0148,1.0351]`。均值区间仍因
+共享 GPU 的少量调度离群值跨过1，原始 CV 和该限制必须保留披露。晋升同时满足：
+
+- 两轮 MSE 与旧 production 完全一致；
+- 小规模逐元素输出一致，4096³ 最大绝对误差不变；
+- 同一 kernel entry 保留 TMA 与两类 INT4 MMA；
+- 55 regs/thread、`STACK=0`、`LOCAL=0`，无 `LDL/STL` spill；
+- NCU 显示动态 SASS 约减少6.4%，标量 shared load 从88.08M降到4.19M。
+
+该优化没有改变论文 Split 算术、G128 scale边界、CTA、pipeline、warp specialization、
+寄存器 partial、FP32累加/输出或计时/MSE口径，只替换 shared-to-register operand load。

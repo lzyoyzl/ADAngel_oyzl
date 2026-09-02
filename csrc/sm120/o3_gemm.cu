@@ -168,7 +168,7 @@ using O3N16K128CuteLdsmConfig = O3Config<16, 1, false, 128, true>;
 using O3N32K128CuteLdsmConfig = O3Config<32, 1, false, 128, true>;
 using O3N16K128LdsmSwizzleConfig = O3SwizzledConfig<16, true>;
 
-constexpr const char* kProductionO3Implementation = "n16_k128";
+constexpr const char* kProductionO3Implementation = "n16_k128_cute_ldsm";
 
 enum class O3Implementation {
   kN16K128,

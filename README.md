@@ -48,7 +48,8 @@ O3/O4 使用独立的 G128 权重副本，并按论文的 Split/Bitwise 算术�
 按 two's-complement 原始位拆成低 U4 和高 S4，满足
 `A8=A_low_u4+16*A_high_s4`；G128 MXFP4 权重用 RNE 映射到 Q4。正式 kernel 采用
 `128x16x128` CTA、两阶段 TMA、1 producer/16 consumer、两类 `m16n8k64`
-INT4 MMA，在寄存器中重构两个 partial、应用 G128 scale，并只写一次 FP32 输出。
+INT4 MMA；A/B subbyte fragment 通过显式 `LDSM` 从 TMA staging shared memory
+装入寄存器，在寄存器中重构两个 partial、应用 G128 scale，并只写一次 FP32 输出。
 
 O4 将 A8 拆成系数 `[1,2,4,8,16,32,64,-128]` 的 8 个 bitplane，将 Q4 权重拆成
 系数 `[1,2,4,-8]` 的 4 个 bitplane；每个 G128 执行 8×4=32 个
@@ -423,8 +424,9 @@ python -m adangel run \
 当前 RTX 5090 的 `runs/rtx5090_o0_o4_k512` 24 样本 GEMM-only median 为：
 O1 `0.622136 ms`、O3 `2.223352 ms`、O4 `7.632488 ms`。最新 O4 候选相对上一版
 `128x64x256` production 的逐样本配对几何平均加速为 `1.0806x`，bootstrap 95% CI
-为 `[1.0789x, 1.0827x]`；O3 的双 G128、扩大 N tile 与双 K64 chain 候选均未超过
-原 `128x16x128` production。详细消融、资源审计、性能边界与 MSE 见
+为 `[1.0789x, 1.0827x]`。这里的 O3 `2.223352 ms` 是显式 LDSM 晋升前的历史结果；
+新 production 保持 `128x16x128`，仅把标量 shared fragment load 改为显式 LDSM，
+正式24样本结果需在当前提交上重新生成。详细消融、资源审计、性能边界与 MSE 见
 `docs/o3_o4_backend_report.md`。
 
 运行顺序按样本交错 O0/O1/O2/O3/O4；使用单 stream、CUDA Event、预热 50 次、测量

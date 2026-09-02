@@ -146,8 +146,9 @@ compute-only 配对测试相对O0平均加速约`1.198x`，bootstrap 95% CI约�
 
 O3/O4 使用与 O1 相同的工程骨架：单 kernel tiled GEMM、staged TMA pipeline、
 1 个 producer warp、16 个 consumer warp、寄存器 partial、FP32 最终累加/输出和
-每个输出元素一次 global store。O3 固定 CTA 为 `128x16x128`、两阶段且每 stage 一个
-G128；O4 固定 CTA 为 `64x64x512`、两阶段且每 stage 四个独立 G128。这是 RTX 5090
+每个输出元素一次 global store。O3 production `n16_k128_cute_ldsm` 固定 CTA 为
+`128x16x128`、两阶段且每 stage 一个 G128，并用显式 LDSM 装入 A/B fragment；
+O4 固定 CTA 为 `64x64x512`、两阶段且每 stage 四个独立 G128。这是 RTX 5090
 上完成 CTA/pipeline/fragment reuse 消融后的选择，不强制 O3/O4 使用相同 CTA。两者均使用 16 个
 consumer warp；O3 每 warp 覆盖一个 `m16n8` fragment，O4 每 warp 覆盖两个相邻
 `m16n8` fragment，均无重复、无缺口。CTA 形状不要求与
@@ -186,3 +187,9 @@ activation_bit_weights      # O4
 weight_bit_weights          # O4
 paper_alignment
 ```
+
+O3 的 production 晋升还需记录 `shared_to_register_copy`。共享 GPU 存在已知外部
+进程、且按实验约束不等待空闲时，均值 bootstrap 对单个调度离群值过度敏感；此时
+不得隐去原始 CV 与均值区间，但可使用24样本配对速度中位数及其 bootstrap 95% CI
+作为 production 判断。当前 LDSM 候选在两次独立24样本测试中的中位区间分别为
+`[1.0223,1.0281]` 与 `[1.0148,1.0351]`，MSE完全一致，且指令/资源审计无 spill。

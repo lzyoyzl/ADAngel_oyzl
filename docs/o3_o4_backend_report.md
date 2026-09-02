@@ -90,12 +90,14 @@ column/group 解码一次 W scale。
 
 该 CTA 是在 RTX 5090 上完成 N16/N64 与 pipeline K128/K256 消融后的选择。N64
 虽然减少 CTA 数并提高 A tile 复用，但需要 96 registers/thread 和约 83 KiB dynamic
-shared memory，只允许 1 CTA/SM；N16 使用 53 registers/thread 和约 35 KiB dynamic
+shared memory，只允许 1 CTA/SM；N16 production 使用55 registers/thread 和约35 KiB dynamic
 shared memory，可驻留 2 CTA/SM，实测 occupancy 约 69.8%，因此整体更快。
 
-subbyte operand 的寄存器装载不依赖猜测的 `ldmatrix` 组合，而是直接按 pinned CUTLASS
-中 `SM80_16x8x64` MMA trait 推导 lane→A/B/C 寄存器坐标。正式 PTX/SASS 仍执行
-目标 INT4 MMA；shared memory 只承担 TMA staging，不承担 partial 中转。
+production `n16_k128_cute_ldsm` 使用 pinned CUTLASS 的底层
+`SM75_U32x4_LDSM_N`/`SM75_U32x2_LDSM_N` wrapper，按已验证的
+`m16n8k64` lane/fragment 映射从 shared memory 装入 A/B subbyte operand。正式
+PTX/SASS 仍执行目标 INT4 MMA；shared memory 只承担 TMA staging，不承担 partial
+中转，INT32 partial 与 FP32 accumulator 始终留在寄存器。
 
 ## 4. O4：论文 Bitwise
 
