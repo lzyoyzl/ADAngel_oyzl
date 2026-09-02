@@ -26,6 +26,7 @@ IMPLEMENTATIONS = {
         "n16_k128_cute_ldsm",
         "n32_k128_cute_ldsm",
         "n16_k128_ldsm_swizzle",
+        "n16_k128_ldsm_split_chains",
     ),
     "o4": (
         "n64_k256",

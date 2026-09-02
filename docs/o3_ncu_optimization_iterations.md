@@ -300,3 +300,22 @@ bootstrap 95% CI 分别为 `[1.0223,1.0281]` 与 `[1.0148,1.0351]`。均值区�
 一致；O1/O2 MSE也未变化。该 run 期间另一个 Python 进程占用约13.4 GiB，导致
 451/480条记录 CV 超过3%，所以本轮绝对延迟仅作为受干扰诊断，不替换此前稳定性能
 表。该限制不影响正确性、MSE、production metadata或指令/资源验收结论。
+
+## Iteration 8：LDSM + 独立 K64 accumulator chains
+
+NCU 在显式 LDSM 后仍显示 `math_pipe_throttle≈4.18 cycles/issue`，说明 shared load
+减少后，packed-INT4 lowering 与 MMA 依赖链成为主瓶颈。早期 `n16_k128_dual`
+会同时预载两个 K64 subgroup 的 A/B operand，并因寄存器压力产生非零 stack，已被
+审计淘汰。本轮新增 `n16_k128_ldsm_split_chains`，采用不同策略：
+
+- 保持 production 的 `128×16×128` CTA、TMA、两阶段 pipeline 和显式 LDSM；
+- 仍按 subgroup 0→1 逐组装入 operand，不同时预载两组 fragment；
+- 两个 K64 subgroup 分别累加到独立 INT32 register chain；
+- 完成该 G128 后再按原顺序合并两条 chain、执行 `low+16*high`、G128 scale 和
+  FP32 FMA；
+- 不改变 Q4、Split、MSE、转换或四种计时语义。
+
+目标是用约8个额外 accumulator register 换取两条可并行调度的 K64 MMA依赖链，
+同时避免旧双缓冲候选的 operand preload 与 spill。候选必须先通过无 spill审计，
+再进入正确性与配对性能测试；production 在验收前保持
+`n16_k128_cute_ldsm`。

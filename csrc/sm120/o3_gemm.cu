@@ -61,6 +61,7 @@ struct O3Config {
   static constexpr int kAStageBytes = kTileM * kAStageRowBytes;
   static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = DualK64Chains;
+  static constexpr bool kIndependentK64Chains = false;
   static constexpr bool kSwizzledSharedRows = false;
   static constexpr bool kUseCuteLdsm = UseCuteLdsm;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
@@ -130,6 +131,7 @@ struct O3SwizzledConfig {
   static constexpr int kAStageBytes = kTileM * kAStageRowBytes;
   static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = false;
+  static constexpr bool kIndependentK64Chains = false;
   static constexpr bool kSwizzledSharedRows = true;
   static constexpr bool kUseCuteLdsm = UseLdsm;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
@@ -168,6 +170,10 @@ using O3N16K128CuteLdsmConfig = O3Config<16, 1, false, 128, true>;
 using O3N32K128CuteLdsmConfig = O3Config<32, 1, false, 128, true>;
 using O3N16K128LdsmSwizzleConfig = O3SwizzledConfig<16, true>;
 
+struct O3N16K128LdsmSplitChainsConfig : O3N16K128CuteLdsmConfig {
+  static constexpr bool kIndependentK64Chains = true;
+};
+
 constexpr const char* kProductionO3Implementation = "n16_k128_cute_ldsm";
 
 enum class O3Implementation {
@@ -184,6 +190,7 @@ enum class O3Implementation {
   kN16K128CuteLdsm,
   kN32K128CuteLdsm,
   kN16K128LdsmSwizzle,
+  kN16K128LdsmSplitChains,
 };
 
 O3Implementation parse_o3_implementation(const std::string& implementation) {
@@ -205,6 +212,9 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   if (selected == "n32_k128_cute_ldsm") return O3Implementation::kN32K128CuteLdsm;
   if (selected == "n16_k128_ldsm_swizzle") {
     return O3Implementation::kN16K128LdsmSwizzle;
+  }
+  if (selected == "n16_k128_ldsm_split_chains") {
+    return O3Implementation::kN16K128LdsmSplitChains;
   }
   TORCH_CHECK(false, "unknown O3 implementation: ", implementation);
   return O3Implementation::kN16K128;
@@ -725,18 +735,28 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
               b0 = b_words[b_row * kBWordsPerRow + word_base];
               b1 = b_words[b_row * kBWordsPerRow + word_base + 4];
             }
+            const int accumulator_chain =
+                Config::kIndependentK64Chains ? subgroup : 0;
             LowMma::fma(
-                low[0][replica][0], low[0][replica][1],
-                low[0][replica][2], low[0][replica][3],
+                low[accumulator_chain][replica][0],
+                low[accumulator_chain][replica][1],
+                low[accumulator_chain][replica][2],
+                low[accumulator_chain][replica][3],
                 la0, la1, la2, la3, b0, b1,
-                low[0][replica][0], low[0][replica][1],
-                low[0][replica][2], low[0][replica][3]);
+                low[accumulator_chain][replica][0],
+                low[accumulator_chain][replica][1],
+                low[accumulator_chain][replica][2],
+                low[accumulator_chain][replica][3]);
             HighMma::fma(
-                high[0][replica][0], high[0][replica][1],
-                high[0][replica][2], high[0][replica][3],
+                high[accumulator_chain][replica][0],
+                high[accumulator_chain][replica][1],
+                high[accumulator_chain][replica][2],
+                high[accumulator_chain][replica][3],
                 ha0, ha1, ha2, ha3, b0, b1,
-                high[0][replica][0], high[0][replica][1],
-                high[0][replica][2], high[0][replica][3]);
+                high[accumulator_chain][replica][0],
+                high[accumulator_chain][replica][1],
+                high[accumulator_chain][replica][2],
+                high[accumulator_chain][replica][3]);
           }
         }
       }
@@ -749,7 +769,9 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
         const int scale_base = (stage * kGroupsPerStage + inner_group) * kTileN;
         const float column_scale0 = storage.column_scale[scale_base + local_column0];
         const float column_scale1 = storage.column_scale[scale_base + local_column1];
-        const int chain_count = Config::kDualK64Chains ? kKSubgroups : 1;
+        const int chain_count =
+            (Config::kDualK64Chains || Config::kIndependentK64Chains)
+            ? kKSubgroups : 1;
         int32_t partial[4] = {};
 #pragma unroll
         for (int chain = 0; chain < chain_count; ++chain) {
@@ -868,13 +890,15 @@ py::dict kernel_metadata(
   result["groups_per_pipeline_stage"] = Config::kGroupsPerStage;
   result["dynamic_shared_memory_bytes"] = sizeof(typename Config::SharedStorage);
   result["instruction_double_buffer"] = Config::kDualK64Chains;
+  result["operand_preload_double_buffer"] = Config::kDualK64Chains;
   result["shared_row_stride_bytes"] = Config::kAStageRowBytes;
   result["shared_bank_conflict_mitigation"] =
       Config::kSwizzledSharedRows ? "tma_swizzle_64b" : "none";
   result["shared_to_register_copy"] =
       Config::kUseCuteLdsm ? "explicit_ldmatrix_fragment" : "scalar_ld_shared";
   result["independent_k64_accumulator_chains"] =
-      Config::kDualK64Chains ? kKSubgroups : 1;
+      (Config::kDualK64Chains || Config::kIndependentK64Chains)
+      ? kKSubgroups : 1;
   result["producer_warps"] = 1;
   result["consumer_warps"] = Config::kConsumerWarps;
   result["group_size"] = kGroupSize;
@@ -1089,6 +1113,13 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n16_k128_ldsm_swizzle",
         "adangel_o3_split_tma_ws<O3SwizzledConfig<16,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128LdsmSplitChains) {
+    return benchmark_o3_config<O3N16K128LdsmSplitChainsConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_ldsm_split_chains",
+        "adangel_o3_split_tma_ws<O3N16K128LdsmSplitChainsConfig>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   return benchmark_o3_config<O3N16K128Config>(

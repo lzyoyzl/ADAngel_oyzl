@@ -186,6 +186,7 @@ case "$o3_production_impl" in
   n16_k128_cute_ldsm) o3_production_needle=O3ConfigILi16ELi1ELb0ELi128ELb1E ;;
   n32_k128_cute_ldsm) o3_production_needle=O3ConfigILi32ELi1ELb0ELi128ELb1E ;;
   n16_k128_ldsm_swizzle) o3_production_needle=O3SwizzledConfigILi16ELb1E ;;
+  n16_k128_ldsm_split_chains) o3_production_needle=O3N16K128LdsmSplitChainsConfig ;;
   *) echo "unknown O3 production implementation: $o3_production_impl" >&2; exit 1 ;;
 esac
 
@@ -347,6 +348,7 @@ audit_o34_candidate o3 m64_n16_k128_cute_ldsm O3ConfigILi16ELi1ELb0ELi64ELb1E
 audit_o34_candidate o3 n16_k128_cute_ldsm O3ConfigILi16ELi1ELb0ELi128ELb1E
 audit_o34_candidate o3 n32_k128_cute_ldsm O3ConfigILi32ELi1ELb0ELi128ELb1E
 audit_o34_candidate o3 n16_k128_ldsm_swizzle O3SwizzledConfigILi16ELb1E
+audit_o34_candidate o3 n16_k128_ldsm_split_chains O3N16K128LdsmSplitChainsConfig
 audit_o34_candidate o4 n64_k256 O4ConfigILi128ELi64ELi2ELi8ELi1ELb0
 audit_o34_candidate o4 n64_k256_split2 O4ConfigILi128ELi64ELi2ELi8ELi2ELb0
 audit_o34_candidate o4 n64_k256_cache_b O4ConfigILi128ELi64ELi2ELi8ELi1ELb1
