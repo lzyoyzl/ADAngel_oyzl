@@ -173,17 +173,18 @@ esac
 o3_production_impl=$(sed -n 's/.*kProductionO3Implementation.*"\([^"]*\)".*/\1/p' \
   "$source_root/csrc/sm120/o3_gemm.cu" | head -n 1)
 case "$o3_production_impl" in
-  n16_k128) o3_production_needle=O3ConfigILi16ELi1ELb0 ;;
-  n16_k256) o3_production_needle=O3ConfigILi16ELi2ELb0 ;;
-  n32_k128) o3_production_needle=O3ConfigILi32ELi1ELb0 ;;
-  n16_k128_dual) o3_production_needle=O3ConfigILi16ELi1ELb1 ;;
-  n32_k256_dual) o3_production_needle=O3ConfigILi32ELi2ELb1 ;;
+  n16_k128) o3_production_needle=O3ConfigILi16ELi1ELb0ELi128ELb0E ;;
+  n16_k256) o3_production_needle=O3ConfigILi16ELi2ELb0ELi128ELb0E ;;
+  n32_k128) o3_production_needle=O3ConfigILi32ELi1ELb0ELi128ELb0E ;;
+  n16_k128_dual) o3_production_needle=O3ConfigILi16ELi1ELb1ELi128ELb0E ;;
+  n32_k256_dual) o3_production_needle=O3ConfigILi32ELi2ELb1ELi128ELb0E ;;
   n16_k128_swizzle) o3_production_needle=O3SwizzledConfigILi16E ;;
   n32_k128_swizzle) o3_production_needle=O3SwizzledConfigILi32E ;;
   m64_n16_k128) o3_production_needle=O3ConfigILi16ELi1ELb0ELi64E ;;
   m64_n32_k128) o3_production_needle=O3ConfigILi32ELi1ELb0ELi64E ;;
   m64_n16_k128_cute_ldsm) o3_production_needle=O3ConfigILi16ELi1ELb0ELi64ELb1E ;;
   n16_k128_cute_ldsm) o3_production_needle=O3ConfigILi16ELi1ELb0ELi128ELb1E ;;
+  n32_k128_cute_ldsm) o3_production_needle=O3ConfigILi32ELi1ELb0ELi128ELb1E ;;
   n16_k128_ldsm_swizzle) o3_production_needle=O3SwizzledConfigILi16ELb1E ;;
   *) echo "unknown O3 production implementation: $o3_production_impl" >&2; exit 1 ;;
 esac
@@ -344,6 +345,7 @@ audit_o34_candidate o3 m64_n16_k128 O3ConfigILi16ELi1ELb0ELi64E
 audit_o34_candidate o3 m64_n32_k128 O3ConfigILi32ELi1ELb0ELi64E
 audit_o34_candidate o3 m64_n16_k128_cute_ldsm O3ConfigILi16ELi1ELb0ELi64ELb1E
 audit_o34_candidate o3 n16_k128_cute_ldsm O3ConfigILi16ELi1ELb0ELi128ELb1E
+audit_o34_candidate o3 n32_k128_cute_ldsm O3ConfigILi32ELi1ELb0ELi128ELb1E
 audit_o34_candidate o3 n16_k128_ldsm_swizzle O3SwizzledConfigILi16ELb1E
 audit_o34_candidate o4 n64_k256 O4ConfigILi128ELi64ELi2ELi8ELi1ELb0
 audit_o34_candidate o4 n64_k256_split2 O4ConfigILi128ELi64ELi2ELi8ELi2ELb0

@@ -230,3 +230,32 @@ TMA、两级 pipeline 和 INT4 MMA 语义，仅组合两项已分别通过正确
 该候选用于检验较高 CTA residency 能否与减少 shared 指令数形成可叠加收益。正式
 后端仍保持 `n16_k128`，在服务器完成小规模正确性、`4096³`、NCU 和24样本配对之前
 不切换生产选择。
+
+### Iteration 6 结果：较小 M tile 未能增加 LDSM 收益
+
+候选通过 `128³` 逐元素一致和 `4096³` 数值验证，最大绝对误差仍为
+`9.1552734375e-05`。测试时 GPU 上存在另一个约占用 `13.9 GiB`、约50%利用率的
+Python 进程，绝对延迟与 CV 因而不能同此前空闲短测直接比较。采用同进程、同输入
+交错 A/B 后，单样本 compute-only 结果为：
+
+| Implementation | Median (ms) | 相对生产基线 |
+|---|---:|---:|
+| `n16_k128` | 2.410912 | 1.000x |
+| `n16_k128_cute_ldsm` | 2.350176 | 1.026x |
+| `m64_n16_k128_cute_ldsm` | 2.366048 | 1.019x |
+
+三者相对 O0 的 MSE 完全一致。缩小 M tile 后 LDSM 收益反而下降，因此组合候选被
+淘汰。24样本的 `n16_k128_cute_ldsm` 对照中，compute-only 有21/24个样本胜出，
+配对加速中位数为 `1.0245x`；但共享 GPU 外部负载导致 CV 普遍超标，并出现一个
+严重离群样本，bootstrap 95% CI 为 `[0.9674, 1.0550]`，尚不能按严格统计门槛晋升。
+
+审计确认两个 LDSM 候选均为 `STACK=0`、`LOCAL=0`，不存在寄存器 spill。另将生产
+kernel 的审计 needle 从宽前缀收紧为完整模板参数，避免误命中 M64 候选。
+
+## Iteration 7：`N32` 与显式 LDSM 组合
+
+新增 `n32_k128_cute_ldsm`，CTA 为 `128×32×128`。它保持16个 consumer warp，
+每个 warp 计算两个 N replica，使同一份 A fragment 在两组 B fragment/MMA 间复用。
+目标是降低每个输出对应的 A LDSM、A TMA 和 producer 开销，同时继续保留 G128
+独立 scale、两路 INT4 MMA、寄存器 partial 与单次输出写回。候选仍需依次通过编译、
+小规模正确性、4096³、资源/指令审计和真实样本配对验证。

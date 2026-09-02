@@ -165,6 +165,7 @@ using O3M64N16K128Config = O3Config<16, 1, false, 64>;
 using O3M64N32K128Config = O3Config<32, 1, false, 64>;
 using O3M64N16K128CuteLdsmConfig = O3Config<16, 1, false, 64, true>;
 using O3N16K128CuteLdsmConfig = O3Config<16, 1, false, 128, true>;
+using O3N32K128CuteLdsmConfig = O3Config<32, 1, false, 128, true>;
 using O3N16K128LdsmSwizzleConfig = O3SwizzledConfig<16, true>;
 
 constexpr const char* kProductionO3Implementation = "n16_k128";
@@ -181,6 +182,7 @@ enum class O3Implementation {
   kM64N32K128,
   kM64N16K128CuteLdsm,
   kN16K128CuteLdsm,
+  kN32K128CuteLdsm,
   kN16K128LdsmSwizzle,
 };
 
@@ -200,6 +202,7 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
     return O3Implementation::kM64N16K128CuteLdsm;
   }
   if (selected == "n16_k128_cute_ldsm") return O3Implementation::kN16K128CuteLdsm;
+  if (selected == "n32_k128_cute_ldsm") return O3Implementation::kN32K128CuteLdsm;
   if (selected == "n16_k128_ldsm_swizzle") {
     return O3Implementation::kN16K128LdsmSwizzle;
   }
@@ -1072,6 +1075,13 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n16_k128_cute_ldsm",
         "adangel_o3_split_tma_ws<O3Config<16,1,false,128,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN32K128CuteLdsm) {
+    return benchmark_o3_config<O3N32K128CuteLdsmConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n32_k128_cute_ldsm",
+        "adangel_o3_split_tma_ws<O3Config<32,1,false,128,true>>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   if (selected == O3Implementation::kN16K128LdsmSwizzle) {
