@@ -75,7 +75,7 @@ struct O3Config {
 };
 
 // NCU reports a four-way conflict for every packed A/B shared-memory load in
-// the production row-major layout.  Use CUTLASS' native 128-byte TMA-compatible
+// the production row-major layout.  Use CUTLASS' native 64-byte TMA-compatible
 // swizzle atom over each 8x64-byte packed tile.  Unlike arbitrary row padding,
 // this layout is encoded in the TMA descriptor and preserves the compact stage
 // allocation while rotating the K-byte address with the logical row bits.
@@ -98,7 +98,7 @@ struct O3SwizzledConfig {
   static constexpr bool kSwizzledSharedRows = true;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using SwizzleAtom = decltype(cute::composition(
-      cute::Swizzle<3, 4, 3>{},
+      cute::Swizzle<2, 4, 3>{},
       cute::Layout<
           cute::Shape<cute::_8, cute::_64>,
           cute::Stride<cute::_64, cute::_1>>{}));
@@ -630,7 +630,7 @@ py::dict kernel_metadata(
   result["instruction_double_buffer"] = Config::kDualK64Chains;
   result["shared_row_stride_bytes"] = Config::kAStageRowBytes;
   result["shared_bank_conflict_mitigation"] =
-      Config::kSwizzledSharedRows ? "tma_swizzle_128b" : "none";
+      Config::kSwizzledSharedRows ? "tma_swizzle_64b" : "none";
   result["independent_k64_accumulator_chains"] =
       Config::kDualK64Chains ? kKSubgroups : 1;
   result["producer_warps"] = 1;

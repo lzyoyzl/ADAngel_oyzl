@@ -56,21 +56,22 @@ column 覆盖32个bank。TMA仍只搬运64个逻辑bytes，额外16 bytes仅作�
 `CUDA error: misaligned address`。原因是任意80-byte row stride不满足当前 TMA shared
 descriptor/swizzle 的运行时对齐约束。候选在进入性能测量前淘汰，不改变 production。
 
-## Iteration 2：TMA-native 128-byte swizzle
+## Iteration 2：TMA-native shared swizzle
 
 候选：
 
 - `n16_k128_swizzle`
 - `n32_k128_swizzle`
 
-用 CUTLASS `composition(Swizzle<3,4,3>, Layout<8×64,row-major>)` 构造 TMA 原生
+用 CUTLASS `composition(Swizzle<2,4,3>, Layout<8×64,row-major>)` 构造 TMA B64
 shared layout，再 tile 到完整 CTA/stage shape。物理容量仍为紧凑64 bytes/row；consumer
 通过同一个 CuTe layout 计算每个 `uint32_t` fragment 地址。N16隔离swizzle，N32继续检查
 A fragment复用。
 
-最初尝试的 Ampere `Swizzle<3,3,3>` 被 CUTLASS TMA trait 在编译期拒绝；CUDA 12.8
-要求128B swizzle使用16B base，即 `Swizzle<3,4,3>`。对当前64-byte packed row，该
-映射给八个 row group 产生 `0,16,4,20,8,24,12,28` 的bank起点。
+最初尝试的 Ampere `Swizzle<3,3,3>` 被 CUTLASS TMA trait 在编译期拒绝；随后使用的
+B128 `Swizzle<3,4,3>` 虽可运行，但其128-byte窗口与64-byte packed row不匹配，输出
+错误。最终候选改为窗口一致的 B64 `Swizzle<2,4,3>`。该映射仍给八个 row group
+产生 `0,16,4,20,8,24,12,28` 的bank起点。
 
 第一次运行该 swizzle 后输出不匹配。CUTLASS 的 B128 swizzle 以1024-byte对齐的 shared
 base 为寻址基准，而原 kernel 只声明128-byte动态shared对齐；Iteration 2.1 将 shared

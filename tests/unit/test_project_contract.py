@@ -57,7 +57,7 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('using O3N16K128DualConfig = O3Config<16, 1, true>', o3)
         self.assertIn('using O3N16K128SwizzleConfig = O3SwizzledConfig<16>', o3)
         self.assertIn('using O3N32K128SwizzleConfig = O3SwizzledConfig<32>', o3)
-        self.assertIn('"tma_swizzle_128b"', o3)
+        self.assertIn('"tma_swizzle_64b"', o3)
         self.assertIn('independent_k64_accumulator_chains', o3)
         self.assertIn(
             'kProductionO4Implementation = "m64_n64_k512_optimized"', o4
