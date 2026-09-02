@@ -37,6 +37,10 @@ IMPLEMENTATIONS = {
         "m64_n64_k512_optimized",
     ),
 }
+PRODUCTION_IMPLEMENTATIONS = {
+    "o3": "n16_k128_cute_ldsm",
+    "o4": "m64_n64_k512_optimized",
+}
 MODES = ("compute_only", "cold", "steady_state")
 
 
@@ -122,7 +126,7 @@ def main() -> int:
         native._benchmark_o3_impl if args.variant == "o3" else native._benchmark_o4_impl
     )
     available = IMPLEMENTATIONS[args.variant]
-    baseline = available[0]
+    baseline = PRODUCTION_IMPLEMENTATIONS[args.variant]
     if args.implementations:
         unknown = sorted(set(args.implementations) - set(available))
         if unknown:
@@ -134,7 +138,9 @@ def main() -> int:
         )
         implementations = tuple(dict.fromkeys(implementations))
     else:
-        implementations = available
+        implementations = (baseline,) + tuple(
+            implementation for implementation in available if implementation != baseline
+        )
     manifest = json.loads((args.data / "manifest.json").read_text(encoding="utf-8"))
     validate_manifest(manifest, formal=args.samples == 0)
     samples = manifest["samples"][: args.samples or None]
@@ -238,10 +244,16 @@ def main() -> int:
             for record in records
             if record["implementation"] in {baseline, candidate}
         )
-        compute_ci = by_mode["compute_only"]["paired_speedup_bootstrap_95ci"]
+        promotion_ci_metric = (
+            "paired_speedup_median_bootstrap_95ci"
+            if args.cv_policy == "diagnostic"
+            else "paired_speedup_bootstrap_95ci"
+        )
+        compute_ci = by_mode["compute_only"][promotion_ci_metric]
         performance_eligible = compute_ci[0] > 1.0 and mse_passed
         comparisons[candidate] = {
             "by_mode": by_mode,
+            "promotion_ci_metric": promotion_ci_metric,
             "mse_regression_passed": mse_passed,
             "all_timing_stages_cv_below_threshold": all_stable,
             "performance_eligible_except_spill_audit": performance_eligible,
@@ -268,8 +280,9 @@ def main() -> int:
         "records": records,
         "comparisons": comparisons,
         "promotion_rule": (
-            "correctness and MSE pass; paired compute speedup bootstrap 95% CI lower bound "
-            "> 1; same-entry TMA+MMA and zero-spill resource audit pass"
+            "correctness and MSE pass; paired compute speedup bootstrap 95% CI lower "
+            "bound > 1 (median CI for diagnostic policy, mean CI for strict policy); "
+            "same-entry TMA+MMA and zero-spill resource audit pass"
         ),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -73,6 +73,12 @@ class TestProjectContract(unittest.TestCase):
         )
         self.assertIn("O3N16K128LdsmSplitChainsConfig", o3)
         self.assertIn("kIndependentK64Chains = true", o3)
+        benchmark = (
+            ROOT / "scripts/benchmark_o3_o4_implementations.py"
+        ).read_text()
+        self.assertIn('"o3": "n16_k128_cute_ldsm"', benchmark)
+        self.assertIn("PRODUCTION_IMPLEMENTATIONS[args.variant]", benchmark)
+        self.assertIn("paired_speedup_median_bootstrap_95ci", benchmark)
         self.assertIn('"tma_swizzle_64b"', o3)
         self.assertIn('independent_k64_accumulator_chains', o3)
         self.assertIn(

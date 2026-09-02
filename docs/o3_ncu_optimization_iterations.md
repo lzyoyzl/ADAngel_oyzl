@@ -319,3 +319,25 @@ NCU 在显式 LDSM 后仍显示 `math_pipe_throttle≈4.18 cycles/issue`，说�
 同时避免旧双缓冲候选的 operand preload 与 spill。候选必须先通过无 spill审计，
 再进入正确性与配对性能测试；production 在验收前保持
 `n16_k128_cute_ldsm`。
+
+### Iteration 8 结果：独立 chain 使 math-pipe 更拥塞
+
+候选通过 `128³` 逐元素一致、`4096³` 数值验证和同入口指令审计；资源为56
+regs/thread、`STACK=0`、`LOCAL=0`，成功避免 spill。三方同进程单样本测量中：
+
+| Implementation | Compute-only median (ms) |
+|---|---:|
+| 旧 `n16_k128` | 2.395760 |
+| production `n16_k128_cute_ldsm` | 2.369520 |
+| `n16_k128_ldsm_split_chains` | 2.474288 |
+
+候选比当前 production 慢约4.4%，MSE完全一致。定向 NCU 进一步确认：duration 从
+`2.024000 ms` 增到 `2.081344 ms`，动态 SASS 从 `2.6000B` 增到 `2.6151B`，
+`math_pipe_throttle` 从 `4.1784` 增到 `4.1992 cycles/issue`。因此两个独立 chain
+没有带来可利用的 MMA 并行，反而延长 accumulator 活跃范围并增加合并/调度压力；
+该候选淘汰，production 保持不变。
+
+本轮还修正候选基准脚本：过去将候选列表第一项硬编码为 baseline，production 晋升
+后仍会错误地与旧 `n16_k128` 比较。现在 O3/O4 baseline 显式绑定各自当前
+production；diagnostic policy 使用对离群值更稳健的配对中位数 bootstrap CI，strict
+policy 继续使用配对均值 CI。报告会明确记录实际 baseline 与晋升 CI 指标。
