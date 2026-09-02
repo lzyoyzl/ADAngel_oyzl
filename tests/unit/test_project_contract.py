@@ -68,6 +68,9 @@ class TestProjectContract(unittest.TestCase):
             o3,
         )
         self.assertIn('"explicit_ldmatrix_fragment"', o3)
+        self.assertIn(
+            'using O3N16K128LdsmSwizzleConfig = O3SwizzledConfig<16, true>', o3
+        )
         self.assertIn('"tma_swizzle_64b"', o3)
         self.assertIn('independent_k64_accumulator_chains', o3)
         self.assertIn(

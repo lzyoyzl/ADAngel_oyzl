@@ -183,6 +183,7 @@ case "$o3_production_impl" in
   m64_n16_k128) o3_production_needle=O3ConfigILi16ELi1ELb0ELi64E ;;
   m64_n32_k128) o3_production_needle=O3ConfigILi32ELi1ELb0ELi64E ;;
   n16_k128_cute_ldsm) o3_production_needle=O3ConfigILi16ELi1ELb0ELi128ELb1E ;;
+  n16_k128_ldsm_swizzle) o3_production_needle=O3SwizzledConfigILi16ELb1E ;;
   *) echo "unknown O3 production implementation: $o3_production_impl" >&2; exit 1 ;;
 esac
 
@@ -341,6 +342,7 @@ audit_o34_candidate o3 n32_k128_swizzle O3SwizzledConfigILi32E
 audit_o34_candidate o3 m64_n16_k128 O3ConfigILi16ELi1ELb0ELi64E
 audit_o34_candidate o3 m64_n32_k128 O3ConfigILi32ELi1ELb0ELi64E
 audit_o34_candidate o3 n16_k128_cute_ldsm O3ConfigILi16ELi1ELb0ELi128ELb1E
+audit_o34_candidate o3 n16_k128_ldsm_swizzle O3SwizzledConfigILi16ELb1E
 audit_o34_candidate o4 n64_k256 O4ConfigILi128ELi64ELi2ELi8ELi1ELb0
 audit_o34_candidate o4 n64_k256_split2 O4ConfigILi128ELi64ELi2ELi8ELi2ELb0
 audit_o34_candidate o4 n64_k256_cache_b O4ConfigILi128ELi64ELi2ELi8ELi1ELb1

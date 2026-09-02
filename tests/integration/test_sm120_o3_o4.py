@@ -160,6 +160,7 @@ def test_arbitrary_bit_twos_complement_extremes(variant):
         "m64_n16_k128",
         "m64_n32_k128",
         "n16_k128_cute_ldsm",
+        "n16_k128_ldsm_swizzle",
     ),
 )
 def test_o3_internal_optimization_candidates_match_production(implementation):

@@ -109,7 +109,7 @@ struct O3Config {
 // swizzle atom over each 8x64-byte packed tile.  Unlike arbitrary row padding,
 // this layout is encoded in the TMA descriptor and preserves the compact stage
 // allocation while rotating the K-byte address with the logical row bits.
-template <int TileN>
+template <int TileN, bool UseLdsm = false>
 struct O3SwizzledConfig {
   static constexpr int kTileM = 128;
   static constexpr int kTileN = TileN;
@@ -131,7 +131,7 @@ struct O3SwizzledConfig {
   static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = false;
   static constexpr bool kSwizzledSharedRows = true;
-  static constexpr bool kUseCuteLdsm = false;
+  static constexpr bool kUseCuteLdsm = UseLdsm;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using SwizzleAtom = decltype(cute::composition(
       cute::Swizzle<2, 4, 3>{},
@@ -164,6 +164,7 @@ using O3N32K128SwizzleConfig = O3SwizzledConfig<32>;
 using O3M64N16K128Config = O3Config<16, 1, false, 64>;
 using O3M64N32K128Config = O3Config<32, 1, false, 64>;
 using O3N16K128CuteLdsmConfig = O3Config<16, 1, false, 128, true>;
+using O3N16K128LdsmSwizzleConfig = O3SwizzledConfig<16, true>;
 
 constexpr const char* kProductionO3Implementation = "n16_k128";
 
@@ -178,6 +179,7 @@ enum class O3Implementation {
   kM64N16K128,
   kM64N32K128,
   kN16K128CuteLdsm,
+  kN16K128LdsmSwizzle,
 };
 
 O3Implementation parse_o3_implementation(const std::string& implementation) {
@@ -193,6 +195,9 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   if (selected == "m64_n16_k128") return O3Implementation::kM64N16K128;
   if (selected == "m64_n32_k128") return O3Implementation::kM64N32K128;
   if (selected == "n16_k128_cute_ldsm") return O3Implementation::kN16K128CuteLdsm;
+  if (selected == "n16_k128_ldsm_swizzle") {
+    return O3Implementation::kN16K128LdsmSwizzle;
+  }
   TORCH_CHECK(false, "unknown O3 implementation: ", implementation);
   return O3Implementation::kN16K128;
 }
@@ -632,12 +637,20 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
             const int a_row = warp_m * 16 + (matrix & 1) * 8 + matrix_row;
             const int a_byte =
                 inner_group * kPackedK + subgroup * 32 + (matrix >> 1) * 16;
-            const auto* low_address =
-                storage.a_low + stage * kAStageBytes +
-                a_row * Config::kAStageRowBytes + a_byte;
-            const auto* high_address =
-                storage.a_high + stage * kAStageBytes +
-                a_row * Config::kAStageRowBytes + a_byte;
+            const uint8_t* low_address;
+            const uint8_t* high_address;
+            if constexpr (Config::kSwizzledSharedRows) {
+              const auto a_layout = ByteLayoutA{};
+              const int offset = a_layout(
+                  cute::make_coord(a_row, a_byte, stage));
+              low_address = storage.a_low + offset;
+              high_address = storage.a_high + offset;
+            } else {
+              const int offset = stage * kAStageBytes +
+                  a_row * Config::kAStageRowBytes + a_byte;
+              low_address = storage.a_low + offset;
+              high_address = storage.a_high + offset;
+            }
             cute::SM75_U32x4_LDSM_N::copy(
                 *reinterpret_cast<const cute::uint128_t*>(low_address),
                 la0, la1, la2, la3);
@@ -683,9 +696,15 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
               const int ldsm_b_row = atom_n * 8 + matrix_row;
               const int b_byte =
                   inner_group * kPackedK + subgroup * 32 + (matrix & 1) * 16;
-              const auto* b_address =
-                  storage.b + stage * kBStageBytes +
-                  ldsm_b_row * Config::kBStageRowBytes + b_byte;
+              const uint8_t* b_address;
+              if constexpr (Config::kSwizzledSharedRows) {
+                const auto b_layout = ByteLayoutB{};
+                b_address = storage.b + b_layout(
+                    cute::make_coord(ldsm_b_row, b_byte, stage));
+              } else {
+                b_address = storage.b + stage * kBStageBytes +
+                    ldsm_b_row * Config::kBStageRowBytes + b_byte;
+              }
               cute::SM75_U32x2_LDSM_N::copy(
                   *reinterpret_cast<const cute::uint128_t*>(b_address), b0, b1);
             } else if constexpr (Config::kSwizzledSharedRows) {
@@ -1041,6 +1060,13 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n16_k128_cute_ldsm",
         "adangel_o3_split_tma_ws<O3Config<16,1,false,128,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128LdsmSwizzle) {
+    return benchmark_o3_config<O3N16K128LdsmSwizzleConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_ldsm_swizzle",
+        "adangel_o3_split_tma_ws<O3SwizzledConfig<16,true>>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   return benchmark_o3_config<O3N16K128Config>(

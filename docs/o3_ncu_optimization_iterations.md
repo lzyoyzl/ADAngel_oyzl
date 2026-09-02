@@ -182,3 +182,29 @@ row-major byte layout 上。Iteration 4.2 保留 CuTe 的底层 LDSM 指令封�
 与 `m16n8k64` fragment 对应的 16-byte aligned shared 地址：A 的四个 `m8×n8×b16`
 矩阵由 `LDSM.x4` 装入，B 的两个矩阵由 `LDSM.x2` 装入；寄存器顺序仍由现有、已验证的
 INT4 MMA lane mapping消费。该版本再次从小规模逐元素正确性开始验证。
+
+### Iteration 4.2 服务器结果
+
+显式 LDSM 版本通过 `128³` 逐元素一致及 `4096³` 验证，最大绝对误差与基线相同。
+`4096³` compute-only 短测从 `2.090496 ms` 降至 `2.010272 ms`，提升约 3.99%，
+CV 为 0.506%。定向 NCU 结果为：
+
+| Metric | Production | explicit LDSM |
+|---|---:|---:|
+| NCU duration (compute pass, ms) | 2.073088 | 2.024000 |
+| Dynamic SASS | 2.777B | 2.600B |
+| Scalar shared-load instructions | 88.08M | 4.19M |
+| LDSM instructions | 0 | 25.17M |
+| Shared-load bank conflicts | 251.75M | 251.81M |
+| Registers/thread | 53 | 53 |
+| Math-pipe throttle (cycles/issue) | 3.93 | 4.18 |
+
+LDSM 成功减少约 6.4% 动态指令，但 row-major LDSM 仍有同量级 bank conflict，且剩余
+packed-INT4 lowering 令 math pipe 更拥塞。因此这是有效但有限的优化，尚不足以晋升。
+
+## Iteration 5：B64 TMA swizzle + explicit LDSM
+
+候选 `n16_k128_ldsm_swizzle` 组合 Iteration 2 已验证正确的 TMA B64 swizzle 与
+Iteration 4.2 的显式 LDSM fragment 装载。TMA descriptor 与 LDSM 均使用同一个 CuTe
+swizzle layout，LDSM 的每个 16-byte address 通过物理 layout 计算。目标是在保留 LDSM
+指令减少收益的同时消除其约 251.8M bank conflicts。生产实现仍保持不变。
