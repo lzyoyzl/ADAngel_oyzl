@@ -155,8 +155,8 @@ def test_arbitrary_bit_twos_complement_extremes(variant):
         "n32_k128",
         "n16_k128_dual",
         "n32_k256_dual",
-        "n16_k128_pad80",
-        "n32_k128_pad80",
+        "n16_k128_swizzle",
+        "n32_k128_swizzle",
     ),
 )
 def test_o3_internal_optimization_candidates_match_production(implementation):

@@ -53,6 +53,7 @@ struct O3Config {
   static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = DualK64Chains;
   static constexpr bool kPaddedSharedRows = false;
+  static constexpr bool kSwizzledSharedRows = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using ByteLayoutA = decltype(cute::make_layout(
       cute::make_shape(
@@ -75,13 +76,12 @@ struct O3Config {
 };
 
 // NCU reports a four-way conflict for every packed A/B shared-memory load in
-// the production row-major layout.  A K128 packed row contains 16 uint32_t
-// words.  Padding the physical row to 20 words rotates successive logical rows
-// by four banks (20 mod 32), so the eight row groups and four lane columns used
-// by one INT4 MMA cover all 32 banks exactly once.  The TMA transaction still
-// moves only the 64 logical bytes; the extra 16 bytes are physical row skew.
+// the production row-major layout.  Use CUTLASS' native 128-byte TMA-compatible
+// swizzle atom over each 8x64-byte packed tile.  Unlike arbitrary row padding,
+// this layout is encoded in the TMA descriptor and preserves the compact stage
+// allocation while rotating the K-byte address with the logical row bits.
 template <int TileN>
-struct O3PaddedConfig {
+struct O3SwizzledConfig {
   static constexpr int kTileM = 128;
   static constexpr int kTileN = TileN;
   static constexpr int kNReplicas = TileN / 16;
@@ -89,25 +89,27 @@ struct O3PaddedConfig {
   static constexpr int kStages = 2;
   static constexpr int kPipelinePackedK = kPackedK;
   static constexpr int kPipelineK = kGroupSize;
-  static constexpr int kAStageRowBytes = 80;
-  static constexpr int kBStageRowBytes = 80;
+  static constexpr int kAStageRowBytes = kPipelinePackedK;
+  static constexpr int kBStageRowBytes = kPipelinePackedK;
   static constexpr int kATransactionBytes = kTileM * kPipelinePackedK;
   static constexpr int kBTransactionBytes = kTileN * kPipelinePackedK;
   static constexpr int kAStageBytes = kTileM * kAStageRowBytes;
   static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = false;
-  static constexpr bool kPaddedSharedRows = true;
+  static constexpr bool kPaddedSharedRows = false;
+  static constexpr bool kSwizzledSharedRows = true;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
-  using ByteLayoutA = decltype(cute::make_layout(
-      cute::make_shape(
-          cute::Int<kTileM>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{}),
-      cute::make_stride(
-          cute::Int<kAStageRowBytes>{}, cute::_1{}, cute::Int<kAStageBytes>{})));
-  using ByteLayoutB = decltype(cute::make_layout(
-      cute::make_shape(
-          cute::Int<kTileN>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{}),
-      cute::make_stride(
-          cute::Int<kBStageRowBytes>{}, cute::_1{}, cute::Int<kBStageBytes>{})));
+  using SwizzleAtom = decltype(cute::composition(
+      cute::Swizzle<3, 3, 3>{},
+      cute::Layout<
+          cute::Shape<cute::_8, cute::_64>,
+          cute::Stride<cute::_64, cute::_1>>{}));
+  using ByteLayoutA = decltype(cute::tile_to_shape(
+      SwizzleAtom{}, cute::make_shape(
+          cute::Int<kTileM>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{})));
+  using ByteLayoutB = decltype(cute::tile_to_shape(
+      SwizzleAtom{}, cute::make_shape(
+          cute::Int<kTileN>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{})));
 
   struct alignas(128) SharedStorage {
     alignas(128) uint8_t a_low[kStages * kAStageBytes];
@@ -123,8 +125,8 @@ using O3N16K256Config = O3Config<16, 2, false>;
 using O3N32K128Config = O3Config<32, 1, false>;
 using O3N16K128DualConfig = O3Config<16, 1, true>;
 using O3N32K256DualConfig = O3Config<32, 2, true>;
-using O3N16K128Pad80Config = O3PaddedConfig<16>;
-using O3N32K128Pad80Config = O3PaddedConfig<32>;
+using O3N16K128SwizzleConfig = O3SwizzledConfig<16>;
+using O3N32K128SwizzleConfig = O3SwizzledConfig<32>;
 
 constexpr const char* kProductionO3Implementation = "n16_k128";
 
@@ -134,8 +136,8 @@ enum class O3Implementation {
   kN32K128,
   kN16K128Dual,
   kN32K256Dual,
-  kN16K128Pad80,
-  kN32K128Pad80,
+  kN16K128Swizzle,
+  kN32K128Swizzle,
 };
 
 O3Implementation parse_o3_implementation(const std::string& implementation) {
@@ -146,8 +148,8 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   if (selected == "n32_k128") return O3Implementation::kN32K128;
   if (selected == "n16_k128_dual") return O3Implementation::kN16K128Dual;
   if (selected == "n32_k256_dual") return O3Implementation::kN32K256Dual;
-  if (selected == "n16_k128_pad80") return O3Implementation::kN16K128Pad80;
-  if (selected == "n32_k128_pad80") return O3Implementation::kN32K128Pad80;
+  if (selected == "n16_k128_swizzle") return O3Implementation::kN16K128Swizzle;
+  if (selected == "n32_k128_swizzle") return O3Implementation::kN32K128Swizzle;
   TORCH_CHECK(false, "unknown O3 implementation: ", implementation);
   return O3Implementation::kN16K128;
 }
@@ -437,20 +439,51 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
 #pragma unroll
         for (int subgroup = 0; subgroup < kKSubgroups; ++subgroup) {
           const int word_base = inner_group * (kPackedK / 4) + subgroup * 8 + lane_i;
-          const uint32_t la0 = low_words[local_row0 * kAWordsPerRow + word_base];
-          const uint32_t la1 = low_words[local_row1 * kAWordsPerRow + word_base];
-          const uint32_t la2 = low_words[local_row0 * kAWordsPerRow + word_base + 4];
-          const uint32_t la3 = low_words[local_row1 * kAWordsPerRow + word_base + 4];
-          const uint32_t ha0 = high_words[local_row0 * kAWordsPerRow + word_base];
-          const uint32_t ha1 = high_words[local_row1 * kAWordsPerRow + word_base];
-          const uint32_t ha2 = high_words[local_row0 * kAWordsPerRow + word_base + 4];
-          const uint32_t ha3 = high_words[local_row1 * kAWordsPerRow + word_base + 4];
+          uint32_t la0, la1, la2, la3;
+          uint32_t ha0, ha1, ha2, ha3;
+          if constexpr (Config::kSwizzledSharedRows) {
+            const auto a_layout = ByteLayoutA{};
+            la0 = *reinterpret_cast<const uint32_t*>(
+                storage.a_low + a_layout(cute::make_coord(local_row0, word_base * 4, stage)));
+            la1 = *reinterpret_cast<const uint32_t*>(
+                storage.a_low + a_layout(cute::make_coord(local_row1, word_base * 4, stage)));
+            la2 = *reinterpret_cast<const uint32_t*>(
+                storage.a_low + a_layout(cute::make_coord(local_row0, (word_base + 4) * 4, stage)));
+            la3 = *reinterpret_cast<const uint32_t*>(
+                storage.a_low + a_layout(cute::make_coord(local_row1, (word_base + 4) * 4, stage)));
+            ha0 = *reinterpret_cast<const uint32_t*>(
+                storage.a_high + a_layout(cute::make_coord(local_row0, word_base * 4, stage)));
+            ha1 = *reinterpret_cast<const uint32_t*>(
+                storage.a_high + a_layout(cute::make_coord(local_row1, word_base * 4, stage)));
+            ha2 = *reinterpret_cast<const uint32_t*>(
+                storage.a_high + a_layout(cute::make_coord(local_row0, (word_base + 4) * 4, stage)));
+            ha3 = *reinterpret_cast<const uint32_t*>(
+                storage.a_high + a_layout(cute::make_coord(local_row1, (word_base + 4) * 4, stage)));
+          } else {
+            la0 = low_words[local_row0 * kAWordsPerRow + word_base];
+            la1 = low_words[local_row1 * kAWordsPerRow + word_base];
+            la2 = low_words[local_row0 * kAWordsPerRow + word_base + 4];
+            la3 = low_words[local_row1 * kAWordsPerRow + word_base + 4];
+            ha0 = high_words[local_row0 * kAWordsPerRow + word_base];
+            ha1 = high_words[local_row1 * kAWordsPerRow + word_base];
+            ha2 = high_words[local_row0 * kAWordsPerRow + word_base + 4];
+            ha3 = high_words[local_row1 * kAWordsPerRow + word_base + 4];
+          }
 #pragma unroll
           for (int replica = 0; replica < kNReplicas; ++replica) {
             const int atom_n = warp_n * kNReplicas + replica;
             const int b_row = atom_n * 8 + lane_j;
-            const uint32_t b0 = b_words[b_row * kBWordsPerRow + word_base];
-            const uint32_t b1 = b_words[b_row * kBWordsPerRow + word_base + 4];
+            uint32_t b0, b1;
+            if constexpr (Config::kSwizzledSharedRows) {
+              const auto b_layout = ByteLayoutB{};
+              b0 = *reinterpret_cast<const uint32_t*>(
+                  storage.b + b_layout(cute::make_coord(b_row, word_base * 4, stage)));
+              b1 = *reinterpret_cast<const uint32_t*>(
+                  storage.b + b_layout(cute::make_coord(b_row, (word_base + 4) * 4, stage)));
+            } else {
+              b0 = b_words[b_row * kBWordsPerRow + word_base];
+              b1 = b_words[b_row * kBWordsPerRow + word_base + 4];
+            }
             LowMma::fma(
                 low[0][replica][0], low[0][replica][1],
                 low[0][replica][2], low[0][replica][3],
@@ -596,7 +629,7 @@ py::dict kernel_metadata(
   result["instruction_double_buffer"] = Config::kDualK64Chains;
   result["shared_row_stride_bytes"] = Config::kAStageRowBytes;
   result["shared_bank_conflict_mitigation"] =
-      Config::kPaddedSharedRows ? "pad64_to_80_bytes" : "none";
+      Config::kSwizzledSharedRows ? "tma_swizzle_128b" : "none";
   result["independent_k64_accumulator_chains"] =
       Config::kDualK64Chains ? kKSubgroups : 1;
   result["producer_warps"] = 1;
@@ -763,16 +796,16 @@ py::dict adangel_benchmark_o3_impl(
         "n32_k256_dual", "adangel_o3_split_tma_ws<O3Config<32,2,true>>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
-  if (selected == O3Implementation::kN16K128Pad80) {
-    return benchmark_o3_config<O3N16K128Pad80Config>(
+  if (selected == O3Implementation::kN16K128Swizzle) {
+    return benchmark_o3_config<O3N16K128SwizzleConfig>(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
-        "n16_k128_pad80", "adangel_o3_split_tma_ws<O3PaddedConfig<16>>",
+        "n16_k128_swizzle", "adangel_o3_split_tma_ws<O3SwizzledConfig<16>>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
-  if (selected == O3Implementation::kN32K128Pad80) {
-    return benchmark_o3_config<O3N32K128Pad80Config>(
+  if (selected == O3Implementation::kN32K128Swizzle) {
+    return benchmark_o3_config<O3N32K128SwizzleConfig>(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
-        "n32_k128_pad80", "adangel_o3_split_tma_ws<O3PaddedConfig<32>>",
+        "n32_k128_swizzle", "adangel_o3_split_tma_ws<O3SwizzledConfig<32>>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   return benchmark_o3_config<O3N16K128Config>(

@@ -178,8 +178,8 @@ case "$o3_production_impl" in
   n32_k128) o3_production_needle=O3ConfigILi32ELi1ELb0 ;;
   n16_k128_dual) o3_production_needle=O3ConfigILi16ELi1ELb1 ;;
   n32_k256_dual) o3_production_needle=O3ConfigILi32ELi2ELb1 ;;
-  n16_k128_pad80) o3_production_needle=O3PaddedConfigILi16E ;;
-  n32_k128_pad80) o3_production_needle=O3PaddedConfigILi32E ;;
+  n16_k128_swizzle) o3_production_needle=O3SwizzledConfigILi16E ;;
+  n32_k128_swizzle) o3_production_needle=O3SwizzledConfigILi32E ;;
   *) echo "unknown O3 production implementation: $o3_production_impl" >&2; exit 1 ;;
 esac
 
@@ -333,8 +333,8 @@ audit_o34_candidate o3 n16_k256 O3ConfigILi16ELi2ELb0
 audit_o34_candidate o3 n32_k128 O3ConfigILi32ELi1ELb0
 audit_o34_candidate o3 n16_k128_dual O3ConfigILi16ELi1ELb1
 audit_o34_candidate o3 n32_k256_dual O3ConfigILi32ELi2ELb1
-audit_o34_candidate o3 n16_k128_pad80 O3PaddedConfigILi16E
-audit_o34_candidate o3 n32_k128_pad80 O3PaddedConfigILi32E
+audit_o34_candidate o3 n16_k128_swizzle O3SwizzledConfigILi16E
+audit_o34_candidate o3 n32_k128_swizzle O3SwizzledConfigILi32E
 audit_o34_candidate o4 n64_k256 O4ConfigILi128ELi64ELi2ELi8ELi1ELb0
 audit_o34_candidate o4 n64_k256_split2 O4ConfigILi128ELi64ELi2ELi8ELi2ELb0
 audit_o34_candidate o4 n64_k256_cache_b O4ConfigILi128ELi64ELi2ELi8ELi1ELb1

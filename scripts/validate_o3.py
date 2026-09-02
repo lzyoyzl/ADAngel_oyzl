@@ -28,8 +28,8 @@ def arguments():
             "n32_k128",
             "n16_k128_dual",
             "n32_k256_dual",
-            "n16_k128_pad80",
-            "n32_k128_pad80",
+            "n16_k128_swizzle",
+            "n32_k128_swizzle",
         ),
     )
     return parser.parse_args()

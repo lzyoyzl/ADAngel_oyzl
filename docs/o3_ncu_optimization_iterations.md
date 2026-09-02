@@ -35,7 +35,7 @@ NCU 基线证据：
 判断：首要成本是 SM120 对 packed INT4 operand 的拆位、符号扩展和寄存器准备；第二成本是
 packed row-major shared layout 的四路 bank conflict。DRAM、TMA、barrier 和 occupancy 不是首要瓶颈。
 
-## Iteration 1：80-byte padded shared row
+## Iteration 1：80-byte padded shared row（淘汰）
 
 候选：
 
@@ -52,7 +52,23 @@ column 覆盖32个bank。TMA仍只搬运64个逻辑bytes，额外16 bytes仅作�
 
 待服务器记录：
 
-| 项目 | `n16_k128_pad80` | `n32_k128_pad80` |
+结果：CUDA 12.8/CUTLASS 可以编译该 layout，但 `n16_k128_pad80` 首次小规模运行即报告
+`CUDA error: misaligned address`。原因是任意80-byte row stride不满足当前 TMA shared
+descriptor/swizzle 的运行时对齐约束。候选在进入性能测量前淘汰，不改变 production。
+
+## Iteration 2：TMA-native 128-byte swizzle
+
+候选：
+
+- `n16_k128_swizzle`
+- `n32_k128_swizzle`
+
+用 CUTLASS `composition(Swizzle<3,3,3>, Layout<8×64,row-major>)` 构造 TMA 原生
+shared layout，再 tile 到完整 CTA/stage shape。物理容量仍为紧凑64 bytes/row；consumer
+通过同一个 CuTe layout 计算每个 `uint32_t` fragment 地址。N16隔离swizzle，N32继续检查
+A fragment复用。
+
+| 项目 | `n16_k128_swizzle` | `n32_k128_swizzle` |
 |---|---:|---:|
 | 小规模正确性 | 待测 | 待测 |
 | 4096³ GEMM median | 待测 | 待测 |
