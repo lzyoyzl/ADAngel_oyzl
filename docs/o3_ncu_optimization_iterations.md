@@ -72,6 +72,10 @@ A fragment复用。
 要求128B swizzle使用16B base，即 `Swizzle<3,4,3>`。对当前64-byte packed row，该
 映射给八个 row group 产生 `0,16,4,20,8,24,12,28` 的bank起点。
 
+第一次运行该 swizzle 后输出不匹配。CUTLASS 的 B128 swizzle 以1024-byte对齐的 shared
+base 为寻址基准，而原 kernel 只声明128-byte动态shared对齐；Iteration 2.1 将 shared
+base 提升到1024 bytes 后重新验证。
+
 | 项目 | `n16_k128_swizzle` | `n32_k128_swizzle` |
 |---|---:|---:|
 | 小规模正确性 | 待测 | 待测 |

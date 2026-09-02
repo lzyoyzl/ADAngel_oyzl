@@ -270,7 +270,10 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   constexpr int kPipelineK = Config::kPipelineK;
   constexpr int kAStageBytes = Config::kAStageBytes;
   constexpr int kBStageBytes = Config::kBStageBytes;
-  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  // TMA B128 swizzle addresses are relative to a 1024-byte aligned shared
+  // base.  The stronger alignment is harmless for compact candidates and is
+  // required for O3SwizzledConfig to agree with the descriptor mapping.
+  extern __shared__ __align__(1024) uint8_t shared_bytes[];
   auto& storage = *reinterpret_cast<SharedStorage*>(shared_bytes);
 
   auto mLow = tma_low.get_tma_tensor(cute::make_shape(m, k / 2));
