@@ -208,3 +208,25 @@ packed-INT4 lowering 令 math pipe 更拥塞。因此这是有效但有限的优
 Iteration 4.2 的显式 LDSM fragment 装载。TMA descriptor 与 LDSM 均使用同一个 CuTe
 swizzle layout，LDSM 的每个 16-byte address 通过物理 layout 计算。目标是在保留 LDSM
 指令减少收益的同时消除其约 251.8M bank conflicts。生产实现仍保持不变。
+
+### Iteration 5 结果：LDSM 与 B64 swizzle 不兼容
+
+`n16_k128_ldsm_swizzle` 在 `128³` 上与参考输出逐元素一致，在 `4096³` 上的最大
+绝对误差仍为 `9.1552734375e-05`，因此数值映射本身没有破坏 O3 语义。但其
+compute-only 中位延迟升至 `5.140944 ms`，CV 为 `19.36%`，明显慢于生产基线
+`2.090496 ms` 与单独 LDSM 候选 `2.010272 ms`。该组合被淘汰，不进入正式候选。
+
+这表明 TMA swizzle 虽然能消除标量 shared load 的 bank conflict，但在显式 LDSM
+路径中会改变 fragment 的地址/访问组织并显著恶化调度；两项优化不能假定可叠加。
+
+## Iteration 6：`M64×N16` 与显式 LDSM 组合
+
+新增 `m64_n16_k128_cute_ldsm`，保持自然 row-major shared layout、G128 scale、
+TMA、两级 pipeline 和 INT4 MMA 语义，仅组合两项已分别通过正确性验证的改变：
+
+- CTA 从 `128×16×128` 缩小为 `64×16×128`，consumer warp 从16降至8；
+- scalar shared-to-register fragment load 改为显式 LDSM。
+
+该候选用于检验较高 CTA residency 能否与减少 shared 指令数形成可叠加收益。正式
+后端仍保持 `n16_k128`，在服务器完成小规模正确性、`4096³`、NCU 和24样本配对之前
+不切换生产选择。
