@@ -171,3 +171,7 @@ S4×S4 INT4 MMA、INT32 重构及 FP32 累加不变。差别仅在 consumer 的�
 目标是替换基线 NCU 中约 88.08M 条标量 shared load，同时避免手写 lane layout。
 该候选首先只接受编译和小规模正确性检验；若 CuTe sub-byte fragment/layout 不匹配，
 立即淘汰，不进入性能测量。
+
+首次编译时 CuTe 静态断言指出 B fragment 的 copy atom value 数过多。根因是 A fragment
+每线程为 4 个 `uint32_t`，而 B fragment 每线程为 2 个；初版两者都使用了 `LDSM.x4`。
+Iteration 4.1 将 A 保持为 `LDSM.x4`、B 改为 `LDSM.x2` 后重新进行编译门槛验证。

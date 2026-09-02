@@ -446,14 +446,17 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
         cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::uint4b_t>;
     using SignedSmemCopyAtom =
         cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::int4b_t>;
+    using BSignedSmemCopyAtom =
+        cute::Copy_Atom<cute::SM75_U32x2_LDSM_N, cutlass::int4b_t>;
     LowSmemCopyAtom low_copy_atom;
     SignedSmemCopyAtom signed_copy_atom;
+    BSignedSmemCopyAtom b_copy_atom;
     auto tiled_copy_low_a = cute::make_tiled_copy_A(
         low_copy_atom, low_tiled_mma);
     auto tiled_copy_high_a = cute::make_tiled_copy_A(
         signed_copy_atom, high_tiled_mma);
     auto tiled_copy_b = cute::make_tiled_copy_B(
-        signed_copy_atom, low_tiled_mma);
+        b_copy_atom, low_tiled_mma);
     auto low_thr_copy = tiled_copy_low_a.get_slice(compute_thread);
     auto high_thr_copy = tiled_copy_high_a.get_slice(compute_thread);
     auto b_thr_copy = tiled_copy_b.get_slice(compute_thread);
@@ -481,7 +484,7 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
           tXsHigh(cute::_, cute::_, cute::_, stage),
           tXrHigh);
       cute::copy(
-          signed_copy_atom,
+          b_copy_atom,
           tXsB(cute::_, cute::_, cute::_, stage),
           tXrB);
       cute::clear(tCrLowPartial);
