@@ -149,7 +149,15 @@ def test_arbitrary_bit_twos_complement_extremes(variant):
 @pytest.mark.sm120
 @pytest.mark.parametrize(
     "implementation",
-    ("n16_k128", "n16_k256", "n32_k128", "n16_k128_dual", "n32_k256_dual"),
+    (
+        "n16_k128",
+        "n16_k256",
+        "n32_k128",
+        "n16_k128_dual",
+        "n32_k256_dual",
+        "n16_k128_pad80",
+        "n32_k128_pad80",
+    ),
 )
 def test_o3_internal_optimization_candidates_match_production(implementation):
     import torch

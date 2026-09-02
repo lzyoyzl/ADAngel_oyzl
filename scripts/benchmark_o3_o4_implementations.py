@@ -18,6 +18,8 @@ IMPLEMENTATIONS = {
         "n32_k128",
         "n16_k128_dual",
         "n32_k256_dual",
+        "n16_k128_pad80",
+        "n32_k128_pad80",
     ),
     "o4": (
         "n64_k256",

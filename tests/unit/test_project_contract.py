@@ -55,6 +55,9 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('using O3N16K256Config = O3Config<16, 2, false>', o3)
         self.assertIn('using O3N32K128Config = O3Config<32, 1, false>', o3)
         self.assertIn('using O3N16K128DualConfig = O3Config<16, 1, true>', o3)
+        self.assertIn('using O3N16K128Pad80Config = O3PaddedConfig<16>', o3)
+        self.assertIn('using O3N32K128Pad80Config = O3PaddedConfig<32>', o3)
+        self.assertIn('"pad64_to_80_bytes"', o3)
         self.assertIn('independent_k64_accumulator_chains', o3)
         self.assertIn(
             'kProductionO4Implementation = "m64_n64_k512_optimized"', o4

@@ -45,20 +45,69 @@ struct O3Config {
   static constexpr int kStages = 2;
   static constexpr int kPipelinePackedK = GroupsPerStage * kPackedK;
   static constexpr int kPipelineK = GroupsPerStage * kGroupSize;
-  static constexpr int kAStageBytes = kTileM * kPipelinePackedK;
-  static constexpr int kBStageBytes = kTileN * kPipelinePackedK;
+  static constexpr int kAStageRowBytes = kPipelinePackedK;
+  static constexpr int kBStageRowBytes = kPipelinePackedK;
+  static constexpr int kATransactionBytes = kTileM * kPipelinePackedK;
+  static constexpr int kBTransactionBytes = kTileN * kPipelinePackedK;
+  static constexpr int kAStageBytes = kTileM * kAStageRowBytes;
+  static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = DualK64Chains;
+  static constexpr bool kPaddedSharedRows = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using ByteLayoutA = decltype(cute::make_layout(
       cute::make_shape(
           cute::Int<kTileM>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{}),
       cute::make_stride(
-          cute::Int<kPipelinePackedK>{}, cute::_1{}, cute::Int<kAStageBytes>{})));
+          cute::Int<kAStageRowBytes>{}, cute::_1{}, cute::Int<kAStageBytes>{})));
   using ByteLayoutB = decltype(cute::make_layout(
       cute::make_shape(
           cute::Int<kTileN>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{}),
       cute::make_stride(
-          cute::Int<kPipelinePackedK>{}, cute::_1{}, cute::Int<kBStageBytes>{})));
+          cute::Int<kBStageRowBytes>{}, cute::_1{}, cute::Int<kBStageBytes>{})));
+
+  struct alignas(128) SharedStorage {
+    alignas(128) uint8_t a_low[kStages * kAStageBytes];
+    alignas(128) uint8_t a_high[kStages * kAStageBytes];
+    alignas(128) uint8_t b[kStages * kBStageBytes];
+    alignas(128) float column_scale[kStages * kGroupsPerStage * kTileN];
+    alignas(16) typename Pipeline::SharedStorage pipeline;
+  };
+};
+
+// NCU reports a four-way conflict for every packed A/B shared-memory load in
+// the production row-major layout.  A K128 packed row contains 16 uint32_t
+// words.  Padding the physical row to 20 words rotates successive logical rows
+// by four banks (20 mod 32), so the eight row groups and four lane columns used
+// by one INT4 MMA cover all 32 banks exactly once.  The TMA transaction still
+// moves only the 64 logical bytes; the extra 16 bytes are physical row skew.
+template <int TileN>
+struct O3PaddedConfig {
+  static constexpr int kTileM = 128;
+  static constexpr int kTileN = TileN;
+  static constexpr int kNReplicas = TileN / 16;
+  static constexpr int kGroupsPerStage = 1;
+  static constexpr int kStages = 2;
+  static constexpr int kPipelinePackedK = kPackedK;
+  static constexpr int kPipelineK = kGroupSize;
+  static constexpr int kAStageRowBytes = 80;
+  static constexpr int kBStageRowBytes = 80;
+  static constexpr int kATransactionBytes = kTileM * kPipelinePackedK;
+  static constexpr int kBTransactionBytes = kTileN * kPipelinePackedK;
+  static constexpr int kAStageBytes = kTileM * kAStageRowBytes;
+  static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
+  static constexpr bool kDualK64Chains = false;
+  static constexpr bool kPaddedSharedRows = true;
+  using Pipeline = cutlass::PipelineTmaAsync<kStages>;
+  using ByteLayoutA = decltype(cute::make_layout(
+      cute::make_shape(
+          cute::Int<kTileM>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{}),
+      cute::make_stride(
+          cute::Int<kAStageRowBytes>{}, cute::_1{}, cute::Int<kAStageBytes>{})));
+  using ByteLayoutB = decltype(cute::make_layout(
+      cute::make_shape(
+          cute::Int<kTileN>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{}),
+      cute::make_stride(
+          cute::Int<kBStageRowBytes>{}, cute::_1{}, cute::Int<kBStageBytes>{})));
 
   struct alignas(128) SharedStorage {
     alignas(128) uint8_t a_low[kStages * kAStageBytes];
@@ -74,6 +123,8 @@ using O3N16K256Config = O3Config<16, 2, false>;
 using O3N32K128Config = O3Config<32, 1, false>;
 using O3N16K128DualConfig = O3Config<16, 1, true>;
 using O3N32K256DualConfig = O3Config<32, 2, true>;
+using O3N16K128Pad80Config = O3PaddedConfig<16>;
+using O3N32K128Pad80Config = O3PaddedConfig<32>;
 
 constexpr const char* kProductionO3Implementation = "n16_k128";
 
@@ -83,6 +134,8 @@ enum class O3Implementation {
   kN32K128,
   kN16K128Dual,
   kN32K256Dual,
+  kN16K128Pad80,
+  kN32K128Pad80,
 };
 
 O3Implementation parse_o3_implementation(const std::string& implementation) {
@@ -93,6 +146,8 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   if (selected == "n32_k128") return O3Implementation::kN32K128;
   if (selected == "n16_k128_dual") return O3Implementation::kN16K128Dual;
   if (selected == "n32_k256_dual") return O3Implementation::kN32K256Dual;
+  if (selected == "n16_k128_pad80") return O3Implementation::kN16K128Pad80;
+  if (selected == "n32_k128_pad80") return O3Implementation::kN32K128Pad80;
   TORCH_CHECK(false, "unknown O3 implementation: ", implementation);
   return O3Implementation::kN16K128;
 }
@@ -247,7 +302,8 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   const int lane = thread & 31;
   typename Pipeline::Params params;
   params.num_consumers = kConsumerThreads;
-  params.transaction_bytes = 2 * kAStageBytes + kBStageBytes;
+  params.transaction_bytes =
+      2 * Config::kATransactionBytes + Config::kBTransactionBytes;
   params.initializing_warp = 0;
   if (warp == 0 && lane == 0) {
     params.role = Pipeline::ThreadCategory::Producer;
@@ -320,8 +376,8 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
         storage.a_high + stage * kAStageBytes);
     const auto* b_words = reinterpret_cast<const uint32_t*>(
         storage.b + stage * kBStageBytes);
-    constexpr int kAWordsPerRow = kPipelinePackedK / 4;
-    constexpr int kBWordsPerRow = kPipelinePackedK / 4;
+    constexpr int kAWordsPerRow = Config::kAStageRowBytes / 4;
+    constexpr int kBWordsPerRow = Config::kBStageRowBytes / 4;
 #pragma unroll
     for (int inner_group = 0; inner_group < kGroupsPerStage; ++inner_group) {
       const int group = pipeline_group * kGroupsPerStage + inner_group;
@@ -538,6 +594,9 @@ py::dict kernel_metadata(
   result["groups_per_pipeline_stage"] = Config::kGroupsPerStage;
   result["dynamic_shared_memory_bytes"] = sizeof(typename Config::SharedStorage);
   result["instruction_double_buffer"] = Config::kDualK64Chains;
+  result["shared_row_stride_bytes"] = Config::kAStageRowBytes;
+  result["shared_bank_conflict_mitigation"] =
+      Config::kPaddedSharedRows ? "pad64_to_80_bytes" : "none";
   result["independent_k64_accumulator_chains"] =
       Config::kDualK64Chains ? kKSubgroups : 1;
   result["producer_warps"] = 1;
@@ -702,6 +761,18 @@ py::dict adangel_benchmark_o3_impl(
     return benchmark_o3_config<O3N32K256DualConfig>(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n32_k256_dual", "adangel_o3_split_tma_ws<O3Config<32,2,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128Pad80) {
+    return benchmark_o3_config<O3N16K128Pad80Config>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_pad80", "adangel_o3_split_tma_ws<O3PaddedConfig<16>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN32K128Pad80) {
+    return benchmark_o3_config<O3N32K128Pad80Config>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n32_k128_pad80", "adangel_o3_split_tma_ws<O3PaddedConfig<32>>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   return benchmark_o3_config<O3N16K128Config>(
