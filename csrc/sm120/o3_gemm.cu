@@ -396,7 +396,10 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
     return;
   }
 
-  if constexpr (Config::kUseCuteLdsm) {
+  // Kept as compile-time documentation of the first CuTe TiledCopy attempt.
+  // The high-level sub-byte partition did not match the compact TMA layout;
+  // the active candidate uses explicit LDSM fragment addresses below.
+  if constexpr (false && Config::kUseCuteLdsm) {
     using NibbleLayoutA = typename Config::NibbleLayoutA;
     using NibbleLayoutB = typename Config::NibbleLayoutB;
     using LowTiledMma = typename Config::LowTiledMma;
@@ -623,7 +626,25 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
           const int word_base = inner_group * (kPackedK / 4) + subgroup * 8 + lane_i;
           uint32_t la0, la1, la2, la3;
           uint32_t ha0, ha1, ha2, ha3;
-          if constexpr (Config::kSwizzledSharedRows) {
+          if constexpr (Config::kUseCuteLdsm) {
+            const int matrix = lane >> 3;
+            const int matrix_row = lane & 7;
+            const int a_row = warp_m * 16 + (matrix & 1) * 8 + matrix_row;
+            const int a_byte =
+                inner_group * kPackedK + subgroup * 32 + (matrix >> 1) * 16;
+            const auto* low_address =
+                storage.a_low + stage * kAStageBytes +
+                a_row * Config::kAStageRowBytes + a_byte;
+            const auto* high_address =
+                storage.a_high + stage * kAStageBytes +
+                a_row * Config::kAStageRowBytes + a_byte;
+            cute::SM75_U32x4_LDSM_N::copy(
+                *reinterpret_cast<const cute::uint128_t*>(low_address),
+                la0, la1, la2, la3);
+            cute::SM75_U32x4_LDSM_N::copy(
+                *reinterpret_cast<const cute::uint128_t*>(high_address),
+                ha0, ha1, ha2, ha3);
+          } else if constexpr (Config::kSwizzledSharedRows) {
             const auto a_layout = ByteLayoutA{};
             la0 = *reinterpret_cast<const uint32_t*>(
                 storage.a_low + a_layout(cute::make_coord(local_row0, word_base * 4, stage)));
@@ -656,7 +677,18 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
             const int atom_n = warp_n * kNReplicas + replica;
             const int b_row = atom_n * 8 + lane_j;
             uint32_t b0, b1;
-            if constexpr (Config::kSwizzledSharedRows) {
+            if constexpr (Config::kUseCuteLdsm) {
+              const int matrix = lane >> 3;
+              const int matrix_row = lane & 7;
+              const int ldsm_b_row = atom_n * 8 + matrix_row;
+              const int b_byte =
+                  inner_group * kPackedK + subgroup * 32 + (matrix & 1) * 16;
+              const auto* b_address =
+                  storage.b + stage * kBStageBytes +
+                  ldsm_b_row * Config::kBStageRowBytes + b_byte;
+              cute::SM75_U32x2_LDSM_N::copy(
+                  *reinterpret_cast<const cute::uint128_t*>(b_address), b0, b1);
+            } else if constexpr (Config::kSwizzledSharedRows) {
               const auto b_layout = ByteLayoutB{};
               b0 = *reinterpret_cast<const uint32_t*>(
                   storage.b + b_layout(cute::make_coord(b_row, word_base * 4, stage)));
@@ -813,7 +845,7 @@ py::dict kernel_metadata(
   result["shared_bank_conflict_mitigation"] =
       Config::kSwizzledSharedRows ? "tma_swizzle_64b" : "none";
   result["shared_to_register_copy"] =
-      Config::kUseCuteLdsm ? "cute_ldmatrix" : "scalar_ld_shared";
+      Config::kUseCuteLdsm ? "explicit_ldmatrix_fragment" : "scalar_ld_shared";
   result["independent_k64_accumulator_chains"] =
       Config::kDualK64Chains ? kKSubgroups : 1;
   result["producer_warps"] = 1;

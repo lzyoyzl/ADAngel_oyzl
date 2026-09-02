@@ -175,3 +175,10 @@ S4×S4 INT4 MMA、INT32 重构及 FP32 累加不变。差别仅在 consumer 的�
 首次编译时 CuTe 静态断言指出 B fragment 的 copy atom value 数过多。根因是 A fragment
 每线程为 4 个 `uint32_t`，而 B fragment 每线程为 2 个；初版两者都使用了 `LDSM.x4`。
 Iteration 4.1 将 A 保持为 `LDSM.x4`、B 改为 `LDSM.x2` 后重新进行编译门槛验证。
+
+Iteration 4.1 虽通过编译，但 `128³` 输出几乎全部不匹配。结论是高层
+`make_tiled_copy_A/B` 对 sub-byte value layout 的划分不能直接套在当前 compact TMA
+row-major byte layout 上。Iteration 4.2 保留 CuTe 的底层 LDSM 指令封装，但显式提供
+与 `m16n8k64` fragment 对应的 16-byte aligned shared 地址：A 的四个 `m8×n8×b16`
+矩阵由 `LDSM.x4` 装入，B 的两个矩阵由 `LDSM.x2` 装入；寄存器顺序仍由现有、已验证的
+INT4 MMA lane mapping消费。该版本再次从小规模逐元素正确性开始验证。
