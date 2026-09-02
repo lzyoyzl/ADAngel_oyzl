@@ -426,7 +426,9 @@ O1 `0.622136 ms`、O3 `2.223352 ms`、O4 `7.632488 ms`。最新 O4 候选相对�
 `128x64x256` production 的逐样本配对几何平均加速为 `1.0806x`，bootstrap 95% CI
 为 `[1.0789x, 1.0827x]`。这里的 O3 `2.223352 ms` 是显式 LDSM 晋升前的历史结果；
 新 production 保持 `128x16x128`，仅把标量 shared fragment load 改为显式 LDSM，
-正式24样本结果需在当前提交上重新生成。详细消融、资源审计、性能边界与 MSE 见
+当前提交已生成 `runs/rtx5090_o0_o4_o3_ldsm`，但共享 GPU 外部进程导致451/480条
+记录 CV 超过3%，因此该 run 只用于确认 metadata/MSE，不替换上面的稳定绝对性能表。
+详细消融、资源审计、性能边界与 MSE 见
 `docs/o3_o4_backend_report.md`。
 
 运行顺序按样本交错 O0/O1/O2/O3/O4；使用单 stream、CUDA Event、预热 50 次、测量

@@ -280,3 +280,23 @@ bootstrap 95% CI 分别为 `[1.0223,1.0281]` 与 `[1.0148,1.0351]`。均值区�
 
 该优化没有改变论文 Split 算术、G128 scale边界、CTA、pipeline、warp specialization、
 寄存器 partial、FP32累加/输出或计时/MSE口径，只替换 shared-to-register operand load。
+
+## 最终 production 验收
+
+提交切换 production 后在 RTX 5090 上完成：
+
+- O3 smoke：`passed=true`，`production_selected=true`，
+  `shared_to_register_copy=explicit_ldmatrix_fragment`；
+- O3/O4 SM120 集成测试：31 passed；服务器 unit tests：44 passed；
+- `4096³` 最大绝对误差 `9.1552734375e-05`，输出为 finite FP32；
+- 正式审计：同一完整模板 symbol
+  `O3Config<16,1,false,128,true>` 命中 TMA 与 U4×S4/S4×S4 MMA；
+- resource：55 regs/thread、`STACK=0`、`LOCAL=0`，无 spill；
+- `doctor --require-native`：O0/O1/O2/O3/O4 全部 capability 为 true。
+
+当前 production 还生成了 `runs/rtx5090_o0_o4_o3_ldsm`：24样本、480条记录，O3
+所有记录均为 `implementation_key=n16_k128_cute_ldsm` 且
+`production_selected=true`。MSE median 为 `0.006653010193`，与旧 O3 及 O4 完全
+一致；O1/O2 MSE也未变化。该 run 期间另一个 Python 进程占用约13.4 GiB，导致
+451/480条记录 CV 超过3%，所以本轮绝对延迟仅作为受干扰诊断，不替换此前稳定性能
+表。该限制不影响正确性、MSE、production metadata或指令/资源验收结论。

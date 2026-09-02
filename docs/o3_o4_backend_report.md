@@ -234,19 +234,27 @@ RTX 5090、CUDA 12.8、CUTLASS 4.5.2 pinned commit 上：
 |---|---:|---:|
 | 128³ max abs error vs semantic reference | 0 | 0 |
 | 4096³ max abs error vs semantic reference | 9.1553e-05 | 9.1553e-05 |
-| 4096³ compute median（50/200） | 2.1855 ms | 7.4606 ms |
-| 4096³ compute CV | 0.688% | 0.127% |
-| production resource | REG 53, STACK 0, LOCAL 0 | REG 92, STACK 0, LOCAL 0 |
+| 4096³ clean short-test compute median | 2.010272 ms | 7.4606 ms |
+| 4096³ clean short-test compute CV | 0.506% | 0.127% |
+| production resource | REG 55, STACK 0, LOCAL 0 | REG 92, STACK 0, LOCAL 0 |
 | same-entry instruction audit | TMA + U4/S4/S4/S4 MMA | TMA + B1 AND-POPC BMMA |
 
-这些是后端验收 smoke 数据。O4 比 O3 慢不表示错误；它每个 G128 必须执行 32 个
+O3 数字来自显式 LDSM production 晋升前的同代码候选短测（warmup=10、repeats=30）；
+O4 数字来自既有正式形状验收。两者不是同一次配对性能比较，只用于各自后端 smoke。
+O4 比 O3 慢不表示错误；它每个 G128 必须执行 32 个
 plane-pair BMMA，而 O3 只执行低/高两路 INT4 分解。
 
 ## 9. 24 个真实样本正式结果
 
-最新正式 run 位于 `runs/rtx5090_o0_o4_k512`，使用 24 个 Llama-2-7B FP16
+下表的稳定正式 run 位于 `runs/rtx5090_o0_o4_k512`，使用 24 个 Llama-2-7B FP16
 prefill 样本、warmup=50、repeats=200、conversion inner repeats=100。该次运行不锁频，
 按样本交错 O0–O4；全部 480/480 条记录一次通过 `CV<3%`，无需 targeted retry。
+
+注意：该稳定 run 早于 O3 显式 LDSM 的 production 晋升，因此表中 O3 是旧
+`n16_k128` 的历史绝对值。新 production 的 `runs/rtx5090_o0_o4_o3_ldsm` 已确认
+480条记录、metadata和MSE完整，但运行时另一个 Python 进程占用约13.4 GiB，造成
+451/480条记录 CV 超标，不能替换稳定表。新旧 O3 的性能增益使用同进程配对 A/B
+结果报告，而不把两个不同时段的绝对延迟直接相除。
 
 跨 24 样本 median：
 
