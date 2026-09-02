@@ -140,3 +140,34 @@ swizzle 几乎消除了被测 bank conflict，并将 shared-load wavefronts 降�
 能否隐藏较长的 packed-INT4 lowering 指令序列。TMA、两级 pipeline、G128 scale 语义、
 两路 INT4 MMA、寄存器 partial、FP32 累加/输出和最终单次写回均保持不变。候选必须依次通过
 小规模正确性、`4096³` 性能、MSE 回归、资源审计以及同一入口 TMA/INT4 指令审计才可晋升。
+
+### Iteration 3 服务器短测结果
+
+两个候选均通过 `128³` 逐元素一致验证，并在 `4096³` 上得到与基线相同的
+`max_abs_error=9.1552734375e-05`：
+
+| Implementation | Compute-only median (ms) | CV (%) | 相对基线速度 |
+|---|---:|---:|---:|
+| `n16_k128` | 2.090496 | 0.377 | 1.000x |
+| `m64_n16_k128` | 2.081440 | 0.539 | 1.004x |
+| `m64_n32_k128` | 2.146976 | 0.468 | 0.974x |
+
+LaunchStats 表明基线为 544 threads、53 regs/thread，寄存器限制最多 2 CTA/SM，平均
+active warps 为 69.82%；`m64_n16_k128` 为 288 threads、53 regs/thread，最多
+4 CTA/SM，active warps 仅升至 73.68%。因此缩小 M tile 只产生约 0.4% 的微小短测收益，
+扩大 N 还因每 warp 两个 N replica 的寄存器/串行工作而变慢。该结果不足以直接晋升，
+`m64_n16_k128` 只保留到 24 样本配对阶段作为边界对照。
+
+## Iteration 4：CuTe TiledMMA + LDSM fragment copy
+
+候选 `n16_k128_cute_ldsm` 保持生产 CTA、TMA pipeline、G128 scale、U4×S4 与
+S4×S4 INT4 MMA、INT32 重构及 FP32 累加不变。差别仅在 consumer 的操作数装载：
+
+- 用 CuTe `TiledMMA` 建立 accumulator 和 A/B fragment 坐标；
+- 用 `SM75_U32x4_LDSM_N` 从 shared memory 装载 MMA fragment；
+- B fragment 在 low/high 两路 MMA 之间复用；
+- 每 warp 只装载一份列 scale，再通过 shuffle 映射到拥有的输出元素。
+
+目标是替换基线 NCU 中约 88.08M 条标量 shared load，同时避免手写 lane layout。
+该候选首先只接受编译和小规模正确性检验；若 CuTe sub-byte fragment/layout 不匹配，
+立即淘汰，不进入性能测量。

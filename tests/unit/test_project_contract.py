@@ -63,6 +63,11 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn(
             'using O3M64N32K128Config = O3Config<32, 1, false, 64>', o3
         )
+        self.assertIn(
+            'using O3N16K128CuteLdsmConfig = O3Config<16, 1, false, 128, true>',
+            o3,
+        )
+        self.assertIn('"cute_ldmatrix"', o3)
         self.assertIn('"tma_swizzle_64b"', o3)
         self.assertIn('independent_k64_accumulator_chains', o3)
         self.assertIn(

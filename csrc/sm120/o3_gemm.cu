@@ -35,7 +35,12 @@ constexpr int kPackedK = kGroupSize / 2;
 using LowMma = cute::SM80_16x8x64_S32U4S4S32_TN;
 using HighMma = cute::SM80_16x8x64_S32S4S4S32_TN;
 
-template <int TileN, int GroupsPerStage, bool DualK64Chains, int TileM = 128>
+template <
+    int TileN,
+    int GroupsPerStage,
+    bool DualK64Chains,
+    int TileM = 128,
+    bool UseCuteLdsm = false>
 struct O3Config {
   static constexpr int kTileM = TileM;
   static constexpr int kTileN = TileN;
@@ -57,6 +62,7 @@ struct O3Config {
   static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = DualK64Chains;
   static constexpr bool kSwizzledSharedRows = false;
+  static constexpr bool kUseCuteLdsm = UseCuteLdsm;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using ByteLayoutA = decltype(cute::make_layout(
       cute::make_shape(
@@ -68,6 +74,26 @@ struct O3Config {
           cute::Int<kTileN>{}, cute::Int<kPipelinePackedK>{}, cute::Int<kStages>{}),
       cute::make_stride(
           cute::Int<kBStageRowBytes>{}, cute::_1{}, cute::Int<kBStageBytes>{})));
+  using NibbleLayoutA = decltype(cute::make_layout(
+      cute::make_shape(
+          cute::Int<kTileM>{}, cute::Int<kPipelineK>{}, cute::Int<kStages>{}),
+      cute::make_stride(
+          cute::Int<kPipelineK>{}, cute::_1{}, cute::Int<kTileM * kPipelineK>{})));
+  using NibbleLayoutB = decltype(cute::make_layout(
+      cute::make_shape(
+          cute::Int<kTileN>{}, cute::Int<kPipelineK>{}, cute::Int<kStages>{}),
+      cute::make_stride(
+          cute::Int<kPipelineK>{}, cute::_1{}, cute::Int<kTileN * kPipelineK>{})));
+  using LowTiledMma = cute::TiledMMA<
+      cute::MMA_Atom<LowMma>,
+      cute::Layout<cute::Shape<
+          cute::Int<kMWarps>, cute::Int<kNWarpGroups>, cute::_1>>,
+      cute::Tile<cute::Int<kTileM>, cute::Int<kTileN>, cute::Int<kMmaK>>>;
+  using HighTiledMma = cute::TiledMMA<
+      cute::MMA_Atom<HighMma>,
+      cute::Layout<cute::Shape<
+          cute::Int<kMWarps>, cute::Int<kNWarpGroups>, cute::_1>>,
+      cute::Tile<cute::Int<kTileM>, cute::Int<kTileN>, cute::Int<kMmaK>>>;
 
   struct alignas(128) SharedStorage {
     alignas(128) uint8_t a_low[kStages * kAStageBytes];
@@ -105,6 +131,7 @@ struct O3SwizzledConfig {
   static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = false;
   static constexpr bool kSwizzledSharedRows = true;
+  static constexpr bool kUseCuteLdsm = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using SwizzleAtom = decltype(cute::composition(
       cute::Swizzle<2, 4, 3>{},
@@ -136,6 +163,7 @@ using O3N16K128SwizzleConfig = O3SwizzledConfig<16>;
 using O3N32K128SwizzleConfig = O3SwizzledConfig<32>;
 using O3M64N16K128Config = O3Config<16, 1, false, 64>;
 using O3M64N32K128Config = O3Config<32, 1, false, 64>;
+using O3N16K128CuteLdsmConfig = O3Config<16, 1, false, 128, true>;
 
 constexpr const char* kProductionO3Implementation = "n16_k128";
 
@@ -149,6 +177,7 @@ enum class O3Implementation {
   kN32K128Swizzle,
   kM64N16K128,
   kM64N32K128,
+  kN16K128CuteLdsm,
 };
 
 O3Implementation parse_o3_implementation(const std::string& implementation) {
@@ -163,6 +192,7 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   if (selected == "n32_k128_swizzle") return O3Implementation::kN32K128Swizzle;
   if (selected == "m64_n16_k128") return O3Implementation::kM64N16K128;
   if (selected == "m64_n32_k128") return O3Implementation::kM64N32K128;
+  if (selected == "n16_k128_cute_ldsm") return O3Implementation::kN16K128CuteLdsm;
   TORCH_CHECK(false, "unknown O3 implementation: ", implementation);
   return O3Implementation::kN16K128;
 }
@@ -363,6 +393,140 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
       ++write_state;
     }
     if (lane == 0) pipeline.producer_tail(write_state);
+    return;
+  }
+
+  if constexpr (Config::kUseCuteLdsm) {
+    using NibbleLayoutA = typename Config::NibbleLayoutA;
+    using NibbleLayoutB = typename Config::NibbleLayoutB;
+    using LowTiledMma = typename Config::LowTiledMma;
+    using HighTiledMma = typename Config::HighTiledMma;
+    const int compute_thread = thread - kProducerThreads;
+    const int tile_row = static_cast<int>(blockIdx.y) * kTileM;
+    const int tile_column = static_cast<int>(blockIdx.x) * kTileN;
+
+    auto sLow = cute::make_tensor(
+        cute::make_smem_ptr(
+            reinterpret_cast<cutlass::uint4b_t*>(storage.a_low)),
+        NibbleLayoutA{});
+    auto sHigh = cute::make_tensor(
+        cute::make_smem_ptr(
+            reinterpret_cast<cutlass::int4b_t*>(storage.a_high)),
+        NibbleLayoutA{});
+    auto sB = cute::make_tensor(
+        cute::make_smem_ptr(
+            reinterpret_cast<cutlass::int4b_t*>(storage.b)),
+        NibbleLayoutB{});
+
+    LowTiledMma low_tiled_mma;
+    HighTiledMma high_tiled_mma;
+    auto low_thr_mma = low_tiled_mma.get_slice(compute_thread);
+    auto high_thr_mma = high_tiled_mma.get_slice(compute_thread);
+    auto tCrLowA = low_thr_mma.partition_fragment_A(
+        sLow(cute::_, cute::_, cute::Int<0>{}));
+    auto tCrHighA = high_thr_mma.partition_fragment_A(
+        sHigh(cute::_, cute::_, cute::Int<0>{}));
+    auto tCrB = low_thr_mma.partition_fragment_B(
+        sB(cute::_, cute::_, cute::Int<0>{}));
+    auto cC = cute::make_identity_tensor(
+        cute::make_shape(cute::Int<kTileM>{}, cute::Int<kTileN>{}));
+    auto tCcC = low_thr_mma.partition_C(cC);
+    auto tCrLowPartial = low_thr_mma.make_fragment_C(tCcC);
+    auto tCrHighPartial = high_thr_mma.make_fragment_C(tCcC);
+    auto tCrAccumulator = cute::make_fragment_like<float>(tCrLowPartial);
+    auto tCrRowScale = cute::make_fragment_like<float>(tCrLowPartial);
+    cute::clear(tCrAccumulator);
+    for (int item = 0; item < cute::size(tCrRowScale); ++item) {
+      const int local_row = cute::get<0>(tCcC(item));
+      const int global_row = tile_row + local_row;
+      tCrRowScale(item) = global_row < m ? a_scale[global_row] : 0.0f;
+    }
+
+    using LowSmemCopyAtom =
+        cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::uint4b_t>;
+    using SignedSmemCopyAtom =
+        cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::int4b_t>;
+    LowSmemCopyAtom low_copy_atom;
+    SignedSmemCopyAtom signed_copy_atom;
+    auto tiled_copy_low_a = cute::make_tiled_copy_A(
+        low_copy_atom, low_tiled_mma);
+    auto tiled_copy_high_a = cute::make_tiled_copy_A(
+        signed_copy_atom, high_tiled_mma);
+    auto tiled_copy_b = cute::make_tiled_copy_B(
+        signed_copy_atom, low_tiled_mma);
+    auto low_thr_copy = tiled_copy_low_a.get_slice(compute_thread);
+    auto high_thr_copy = tiled_copy_high_a.get_slice(compute_thread);
+    auto b_thr_copy = tiled_copy_b.get_slice(compute_thread);
+    auto tXsLow = low_thr_copy.partition_S(sLow);
+    auto tXsHigh = high_thr_copy.partition_S(sHigh);
+    auto tXsB = b_thr_copy.partition_S(sB);
+    auto tXrLow = low_thr_copy.retile_D(tCrLowA);
+    auto tXrHigh = high_thr_copy.retile_D(tCrHighA);
+    auto tXrB = b_thr_copy.retile_D(tCrB);
+
+    typename Pipeline::PipelineState read_state;
+    const int pipeline_groups =
+        (groups + kGroupsPerStage - 1) / kGroupsPerStage;
+    for (int pipeline_group = 0;
+         pipeline_group < pipeline_groups;
+         ++pipeline_group) {
+      pipeline.consumer_wait(read_state);
+      const int stage = read_state.index();
+      cute::copy(
+          low_copy_atom,
+          tXsLow(cute::_, cute::_, cute::_, stage),
+          tXrLow);
+      cute::copy(
+          signed_copy_atom,
+          tXsHigh(cute::_, cute::_, cute::_, stage),
+          tXrHigh);
+      cute::copy(
+          signed_copy_atom,
+          tXsB(cute::_, cute::_, cute::_, stage),
+          tXrB);
+      cute::clear(tCrLowPartial);
+      cute::clear(tCrHighPartial);
+      cute::gemm(low_tiled_mma, tCrLowA, tCrB, tCrLowPartial);
+      cute::gemm(high_tiled_mma, tCrHighA, tCrB, tCrHighPartial);
+
+      float lane_column_scale = 0.0f;
+      if (lane < kTileN) {
+        lane_column_scale =
+            storage.column_scale[stage * kTileN + lane];
+      }
+      for (int item = 0; item < cute::size(tCrAccumulator); ++item) {
+        const int local_column = cute::get<1>(tCcC(item));
+        const float column_scale = __shfl_sync(
+            0xffffffffu, lane_column_scale, local_column);
+        const int32_t partial =
+            static_cast<int32_t>(tCrLowPartial(item)) +
+            16 * static_cast<int32_t>(tCrHighPartial(item));
+        const float scale =
+            __fmul_rn(tCrRowScale(item), column_scale);
+        tCrAccumulator(item) = __fmaf_rn(
+            static_cast<float>(partial), scale, tCrAccumulator(item));
+      }
+      pipeline.consumer_release(read_state);
+      ++read_state;
+    }
+
+    auto mC = cute::make_tensor(
+        cute::make_gmem_ptr(output),
+        cute::make_shape(m, n),
+        cute::make_stride(n, cute::Int<1>{}));
+    auto gC = cute::local_tile(
+        mC,
+        cute::make_shape(cute::Int<kTileM>{}, cute::Int<kTileN>{}),
+        cute::make_coord(
+            static_cast<int>(blockIdx.y), static_cast<int>(blockIdx.x)));
+    auto tCgC = low_thr_mma.partition_C(gC);
+    for (int item = 0; item < cute::size(tCrAccumulator); ++item) {
+      const int local_row = cute::get<0>(tCcC(item));
+      const int local_column = cute::get<1>(tCcC(item));
+      if (tile_row + local_row < m && tile_column + local_column < n) {
+        tCgC(item) = tCrAccumulator(item);
+      }
+    }
     return;
   }
 
@@ -645,6 +809,8 @@ py::dict kernel_metadata(
   result["shared_row_stride_bytes"] = Config::kAStageRowBytes;
   result["shared_bank_conflict_mitigation"] =
       Config::kSwizzledSharedRows ? "tma_swizzle_64b" : "none";
+  result["shared_to_register_copy"] =
+      Config::kUseCuteLdsm ? "cute_ldmatrix" : "scalar_ld_shared";
   result["independent_k64_accumulator_chains"] =
       Config::kDualK64Chains ? kKSubgroups : 1;
   result["producer_warps"] = 1;
@@ -833,6 +999,13 @@ py::dict adangel_benchmark_o3_impl(
     return benchmark_o3_config<O3M64N32K128Config>(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "m64_n32_k128", "adangel_o3_split_tma_ws<O3Config<32,1,false,64>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128CuteLdsm) {
+    return benchmark_o3_config<O3N16K128CuteLdsmConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_cute_ldsm",
+        "adangel_o3_split_tma_ws<O3Config<16,1,false,128,true>>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   return benchmark_o3_config<O3N16K128Config>(
