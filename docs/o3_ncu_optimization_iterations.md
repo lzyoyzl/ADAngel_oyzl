@@ -63,10 +63,14 @@ descriptor/swizzle 的运行时对齐约束。候选在进入性能测量前淘�
 - `n16_k128_swizzle`
 - `n32_k128_swizzle`
 
-用 CUTLASS `composition(Swizzle<3,3,3>, Layout<8×64,row-major>)` 构造 TMA 原生
+用 CUTLASS `composition(Swizzle<3,4,3>, Layout<8×64,row-major>)` 构造 TMA 原生
 shared layout，再 tile 到完整 CTA/stage shape。物理容量仍为紧凑64 bytes/row；consumer
 通过同一个 CuTe layout 计算每个 `uint32_t` fragment 地址。N16隔离swizzle，N32继续检查
 A fragment复用。
+
+最初尝试的 Ampere `Swizzle<3,3,3>` 被 CUTLASS TMA trait 在编译期拒绝；CUDA 12.8
+要求128B swizzle使用16B base，即 `Swizzle<3,4,3>`。对当前64-byte packed row，该
+映射给八个 row group 产生 `0,16,4,20,8,24,12,28` 的bank起点。
 
 | 项目 | `n16_k128_swizzle` | `n32_k128_swizzle` |
 |---|---:|---:|

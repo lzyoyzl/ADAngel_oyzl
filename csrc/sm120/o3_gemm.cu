@@ -52,7 +52,6 @@ struct O3Config {
   static constexpr int kAStageBytes = kTileM * kAStageRowBytes;
   static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = DualK64Chains;
-  static constexpr bool kPaddedSharedRows = false;
   static constexpr bool kSwizzledSharedRows = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using ByteLayoutA = decltype(cute::make_layout(
@@ -96,11 +95,10 @@ struct O3SwizzledConfig {
   static constexpr int kAStageBytes = kTileM * kAStageRowBytes;
   static constexpr int kBStageBytes = kTileN * kBStageRowBytes;
   static constexpr bool kDualK64Chains = false;
-  static constexpr bool kPaddedSharedRows = false;
   static constexpr bool kSwizzledSharedRows = true;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using SwizzleAtom = decltype(cute::composition(
-      cute::Swizzle<3, 3, 3>{},
+      cute::Swizzle<3, 4, 3>{},
       cute::Layout<
           cute::Shape<cute::_8, cute::_64>,
           cute::Stride<cute::_64, cute::_1>>{}));
