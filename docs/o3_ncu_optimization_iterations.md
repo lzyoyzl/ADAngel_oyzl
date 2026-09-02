@@ -98,3 +98,45 @@ base 提升到1024 bytes 后重新验证。
 
 每轮服务器数据必须附带命令、commit、GPU/driver、CUDA、CUTLASS commit、正确性、MSE、
 四种计时、CV、PTX/SASS 同入口审计与资源使用；失败候选保留记录但不进入最终结果。
+
+## Iteration 2 服务器结果：B64 TMA swizzle（淘汰）
+
+环境为 RTX 5090、CUDA 12.8 和固定 CUTLASS commit
+`db1c288993354c88e551c40c19a8fb93a774a241`；候选源码 commit 为 `3e65078`。
+
+两个 B64 候选均通过 `128³` 输出逐元素一致门槛（`max_abs_error=0`）。`4096³`
+验证也通过，最大绝对误差与生产基线相同（`9.1552734375e-05`）。短时 CUDA Event
+结果如下：
+
+| Implementation | Compute-only median (ms) | CV (%) | 相对基线速度 |
+|---|---:|---:|---:|
+| `n16_k128` | 2.090496 | 0.377 | 1.000x |
+| `n16_k128_swizzle` | 2.294432 | 0.257 | 0.911x |
+| `n32_k128_swizzle` | 2.327200 | 0.510 | 0.898x |
+
+定向 NCU memory pass 证明 swizzle 映射确实生效：
+
+| Metric | Production | `n16_k128_swizzle` |
+|---|---:|---:|
+| NCU duration (ms) | 2.058336 | 2.273952 |
+| Shared-load bank conflicts | 251,752,630 | 118,477 |
+| Shared-load wavefronts | 344,027,318 | 92,393,165 |
+| Executed shared loads | 88,080,384 | 88,080,384 |
+| Registers/thread | 53 | 55 |
+
+swizzle 几乎消除了被测 bank conflict，并将 shared-load wavefronts 降低 3.72 倍，
+但 NCU 时间反而增加 10.5%。因此 shared conflict 是次要现象，主导成本仍是 SM120
+对 packed INT4 的 lowering 和操作数准备。两个候选只作为内部负对照保留，不替换生产实现。
+
+## Iteration 3：减小 M tile、提高 CTA 并发度
+
+待测试候选：
+
+- `m64_n16_k128`：CTA `64×16×128`，1 个 producer、8 个 consumer warp；
+- `m64_n32_k128`：CTA `64×32×128`，1 个 producer、8 个 consumer warp，每个
+  consumer warp 拥有两个 N replica。
+
+目标是确认把 544-thread CTA 减至 288 threads 后，增加的 resident CTA/warp 调度自由度
+能否隐藏较长的 packed-INT4 lowering 指令序列。TMA、两级 pipeline、G128 scale 语义、
+两路 INT4 MMA、寄存器 partial、FP32 累加/输出和最终单次写回均保持不变。候选必须依次通过
+小规模正确性、`4096³` 性能、MSE 回归、资源审计以及同一入口 TMA/INT4 指令审计才可晋升。

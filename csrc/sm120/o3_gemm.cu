@@ -30,17 +30,21 @@ constexpr int kGroupSize = 128;
 constexpr int kMmaK = 64;
 constexpr int kKSubgroups = 2;
 constexpr int kProducerThreads = 32;
-constexpr int kConsumerThreads = 512;
-constexpr int kThreads = kProducerThreads + kConsumerThreads;
+constexpr int kMaxThreads = 544;
 constexpr int kPackedK = kGroupSize / 2;
 using LowMma = cute::SM80_16x8x64_S32U4S4S32_TN;
 using HighMma = cute::SM80_16x8x64_S32S4S4S32_TN;
 
-template <int TileN, int GroupsPerStage, bool DualK64Chains>
+template <int TileN, int GroupsPerStage, bool DualK64Chains, int TileM = 128>
 struct O3Config {
-  static constexpr int kTileM = 128;
+  static constexpr int kTileM = TileM;
   static constexpr int kTileN = TileN;
   static constexpr int kNReplicas = TileN / 16;
+  static constexpr int kMWarps = TileM / 16;
+  static constexpr int kNWarpGroups = 2;
+  static constexpr int kConsumerWarps = kMWarps * kNWarpGroups;
+  static constexpr int kConsumerThreads = 32 * kConsumerWarps;
+  static constexpr int kThreads = kProducerThreads + kConsumerThreads;
   static constexpr int kGroupsPerStage = GroupsPerStage;
   static constexpr int kStages = 2;
   static constexpr int kPipelinePackedK = GroupsPerStage * kPackedK;
@@ -84,6 +88,11 @@ struct O3SwizzledConfig {
   static constexpr int kTileM = 128;
   static constexpr int kTileN = TileN;
   static constexpr int kNReplicas = TileN / 16;
+  static constexpr int kMWarps = kTileM / 16;
+  static constexpr int kNWarpGroups = 2;
+  static constexpr int kConsumerWarps = kMWarps * kNWarpGroups;
+  static constexpr int kConsumerThreads = 32 * kConsumerWarps;
+  static constexpr int kThreads = kProducerThreads + kConsumerThreads;
   static constexpr int kGroupsPerStage = 1;
   static constexpr int kStages = 2;
   static constexpr int kPipelinePackedK = kPackedK;
@@ -125,6 +134,8 @@ using O3N16K128DualConfig = O3Config<16, 1, true>;
 using O3N32K256DualConfig = O3Config<32, 2, true>;
 using O3N16K128SwizzleConfig = O3SwizzledConfig<16>;
 using O3N32K128SwizzleConfig = O3SwizzledConfig<32>;
+using O3M64N16K128Config = O3Config<16, 1, false, 64>;
+using O3M64N32K128Config = O3Config<32, 1, false, 64>;
 
 constexpr const char* kProductionO3Implementation = "n16_k128";
 
@@ -136,6 +147,8 @@ enum class O3Implementation {
   kN32K256Dual,
   kN16K128Swizzle,
   kN32K128Swizzle,
+  kM64N16K128,
+  kM64N32K128,
 };
 
 O3Implementation parse_o3_implementation(const std::string& implementation) {
@@ -148,11 +161,11 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   if (selected == "n32_k256_dual") return O3Implementation::kN32K256Dual;
   if (selected == "n16_k128_swizzle") return O3Implementation::kN16K128Swizzle;
   if (selected == "n32_k128_swizzle") return O3Implementation::kN32K128Swizzle;
+  if (selected == "m64_n16_k128") return O3Implementation::kM64N16K128;
+  if (selected == "m64_n32_k128") return O3Implementation::kM64N32K128;
   TORCH_CHECK(false, "unknown O3 implementation: ", implementation);
   return O3Implementation::kN16K128;
 }
-
-static_assert(kThreads == 544);
 
 void check_cuda(cudaError_t status, const char* operation) {
   TORCH_CHECK(status == cudaSuccess, operation, " failed: ", cudaGetErrorString(status));
@@ -247,7 +260,7 @@ void validate_inputs(
 }
 
 template <class Config, class TmaLow, class TmaHigh, class TmaB>
-__global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
+__global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
     CUTE_GRID_CONSTANT TmaLow const tma_low,
     CUTE_GRID_CONSTANT TmaHigh const tma_high,
     CUTE_GRID_CONSTANT TmaB const tma_b,
@@ -265,6 +278,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   constexpr int kTileM = Config::kTileM;
   constexpr int kTileN = Config::kTileN;
   constexpr int kNReplicas = Config::kNReplicas;
+  constexpr int kMWarps = Config::kMWarps;
   constexpr int kGroupsPerStage = Config::kGroupsPerStage;
   constexpr int kPipelinePackedK = Config::kPipelinePackedK;
   constexpr int kPipelineK = Config::kPipelineK;
@@ -304,7 +318,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   const int warp = thread >> 5;
   const int lane = thread & 31;
   typename Pipeline::Params params;
-  params.num_consumers = kConsumerThreads;
+  params.num_consumers = Config::kConsumerThreads;
   params.transaction_bytes =
       2 * Config::kATransactionBytes + Config::kBTransactionBytes;
   params.initializing_warp = 0;
@@ -356,8 +370,8 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_tma_ws(
   const int consumer_warp = compute_thread >> 5;
   const int lane_i = lane & 3;
   const int lane_j = lane >> 2;
-  const int warp_m = consumer_warp & 7;
-  const int warp_n = consumer_warp >> 3;
+  const int warp_m = consumer_warp % kMWarps;
+  const int warp_n = consumer_warp / kMWarps;
   const int tile_row = static_cast<int>(blockIdx.y) * kTileM;
   const int tile_column = static_cast<int>(blockIdx.x) * kTileN;
   const int local_row0 = warp_m * 16 + lane_j;
@@ -597,7 +611,7 @@ void launch_gemm(
           cudaFuncAttributeMaxDynamicSharedMemorySize,
           static_cast<int>(sizeof(SharedStorage))),
       "O3 set dynamic shared-memory limit");
-  adangel_o3_split_tma_ws<Config><<<grid, kThreads, sizeof(SharedStorage), stream>>>(
+  adangel_o3_split_tma_ws<Config><<<grid, Config::kThreads, sizeof(SharedStorage), stream>>>(
       low, high, b, a_scale.data_ptr<float>(), w_scale.data_ptr<uint8_t>(),
       output.data_ptr<float>(), m, n, k, k / kGroupSize);
   check_cuda(cudaGetLastError(), "O3 Split TMA warp-specialized launch");
@@ -634,7 +648,7 @@ py::dict kernel_metadata(
   result["independent_k64_accumulator_chains"] =
       Config::kDualK64Chains ? kKSubgroups : 1;
   result["producer_warps"] = 1;
-  result["consumer_warps"] = 16;
+  result["consumer_warps"] = Config::kConsumerWarps;
   result["group_size"] = kGroupSize;
   result["group_count"] = groups;
   result["split_formula"] = "A8=A_low_u4+16*A_high_s4";
@@ -807,6 +821,18 @@ py::dict adangel_benchmark_o3_impl(
     return benchmark_o3_config<O3N32K128SwizzleConfig>(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n32_k128_swizzle", "adangel_o3_split_tma_ws<O3SwizzledConfig<32>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kM64N16K128) {
+    return benchmark_o3_config<O3M64N16K128Config>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "m64_n16_k128", "adangel_o3_split_tma_ws<O3Config<16,1,false,64>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kM64N32K128) {
+    return benchmark_o3_config<O3M64N32K128Config>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "m64_n32_k128", "adangel_o3_split_tma_ws<O3Config<32,1,false,64>>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   return benchmark_o3_config<O3N16K128Config>(
