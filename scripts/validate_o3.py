@@ -80,6 +80,9 @@ def main() -> int:
     w_g128, w_scale = quantize_mxfp4(weight, group_size=128)
     expected_q4 = mxfp4_to_q4_packed(w_g128)
     expected_split = split_int8_to_packed_int4(a_int8)
+    if args.implementation == "n16_k128_ldsm_biased_high_u4":
+        expected_split = expected_split.clone()
+        expected_split[args.m :] ^= 0x88
     q4 = unpack_int4_tensor(expected_q4).cuda()
     a_cuda, a_scale_cuda = a_int8.cuda(), a_scale.cuda()
     scale_cuda = w_scale.cuda()
