@@ -28,6 +28,7 @@ IMPLEMENTATIONS = {
         "n16_k128_ldsm_scale_broadcast",
         "n16_k128_ldsm_factor_row_scale",
         "n16_k128_ldsm_biased_high_u4",
+        "n32_k128_ldsm_biased_high_u4",
         "n32_k128_cute_ldsm",
         "n16_k128_ldsm_swizzle",
         "n16_k128_ldsm_split_chains",
