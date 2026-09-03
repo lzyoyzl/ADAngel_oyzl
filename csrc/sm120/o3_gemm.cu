@@ -68,6 +68,7 @@ struct O3Config {
   static constexpr bool kWarpBroadcastColumnScale = false;
   static constexpr bool kFactorRowScaleAfterK = false;
   static constexpr bool kBiasedHighU4 = false;
+  static constexpr bool kAssumeAlignedTiles = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using ByteLayoutA = decltype(cute::make_layout(
       cute::make_shape(
@@ -142,6 +143,7 @@ struct O3SwizzledConfig {
   static constexpr bool kWarpBroadcastColumnScale = false;
   static constexpr bool kFactorRowScaleAfterK = false;
   static constexpr bool kBiasedHighU4 = false;
+  static constexpr bool kAssumeAlignedTiles = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using SwizzleAtom = decltype(cute::composition(
       cute::Swizzle<2, 4, 3>{},
@@ -186,6 +188,12 @@ struct O3N16K128LdsmScaleBroadcastConfig : O3N16K128CuteLdsmConfig {
   static constexpr bool kWarpBroadcastColumnScale = true;
 };
 struct O3N16K128LdsmFactorRowScaleConfig : O3N16K128CuteLdsmConfig {
+  static constexpr bool kFactorRowScaleAfterK = true;
+};
+struct O3N16K128LdsmAlignedConfig : O3N16K128CuteLdsmConfig {
+  static constexpr bool kAssumeAlignedTiles = true;
+};
+struct O3N16K128LdsmAlignedFactorRowScaleConfig : O3N16K128LdsmAlignedConfig {
   static constexpr bool kFactorRowScaleAfterK = true;
 };
 struct O3N16K128LdsmBiasedHighU4Config : O3N16K128CuteLdsmConfig {
@@ -238,6 +246,8 @@ enum class O3Implementation {
   kN16K128MRep2CuteLdsm,
   kN16K128LdsmScaleBroadcast,
   kN16K128LdsmFactorRowScale,
+  kN16K128LdsmAligned,
+  kN16K128LdsmAlignedFactorRowScale,
   kN16K128LdsmBiasedHighU4,
   kN32K128LdsmBiasedHighU4,
   kN32K128CuteLdsm,
@@ -269,6 +279,12 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   }
   if (selected == "n16_k128_ldsm_factor_row_scale") {
     return O3Implementation::kN16K128LdsmFactorRowScale;
+  }
+  if (selected == "n16_k128_ldsm_aligned") {
+    return O3Implementation::kN16K128LdsmAligned;
+  }
+  if (selected == "n16_k128_ldsm_aligned_factor_row_scale") {
+    return O3Implementation::kN16K128LdsmAlignedFactorRowScale;
   }
   if (selected == "n16_k128_ldsm_biased_high_u4") {
     return O3Implementation::kN16K128LdsmBiasedHighU4;
@@ -466,11 +482,18 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
         const int group = pipeline_group * kGroupsPerStage + inner_group;
         for (int column = lane; column < kTileN; column += 32) {
           const int global_column = static_cast<int>(blockIdx.x) * kTileN + column;
+          float decoded_scale;
+          if constexpr (Config::kAssumeAlignedTiles) {
+            decoded_scale =
+                adangel::decode_ue8m0(w_scale[global_column * groups + group]);
+          } else {
+            decoded_scale = global_column < n && group < groups
+                ? adangel::decode_ue8m0(w_scale[global_column * groups + group])
+                : 0.0f;
+          }
           storage.column_scale[
               (stage * kGroupsPerStage + inner_group) * kTileN + column] =
-              global_column < n && group < groups
-              ? adangel::decode_ue8m0(w_scale[global_column * groups + group])
-              : 0.0f;
+              decoded_scale;
           if constexpr (Config::kBiasedHighU4) {
             storage.column_correction[
                 (stage * kGroupsPerStage + inner_group) * kTileN + column] =
@@ -658,10 +681,15 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
     local_row1[m_replica] = local_row0[m_replica] + 8;
     global_row0[m_replica] = tile_row + local_row0[m_replica];
     global_row1[m_replica] = tile_row + local_row1[m_replica];
-    row_scale0[m_replica] =
-        global_row0[m_replica] < m ? a_scale[global_row0[m_replica]] : 0.0f;
-    row_scale1[m_replica] =
-        global_row1[m_replica] < m ? a_scale[global_row1[m_replica]] : 0.0f;
+    if constexpr (Config::kAssumeAlignedTiles) {
+      row_scale0[m_replica] = a_scale[global_row0[m_replica]];
+      row_scale1[m_replica] = a_scale[global_row1[m_replica]];
+    } else {
+      row_scale0[m_replica] =
+          global_row0[m_replica] < m ? a_scale[global_row0[m_replica]] : 0.0f;
+      row_scale1[m_replica] =
+          global_row1[m_replica] < m ? a_scale[global_row1[m_replica]] : 0.0f;
+    }
   }
   float accumulators[kMReplicas][kNReplicas][4] = {};
 
@@ -681,7 +709,9 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
 #pragma unroll
     for (int inner_group = 0; inner_group < kGroupsPerStage; ++inner_group) {
       const int group = pipeline_group * kGroupsPerStage + inner_group;
-      if (group >= groups) break;
+      if constexpr (!Config::kAssumeAlignedTiles) {
+        if (group >= groups) break;
+      }
       uint32_t low[kKSubgroups][kMReplicas][kNReplicas][4] = {};
       uint32_t high[kKSubgroups][kMReplicas][kNReplicas][4] = {};
       if constexpr (Config::kDualK64Chains) {
@@ -963,18 +993,29 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
       const float output11 = Config::kFactorRowScaleAfterK
           ? __fmul_rn(accumulators[m_replica][replica][3], row_scale1[m_replica])
           : accumulators[m_replica][replica][3];
-      if (global_row0[m_replica] < m && global_column0 < n)
+      if constexpr (Config::kAssumeAlignedTiles) {
         output[static_cast<int64_t>(global_row0[m_replica]) * n + global_column0] =
             output00;
-      if (global_row0[m_replica] < m && global_column1 < n)
         output[static_cast<int64_t>(global_row0[m_replica]) * n + global_column1] =
             output01;
-      if (global_row1[m_replica] < m && global_column0 < n)
         output[static_cast<int64_t>(global_row1[m_replica]) * n + global_column0] =
             output10;
-      if (global_row1[m_replica] < m && global_column1 < n)
         output[static_cast<int64_t>(global_row1[m_replica]) * n + global_column1] =
             output11;
+      } else {
+        if (global_row0[m_replica] < m && global_column0 < n)
+          output[static_cast<int64_t>(global_row0[m_replica]) * n + global_column0] =
+              output00;
+        if (global_row0[m_replica] < m && global_column1 < n)
+          output[static_cast<int64_t>(global_row0[m_replica]) * n + global_column1] =
+              output01;
+        if (global_row1[m_replica] < m && global_column0 < n)
+          output[static_cast<int64_t>(global_row1[m_replica]) * n + global_column0] =
+              output10;
+        if (global_row1[m_replica] < m && global_column1 < n)
+          output[static_cast<int64_t>(global_row1[m_replica]) * n + global_column1] =
+              output11;
+      }
     }
   }
 }
@@ -1086,6 +1127,7 @@ py::dict kernel_metadata(
   result["high_nibble_execution"] = Config::kBiasedHighU4
       ? "biased_u4_with_exact_g128_weight_sum_correction" : "signed_s4";
   result["formal_signed_high_mma"] = !Config::kBiasedHighU4;
+  result["aligned_tile_fast_path"] = Config::kAssumeAlignedTiles;
   result["group_size"] = kGroupSize;
   result["group_count"] = groups;
   result["split_formula"] = Config::kBiasedHighU4
@@ -1124,6 +1166,12 @@ py::dict benchmark_o3_config(
   const int m = static_cast<int>(a_int8.size(0));
   const int k = static_cast<int>(a_int8.size(1));
   const int n = static_cast<int>(w_mxfp4_g128.size(0));
+  if constexpr (Config::kAssumeAlignedTiles) {
+    TORCH_CHECK(
+        m % Config::kTileM == 0 && n % Config::kTileN == 0 &&
+            (k / kGroupSize) % Config::kGroupsPerStage == 0,
+        "O3 aligned fast path requires complete CTA and pipeline tiles");
+  }
   auto byte_options = a_int8.options().dtype(at::kByte);
   auto q4 = at::empty({n, k / 2}, byte_options);
   auto split = at::empty({2 * m, k / 2}, byte_options);
@@ -1321,6 +1369,20 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n16_k128_ldsm_factor_row_scale",
         "adangel_o3_split_tma_ws<O3N16K128LdsmFactorRowScaleConfig>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128LdsmAligned) {
+    return benchmark_o3_config<O3N16K128LdsmAlignedConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_ldsm_aligned",
+        "adangel_o3_split_tma_ws<O3N16K128LdsmAlignedConfig>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128LdsmAlignedFactorRowScale) {
+    return benchmark_o3_config<O3N16K128LdsmAlignedFactorRowScaleConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_ldsm_aligned_factor_row_scale",
+        "adangel_o3_split_tma_ws<O3N16K128LdsmAlignedFactorRowScaleConfig>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   if (selected == O3Implementation::kN16K128LdsmBiasedHighU4) {

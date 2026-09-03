@@ -196,6 +196,35 @@ def test_o3_internal_optimization_candidates_match_production(implementation):
 @pytest.mark.sm120
 @pytest.mark.parametrize(
     "implementation",
+    ("n16_k128_ldsm_aligned", "n16_k128_ldsm_aligned_factor_row_scale"),
+)
+def test_o3_aligned_fast_path_matches_production(implementation):
+    import torch
+
+    from adangel.ops.extension import require_variant
+
+    _, inputs = _inputs(m=128, n=32, k=256)
+    native = require_variant("o3")
+    baseline = native._benchmark_o3_impl(
+        "n16_k128_cute_ldsm", "compute_only", inputs.A_int8, inputs.A_scale,
+        inputs.W_mxfp4_g128, inputs.W_scale_g128, 1, 1, 100,
+    )
+    candidate = native._benchmark_o3_impl(
+        implementation, "compute_only", inputs.A_int8, inputs.A_scale,
+        inputs.W_mxfp4_g128, inputs.W_scale_g128, 1, 1, 100,
+    )
+    torch.cuda.synchronize()
+    torch.testing.assert_close(
+        candidate["output"], baseline["output"], rtol=1e-3, atol=1e-3
+    )
+    kernel = dict(candidate["kernel"])
+    assert kernel["aligned_tile_fast_path"] is True
+    assert kernel["formal_signed_high_mma"] is True
+
+
+@pytest.mark.sm120
+@pytest.mark.parametrize(
+    "implementation",
     (
         "n64_k256",
         "n64_k256_split2",
