@@ -36,6 +36,7 @@ def arguments():
             "n16_k128_cute_ldsm",
             "n16_k128_mrep2_cute_ldsm",
             "n16_k128_ldsm_scale_broadcast",
+            "n16_k128_ldsm_factor_row_scale",
             "n32_k128_cute_ldsm",
             "n16_k128_ldsm_swizzle",
             "n16_k128_ldsm_split_chains",

@@ -66,6 +66,7 @@ struct O3Config {
   static constexpr bool kSwizzledSharedRows = false;
   static constexpr bool kUseCuteLdsm = UseCuteLdsm;
   static constexpr bool kWarpBroadcastColumnScale = false;
+  static constexpr bool kFactorRowScaleAfterK = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using ByteLayoutA = decltype(cute::make_layout(
       cute::make_shape(
@@ -138,6 +139,7 @@ struct O3SwizzledConfig {
   static constexpr bool kSwizzledSharedRows = true;
   static constexpr bool kUseCuteLdsm = UseLdsm;
   static constexpr bool kWarpBroadcastColumnScale = false;
+  static constexpr bool kFactorRowScaleAfterK = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using SwizzleAtom = decltype(cute::composition(
       cute::Swizzle<2, 4, 3>{},
@@ -181,6 +183,9 @@ struct O3N16K128MRep2CuteLdsmConfig : O3N16K128CuteLdsmConfig {
 struct O3N16K128LdsmScaleBroadcastConfig : O3N16K128CuteLdsmConfig {
   static constexpr bool kWarpBroadcastColumnScale = true;
 };
+struct O3N16K128LdsmFactorRowScaleConfig : O3N16K128CuteLdsmConfig {
+  static constexpr bool kFactorRowScaleAfterK = true;
+};
 using O3N32K128CuteLdsmConfig = O3Config<32, 1, false, 128, true>;
 using O3N16K128LdsmSwizzleConfig = O3SwizzledConfig<16, true>;
 
@@ -204,6 +209,7 @@ enum class O3Implementation {
   kN16K128CuteLdsm,
   kN16K128MRep2CuteLdsm,
   kN16K128LdsmScaleBroadcast,
+  kN16K128LdsmFactorRowScale,
   kN32K128CuteLdsm,
   kN16K128LdsmSwizzle,
   kN16K128LdsmSplitChains,
@@ -230,6 +236,9 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   }
   if (selected == "n16_k128_ldsm_scale_broadcast") {
     return O3Implementation::kN16K128LdsmScaleBroadcast;
+  }
+  if (selected == "n16_k128_ldsm_factor_row_scale") {
+    return O3Implementation::kN16K128LdsmFactorRowScale;
   }
   if (selected == "n32_k128_cute_ldsm") return O3Implementation::kN32K128CuteLdsm;
   if (selected == "n16_k128_ldsm_swizzle") {
@@ -848,21 +857,29 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
                       high[chain][m_replica][replica][item]);
             }
           }
+          const float scale00 = Config::kFactorRowScaleAfterK
+              ? column_scale0
+              : __fmul_rn(row_scale0[m_replica], column_scale0);
+          const float scale01 = Config::kFactorRowScaleAfterK
+              ? column_scale1
+              : __fmul_rn(row_scale0[m_replica], column_scale1);
+          const float scale10 = Config::kFactorRowScaleAfterK
+              ? column_scale0
+              : __fmul_rn(row_scale1[m_replica], column_scale0);
+          const float scale11 = Config::kFactorRowScaleAfterK
+              ? column_scale1
+              : __fmul_rn(row_scale1[m_replica], column_scale1);
           accumulators[m_replica][replica][0] = __fmaf_rn(
-              static_cast<float>(partial[0]),
-              __fmul_rn(row_scale0[m_replica], column_scale0),
+              static_cast<float>(partial[0]), scale00,
               accumulators[m_replica][replica][0]);
           accumulators[m_replica][replica][1] = __fmaf_rn(
-              static_cast<float>(partial[1]),
-              __fmul_rn(row_scale0[m_replica], column_scale1),
+              static_cast<float>(partial[1]), scale01,
               accumulators[m_replica][replica][1]);
           accumulators[m_replica][replica][2] = __fmaf_rn(
-              static_cast<float>(partial[2]),
-              __fmul_rn(row_scale1[m_replica], column_scale0),
+              static_cast<float>(partial[2]), scale10,
               accumulators[m_replica][replica][2]);
           accumulators[m_replica][replica][3] = __fmaf_rn(
-              static_cast<float>(partial[3]),
-              __fmul_rn(row_scale1[m_replica], column_scale1),
+              static_cast<float>(partial[3]), scale11,
               accumulators[m_replica][replica][3]);
         }
       }
@@ -878,18 +895,30 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
       const int atom_n = warp_n * kNReplicas + replica;
       const int global_column0 = tile_column + atom_n * 8 + 2 * lane_i;
       const int global_column1 = global_column0 + 1;
+      const float output00 = Config::kFactorRowScaleAfterK
+          ? __fmul_rn(accumulators[m_replica][replica][0], row_scale0[m_replica])
+          : accumulators[m_replica][replica][0];
+      const float output01 = Config::kFactorRowScaleAfterK
+          ? __fmul_rn(accumulators[m_replica][replica][1], row_scale0[m_replica])
+          : accumulators[m_replica][replica][1];
+      const float output10 = Config::kFactorRowScaleAfterK
+          ? __fmul_rn(accumulators[m_replica][replica][2], row_scale1[m_replica])
+          : accumulators[m_replica][replica][2];
+      const float output11 = Config::kFactorRowScaleAfterK
+          ? __fmul_rn(accumulators[m_replica][replica][3], row_scale1[m_replica])
+          : accumulators[m_replica][replica][3];
       if (global_row0[m_replica] < m && global_column0 < n)
         output[static_cast<int64_t>(global_row0[m_replica]) * n + global_column0] =
-            accumulators[m_replica][replica][0];
+            output00;
       if (global_row0[m_replica] < m && global_column1 < n)
         output[static_cast<int64_t>(global_row0[m_replica]) * n + global_column1] =
-            accumulators[m_replica][replica][1];
+            output01;
       if (global_row1[m_replica] < m && global_column0 < n)
         output[static_cast<int64_t>(global_row1[m_replica]) * n + global_column0] =
-            accumulators[m_replica][replica][2];
+            output10;
       if (global_row1[m_replica] < m && global_column1 < n)
         output[static_cast<int64_t>(global_row1[m_replica]) * n + global_column1] =
-            accumulators[m_replica][replica][3];
+            output11;
     }
   }
 }
@@ -983,6 +1012,8 @@ py::dict kernel_metadata(
   result["m_mma_replicas_per_consumer_warp"] = Config::kMReplicas;
   result["column_scale_distribution"] = Config::kWarpBroadcastColumnScale
       ? "one_lane_per_column_then_warp_shuffle" : "per_output_lane_shared_load";
+  result["row_scale_application"] = Config::kFactorRowScaleAfterK
+      ? "factored_after_g128_accumulation" : "inside_each_g128_fma";
   result["group_size"] = kGroupSize;
   result["group_count"] = groups;
   result["split_formula"] = "A8=A_low_u4+16*A_high_s4";
@@ -1195,6 +1226,13 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n16_k128_ldsm_scale_broadcast",
         "adangel_o3_split_tma_ws<O3N16K128LdsmScaleBroadcastConfig>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128LdsmFactorRowScale) {
+    return benchmark_o3_config<O3N16K128LdsmFactorRowScaleConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_ldsm_factor_row_scale",
+        "adangel_o3_split_tma_ws<O3N16K128LdsmFactorRowScaleConfig>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   if (selected == O3Implementation::kN32K128CuteLdsm) {
