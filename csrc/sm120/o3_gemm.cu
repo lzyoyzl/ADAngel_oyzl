@@ -65,6 +65,7 @@ struct O3Config {
   static constexpr bool kIndependentK64Chains = false;
   static constexpr bool kSwizzledSharedRows = false;
   static constexpr bool kUseCuteLdsm = UseCuteLdsm;
+  static constexpr bool kWarpBroadcastColumnScale = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using ByteLayoutA = decltype(cute::make_layout(
       cute::make_shape(
@@ -136,6 +137,7 @@ struct O3SwizzledConfig {
   static constexpr bool kIndependentK64Chains = false;
   static constexpr bool kSwizzledSharedRows = true;
   static constexpr bool kUseCuteLdsm = UseLdsm;
+  static constexpr bool kWarpBroadcastColumnScale = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using SwizzleAtom = decltype(cute::composition(
       cute::Swizzle<2, 4, 3>{},
@@ -176,6 +178,9 @@ struct O3N16K128MRep2CuteLdsmConfig : O3N16K128CuteLdsmConfig {
   static constexpr int kConsumerThreads = 32 * kConsumerWarps;
   static constexpr int kThreads = kProducerThreads + kConsumerThreads;
 };
+struct O3N16K128LdsmScaleBroadcastConfig : O3N16K128CuteLdsmConfig {
+  static constexpr bool kWarpBroadcastColumnScale = true;
+};
 using O3N32K128CuteLdsmConfig = O3Config<32, 1, false, 128, true>;
 using O3N16K128LdsmSwizzleConfig = O3SwizzledConfig<16, true>;
 
@@ -198,6 +203,7 @@ enum class O3Implementation {
   kM64N16K128CuteLdsm,
   kN16K128CuteLdsm,
   kN16K128MRep2CuteLdsm,
+  kN16K128LdsmScaleBroadcast,
   kN32K128CuteLdsm,
   kN16K128LdsmSwizzle,
   kN16K128LdsmSplitChains,
@@ -221,6 +227,9 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   if (selected == "n16_k128_cute_ldsm") return O3Implementation::kN16K128CuteLdsm;
   if (selected == "n16_k128_mrep2_cute_ldsm") {
     return O3Implementation::kN16K128MRep2CuteLdsm;
+  }
+  if (selected == "n16_k128_ldsm_scale_broadcast") {
+    return O3Implementation::kN16K128LdsmScaleBroadcast;
   }
   if (selected == "n32_k128_cute_ldsm") return O3Implementation::kN32K128CuteLdsm;
   if (selected == "n16_k128_ldsm_swizzle") {
@@ -809,8 +818,20 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
         const int local_column0 = atom_n * 8 + 2 * lane_i;
         const int local_column1 = local_column0 + 1;
         const int scale_base = (stage * kGroupsPerStage + inner_group) * kTileN;
-        const float column_scale0 = storage.column_scale[scale_base + local_column0];
-        const float column_scale1 = storage.column_scale[scale_base + local_column1];
+        float column_scale0;
+        float column_scale1;
+        if constexpr (Config::kWarpBroadcastColumnScale) {
+          const float owned_column_scale = lane < 8
+              ? storage.column_scale[scale_base + atom_n * 8 + lane]
+              : 0.0f;
+          column_scale0 = __shfl_sync(
+              0xffffffffu, owned_column_scale, 2 * lane_i);
+          column_scale1 = __shfl_sync(
+              0xffffffffu, owned_column_scale, 2 * lane_i + 1);
+        } else {
+          column_scale0 = storage.column_scale[scale_base + local_column0];
+          column_scale1 = storage.column_scale[scale_base + local_column1];
+        }
         const int chain_count =
             (Config::kDualK64Chains || Config::kIndependentK64Chains)
             ? kKSubgroups : 1;
@@ -960,6 +981,8 @@ py::dict kernel_metadata(
   result["producer_warps"] = 1;
   result["consumer_warps"] = Config::kConsumerWarps;
   result["m_mma_replicas_per_consumer_warp"] = Config::kMReplicas;
+  result["column_scale_distribution"] = Config::kWarpBroadcastColumnScale
+      ? "one_lane_per_column_then_warp_shuffle" : "per_output_lane_shared_load";
   result["group_size"] = kGroupSize;
   result["group_count"] = groups;
   result["split_formula"] = "A8=A_low_u4+16*A_high_s4";
@@ -1165,6 +1188,13 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n16_k128_mrep2_cute_ldsm",
         "adangel_o3_split_tma_ws<O3N16K128MRep2CuteLdsmConfig>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128LdsmScaleBroadcast) {
+    return benchmark_o3_config<O3N16K128LdsmScaleBroadcastConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_ldsm_scale_broadcast",
+        "adangel_o3_split_tma_ws<O3N16K128LdsmScaleBroadcastConfig>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   if (selected == O3Implementation::kN32K128CuteLdsm) {
