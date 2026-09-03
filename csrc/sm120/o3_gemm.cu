@@ -176,6 +176,20 @@ using O3N32K128SwizzleConfig = O3SwizzledConfig<32>;
 using O3M64N16K128Config = O3Config<16, 1, false, 64>;
 using O3M64N32K128Config = O3Config<32, 1, false, 64>;
 using O3M64N16K128CuteLdsmConfig = O3Config<16, 1, false, 64, true>;
+struct O3M64N32K128CuteLdsm16WConfig : O3Config<32, 1, false, 64, true> {
+  static constexpr int kNReplicas = 1;
+  static constexpr int kNWarpGroups = 4;
+  static constexpr int kConsumerWarps = kMWarps * kNWarpGroups;
+  static constexpr int kConsumerThreads = 32 * kConsumerWarps;
+  static constexpr int kThreads = kProducerThreads + kConsumerThreads;
+};
+struct O3M32N64K128CuteLdsm16WConfig : O3Config<64, 1, false, 32, true> {
+  static constexpr int kNReplicas = 1;
+  static constexpr int kNWarpGroups = 8;
+  static constexpr int kConsumerWarps = kMWarps * kNWarpGroups;
+  static constexpr int kConsumerThreads = 32 * kConsumerWarps;
+  static constexpr int kThreads = kProducerThreads + kConsumerThreads;
+};
 using O3N16K128CuteLdsmConfig = O3Config<16, 1, false, 128, true>;
 struct O3N16K128MRep2CuteLdsmConfig : O3N16K128CuteLdsmConfig {
   static constexpr int kMReplicas = 2;
@@ -242,6 +256,8 @@ enum class O3Implementation {
   kM64N16K128,
   kM64N32K128,
   kM64N16K128CuteLdsm,
+  kM64N32K128CuteLdsm16W,
+  kM32N64K128CuteLdsm16W,
   kN16K128CuteLdsm,
   kN16K128MRep2CuteLdsm,
   kN16K128LdsmScaleBroadcast,
@@ -269,6 +285,12 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   if (selected == "m64_n32_k128") return O3Implementation::kM64N32K128;
   if (selected == "m64_n16_k128_cute_ldsm") {
     return O3Implementation::kM64N16K128CuteLdsm;
+  }
+  if (selected == "m64_n32_k128_cute_ldsm_16w") {
+    return O3Implementation::kM64N32K128CuteLdsm16W;
+  }
+  if (selected == "m32_n64_k128_cute_ldsm_16w") {
+    return O3Implementation::kM32N64K128CuteLdsm16W;
   }
   if (selected == "n16_k128_cute_ldsm") return O3Implementation::kN16K128CuteLdsm;
   if (selected == "n16_k128_mrep2_cute_ldsm") {
@@ -1341,6 +1363,20 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "m64_n16_k128_cute_ldsm",
         "adangel_o3_split_tma_ws<O3Config<16,1,false,64,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kM64N32K128CuteLdsm16W) {
+    return benchmark_o3_config<O3M64N32K128CuteLdsm16WConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "m64_n32_k128_cute_ldsm_16w",
+        "adangel_o3_split_tma_ws<O3M64N32K128CuteLdsm16WConfig>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kM32N64K128CuteLdsm16W) {
+    return benchmark_o3_config<O3M32N64K128CuteLdsm16WConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "m32_n64_k128_cute_ldsm_16w",
+        "adangel_o3_split_tma_ws<O3M32N64K128CuteLdsm16WConfig>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   if (selected == O3Implementation::kN16K128CuteLdsm) {

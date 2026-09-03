@@ -23,6 +23,8 @@ IMPLEMENTATIONS = {
         "m64_n16_k128",
         "m64_n32_k128",
         "m64_n16_k128_cute_ldsm",
+        "m64_n32_k128_cute_ldsm_16w",
+        "m32_n64_k128_cute_ldsm_16w",
         "n16_k128_cute_ldsm",
         "n16_k128_mrep2_cute_ldsm",
         "n16_k128_ldsm_scale_broadcast",
