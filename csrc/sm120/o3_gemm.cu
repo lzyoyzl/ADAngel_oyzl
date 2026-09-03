@@ -45,6 +45,7 @@ struct O3Config {
   static constexpr int kTileM = TileM;
   static constexpr int kTileN = TileN;
   static constexpr int kNReplicas = TileN / 16;
+  static constexpr int kMReplicas = 1;
   static constexpr int kMWarps = TileM / 16;
   static constexpr int kNWarpGroups = 2;
   static constexpr int kConsumerWarps = kMWarps * kNWarpGroups;
@@ -167,6 +168,13 @@ using O3M64N16K128Config = O3Config<16, 1, false, 64>;
 using O3M64N32K128Config = O3Config<32, 1, false, 64>;
 using O3M64N16K128CuteLdsmConfig = O3Config<16, 1, false, 64, true>;
 using O3N16K128CuteLdsmConfig = O3Config<16, 1, false, 128, true>;
+struct O3N16K128MRep2CuteLdsmConfig : O3N16K128CuteLdsmConfig {
+  static constexpr int kMReplicas = 2;
+  static constexpr int kMWarps = 4;
+  static constexpr int kConsumerWarps = kMWarps * kNWarpGroups;
+  static constexpr int kConsumerThreads = 32 * kConsumerWarps;
+  static constexpr int kThreads = kProducerThreads + kConsumerThreads;
+};
 using O3N32K128CuteLdsmConfig = O3Config<32, 1, false, 128, true>;
 using O3N16K128LdsmSwizzleConfig = O3SwizzledConfig<16, true>;
 
@@ -188,6 +196,7 @@ enum class O3Implementation {
   kM64N32K128,
   kM64N16K128CuteLdsm,
   kN16K128CuteLdsm,
+  kN16K128MRep2CuteLdsm,
   kN32K128CuteLdsm,
   kN16K128LdsmSwizzle,
   kN16K128LdsmSplitChains,
@@ -209,6 +218,9 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
     return O3Implementation::kM64N16K128CuteLdsm;
   }
   if (selected == "n16_k128_cute_ldsm") return O3Implementation::kN16K128CuteLdsm;
+  if (selected == "n16_k128_mrep2_cute_ldsm") {
+    return O3Implementation::kN16K128MRep2CuteLdsm;
+  }
   if (selected == "n32_k128_cute_ldsm") return O3Implementation::kN32K128CuteLdsm;
   if (selected == "n16_k128_ldsm_swizzle") {
     return O3Implementation::kN16K128LdsmSwizzle;
@@ -331,6 +343,7 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
   constexpr int kTileM = Config::kTileM;
   constexpr int kTileN = Config::kTileN;
   constexpr int kNReplicas = Config::kNReplicas;
+  constexpr int kMReplicas = Config::kMReplicas;
   constexpr int kMWarps = Config::kMWarps;
   constexpr int kGroupsPerStage = Config::kGroupsPerStage;
   constexpr int kPipelinePackedK = Config::kPipelinePackedK;
@@ -563,17 +576,29 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
   const int consumer_warp = compute_thread >> 5;
   const int lane_i = lane & 3;
   const int lane_j = lane >> 2;
-  const int warp_m = consumer_warp % kMWarps;
+  const int warp_m_base = consumer_warp % kMWarps;
   const int warp_n = consumer_warp / kMWarps;
   const int tile_row = static_cast<int>(blockIdx.y) * kTileM;
   const int tile_column = static_cast<int>(blockIdx.x) * kTileN;
-  const int local_row0 = warp_m * 16 + lane_j;
-  const int local_row1 = local_row0 + 8;
-  const int global_row0 = tile_row + local_row0;
-  const int global_row1 = tile_row + local_row1;
-  const float row_scale0 = global_row0 < m ? a_scale[global_row0] : 0.0f;
-  const float row_scale1 = global_row1 < m ? a_scale[global_row1] : 0.0f;
-  float accumulators[kNReplicas][4] = {};
+  int local_row0[kMReplicas];
+  int local_row1[kMReplicas];
+  int global_row0[kMReplicas];
+  int global_row1[kMReplicas];
+  float row_scale0[kMReplicas];
+  float row_scale1[kMReplicas];
+#pragma unroll
+  for (int m_replica = 0; m_replica < kMReplicas; ++m_replica) {
+    const int atom_m = warp_m_base + m_replica * kMWarps;
+    local_row0[m_replica] = atom_m * 16 + lane_j;
+    local_row1[m_replica] = local_row0[m_replica] + 8;
+    global_row0[m_replica] = tile_row + local_row0[m_replica];
+    global_row1[m_replica] = tile_row + local_row1[m_replica];
+    row_scale0[m_replica] =
+        global_row0[m_replica] < m ? a_scale[global_row0[m_replica]] : 0.0f;
+    row_scale1[m_replica] =
+        global_row1[m_replica] < m ? a_scale[global_row1[m_replica]] : 0.0f;
+  }
+  float accumulators[kMReplicas][kNReplicas][4] = {};
 
   typename Pipeline::PipelineState read_state;
   const int pipeline_groups = (groups + kGroupsPerStage - 1) / kGroupsPerStage;
@@ -592,9 +617,11 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
     for (int inner_group = 0; inner_group < kGroupsPerStage; ++inner_group) {
       const int group = pipeline_group * kGroupsPerStage + inner_group;
       if (group >= groups) break;
-      uint32_t low[kKSubgroups][kNReplicas][4] = {};
-      uint32_t high[kKSubgroups][kNReplicas][4] = {};
+      uint32_t low[kKSubgroups][kMReplicas][kNReplicas][4] = {};
+      uint32_t high[kKSubgroups][kMReplicas][kNReplicas][4] = {};
       if constexpr (Config::kDualK64Chains) {
+        static_assert(kMReplicas == 1,
+                      "dual-preload O3 candidates only support one M replica per warp");
         // Explicitly preload both independent K64 fragments before issuing MMA.
         // Each K64 subgroup accumulates into its own register chain, removing the
         // read-after-write dependency between the two MMAs.  The chains are
@@ -605,14 +632,14 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
 #pragma unroll
         for (int subgroup = 0; subgroup < kKSubgroups; ++subgroup) {
           const int word_base = inner_group * (kPackedK / 4) + subgroup * 8 + lane_i;
-          low_a[subgroup][0] = low_words[local_row0 * kAWordsPerRow + word_base];
-          low_a[subgroup][1] = low_words[local_row1 * kAWordsPerRow + word_base];
-          low_a[subgroup][2] = low_words[local_row0 * kAWordsPerRow + word_base + 4];
-          low_a[subgroup][3] = low_words[local_row1 * kAWordsPerRow + word_base + 4];
-          high_a[subgroup][0] = high_words[local_row0 * kAWordsPerRow + word_base];
-          high_a[subgroup][1] = high_words[local_row1 * kAWordsPerRow + word_base];
-          high_a[subgroup][2] = high_words[local_row0 * kAWordsPerRow + word_base + 4];
-          high_a[subgroup][3] = high_words[local_row1 * kAWordsPerRow + word_base + 4];
+          low_a[subgroup][0] = low_words[local_row0[0] * kAWordsPerRow + word_base];
+          low_a[subgroup][1] = low_words[local_row1[0] * kAWordsPerRow + word_base];
+          low_a[subgroup][2] = low_words[local_row0[0] * kAWordsPerRow + word_base + 4];
+          low_a[subgroup][3] = low_words[local_row1[0] * kAWordsPerRow + word_base + 4];
+          high_a[subgroup][0] = high_words[local_row0[0] * kAWordsPerRow + word_base];
+          high_a[subgroup][1] = high_words[local_row1[0] * kAWordsPerRow + word_base];
+          high_a[subgroup][2] = high_words[local_row0[0] * kAWordsPerRow + word_base + 4];
+          high_a[subgroup][3] = high_words[local_row1[0] * kAWordsPerRow + word_base + 4];
 #pragma unroll
           for (int replica = 0; replica < kNReplicas; ++replica) {
             const int atom_n = warp_n * kNReplicas + replica;
@@ -628,15 +655,15 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
 #pragma unroll
           for (int replica = 0; replica < kNReplicas; ++replica) {
             LowMma::fma(
-                low[subgroup][replica][0], low[subgroup][replica][1],
-                low[subgroup][replica][2], low[subgroup][replica][3],
+                low[subgroup][0][replica][0], low[subgroup][0][replica][1],
+                low[subgroup][0][replica][2], low[subgroup][0][replica][3],
                 low_a[subgroup][0], low_a[subgroup][1],
                 low_a[subgroup][2], low_a[subgroup][3],
                 b_fragment[subgroup][replica][0], b_fragment[subgroup][replica][1],
                 0u, 0u, 0u, 0u);
             HighMma::fma(
-                high[subgroup][replica][0], high[subgroup][replica][1],
-                high[subgroup][replica][2], high[subgroup][replica][3],
+                high[subgroup][0][replica][0], high[subgroup][0][replica][1],
+                high[subgroup][0][replica][2], high[subgroup][0][replica][3],
                 high_a[subgroup][0], high_a[subgroup][1],
                 high_a[subgroup][2], high_a[subgroup][3],
                 b_fragment[subgroup][replica][0], b_fragment[subgroup][replica][1],
@@ -647,62 +674,9 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
 #pragma unroll
         for (int subgroup = 0; subgroup < kKSubgroups; ++subgroup) {
           const int word_base = inner_group * (kPackedK / 4) + subgroup * 8 + lane_i;
-          uint32_t la0, la1, la2, la3;
-          uint32_t ha0, ha1, ha2, ha3;
-          if constexpr (Config::kUseCuteLdsm) {
-            const int matrix = lane >> 3;
-            const int matrix_row = lane & 7;
-            const int a_row = warp_m * 16 + (matrix & 1) * 8 + matrix_row;
-            const int a_byte =
-                inner_group * kPackedK + subgroup * 32 + (matrix >> 1) * 16;
-            const uint8_t* low_address;
-            const uint8_t* high_address;
-            if constexpr (Config::kSwizzledSharedRows) {
-              const auto a_layout = ByteLayoutA{};
-              const int offset = a_layout(
-                  cute::make_coord(a_row, a_byte, stage));
-              low_address = storage.a_low + offset;
-              high_address = storage.a_high + offset;
-            } else {
-              const int offset = stage * kAStageBytes +
-                  a_row * Config::kAStageRowBytes + a_byte;
-              low_address = storage.a_low + offset;
-              high_address = storage.a_high + offset;
-            }
-            cute::SM75_U32x4_LDSM_N::copy(
-                *reinterpret_cast<const cute::uint128_t*>(low_address),
-                la0, la1, la2, la3);
-            cute::SM75_U32x4_LDSM_N::copy(
-                *reinterpret_cast<const cute::uint128_t*>(high_address),
-                ha0, ha1, ha2, ha3);
-          } else if constexpr (Config::kSwizzledSharedRows) {
-            const auto a_layout = ByteLayoutA{};
-            la0 = *reinterpret_cast<const uint32_t*>(
-                storage.a_low + a_layout(cute::make_coord(local_row0, word_base * 4, stage)));
-            la1 = *reinterpret_cast<const uint32_t*>(
-                storage.a_low + a_layout(cute::make_coord(local_row1, word_base * 4, stage)));
-            la2 = *reinterpret_cast<const uint32_t*>(
-                storage.a_low + a_layout(cute::make_coord(local_row0, (word_base + 4) * 4, stage)));
-            la3 = *reinterpret_cast<const uint32_t*>(
-                storage.a_low + a_layout(cute::make_coord(local_row1, (word_base + 4) * 4, stage)));
-            ha0 = *reinterpret_cast<const uint32_t*>(
-                storage.a_high + a_layout(cute::make_coord(local_row0, word_base * 4, stage)));
-            ha1 = *reinterpret_cast<const uint32_t*>(
-                storage.a_high + a_layout(cute::make_coord(local_row1, word_base * 4, stage)));
-            ha2 = *reinterpret_cast<const uint32_t*>(
-                storage.a_high + a_layout(cute::make_coord(local_row0, (word_base + 4) * 4, stage)));
-            ha3 = *reinterpret_cast<const uint32_t*>(
-                storage.a_high + a_layout(cute::make_coord(local_row1, (word_base + 4) * 4, stage)));
-          } else {
-            la0 = low_words[local_row0 * kAWordsPerRow + word_base];
-            la1 = low_words[local_row1 * kAWordsPerRow + word_base];
-            la2 = low_words[local_row0 * kAWordsPerRow + word_base + 4];
-            la3 = low_words[local_row1 * kAWordsPerRow + word_base + 4];
-            ha0 = high_words[local_row0 * kAWordsPerRow + word_base];
-            ha1 = high_words[local_row1 * kAWordsPerRow + word_base];
-            ha2 = high_words[local_row0 * kAWordsPerRow + word_base + 4];
-            ha3 = high_words[local_row1 * kAWordsPerRow + word_base + 4];
-          }
+          // B is identical for every M16 atom owned by this warp.  Load it once
+          // per K64/N replica and reuse the fragment across all M replicas.
+          uint32_t b_fragment[kNReplicas][2];
 #pragma unroll
           for (int replica = 0; replica < kNReplicas; ++replica) {
             const int atom_n = warp_n * kNReplicas + replica;
@@ -735,28 +709,95 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
               b0 = b_words[b_row * kBWordsPerRow + word_base];
               b1 = b_words[b_row * kBWordsPerRow + word_base + 4];
             }
+            b_fragment[replica][0] = b0;
+            b_fragment[replica][1] = b1;
+          }
+
+#pragma unroll
+          for (int m_replica = 0; m_replica < kMReplicas; ++m_replica) {
+            uint32_t la0, la1, la2, la3;
+            uint32_t ha0, ha1, ha2, ha3;
+            if constexpr (Config::kUseCuteLdsm) {
+              const int matrix = lane >> 3;
+              const int matrix_row = lane & 7;
+              const int atom_m = warp_m_base + m_replica * kMWarps;
+              const int a_row = atom_m * 16 + (matrix & 1) * 8 + matrix_row;
+              const int a_byte =
+                  inner_group * kPackedK + subgroup * 32 + (matrix >> 1) * 16;
+              const uint8_t* low_address;
+              const uint8_t* high_address;
+              if constexpr (Config::kSwizzledSharedRows) {
+                const auto a_layout = ByteLayoutA{};
+                const int offset = a_layout(cute::make_coord(a_row, a_byte, stage));
+                low_address = storage.a_low + offset;
+                high_address = storage.a_high + offset;
+              } else {
+                const int offset = stage * kAStageBytes +
+                    a_row * Config::kAStageRowBytes + a_byte;
+                low_address = storage.a_low + offset;
+                high_address = storage.a_high + offset;
+              }
+              cute::SM75_U32x4_LDSM_N::copy(
+                  *reinterpret_cast<const cute::uint128_t*>(low_address),
+                  la0, la1, la2, la3);
+              cute::SM75_U32x4_LDSM_N::copy(
+                  *reinterpret_cast<const cute::uint128_t*>(high_address),
+                  ha0, ha1, ha2, ha3);
+            } else if constexpr (Config::kSwizzledSharedRows) {
+              const auto a_layout = ByteLayoutA{};
+              la0 = *reinterpret_cast<const uint32_t*>(storage.a_low + a_layout(
+                  cute::make_coord(local_row0[m_replica], word_base * 4, stage)));
+              la1 = *reinterpret_cast<const uint32_t*>(storage.a_low + a_layout(
+                  cute::make_coord(local_row1[m_replica], word_base * 4, stage)));
+              la2 = *reinterpret_cast<const uint32_t*>(storage.a_low + a_layout(
+                  cute::make_coord(local_row0[m_replica], (word_base + 4) * 4, stage)));
+              la3 = *reinterpret_cast<const uint32_t*>(storage.a_low + a_layout(
+                  cute::make_coord(local_row1[m_replica], (word_base + 4) * 4, stage)));
+              ha0 = *reinterpret_cast<const uint32_t*>(storage.a_high + a_layout(
+                  cute::make_coord(local_row0[m_replica], word_base * 4, stage)));
+              ha1 = *reinterpret_cast<const uint32_t*>(storage.a_high + a_layout(
+                  cute::make_coord(local_row1[m_replica], word_base * 4, stage)));
+              ha2 = *reinterpret_cast<const uint32_t*>(storage.a_high + a_layout(
+                  cute::make_coord(local_row0[m_replica], (word_base + 4) * 4, stage)));
+              ha3 = *reinterpret_cast<const uint32_t*>(storage.a_high + a_layout(
+                  cute::make_coord(local_row1[m_replica], (word_base + 4) * 4, stage)));
+            } else {
+              la0 = low_words[local_row0[m_replica] * kAWordsPerRow + word_base];
+              la1 = low_words[local_row1[m_replica] * kAWordsPerRow + word_base];
+              la2 = low_words[local_row0[m_replica] * kAWordsPerRow + word_base + 4];
+              la3 = low_words[local_row1[m_replica] * kAWordsPerRow + word_base + 4];
+              ha0 = high_words[local_row0[m_replica] * kAWordsPerRow + word_base];
+              ha1 = high_words[local_row1[m_replica] * kAWordsPerRow + word_base];
+              ha2 = high_words[local_row0[m_replica] * kAWordsPerRow + word_base + 4];
+              ha3 = high_words[local_row1[m_replica] * kAWordsPerRow + word_base + 4];
+            }
+#pragma unroll
+            for (int replica = 0; replica < kNReplicas; ++replica) {
+              const uint32_t b0 = b_fragment[replica][0];
+              const uint32_t b1 = b_fragment[replica][1];
             const int accumulator_chain =
                 Config::kIndependentK64Chains ? subgroup : 0;
             LowMma::fma(
-                low[accumulator_chain][replica][0],
-                low[accumulator_chain][replica][1],
-                low[accumulator_chain][replica][2],
-                low[accumulator_chain][replica][3],
+                  low[accumulator_chain][m_replica][replica][0],
+                  low[accumulator_chain][m_replica][replica][1],
+                  low[accumulator_chain][m_replica][replica][2],
+                  low[accumulator_chain][m_replica][replica][3],
                 la0, la1, la2, la3, b0, b1,
-                low[accumulator_chain][replica][0],
-                low[accumulator_chain][replica][1],
-                low[accumulator_chain][replica][2],
-                low[accumulator_chain][replica][3]);
+                  low[accumulator_chain][m_replica][replica][0],
+                  low[accumulator_chain][m_replica][replica][1],
+                  low[accumulator_chain][m_replica][replica][2],
+                  low[accumulator_chain][m_replica][replica][3]);
             HighMma::fma(
-                high[accumulator_chain][replica][0],
-                high[accumulator_chain][replica][1],
-                high[accumulator_chain][replica][2],
-                high[accumulator_chain][replica][3],
+                  high[accumulator_chain][m_replica][replica][0],
+                  high[accumulator_chain][m_replica][replica][1],
+                  high[accumulator_chain][m_replica][replica][2],
+                  high[accumulator_chain][m_replica][replica][3],
                 ha0, ha1, ha2, ha3, b0, b1,
-                high[accumulator_chain][replica][0],
-                high[accumulator_chain][replica][1],
-                high[accumulator_chain][replica][2],
-                high[accumulator_chain][replica][3]);
+                  high[accumulator_chain][m_replica][replica][0],
+                  high[accumulator_chain][m_replica][replica][1],
+                  high[accumulator_chain][m_replica][replica][2],
+                  high[accumulator_chain][m_replica][replica][3]);
+            }
           }
         }
       }
@@ -772,27 +813,36 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
         const int chain_count =
             (Config::kDualK64Chains || Config::kIndependentK64Chains)
             ? kKSubgroups : 1;
-        int32_t partial[4] = {};
 #pragma unroll
-        for (int chain = 0; chain < chain_count; ++chain) {
+        for (int m_replica = 0; m_replica < kMReplicas; ++m_replica) {
+          int32_t partial[4] = {};
 #pragma unroll
-          for (int item = 0; item < 4; ++item) {
-            partial[item] += static_cast<int32_t>(low[chain][replica][item])
-                + 16 * static_cast<int32_t>(high[chain][replica][item]);
+          for (int chain = 0; chain < chain_count; ++chain) {
+#pragma unroll
+            for (int item = 0; item < 4; ++item) {
+              partial[item] +=
+                  static_cast<int32_t>(low[chain][m_replica][replica][item])
+                  + 16 * static_cast<int32_t>(
+                      high[chain][m_replica][replica][item]);
+            }
           }
+          accumulators[m_replica][replica][0] = __fmaf_rn(
+              static_cast<float>(partial[0]),
+              __fmul_rn(row_scale0[m_replica], column_scale0),
+              accumulators[m_replica][replica][0]);
+          accumulators[m_replica][replica][1] = __fmaf_rn(
+              static_cast<float>(partial[1]),
+              __fmul_rn(row_scale0[m_replica], column_scale1),
+              accumulators[m_replica][replica][1]);
+          accumulators[m_replica][replica][2] = __fmaf_rn(
+              static_cast<float>(partial[2]),
+              __fmul_rn(row_scale1[m_replica], column_scale0),
+              accumulators[m_replica][replica][2]);
+          accumulators[m_replica][replica][3] = __fmaf_rn(
+              static_cast<float>(partial[3]),
+              __fmul_rn(row_scale1[m_replica], column_scale1),
+              accumulators[m_replica][replica][3]);
         }
-        accumulators[replica][0] = __fmaf_rn(
-            static_cast<float>(partial[0]), __fmul_rn(row_scale0, column_scale0),
-            accumulators[replica][0]);
-        accumulators[replica][1] = __fmaf_rn(
-            static_cast<float>(partial[1]), __fmul_rn(row_scale0, column_scale1),
-            accumulators[replica][1]);
-        accumulators[replica][2] = __fmaf_rn(
-            static_cast<float>(partial[2]), __fmul_rn(row_scale1, column_scale0),
-            accumulators[replica][2]);
-        accumulators[replica][3] = __fmaf_rn(
-            static_cast<float>(partial[3]), __fmul_rn(row_scale1, column_scale1),
-            accumulators[replica][3]);
       }
     }
     pipeline.consumer_release(read_state);
@@ -800,18 +850,25 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
   }
 
 #pragma unroll
-  for (int replica = 0; replica < kNReplicas; ++replica) {
-    const int atom_n = warp_n * kNReplicas + replica;
-    const int global_column0 = tile_column + atom_n * 8 + 2 * lane_i;
-    const int global_column1 = global_column0 + 1;
-    if (global_row0 < m && global_column0 < n)
-      output[static_cast<int64_t>(global_row0) * n + global_column0] = accumulators[replica][0];
-    if (global_row0 < m && global_column1 < n)
-      output[static_cast<int64_t>(global_row0) * n + global_column1] = accumulators[replica][1];
-    if (global_row1 < m && global_column0 < n)
-      output[static_cast<int64_t>(global_row1) * n + global_column0] = accumulators[replica][2];
-    if (global_row1 < m && global_column1 < n)
-      output[static_cast<int64_t>(global_row1) * n + global_column1] = accumulators[replica][3];
+  for (int m_replica = 0; m_replica < kMReplicas; ++m_replica) {
+#pragma unroll
+    for (int replica = 0; replica < kNReplicas; ++replica) {
+      const int atom_n = warp_n * kNReplicas + replica;
+      const int global_column0 = tile_column + atom_n * 8 + 2 * lane_i;
+      const int global_column1 = global_column0 + 1;
+      if (global_row0[m_replica] < m && global_column0 < n)
+        output[static_cast<int64_t>(global_row0[m_replica]) * n + global_column0] =
+            accumulators[m_replica][replica][0];
+      if (global_row0[m_replica] < m && global_column1 < n)
+        output[static_cast<int64_t>(global_row0[m_replica]) * n + global_column1] =
+            accumulators[m_replica][replica][1];
+      if (global_row1[m_replica] < m && global_column0 < n)
+        output[static_cast<int64_t>(global_row1[m_replica]) * n + global_column0] =
+            accumulators[m_replica][replica][2];
+      if (global_row1[m_replica] < m && global_column1 < n)
+        output[static_cast<int64_t>(global_row1[m_replica]) * n + global_column1] =
+            accumulators[m_replica][replica][3];
+    }
   }
 }
 
@@ -901,6 +958,7 @@ py::dict kernel_metadata(
       ? kKSubgroups : 1;
   result["producer_warps"] = 1;
   result["consumer_warps"] = Config::kConsumerWarps;
+  result["m_mma_replicas_per_consumer_warp"] = Config::kMReplicas;
   result["group_size"] = kGroupSize;
   result["group_count"] = groups;
   result["split_formula"] = "A8=A_low_u4+16*A_high_s4";
@@ -1099,6 +1157,13 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n16_k128_cute_ldsm",
         "adangel_o3_split_tma_ws<O3Config<16,1,false,128,true>>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128MRep2CuteLdsm) {
+    return benchmark_o3_config<O3N16K128MRep2CuteLdsmConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_mrep2_cute_ldsm",
+        "adangel_o3_split_tma_ws<O3N16K128MRep2CuteLdsmConfig>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   if (selected == O3Implementation::kN32K128CuteLdsm) {

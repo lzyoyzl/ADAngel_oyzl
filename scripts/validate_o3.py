@@ -34,6 +34,7 @@ def arguments():
             "m64_n32_k128",
             "m64_n16_k128_cute_ldsm",
             "n16_k128_cute_ldsm",
+            "n16_k128_mrep2_cute_ldsm",
             "n32_k128_cute_ldsm",
             "n16_k128_ldsm_swizzle",
             "n16_k128_ldsm_split_chains",
