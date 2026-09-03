@@ -341,3 +341,10 @@ regs/thread、`STACK=0`、`LOCAL=0`，成功避免 spill。三方同进程单样
 后仍会错误地与旧 `n16_k128` 比较。现在 O3/O4 baseline 显式绑定各自当前
 production；diagnostic policy 使用对离群值更稳健的配对中位数 bootstrap CI，strict
 policy 继续使用配对均值 CI。报告会明确记录实际 baseline 与晋升 CI 指标。
+
+修正后的脚本在随后一次稳定单样本 smoke 中明确报告
+`baseline=n16_k128_cute_ldsm`：production compute-only 为 `1.997360 ms`
+（CV `0.292%`），Iteration 8 为 `2.028192 ms`（CV `1.804%`），即候选慢
+`1.52%`；cold 与 steady-state 配对速度也分别只有 `0.9797x` 和 `0.9891x`。
+`promotion_ci_metric=paired_speedup_median_bootstrap_95ci` 且
+`eligible_except_spill_audit=false`，验证 baseline 与晋升判定修复生效。
