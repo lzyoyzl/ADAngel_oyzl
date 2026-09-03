@@ -31,6 +31,11 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--sample-id", default="layer_00_q_proj")
     parser.add_argument("--variant", choices=tuple(NCU_KERNEL_FILTERS), required=True)
+    parser.add_argument(
+        "--implementation",
+        default="production",
+        help="internal O3 implementation key; other variants only accept production",
+    )
     parser.add_argument("--warmup", type=int, default=5)
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--conversion-inner-repeats", type=int, default=100)
@@ -62,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     import torch
 
     from adangel.ops.dispatch import benchmark_variant
+    from adangel.ops.extension import require_variant
     from adangel.trace.storage import (
         load_prepared,
         sha256_file,
@@ -88,15 +94,31 @@ def main(argv: list[str] | None = None) -> int:
     if inputs.shape != (4096, 4096, 4096):
         raise ValueError(f"NCU formal profile requires 4096^3, got {inputs.shape}")
 
-    payload = benchmark_variant(
-        inputs,
-        args.variant,
-        "compute_only",
-        warmup=args.warmup,
-        repeats=args.repeats,
-        backend="native",
-        conversion_inner_repeats=args.conversion_inner_repeats,
-    )
+    if args.implementation != "production" and args.variant != "o3":
+        raise ValueError("--implementation is currently supported only for O3")
+    if args.variant == "o3" and args.implementation != "production":
+        native = require_variant("o3")
+        payload = native._benchmark_o3_impl(
+            args.implementation,
+            "compute_only",
+            inputs.A_int8,
+            inputs.A_scale,
+            inputs.W_mxfp4_g128,
+            inputs.W_scale_g128,
+            args.warmup,
+            args.repeats,
+            args.conversion_inner_repeats,
+        )
+    else:
+        payload = benchmark_variant(
+            inputs,
+            args.variant,
+            "compute_only",
+            warmup=args.warmup,
+            repeats=args.repeats,
+            backend="native",
+            conversion_inner_repeats=args.conversion_inner_repeats,
+        )
     torch.cuda.synchronize()
     output = payload["output"]
     if output.dtype != torch.float32 or not torch.isfinite(output).all():
@@ -113,6 +135,7 @@ def main(argv: list[str] | None = None) -> int:
         "sample_id": inputs.sample_id,
         "shape": list(inputs.shape),
         "variant": args.variant,
+        "implementation_requested": args.implementation,
         "mode": "compute_only",
         "warmup_launches": args.warmup,
         "measured_launches": args.repeats,
