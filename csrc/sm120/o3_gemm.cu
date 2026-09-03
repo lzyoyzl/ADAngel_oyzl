@@ -116,6 +116,7 @@ struct O3SwizzledConfig {
   static constexpr int kTileM = 128;
   static constexpr int kTileN = TileN;
   static constexpr int kNReplicas = TileN / 16;
+  static constexpr int kMReplicas = 1;
   static constexpr int kMWarps = kTileM / 16;
   static constexpr int kNWarpGroups = 2;
   static constexpr int kConsumerWarps = kMWarps * kNWarpGroups;
