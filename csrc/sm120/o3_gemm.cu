@@ -67,6 +67,7 @@ struct O3Config {
   static constexpr bool kUseCuteLdsm = UseCuteLdsm;
   static constexpr bool kWarpBroadcastColumnScale = false;
   static constexpr bool kFactorRowScaleAfterK = false;
+  static constexpr bool kBiasedHighU4 = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using ByteLayoutA = decltype(cute::make_layout(
       cute::make_shape(
@@ -140,6 +141,7 @@ struct O3SwizzledConfig {
   static constexpr bool kUseCuteLdsm = UseLdsm;
   static constexpr bool kWarpBroadcastColumnScale = false;
   static constexpr bool kFactorRowScaleAfterK = false;
+  static constexpr bool kBiasedHighU4 = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using SwizzleAtom = decltype(cute::composition(
       cute::Swizzle<2, 4, 3>{},
@@ -186,6 +188,19 @@ struct O3N16K128LdsmScaleBroadcastConfig : O3N16K128CuteLdsmConfig {
 struct O3N16K128LdsmFactorRowScaleConfig : O3N16K128CuteLdsmConfig {
   static constexpr bool kFactorRowScaleAfterK = true;
 };
+struct O3N16K128LdsmBiasedHighU4Config : O3N16K128CuteLdsmConfig {
+  static constexpr bool kBiasedHighU4 = true;
+  static constexpr bool kFactorRowScaleAfterK = true;
+  struct alignas(128) SharedStorage {
+    alignas(128) uint8_t a_low[kStages * kAStageBytes];
+    alignas(128) uint8_t a_high[kStages * kAStageBytes];
+    alignas(128) uint8_t b[kStages * kBStageBytes];
+    alignas(128) float column_scale[kStages * kGroupsPerStage * kTileN];
+    alignas(128) int32_t column_correction[
+        kStages * kGroupsPerStage * kTileN];
+    alignas(16) typename Pipeline::SharedStorage pipeline;
+  };
+};
 using O3N32K128CuteLdsmConfig = O3Config<32, 1, false, 128, true>;
 using O3N16K128LdsmSwizzleConfig = O3SwizzledConfig<16, true>;
 
@@ -210,6 +225,7 @@ enum class O3Implementation {
   kN16K128MRep2CuteLdsm,
   kN16K128LdsmScaleBroadcast,
   kN16K128LdsmFactorRowScale,
+  kN16K128LdsmBiasedHighU4,
   kN32K128CuteLdsm,
   kN16K128LdsmSwizzle,
   kN16K128LdsmSplitChains,
@@ -239,6 +255,9 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   }
   if (selected == "n16_k128_ldsm_factor_row_scale") {
     return O3Implementation::kN16K128LdsmFactorRowScale;
+  }
+  if (selected == "n16_k128_ldsm_biased_high_u4") {
+    return O3Implementation::kN16K128LdsmBiasedHighU4;
   }
   if (selected == "n32_k128_cute_ldsm") return O3Implementation::kN32K128CuteLdsm;
   if (selected == "n16_k128_ldsm_swizzle") {
@@ -350,6 +369,7 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
     CUTE_GRID_CONSTANT TmaB const tma_b,
     const float* a_scale,
     const uint8_t* w_scale,
+    const int16_t* w_group_sum,
     float* output,
     int m,
     int n,
@@ -359,6 +379,7 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
   using SharedStorage = typename Config::SharedStorage;
   using ByteLayoutA = typename Config::ByteLayoutA;
   using ByteLayoutB = typename Config::ByteLayoutB;
+  using ActiveHighMma = std::conditional_t<Config::kBiasedHighU4, LowMma, HighMma>;
   constexpr int kTileM = Config::kTileM;
   constexpr int kTileN = Config::kTileN;
   constexpr int kNReplicas = Config::kNReplicas;
@@ -433,6 +454,14 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
               global_column < n && group < groups
               ? adangel::decode_ue8m0(w_scale[global_column * groups + group])
               : 0.0f;
+          if constexpr (Config::kBiasedHighU4) {
+            storage.column_correction[
+                (stage * kGroupsPerStage + inner_group) * kTileN + column] =
+                global_column < n && group < groups
+                ? -128 * static_cast<int32_t>(
+                    w_group_sum[global_column * groups + group])
+                : 0;
+          }
         }
       }
       __threadfence_block();
@@ -680,7 +709,7 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
                 low_a[subgroup][2], low_a[subgroup][3],
                 b_fragment[subgroup][replica][0], b_fragment[subgroup][replica][1],
                 0u, 0u, 0u, 0u);
-            HighMma::fma(
+            ActiveHighMma::fma(
                 high[subgroup][0][replica][0], high[subgroup][0][replica][1],
                 high[subgroup][0][replica][2], high[subgroup][0][replica][3],
                 high_a[subgroup][0], high_a[subgroup][1],
@@ -806,7 +835,7 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
                   low[accumulator_chain][m_replica][replica][1],
                   low[accumulator_chain][m_replica][replica][2],
                   low[accumulator_chain][m_replica][replica][3]);
-            HighMma::fma(
+            ActiveHighMma::fma(
                   high[accumulator_chain][m_replica][replica][0],
                   high[accumulator_chain][m_replica][replica][1],
                   high[accumulator_chain][m_replica][replica][2],
@@ -856,6 +885,16 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
                   + 16 * static_cast<int32_t>(
                       high[chain][m_replica][replica][item]);
             }
+          }
+          if constexpr (Config::kBiasedHighU4) {
+            const int32_t correction0 =
+                storage.column_correction[scale_base + local_column0];
+            const int32_t correction1 =
+                storage.column_correction[scale_base + local_column1];
+            partial[0] += correction0;
+            partial[1] += correction1;
+            partial[2] += correction0;
+            partial[3] += correction1;
           }
           const float scale00 = Config::kFactorRowScaleAfterK
               ? column_scale0
@@ -951,10 +990,17 @@ auto make_tma_b(const at::Tensor& q4) {
 
 template <class Config, class TmaLow, class TmaHigh, class TmaB>
 void launch_gemm(
-    const at::Tensor& a_scale, const at::Tensor& w_scale, at::Tensor& output,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_scale,
+    const at::Tensor& w_group_sum,
+    at::Tensor& output,
     int m, int n, int k, TmaLow const& low, TmaHigh const& high, TmaB const& b,
     cudaStream_t stream) {
   using SharedStorage = typename Config::SharedStorage;
+  const int16_t* group_sum_ptr = nullptr;
+  if constexpr (Config::kBiasedHighU4) {
+    group_sum_ptr = w_group_sum.data_ptr<int16_t>();
+  }
   dim3 grid(
       (n + Config::kTileN - 1) / Config::kTileN,
       (m + Config::kTileM - 1) / Config::kTileM);
@@ -969,6 +1015,7 @@ void launch_gemm(
       "O3 set dynamic shared-memory limit");
   adangel_o3_split_tma_ws<Config><<<grid, Config::kThreads, sizeof(SharedStorage), stream>>>(
       low, high, b, a_scale.data_ptr<float>(), w_scale.data_ptr<uint8_t>(),
+      group_sum_ptr,
       output.data_ptr<float>(), m, n, k, k / kGroupSize);
   check_cuda(cudaGetLastError(), "O3 Split TMA warp-specialized launch");
 }
@@ -987,8 +1034,13 @@ py::dict kernel_metadata(
   result["tensor_core"] = true;
   result["mma_family"] = "IMMA_INT4";
   result["mma_api"] = "cute::arch MMA wrapper with trait-derived lane mapping";
-  result["mma_atoms"] = py::make_tuple(
-      "SM80_16x8x64_S32U4S4S32_TN", "SM80_16x8x64_S32S4S4S32_TN");
+  if constexpr (Config::kBiasedHighU4) {
+    result["mma_atoms"] = py::make_tuple(
+        "SM80_16x8x64_S32U4S4S32_TN", "SM80_16x8x64_S32U4S4S32_TN");
+  } else {
+    result["mma_atoms"] = py::make_tuple(
+        "SM80_16x8x64_S32U4S4S32_TN", "SM80_16x8x64_S32S4S4S32_TN");
+  }
   result["mma_shape"] = "m16n8k64";
   result["data_movement"] = "TMA";
   result["kernel_schedule"] = "cooperative_warp_specialized";
@@ -1014,9 +1066,14 @@ py::dict kernel_metadata(
       ? "one_lane_per_column_then_warp_shuffle" : "per_output_lane_shared_load";
   result["row_scale_application"] = Config::kFactorRowScaleAfterK
       ? "factored_after_g128_accumulation" : "inside_each_g128_fma";
+  result["high_nibble_execution"] = Config::kBiasedHighU4
+      ? "biased_u4_with_exact_g128_weight_sum_correction" : "signed_s4";
+  result["formal_signed_high_mma"] = !Config::kBiasedHighU4;
   result["group_size"] = kGroupSize;
   result["group_count"] = groups;
-  result["split_formula"] = "A8=A_low_u4+16*A_high_s4";
+  result["split_formula"] = Config::kBiasedHighU4
+      ? "A8=A_low_u4+16*A_high_biased_u4-128"
+      : "A8=A_low_u4+16*A_high_s4";
   result["scale_formula"] = "A_scale*decode_ue8m0(W_scale_g128)";
   result["partial_storage"] = "register";
   result["global_partial_buffer"] = false;
@@ -1053,9 +1110,23 @@ py::dict benchmark_o3_config(
   auto byte_options = a_int8.options().dtype(at::kByte);
   auto q4 = at::empty({n, k / 2}, byte_options);
   auto split = at::empty({2 * m, k / 2}, byte_options);
+  auto group_sum = Config::kBiasedHighU4
+      ? at::empty({n, k / kGroupSize}, a_int8.options().dtype(at::kShort))
+      : at::Tensor();
   auto output = at::empty({m, n}, a_scale.options().dtype(at::kFloat));
-  auto convert_w = [&]() { adangel_launch_mxfp4_to_q4(w_mxfp4_g128, q4, stream); };
-  auto convert_a = [&]() { adangel_launch_split_int8_to_int4(a_int8, split, stream); };
+  auto convert_w = [&]() {
+    adangel_launch_mxfp4_to_q4(w_mxfp4_g128, q4, stream);
+    if constexpr (Config::kBiasedHighU4) {
+      adangel_launch_q4_group_sums(q4, group_sum, kGroupSize, stream);
+    }
+  };
+  auto convert_a = [&]() {
+    if constexpr (Config::kBiasedHighU4) {
+      adangel_launch_split_int8_to_u4_biased_high(a_int8, split, stream);
+    } else {
+      adangel_launch_split_int8_to_int4(a_int8, split, stream);
+    }
+  };
   convert_w();
   convert_a();
   auto tma_low = make_tma_a<Config>(split, 0);
@@ -1063,7 +1134,7 @@ py::dict benchmark_o3_config(
   auto tma_b = make_tma_b<Config>(q4);
   auto gemm = [&]() {
     launch_gemm<Config>(
-        a_scale, w_scale_g128, output, m, n, k,
+        a_scale, w_scale_g128, group_sum, output, m, n, k,
         tma_low, tma_high, tma_b, stream);
   };
   const TimingMode mode = parse_mode(mode_name);
@@ -1233,6 +1304,13 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "n16_k128_ldsm_factor_row_scale",
         "adangel_o3_split_tma_ws<O3N16K128LdsmFactorRowScaleConfig>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kN16K128LdsmBiasedHighU4) {
+    return benchmark_o3_config<O3N16K128LdsmBiasedHighU4Config>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "n16_k128_ldsm_biased_high_u4",
+        "adangel_o3_split_tma_ws<O3N16K128LdsmBiasedHighU4Config>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   if (selected == O3Implementation::kN32K128CuteLdsm) {

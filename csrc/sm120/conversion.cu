@@ -77,6 +77,47 @@ extern "C" __global__ void adangel_split_int8_to_int4(
       (raw.x >> 4) | ((raw.y >> 4) << 4);
 }
 
+// Algebraically exact alternative Split encoding.  The high signed nibble h
+// is stored as unsigned h+8, which lets the GEMM use U4xS4 MMA and recover the
+// original dot product with -128*sum(W) once per G128.
+extern "C" __global__ void adangel_split_int8_to_u4_biased_high(
+    const int8_t* input, uint8_t* output, int rows, int pairs_per_row) {
+  const int pair = static_cast<int>(blockIdx.x * blockDim.x + threadIdx.x);
+  const int row = static_cast<int>(blockIdx.y);
+  if (row >= rows || pair >= pairs_per_row) return;
+  const uchar2 raw = reinterpret_cast<const uchar2*>(input)[
+      row * pairs_per_row + pair];
+  output[row * pairs_per_row + pair] =
+      (raw.x & 0xF) | ((raw.y & 0xF) << 4);
+  const uint8_t signed_high_bits =
+      (raw.x >> 4) | ((raw.y >> 4) << 4);
+  output[(rows + row) * pairs_per_row + pair] =
+      signed_high_bits ^ 0x88u;
+}
+
+extern "C" __global__ void adangel_q4_group_sums(
+    const uint8_t* q4,
+    int16_t* output,
+    int rows,
+    int pairs_per_row,
+    int pairs_per_group) {
+  const int group = static_cast<int>(blockIdx.x * blockDim.x + threadIdx.x);
+  const int groups = pairs_per_row / pairs_per_group;
+  const int row = static_cast<int>(blockIdx.y);
+  if (row >= rows || group >= groups) return;
+  int sum = 0;
+  const uint8_t* begin = q4 + row * pairs_per_row + group * pairs_per_group;
+#pragma unroll
+  for (int pair = 0; pair < 64; ++pair) {
+    if (pair >= pairs_per_group) break;
+    const uint8_t packed = begin[pair];
+    const int low = static_cast<int8_t>(packed << 4) >> 4;
+    const int high = static_cast<int8_t>(packed) >> 4;
+    sum += low + high;
+  }
+  output[row * groups + group] = static_cast<int16_t>(sum);
+}
+
 extern "C" __global__ void adangel_int8_bitplanes(
     const int8_t* input,
     uint32_t* output,
@@ -208,6 +249,36 @@ void adangel_launch_split_int8_to_int4(
   adangel_split_int8_to_int4<<<blocks, threads, 0, stream>>>(
       input.data_ptr<int8_t>(), output.data_ptr<uint8_t>(), rows, pairs_per_row);
   check_launch("INT8 Split-to-INT4");
+}
+
+void adangel_launch_split_int8_to_u4_biased_high(
+    const at::Tensor& input,
+    at::Tensor& output,
+    cudaStream_t stream) {
+  const int rows = static_cast<int>(input.size(0));
+  const int pairs_per_row = static_cast<int>(input.size(1) / 2);
+  constexpr int threads = 256;
+  dim3 blocks((pairs_per_row + threads - 1) / threads, rows);
+  adangel_split_int8_to_u4_biased_high<<<blocks, threads, 0, stream>>>(
+      input.data_ptr<int8_t>(), output.data_ptr<uint8_t>(), rows, pairs_per_row);
+  check_launch("INT8 Split-to-biased-U4");
+}
+
+void adangel_launch_q4_group_sums(
+    const at::Tensor& q4,
+    at::Tensor& output,
+    int group_size,
+    cudaStream_t stream) {
+  const int rows = static_cast<int>(q4.size(0));
+  const int pairs_per_row = static_cast<int>(q4.size(1));
+  const int pairs_per_group = group_size / 2;
+  const int groups = pairs_per_row / pairs_per_group;
+  constexpr int threads = 256;
+  dim3 blocks((groups + threads - 1) / threads, rows);
+  adangel_q4_group_sums<<<blocks, threads, 0, stream>>>(
+      q4.data_ptr<uint8_t>(), output.data_ptr<int16_t>(), rows,
+      pairs_per_row, pairs_per_group);
+  check_launch("Q4 G128 group sums");
 }
 
 void adangel_launch_int8_bitplanes(

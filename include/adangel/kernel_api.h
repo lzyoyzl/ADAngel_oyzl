@@ -43,6 +43,17 @@ void adangel_launch_split_int8_to_int4(
     at::Tensor& output,
     cudaStream_t stream);
 
+void adangel_launch_split_int8_to_u4_biased_high(
+    const at::Tensor& input,
+    at::Tensor& output,
+    cudaStream_t stream);
+
+void adangel_launch_q4_group_sums(
+    const at::Tensor& q4,
+    at::Tensor& output,
+    int group_size,
+    cudaStream_t stream);
+
 void adangel_launch_int8_bitplanes(
     const at::Tensor& input,
     at::Tensor& output,
