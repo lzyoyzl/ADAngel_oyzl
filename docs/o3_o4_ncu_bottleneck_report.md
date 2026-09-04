@@ -1,5 +1,11 @@
 # O3/O4 Nsight Compute 性能瓶颈分析报告
 
+> 最新状态（2026-09-04）：O3 已晋升为 `64x32x128` aligned/factored production。
+> 24样本配对提升约3.1%，但 SM120 将 U4/S4 PTX MMA 降低为 U8/S8 IMMA 与位操作，
+> 因而未达到 O1 一半吞吐。完整最新结果见
+> [O3 性能优化与“O1 一半吞吐”目标结论](o3_half_o1_optimization_report.md)。
+> 本文后续表格保留优化前 NCU基线，用于解释瓶颈演变。
+
 ## 1. 结论摘要
 
 本报告使用 RTX 5090 上的 Nsight Compute（NCU）对 O1/O2/O3/O4 的 production

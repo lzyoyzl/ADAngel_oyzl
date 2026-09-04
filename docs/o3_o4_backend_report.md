@@ -75,7 +75,7 @@ Y     += FP32(P_g) * A_scale * W_scale_g128[g]
 ### 3.3 Tile 与 pipeline
 
 ```text
-CTA tile          128 x 16 x 128
+CTA tile          64 x 32 x 128（4096³ production fast path）
 producer warps    1
 consumer warps    16
 pipeline stages   2
@@ -83,21 +83,26 @@ groups per stage  1
 MMA               m16n8k64 U4xS4 + S4xS4
 ```
 
-16 个 consumer warp 排列为 8 个 M warp tile × 2 个 N warp tile。每个 warp 覆盖
-`16x8` 输出，因此合计恰好覆盖 `128x16`，无重复、无缺口。producer warp 用 TMA
+16 个 consumer warp 排列为 4 个 M warp tile × 4 个 N warp tile。每个 warp 覆盖
+`16x8` 输出，因此合计恰好覆盖 `64x32`，无重复、无缺口。producer warp 用 TMA
 把 low/high A tile 和 Q4 W tile 搬到两阶段 shared-memory pipeline，并为每个
 column/group 解码一次 W scale。
 
-该 CTA 是在 RTX 5090 上完成 N16/N64 与 pipeline K128/K256 消融后的选择。N64
-虽然减少 CTA 数并提高 A tile 复用，但需要 96 registers/thread 和约 83 KiB dynamic
-shared memory，只允许 1 CTA/SM；N16 production 使用55 registers/thread 和约35 KiB dynamic
-shared memory，可驻留 2 CTA/SM，实测 occupancy 约 69.8%，因此整体更快。
+该 CTA 是在 RTX 5090 上完成 tile、pipeline、scale、LDSM、依赖链和对齐快路径消融
+后的选择。它把 row A scale 移到 G128 循环之外，省去正式 `4096³` 不需要的 M/N
+边界分支，并保持55 registers/thread、`STACK=0, LOCAL=0`。对不满足完整 `64x32`
+输出 tile 的公开输入，调度器自动回退到带边界检查的 `128x16x128` kernel。
 
-production `n16_k128_cute_ldsm` 使用 pinned CUTLASS 的底层
+production `m64_n32_k128_aligned_factor_16w` 使用 pinned CUTLASS 的底层
 `SM75_U32x4_LDSM_N`/`SM75_U32x2_LDSM_N` wrapper，按已验证的
 `m16n8k64` lane/fragment 映射从 shared memory 装入 A/B subbyte operand。正式
-PTX/SASS 仍执行目标 INT4 MMA；shared memory 只承担 TMA staging，不承担 partial
-中转，INT32 partial 与 FP32 accumulator 始终留在寄存器。
+PTX entry 保持 U4×S4/S4×S4 两路 INT4 MMA 语义；shared memory 只承担 TMA
+staging，不承担 partial 中转，INT32 partial 与 FP32 accumulator 始终留在寄存器。
+
+RTX 5090 的物理 SASS 需要单独说明：compute capability 12.0 没有独立的原生 INT4
+Tensor Core opcode，ptxas 将上述兼容 PTX lowering 为 `IMMA.16832.U8.S8`、
+`IMMA.16832.S8.S8` 和配套 `LOP3/SHF/IMAD`。因此这里的“INT4”是输入/算法和 PTX
+接口语义，不应表述成原生 INT4 SASS；该限制也是 O3 明显慢于 O1 的主因。
 
 ## 4. O4：论文 Bitwise
 
@@ -193,10 +198,10 @@ bitplane，并在 conversion-only/cold/steady-state 中显式计量。这与论�
 | 权重组 | K32 | G128 | G128 |
 | 权重整数形式 | `2*E2M1` INT8 | RNE Q4 | Q4 的 4 planes |
 | 激活形式 | INT8 原样 | U4 low + S4 high | 8 planes |
-| Tensor Core | INT8 IMMA | 两类 INT4 IMMA | B1 AND-POPC BMMA |
+| Tensor Core | 原生 INT8 IMMA | 两类 INT4 PTX语义；SASS降低为INT8 IMMA | B1 AND-POPC PTX语义 |
 | 每组核心分解 | 1 次 K32 MMA | 2 路×2 个 K64 | 32 plane pairs |
 | scale | 软件 K32 | 软件 G128 | 软件 G128 |
-| CTA | 128x64x64 | 128x16x128 | 64x64x512 |
+| CTA | 128x64x64 | 64x32x128 | 64x64x512 |
 
 CTA 不强制相同。不同 MMA atom、每组工作量和自然 warp coverage 决定了不同的合理
 tile；强行统一 CTA 会改变资源压力或产生未覆盖输出，反而降低可比性。
@@ -234,12 +239,12 @@ RTX 5090、CUDA 12.8、CUTLASS 4.5.2 pinned commit 上：
 |---|---:|---:|
 | 128³ max abs error vs semantic reference | 0 | 0 |
 | 4096³ max abs error vs semantic reference | 9.1553e-05 | 9.1553e-05 |
-| 4096³ clean short-test compute median | 2.010272 ms | 7.4606 ms |
-| 4096³ clean short-test compute CV | 0.506% | 0.127% |
+| 4096³ production compute median | 2.037664 ms | 7.4606 ms |
+| 4096³ production compute CV | 0.717% | 0.127% |
 | production resource | REG 55, STACK 0, LOCAL 0 | REG 92, STACK 0, LOCAL 0 |
-| same-entry instruction audit | TMA + U4/S4/S4/S4 MMA | TMA + B1 AND-POPC BMMA |
+| same-entry instruction audit | TMA + U4/S4/S4/S4 PTX；U8/S8 IMMA SASS lowering | TMA + B1 AND-POPC PTX |
 
-O3 数字来自显式 LDSM production 晋升前的同代码候选短测（warmup=10、repeats=30）；
+O3 数字来自当前 production 正式形状验证（warmup=50、repeats=200）；
 O4 数字来自既有正式形状验收。两者不是同一次配对性能比较，只用于各自后端 smoke。
 O4 比 O3 慢不表示错误；它每个 G128 必须执行 32 个
 plane-pair BMMA，而 O3 只执行低/高两路 INT4 分解。

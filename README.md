@@ -47,9 +47,18 @@ UE8M0 scale、执行 E2M1 RNE 量化并完成 nibble packing；随后把自然�
 O3/O4 使用独立的 G128 权重副本，并按论文的 Split/Bitwise 算术实现。O3 将 A8
 按 two's-complement 原始位拆成低 U4 和高 S4，满足
 `A8=A_low_u4+16*A_high_s4`；G128 MXFP4 权重用 RNE 映射到 Q4。正式 kernel 采用
-`128x16x128` CTA、两阶段 TMA、1 producer/16 consumer、两类 `m16n8k64`
-INT4 MMA；A/B subbyte fragment 通过显式 `LDSM` 从 TMA staging shared memory
-装入寄存器，在寄存器中重构两个 partial、应用 G128 scale，并只写一次 FP32 输出。
+面向 `4096³` 的 `64x32x128` CTA、两阶段 TMA、1 producer/16 consumer；A/B
+subbyte fragment 通过显式 `LDSM` 从 TMA staging shared memory 装入寄存器，使用
+U4×S4/S4×S4 两路 `m16n8k64` PTX MMA 语义，在寄存器中重构 partial、应用 G128
+scale，并只写一次 FP32 输出。row A scale 移到32个 G128循环之外，最终统一乘一次；
+非整 `64x32` 输出 tile 自动回退到带边界检查的 `128x16x128` kernel。
+
+必须区分接口语义和物理指令：SM120 的正式 PTX entry 确实包含 U4×S4 与 S4×S4
+sub-byte MMA，但 RTX 5090 的 ptxas 将它们降低成 U8×S8/S8×S8 IMMA 和大量位操作；
+CUDA 对 compute capability 12.0 的原生整数 Tensor Core 类型只列出 INT8。因此
+`o3_int4_tc=true` 表示项目的逻辑 INT4 PTX 路径已启用，不表示 SASS 存在独立的原生
+INT4 opcode。最新实现、性能和该限制见
+[O3 达到 O1 一半吞吐目标的优化结论](docs/o3_half_o1_optimization_report.md)。
 
 O4 将 A8 拆成系数 `[1,2,4,8,16,32,64,-128]` 的 8 个 bitplane，将 Q4 权重拆成
 系数 `[1,2,4,-8]` 的 4 个 bitplane；每个 G128 执行 8×4=32 个
@@ -125,6 +134,7 @@ Y         [4096, 4096] fp32
 [O0–O4 最终实现与正式实验结果](docs/o0_o4_final_results_report.md)、
 [O1–O4 Nsight Compute profiling](docs/ncu_profiling.md)、
 [O3/O4 NCU 性能瓶颈分析](docs/o3_o4_ncu_bottleneck_report.md)、
+[O3 达到 O1 一半吞吐目标的优化结论](docs/o3_half_o1_optimization_report.md)、
 [O0/O1/O2 后端与测量报告](docs/o0_o1_o2_backend_report.md)、
 [O3/O4 Split/Bitwise 后端报告](docs/o3_o4_backend_report.md)、
 [Miniconda 配置指南](docs/miniconda_setup.md)、[本机验证记录](docs/local_validation.md)
@@ -274,6 +284,8 @@ python scripts/benchmark_o3_o4_implementations.py \
 预期 `o0_fp16_tc`、`o1_int8_tc`、`o2_mxf4_block_scale` 和
 `o2_cutlass_tiled`、`o3_int4_tc`、`o3_tma_warp_specialized`、`o4_int1_tc` 和
 `o4_tma_warp_specialized` 均为 `true`，五个验证脚本必须输出 `"passed": true`。
+其中 O3 的 `o3_int4_tc` 是 PTX 语义能力位；正式元数据还必须明确报告
+`ptx_mma_semantics=U4xS4_and_S4xS4` 与 `native_int4_sass=false`。
 O0 元数据必须报告 HMMA、`CUBLAS_COMPUTE_32F` 和 FP32 输出；
 O1 production 必须报告
 `implementation_key=register_128x64_k64_scale_shared_row_dedup`、
@@ -383,8 +395,9 @@ bash scripts/audit_instructions.sh "$EXTENSION_DIR" reports/audit
 ```
 
 审计应找到：O0 的 FP16 Tensor Core 指令、O1 的 INT8 Tensor Core 指令、
-O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA、O3 的 U4×S4/S4×S4 INT4 MMA，
-以及 O4 的 B1 AND-POPC BMMA。脚本要求 O1 的 TMA 与 signed INT8
+O2 的 `kind::mxf4 ... ue8m0` block-scaled MMA、O3 PTX entry 的
+U4×S4/S4×S4 MMA 语义，以及 O4 PTX entry 的 B1 AND-POPC MMA。脚本要求 O1 的
+TMA 与 signed INT8
 MMA 位于选定的 production entry；保留的寄存器候选也必须在各自同一 entry 内包含
 TMA+IMMA。O1 production `register_128x64_k64_scale_shared_row_dedup` 必须满足
 SASS 无 `LDL/STL` 且 resource usage 为 `STACK=0, LOCAL=0`。`register_128x128` 是
@@ -398,6 +411,12 @@ TMA 与 MXFP4 block-scaled MMA 位于同一个正式 CUTLASS PTX/SASS entry，�
 要求同一 entry 内同时出现 TMA 和目标 MMA，且无 `LDL/STL`、
 `STACK=0, LOCAL=0`。有 spill 的候选标记为 `DISQUALIFIED`，不影响已通过的
 production。该审计不是完整 profiling。
+
+O3 的 summary 还应报告
+`o3_native_int4_sass=false` 和
+`o3_sass_lowering=U8xS8_and_S8xS8_IMMA_plus_bit_operations`。这不是审计失败，
+而是 SM120 将兼容的 sub-byte PTX  lowering 到其原生 INT8 IMMA 的实际物理执行；
+报告或汇报中不得把该路径称为“原生 INT4 SASS”。
 
 ## 5. 正式运行
 

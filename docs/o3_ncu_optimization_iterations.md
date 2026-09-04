@@ -348,3 +348,76 @@ policy 继续使用配对均值 CI。报告会明确记录实际 baseline 与晋
 `1.52%`；cold 与 steady-state 配对速度也分别只有 `0.9797x` 和 `0.9891x`。
 `promotion_ci_metric=paired_speedup_median_bootstrap_95ci` 且
 `eligible_except_spill_audit=false`，验证 baseline 与晋升判定修复生效。
+
+## Iteration 9–14：逼近 O1 一半吞吐的最终迭代
+
+目标使用当前 O1 compute-only `0.622136 ms` 定义。相同逻辑 FLOP 数下，“O3 达到
+O1 一半吞吐”要求 O3 延迟不超过 `2 × 0.622136 = 1.244272 ms`。
+
+本轮依次验证了以下保持论文 Split/G128 语义的候选：
+
+- 每个 warp 复用两个 M atom 的 `mrep2`；
+- W scale 的 warp broadcast；
+- row A scale 移出32个 G128循环；
+- 对齐 tile 的无边界检查快路径；
+- `64x32x128` 与 `32x64x128` 的平衡 CTA；
+- `64x32x256` 双 G128 pipeline；
+- 平衡 CTA、对齐快路径与 row-scale factoring 的组合。
+
+`mrep2`、scale broadcast、`32x64` 和 K256 都没有收益。最终组合候选
+`m64_n32_k128_aligned_factor_16w` 在24个真实样本上通过全部晋升条件：
+
+| 指标 | 旧 production | 新 production |
+|---|---:|---:|
+| 跨样本 compute-only median | 2.152408 ms | 2.076480 ms |
+| 跨样本 cold-total median | 2.210080 ms | 2.133232 ms |
+| 跨样本 steady-total median | 2.176184 ms | 2.101496 ms |
+| O3 vs O0 MSE median | 0.006653010193 | 0.006653010195 |
+| O3 vs O0 MSE mean | 0.007578844398 | 0.007578844400 |
+
+compute-only 配对加速几何均值为 `1.031277x`，bootstrap 95% CI
+`[1.028552x, 1.033760x]`；cold/steady-state 分别为 `1.030847x` 与
+`1.031777x`。所有计时 stage 均满足 `CV<3%`，MSE 回归通过。正式 symbol 使用55
+regs/thread，`STACK=0, LOCAL=0`，无 `LDL/STL`。
+
+切换 production 后重新执行 `4096³`、50次预热和200次测量：
+
+| 计时 | median | CV |
+|---|---:|---:|
+| weight conversion | 0.029934 ms | 0.066% |
+| activation conversion | 0.016243 ms | 0.047% |
+| conversion-only total | 0.046176 ms | 0.045% |
+| compute-only GEMM | 2.037664 ms | 0.717% |
+| cold total | 2.105504 ms | 0.117% |
+| steady-state total | 2.068704 ms | 0.671% |
+
+最大绝对误差为 `9.1552734375e-05`，输出为 finite FP32。
+
+### 为什么目标未达到
+
+最终 NCU 对比显示，新 CTA 将动态 SASS 从约 `2.798B` 降到 `2.559B`（约8.5%），
+但 kernel duration 只从 `2.073088 ms` 降到 `1.989248 ms`。新 kernel 的 instruction
+throughput 已达到约 `94.73%`，DRAM并不是限制；继续扩大 tile 或加深 pipeline 不能
+消除主要的指令工作量。
+
+更关键的是，正式 PTX 虽包含 U4×S4 和 S4×S4 sub-byte MMA，SM120 SASS 中实际为：
+
+```text
+IMMA.16832.U8.S8
+IMMA.16832.S8.S8
+```
+
+并伴随大量 `LOP3/SHF/IMAD` 做4-bit拆位、符号扩展和 operand准备。CUDA 对 compute
+capability 12.0 的原生 Tensor Core 整数类型只列出 INT8。这说明 O3 使用的是兼容的
+INT4 PTX语义，而不是具有2倍 INT8 吞吐的原生 INT4物理单元。
+
+作为诊断上界，曾实现精确的 biased-high U4 重写；编译器可把 low/high 合并为更少的
+U8 IMMA，使单样本降到约 `1.452 ms`，但 SASS 不再保留正式要求的 signed-high 两路
+路径，而且仍慢于 `1.244272 ms`，因此没有晋升。显式将 O3 改写成 INT8 GEMM 可能
+进一步接近 O1，但会改变实验定义，禁止用作 O3 正式结果。
+
+结论：当前 production 是既定 RTX 5090、CUDA 12.8、Q4/G128、两路 sub-byte PTX、
+TMA、warp specialization 与 FP32 输出约束下通过实测的最佳版本。它相对 O1 的等效
+吞吐约为 `0.622136 / 2.037664 = 30.5%`，没有达到50%目标。若必须达到目标，需要
+更换具备原生 INT4矩阵指令的硬件/ISA，或明确放宽“两路 INT4”要求并建立新的 INT8
+重写实验；继续小幅 CTA 微调没有足够的剩余空间。

@@ -324,8 +324,9 @@ check_no_local_sass "$o4_symbol" && check_zero_stack_local_resource "$o4_resourc
 }
 
 o3_sass_lowering="unknown"
-if sass_symbol_contains "$o3_symbol" 'IMMA\.[0-9]+\.U8\.U8'; then
-  o3_sass_lowering="U8_IMMA_plus_bit_operations"
+if sass_symbol_contains "$o3_symbol" 'IMMA\.[0-9]+\.U8\.S8' &&
+   sass_symbol_contains "$o3_symbol" 'IMMA\.[0-9]+\.S8\.S8'; then
+  o3_sass_lowering="U8xS8_and_S8xS8_IMMA_plus_bit_operations"
 fi
 
 declare -a o34_candidate_audit_lines=()
