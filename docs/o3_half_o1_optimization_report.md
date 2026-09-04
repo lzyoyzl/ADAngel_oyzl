@@ -24,10 +24,10 @@ acc/output      FP32 registers / FP32
 `1.244272 ms`；新 O3 正式 `4096³` 延迟为 `2.037664 ms`，只达到 O1 约30.5%的
 等效吞吐。
 
-原因不是 DRAM、TMA 或 conversion，而是 SM120 对旧式 sub-byte integer PTX 的物理
-lowering：O3 的 PTX 保留两路 U4/S4 语义，SASS 却由 U8×S8/S8×S8 IMMA 加大量
-`LOP3/SHF/IMAD` 实现。RTX 5090 没有可供本实验调用、并提供2倍 INT8吞吐的独立原生
-INT4 SASS路径。
+原因不是 DRAM、TMA 或 conversion，而是当前 CUDA 12.8 对旧式 sub-byte integer PTX
+的实际 lowering：O3 的 PTX 保留两路 U4/S4 语义，SASS 却由 U8×S8/S8×S8 IMMA
+加大量 `LOP3/SHF/IMAD` 实现。该工具链与接口组合没有为本实验生成可区分、并提供
+接近2倍 INT8吞吐的原生 4-bit SASS路径。
 
 ## 2. 必须保持的实验约束
 
@@ -183,9 +183,44 @@ spill            none
 ```
 
 这解释了“输入是4 bit，为何没有接近2倍 INT8吞吐”：PTX 是虚拟 ISA接口，最终执行
-能力由 SASS和硬件决定。SM120 的原生整数矩阵路径是 INT8；ptxas 必须把 packed4
-语义展开成多条 INT8 IMMA及位操作。扩大 tile 只能摊薄部分地址/调度开销，不能删除
-这组物理工作。
+路径必须以生成的 SASS 为准。本项目固定的 CUDA 12.8 将 packed4 语义展开成多条
+U8/S8 IMMA及位操作。扩大 tile 只能摊薄部分地址/调度开销，不能删除这组实际生成的
+物理工作。
+
+### 7.1 去除 GEMM 其他因素后的 MMA lowering 微基准
+
+为排除 TMA、G128 scale、conversion、矩阵边界和全尺寸 GEMM 调度的影响，本轮增加了
+独立最小微基准。每个 kernel 只在寄存器中循环调用指定 MMA，并比较一条 accumulator
+chain 与四条独立 chain。下表为 RTX 5090、四 chain 的逻辑吞吐；数值用于比较同一
+微基准内的编译路径，不等同于正式 GEMM TFLOP/s。
+
+| PTX shape | U4×S4 logical TOPS | S4×S4 logical TOPS | S8×S8 logical TOPS |
+|---|---:|---:|---:|
+| m16n8k64 | 163.72 | 77.94 | 746.43 |
+| m16n8k32 | 139.26 | 72.78 | 372.37 |
+| m8n8k32 | 83.15 | 53.76 | 174.88 |
+
+结论有三点：
+
+1. 当前 production 使用的 `m16n8k64` 已是三个被测且保持正式 U4/S4 语义的形状中最快者；
+2. `m16n8k32` 与 `m8n8k32` 均不能作为新的 production 优化；
+3. 即使完全去掉 TMA 和 scale，U4/S4 路径仍远慢于相应 S8 对照，直接证明主要成本来自
+   legacy sub-byte PTX 的 lowering，而不是正式 O3 外围代码。
+
+最小内核反汇编同样表现为 U8×S8/S8×S8 IMMA 加 `LOP3/SHF/IMAD`，且
+`STACK=0, LOCAL=0`。针对四 chain 内核的 NCU replay 还显示：U4×S4 与 S4×S4 的
+动态指令分别约为 `778M` 与 `1.684B`，IMMA pipe active 约 `16.1%` 与 `7.7%`；
+S8×S8 对照动态指令约 `21.2M`，IMMA pipe active 约 `73.6%`。这与正式 O3 的
+“指令前端/整数辅助工作饱和、Tensor pipe 利用率不高”结论一致。
+
+复现命令：
+
+```bash
+bash scripts/run_o3_mma_lowering_microbenchmark.sh \
+  reports/o3_mma_lowering
+```
+
+该微基准是编译路径诊断，不进入 O3 的四种正式计时表，也不替代24样本 MSE。
 
 ## 8. 目标判定与后续边界
 
@@ -197,14 +232,17 @@ spill            none
 | 新 O3 / O1等效吞吐 | 30.5% |
 | 是否达到50% | 否 |
 
-继续进行一般 CTA、stage或scale微调，无法再提供所需的约1.64倍加速。两个技术方向
-可能接近目标，但都超出当前正式实验定义：
+继续进行一般 CTA、stage或scale微调，现有证据不支持它们还能提供所需的约1.64倍
+加速。两个技术方向可能接近目标，但都超出当前正式实验定义：
 
-1. 在具有真正原生 INT4矩阵指令的硬件/ISA上复现同一 O3；
+1. 使用能够为目标 GPU 生成可区分原生 4-bit SASS 的新工具链/API，再复现同一 O3；
 2. 把 Split代数重写成原生 INT8 GEMM与修正项，另立新的 variant，不再称为论文要求的
    两路 INT4 O3。
 
-因此本轮在“不改变 O3定义”的范围内结束优化，并如实报告目标未达到及其硬件原因。
+因此本轮在“不改变 O3定义”的范围内结束优化，并如实报告目标未达到及其当前编译执行
+路径原因。NVIDIA 当前 CUDA Programming Guide 的能力表将 CC 12.x 列为支持 INT4
+Tensor Core 输入，因此不能仅根据本次 CUDA 12.8 SASS 将结论外推成“RTX 5090 完全
+没有 INT4 硬件能力”。
 
 ## 9. 验收与复现
 
@@ -244,6 +282,6 @@ reports/o3_target_half/iteration14/production_audit/summary.txt
 
 ## 10. 官方资料
 
-- [CUDA C++ Programming Guide 12.9.1：Compute Capability 12.0](https://docs.nvidia.com/cuda/archive/12.9.1/pdf/CUDA_C_Programming_Guide.pdf)：CC 12.0 Tensor Core原生整数矩阵类型列出 INT8，未列出 INT4。
+- [CUDA Programming Guide：Compute Capabilities](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html)：当前能力表将 CC 12.x 列为支持 INT4 Tensor Core 输入；这与某一具体 PTX 路径是否生成独立 4-bit SASS 是两个层次的问题。
 - [PTX ISA：warp-level matrix instructions](https://docs.nvidia.com/cuda/parallel-thread-execution/#warp-level-matrix-instructions-mma)：定义兼容的 U4/S4 `mma.sync` PTX语义；PTX语义不等同于目标 GPU的独立 SASS opcode。
 - [CUTLASS warp MMA definitions](https://github.com/NVIDIA/cutlass/blob/main/include/cute/arch/mma_sm80.hpp)：本项目使用的 sub-byte MMA wrapper与 PTX形状来源。

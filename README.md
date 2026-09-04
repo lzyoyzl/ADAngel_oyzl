@@ -54,8 +54,10 @@ scale，并只写一次 FP32 输出。row A scale 移到32个 G128循环之外�
 非整 `64x32` 输出 tile 自动回退到带边界检查的 `128x16x128` kernel。
 
 必须区分接口语义和物理指令：SM120 的正式 PTX entry 确实包含 U4×S4 与 S4×S4
-sub-byte MMA，但 RTX 5090 的 ptxas 将它们降低成 U8×S8/S8×S8 IMMA 和大量位操作；
-CUDA 对 compute capability 12.0 的原生整数 Tensor Core 类型只列出 INT8。因此
+sub-byte MMA，但本项目固定的 CUDA 12.8 ptxas 将它们降低成 U8×S8/S8×S8 IMMA 和
+大量位操作。NVIDIA 当前文档将 compute capability 12.x 列为支持 INT4 Tensor Core
+输入，因此该反汇编结果不能被外推成“RTX 5090 硬件没有 INT4 能力”；它只证明当前
+legacy PTX、CUDA 12.8 与本内核组合没有生成可区分的原生 4-bit SASS 路径。
 `o3_int4_tc=true` 表示项目的逻辑 INT4 PTX 路径已启用，不表示 SASS 存在独立的原生
 INT4 opcode。最新实现、性能和该限制见
 [O3 达到 O1 一半吞吐目标的优化结论](docs/o3_half_o1_optimization_report.md)。
@@ -415,8 +417,21 @@ production。该审计不是完整 profiling。
 O3 的 summary 还应报告
 `o3_native_int4_sass=false` 和
 `o3_sass_lowering=U8xS8_and_S8xS8_IMMA_plus_bit_operations`。这不是审计失败，
-而是 SM120 将兼容的 sub-byte PTX  lowering 到其原生 INT8 IMMA 的实际物理执行；
+而是当前 CUDA 12.8 将兼容的 sub-byte PTX lowering 到 U8/S8 IMMA 加位操作的实际
+编译结果；
 报告或汇报中不得把该路径称为“原生 INT4 SASS”。
+
+如需脱离 TMA、scale、矩阵边界和转换 kernel，单独比较 legacy sub-byte PTX 的 lowering
+成本，可运行：
+
+```bash
+bash scripts/run_o3_mma_lowering_microbenchmark.sh \
+  reports/o3_mma_lowering
+```
+
+该诊断同时测试 `m16n8k64`、`m16n8k32`、`m8n8k32` 的 U4×S4/S4×S4 路径及对应
+S8×S8 对照，生成 CUDA Event 结果、PTX、SASS 和 resource usage。它只用于解释编译
+路径，不能代替正式 O3 的正确性、MSE 或端到端性能测试。
 
 ## 5. 正式运行
 
@@ -440,14 +455,13 @@ python -m adangel run \
   --require-native
 ```
 
-当前 RTX 5090 的 `runs/rtx5090_o0_o4_k512` 24 样本 GEMM-only median 为：
-O1 `0.622136 ms`、O3 `2.223352 ms`、O4 `7.632488 ms`。最新 O4 候选相对上一版
+当前 RTX 5090 的 O1 稳定基线为 `0.622136 ms`。O3 最新正式
+`m64_n32_k128_aligned_factor_16w` 在独立24样本 production 复跑中的 compute-only
+median 为 `2.054640 ms`；历史 `runs/rtx5090_o0_o4_k512` 中 O3 的
+`2.223352 ms` 已不代表当前 production。O4 在该历史 run 中为 `7.632488 ms`。最新 O4 候选相对上一版
 `128x64x256` production 的逐样本配对几何平均加速为 `1.0806x`，bootstrap 95% CI
-为 `[1.0789x, 1.0827x]`。这里的 O3 `2.223352 ms` 是显式 LDSM 晋升前的历史结果；
-新 production 保持 `128x16x128`，仅把标量 shared fragment load 改为显式 LDSM，
-当前提交已生成 `runs/rtx5090_o0_o4_o3_ldsm`，但共享 GPU 外部进程导致451/480条
-记录 CV 超过3%，因此该 run 只用于确认 metadata/MSE，不替换上面的稳定绝对性能表。
-详细消融、资源审计、性能边界与 MSE 见
+为 `[1.0789x, 1.0827x]`。O3 最新 production 使用 `64x32x128` CTA、显式 LDSM、
+对齐快路径和循环外 row-scale factoring；详细消融、资源审计、性能边界与 MSE 见
 `docs/o3_o4_backend_report.md`。
 
 运行顺序按样本交错 O0/O1/O2/O3/O4；使用单 stream、CUDA Event、预热 50 次、测量
