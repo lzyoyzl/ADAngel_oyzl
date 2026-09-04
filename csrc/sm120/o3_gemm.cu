@@ -518,7 +518,7 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
   if (warp == 0) {
     auto write_state = cutlass::make_producer_start_state<Pipeline>();
     const int pipeline_groups = (groups + kGroupsPerStage - 1) / kGroupsPerStage;
-#pragma unroll 8
+#pragma unroll 16
     for (int pipeline_group = 0; pipeline_group < pipeline_groups; ++pipeline_group) {
       if (lane == 0) pipeline.producer_acquire(write_state);
       __syncwarp();
@@ -741,7 +741,7 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
 
   typename Pipeline::PipelineState read_state;
   const int pipeline_groups = (groups + kGroupsPerStage - 1) / kGroupsPerStage;
-#pragma unroll 8
+#pragma unroll 16
   for (int pipeline_group = 0; pipeline_group < pipeline_groups; ++pipeline_group) {
     pipeline.consumer_wait(read_state);
     const int stage = read_state.index();
