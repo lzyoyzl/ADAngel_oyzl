@@ -206,6 +206,34 @@ void adangel_o3_mma_micro_s4s4_c4(
 }
 
 extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_u4s4_sat_c1(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_kernel_body<cute::SM80_16x8x64_S32U4S4S32_TN_SATURATE, 1>(
+      input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_u4s4_sat_c4(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_kernel_body<cute::SM80_16x8x64_S32U4S4S32_TN_SATURATE, 4>(
+      input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_s4s4_sat_c1(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_kernel_body<cute::SM80_16x8x64_S32S4S4S32_TN_SATURATE, 1>(
+      input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_s4s4_sat_c4(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_kernel_body<cute::SM80_16x8x64_S32S4S4S32_TN_SATURATE, 4>(
+      input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
 void adangel_o3_mma_micro_s8s8_c1(
     const uint32_t* input, uint32_t* output, int iterations) {
   run_kernel_body<cute::SM80_16x8x32_S32S8S8S32_TN, 1>(input, output, iterations);
@@ -454,7 +482,7 @@ Options parse_options(int argc, char** argv) {
       options.repeats = parse_positive(require_value(), "--repeats");
     } else if (argument == "--help") {
       std::cout
-          << "Usage: o3_mma_lowering [--kind u4s4|s4s4|s4u4|s8s8|split_pair] "
+          << "Usage: o3_mma_lowering [--kind u4s4|s4s4|u4s4_sat|s4s4_sat|s4u4|s8s8|split_pair] "
              "[--shape m16n8k64|m16n8k32|m8n8k32] [--chains 1|4] "
              "[--blocks N] [--warps N] [--iterations N] [--warmup N] [--repeats N]\n";
       std::exit(0);
@@ -463,10 +491,11 @@ Options parse_options(int argc, char** argv) {
     }
   }
   if (options.kind != "u4s4" && options.kind != "s4s4" &&
+      options.kind != "u4s4_sat" && options.kind != "s4s4_sat" &&
       options.kind != "s4u4" && options.kind != "s8s8" &&
       options.kind != "split_pair") {
     throw std::runtime_error(
-        "--kind must be u4s4, s4s4, s4u4, s8s8, or split_pair");
+        "--kind must be u4s4, s4s4, u4s4_sat, s4s4_sat, s4u4, s8s8, or split_pair");
   }
   if (options.shape != "m16n8k64" && options.shape != "m16n8k32" &&
       options.shape != "m8n8k32") {
@@ -479,9 +508,11 @@ Options parse_options(int argc, char** argv) {
   if (options.warps > 8) {
     throw std::runtime_error("--warps must not exceed 8 (__launch_bounds__(256))");
   }
-  if ((options.kind == "s4u4" || options.kind == "split_pair") &&
+  if ((options.kind == "s4u4" || options.kind == "split_pair" ||
+       options.kind == "u4s4_sat" || options.kind == "s4s4_sat") &&
       options.shape != "m16n8k64") {
-    throw std::runtime_error("s4u4 and split_pair require --shape m16n8k64");
+    throw std::runtime_error(
+        "s4u4, split_pair, and satfinite variants require --shape m16n8k64");
   }
   return options;
 }
@@ -508,6 +539,22 @@ Kernel select_kernel(
     }
     *symbol = "adangel_o3_mma_micro_s4u4_c4";
     return adangel_o3_mma_micro_s4u4_c4;
+  }
+  if (options.kind == "u4s4_sat") {
+    if (options.chains == 1) {
+      *symbol = "adangel_o3_mma_micro_u4s4_sat_c1";
+      return adangel_o3_mma_micro_u4s4_sat_c1;
+    }
+    *symbol = "adangel_o3_mma_micro_u4s4_sat_c4";
+    return adangel_o3_mma_micro_u4s4_sat_c4;
+  }
+  if (options.kind == "s4s4_sat") {
+    if (options.chains == 1) {
+      *symbol = "adangel_o3_mma_micro_s4s4_sat_c1";
+      return adangel_o3_mma_micro_s4s4_sat_c1;
+    }
+    *symbol = "adangel_o3_mma_micro_s4s4_sat_c4";
+    return adangel_o3_mma_micro_s4s4_sat_c4;
   }
   if (options.shape == "m8n8k32") {
     if (options.kind == "u4s4" && options.chains == 1) {

@@ -70,7 +70,7 @@ PY
   done
 done
 
-for kind in s4u4 split_pair; do
+for kind in s4u4 split_pair u4s4_sat s4s4_sat; do
   for chains in 1 4; do
     "$BINARY" \
       --kind "$kind" \
@@ -132,7 +132,9 @@ summary = {
     },
     "operand_order_and_pair_chain4": {
         kind: by_key[("m16n8k64", kind, 4)]["logical_tops"]
-        for kind in ("u4s4", "s4u4", "s4s4", "split_pair")
+        for kind in (
+            "u4s4", "u4s4_sat", "s4u4", "s4s4", "s4s4_sat", "split_pair"
+        )
     },
 }
 pathlib.Path(sys.argv[2]).write_text(json.dumps(summary, indent=2) + "\n")

@@ -21,6 +21,10 @@ def test_microbenchmark_keeps_all_three_mma_semantics() -> None:
     assert "adangel_o3_mma_micro_u4s4_c4" in source
     assert "adangel_o3_mma_micro_s4s4_c1" in source
     assert "adangel_o3_mma_micro_s4s4_c4" in source
+    assert "SM80_16x8x64_S32U4S4S32_TN_SATURATE" in source
+    assert "SM80_16x8x64_S32S4S4S32_TN_SATURATE" in source
+    assert "adangel_o3_mma_micro_u4s4_sat_c4" in source
+    assert "adangel_o3_mma_micro_s4s4_sat_c4" in source
     assert "adangel_o3_mma_micro_s8s8_c1" in source
     assert "adangel_o3_mma_micro_s8s8_c4" in source
     assert "adangel_o3_mma_micro_m8n8_u4s4_c4" in source
