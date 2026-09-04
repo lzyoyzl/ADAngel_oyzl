@@ -36,18 +36,20 @@ mkdir -p "$OUTPUT_DIR"
   > "$OUTPUT_DIR/microbench.resources.txt" 2>&1
 
 : > "$OUTPUT_DIR/results.jsonl"
-for kind in u4s4 s4s4 s8s8; do
-  for chains in 1 4; do
+for shape in m16n8 m8n8; do
+  for kind in u4s4 s4s4 s8s8; do
+    for chains in 1 4; do
     "$BINARY" \
       --kind "$kind" \
+      --shape "$shape" \
       --chains "$chains" \
       --blocks 512 \
       --warps 8 \
       --iterations 512 \
       --warmup 10 \
       --repeats 50 \
-      | tee "$OUTPUT_DIR/${kind}_c${chains}.json"
-    python - "$OUTPUT_DIR/${kind}_c${chains}.json" "$OUTPUT_DIR/results.jsonl" <<'PY'
+      | tee "$OUTPUT_DIR/${shape}_${kind}_c${chains}.json"
+    python - "$OUTPUT_DIR/${shape}_${kind}_c${chains}.json" "$OUTPUT_DIR/results.jsonl" <<'PY'
 import json
 import pathlib
 import sys
@@ -58,6 +60,7 @@ record = json.loads(source.read_text())
 with destination.open("a", encoding="utf-8") as handle:
     handle.write(json.dumps(record, sort_keys=True) + "\n")
 PY
+    done
   done
 done
 
@@ -67,19 +70,33 @@ import pathlib
 import sys
 
 records = [json.loads(line) for line in pathlib.Path(sys.argv[1]).read_text().splitlines()]
-by_key = {(record["kind"], record["chains"]): record for record in records}
-s8 = by_key[("s8s8", 4)]
+by_key = {
+    (record["shape"], record["kind"], record["chains"]): record
+    for record in records
+}
 summary = {
     "records": records,
     "throughput_chain4": {
-        kind: by_key[(kind, 4)]["logical_tops"] for kind in ("u4s4", "s4s4", "s8s8")
+        shape: {
+            kind: by_key[(shape, kind, 4)]["logical_tops"]
+            for kind in ("u4s4", "s4s4", "s8s8")
+        }
+        for shape in ("m16n8", "m8n8")
     },
     "latency_chain1_median_ms": {
-        kind: by_key[(kind, 1)]["median_ms"] for kind in ("u4s4", "s4s4", "s8s8")
+        shape: {
+            kind: by_key[(shape, kind, 1)]["median_ms"]
+            for kind in ("u4s4", "s4s4", "s8s8")
+        }
+        for shape in ("m16n8", "m8n8")
     },
     "logical_throughput_vs_s8_chain4": {
-        kind: by_key[(kind, 4)]["logical_tops"] / s8["logical_tops"]
-        for kind in ("u4s4", "s4s4", "s8s8")
+        shape: {
+            kind: by_key[(shape, kind, 4)]["logical_tops"] /
+            by_key[(shape, "s8s8", 4)]["logical_tops"]
+            for kind in ("u4s4", "s4s4", "s8s8")
+        }
+        for shape in ("m16n8", "m8n8")
     },
 }
 pathlib.Path(sys.argv[2]).write_text(json.dumps(summary, indent=2) + "\n")
