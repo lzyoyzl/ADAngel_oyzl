@@ -129,4 +129,7 @@ if not checks["sass_s8s8_imma"]:
     raise SystemExit("expected S8 IMMA was not found in SASS")
 PY
 
+python "$ROOT/scripts/analyze_o3_mma_lowering.py" "$OUTPUT_DIR" \
+  > "$OUTPUT_DIR/static_instruction_attribution.stdout.json"
+
 echo "O3 MMA lowering microbenchmark complete: $OUTPUT_DIR"

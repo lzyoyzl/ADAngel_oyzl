@@ -38,6 +38,8 @@ def test_microbenchmark_has_no_gemm_pipeline_or_scale_work() -> None:
     assert "a_scale" not in source
     assert "w_scale" not in source
     assert "cudaEventElapsedTime" in source
+    assert "Different C fragments are essential" in source
+    assert "0x01020408u * (chain + 1)" in source
 
 
 def test_microbenchmark_runner_audits_ptx_and_sass() -> None:
@@ -48,3 +50,11 @@ def test_microbenchmark_runner_audits_ptx_and_sass() -> None:
     assert "ptx_u4s4" in runner
     assert "sass_u8s8_imma" in runner
     assert "logical_throughput_vs_s8_chain4" in runner
+    assert "analyze_o3_mma_lowering.py" in runner
+
+
+def test_static_attribution_script_counts_required_instructions() -> None:
+    analyzer = (ROOT / "scripts" / "analyze_o3_mma_lowering.py").read_text()
+    assert '"IMMA", "LOP3", "SHF", "IMAD"' in analyzer
+    assert '"ptx_mma_static"' in analyzer
+    assert '"sass_per_ptx_mma"' in analyzer

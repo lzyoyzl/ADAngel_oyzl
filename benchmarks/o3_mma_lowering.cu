@@ -49,7 +49,18 @@ __device__ __forceinline__ uint32_t run_mma_loop(
   uint32_t a3 = seed ^ 0x01000100u;
   uint32_t b0 = seed ^ 0x00000101u;
   uint32_t b1 = seed ^ 0x00010000u;
-  uint32_t accumulators[Chains][4] = {};
+  uint32_t accumulators[Chains][4];
+#pragma unroll
+  for (int chain = 0; chain < Chains; ++chain) {
+#pragma unroll
+    for (int item = 0; item < 4; ++item) {
+      // Different C fragments are essential: identical zero-initialized
+      // chains let ptxas merge the chains or serialize them through a common
+      // temporary, which defeats the throughput experiment.
+      accumulators[chain][item] =
+          seed ^ static_cast<uint32_t>(0x01020408u * (chain + 1) + item);
+    }
+  }
 
   // Keep the loop rolled: this measures steady-state instruction issue while
   // avoiding an enormous cubin.  Four independent accumulator chains expose
@@ -88,7 +99,15 @@ __device__ __forceinline__ uint32_t run_mma_loop_m8n8(
   static_assert(Chains == 1 || Chains == 4, "microbenchmark supports one or four chains");
   uint32_t a0 = seed;
   uint32_t b0 = seed ^ 0x00000101u;
-  uint32_t accumulators[Chains][2] = {};
+  uint32_t accumulators[Chains][2];
+#pragma unroll
+  for (int chain = 0; chain < Chains; ++chain) {
+#pragma unroll
+    for (int item = 0; item < 2; ++item) {
+      accumulators[chain][item] =
+          seed ^ static_cast<uint32_t>(0x01020408u * (chain + 1) + item);
+    }
+  }
 #pragma unroll 1
   for (int iteration = 0; iteration < iterations; ++iteration) {
 #pragma unroll
@@ -119,7 +138,15 @@ __device__ __forceinline__ uint32_t run_mma_loop_m16n8k32(
   uint32_t a0 = seed;
   uint32_t a1 = seed ^ 0x00010001u;
   uint32_t b0 = seed ^ 0x00000101u;
-  uint32_t accumulators[Chains][4] = {};
+  uint32_t accumulators[Chains][4];
+#pragma unroll
+  for (int chain = 0; chain < Chains; ++chain) {
+#pragma unroll
+    for (int item = 0; item < 4; ++item) {
+      accumulators[chain][item] =
+          seed ^ static_cast<uint32_t>(0x01020408u * (chain + 1) + item);
+    }
+  }
 #pragma unroll 1
   for (int iteration = 0; iteration < iterations; ++iteration) {
 #pragma unroll
