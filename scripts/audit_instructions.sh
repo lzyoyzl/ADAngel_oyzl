@@ -136,6 +136,19 @@ check_no_local_sass() {
   ' "$output_dir/extension.sass"
 }
 
+sass_symbol_contains() {
+  local symbol=$1
+  local pattern=$2
+  awk -v symbol="$symbol" -v pattern="$pattern" '
+    /^[[:space:]]*Function[[:space:]]*:/ {
+      inside = index($0, symbol) != 0
+      next
+    }
+    inside && $0 ~ pattern { found = 1 }
+    END { exit found ? 0 : 1 }
+  ' "$output_dir/extension.sass"
+}
+
 resource_usage_for_symbol() {
   local symbol=$1
   awk -v symbol="$symbol" '
@@ -311,8 +324,7 @@ check_no_local_sass "$o4_symbol" && check_zero_stack_local_resource "$o4_resourc
 }
 
 o3_sass_lowering="unknown"
-if symbol_block "$o3_symbol" "$output_dir/extension.sass" |
-   grep -Eq 'IMMA\.[0-9]+\.U8\.U8'; then
+if sass_symbol_contains "$o3_symbol" 'IMMA\.[0-9]+\.U8\.U8'; then
   o3_sass_lowering="U8_IMMA_plus_bit_operations"
 fi
 
