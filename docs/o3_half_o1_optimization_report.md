@@ -121,6 +121,12 @@ conversion_inner_repeats=100；24个样本均满足各 stage `CV<3%`。
 MSE 的末位差来自 row scale 与 FP32 accumulator 的等价结合顺序，远低于既定回归门槛；
 没有引入新的量化误差。
 
+晋升后又通过公开 production调度独立重跑24样本，得到72条记录且全部 stage
+`CV<3%`、全部 `production_selected=true`：compute-only、cold和steady-state的
+跨样本 median 分别为 `2.054640 ms`、`2.120000 ms` 和 `2.078960 ms`；MSE median/
+mean 分别为 `0.006653010195` / `0.007578844400`。这次独立绝对值与上表配对轮次的
+轻微差异来自未锁频 GeForce的动态频率；晋升判断仍以上表同进程配对速度比为准。
+
 ## 6. 新 production 的正式 4096³ 结果
 
 重新编译后使用公开 `production` 调度，warmup=50、repeats=200：
@@ -230,6 +236,7 @@ python -m adangel doctor --require-native
 
 ```text
 reports/o3_target_half/iteration14/combined_24samples.json
+reports/o3_target_half/iteration14/production_24samples.json
 reports/o3_target_half/iteration14/production_4096_validation.json
 reports/o3_target_half/iteration14/o3_combined_compute.ncu-rep
 reports/o3_target_half/iteration14/production_audit/summary.txt
