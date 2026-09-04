@@ -113,6 +113,40 @@ __device__ __forceinline__ uint32_t run_mma_loop_m8n8(
 }
 
 template <class Mma, int Chains>
+__device__ __forceinline__ uint32_t run_mma_loop_m16n8k32(
+    uint32_t seed, int iterations) {
+  static_assert(Chains == 1 || Chains == 4, "microbenchmark supports one or four chains");
+  uint32_t a0 = seed;
+  uint32_t a1 = seed ^ 0x00010001u;
+  uint32_t b0 = seed ^ 0x00000101u;
+  uint32_t accumulators[Chains][4] = {};
+#pragma unroll 1
+  for (int iteration = 0; iteration < iterations; ++iteration) {
+#pragma unroll
+    for (int chain = 0; chain < Chains; ++chain) {
+      uint32_t d0, d1, d2, d3;
+      Mma::fma(
+          d0, d1, d2, d3, a0, a1, b0,
+          accumulators[chain][0], accumulators[chain][1],
+          accumulators[chain][2], accumulators[chain][3]);
+      accumulators[chain][0] = d0;
+      accumulators[chain][1] = d1;
+      accumulators[chain][2] = d2;
+      accumulators[chain][3] = d3;
+    }
+  }
+  uint32_t checksum = 0;
+#pragma unroll
+  for (int chain = 0; chain < Chains; ++chain) {
+#pragma unroll
+    for (int item = 0; item < 4; ++item) {
+      checksum ^= accumulators[chain][item] + static_cast<uint32_t>(17 * chain + item);
+    }
+  }
+  return checksum;
+}
+
+template <class Mma, int Chains>
 __device__ __forceinline__ void run_kernel_body(
     const uint32_t* input, uint32_t* output, int iterations) {
   const int thread = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -199,11 +233,60 @@ void adangel_o3_mma_micro_m8n8_s8s8_c4(
   run_m8n8_kernel_body<cute::SM80_8x8x16_S32S8S8S32_TN, 4>(input, output, iterations);
 }
 
+template <class Mma, int Chains>
+__device__ __forceinline__ void run_m16n8k32_kernel_body(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  const int thread = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+  output[thread] = run_mma_loop_m16n8k32<Mma, Chains>(input[thread], iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_m16n8k32_u4s4_c1(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_m16n8k32_kernel_body<cute::SM80_16x8x32_S32U4S4S32_TN, 1>(
+      input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_m16n8k32_u4s4_c4(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_m16n8k32_kernel_body<cute::SM80_16x8x32_S32U4S4S32_TN, 4>(
+      input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_m16n8k32_s4s4_c1(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_m16n8k32_kernel_body<cute::SM80_16x8x32_S32S4S4S32_TN, 1>(
+      input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_m16n8k32_s4s4_c4(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_m16n8k32_kernel_body<cute::SM80_16x8x32_S32S4S4S32_TN, 4>(
+      input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_m16n8k32_s8s8_c1(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_m16n8k32_kernel_body<cute::SM80_16x8x16_S32S8S8S32_TN, 1>(
+      input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_m16n8k32_s8s8_c4(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_m16n8k32_kernel_body<cute::SM80_16x8x16_S32S8S8S32_TN, 4>(
+      input, output, iterations);
+}
+
 using Kernel = void (*)(const uint32_t*, uint32_t*, int);
 
 struct Options {
   std::string kind = "u4s4";
-  std::string shape = "m16n8";
+  std::string shape = "m16n8k64";
   int chains = 4;
   int blocks = 512;
   int warps = 8;
@@ -243,7 +326,7 @@ Options parse_options(int argc, char** argv) {
     } else if (argument == "--help") {
       std::cout
           << "Usage: o3_mma_lowering [--kind u4s4|s4s4|s8s8] "
-             "[--shape m16n8|m8n8] [--chains 1|4] "
+             "[--shape m16n8k64|m16n8k32|m8n8k32] [--chains 1|4] "
              "[--blocks N] [--warps N] [--iterations N] [--warmup N] [--repeats N]\n";
       std::exit(0);
     } else {
@@ -253,8 +336,10 @@ Options parse_options(int argc, char** argv) {
   if (options.kind != "u4s4" && options.kind != "s4s4" && options.kind != "s8s8") {
     throw std::runtime_error("--kind must be u4s4, s4s4, or s8s8");
   }
-  if (options.shape != "m16n8" && options.shape != "m8n8") {
-    throw std::runtime_error("--shape must be m16n8 or m8n8");
+  if (options.shape != "m16n8k64" && options.shape != "m16n8k32" &&
+      options.shape != "m8n8k32") {
+    throw std::runtime_error(
+        "--shape must be m16n8k64, m16n8k32, or m8n8k32");
   }
   if (options.chains != 1 && options.chains != 4) {
     throw std::runtime_error("--chains must be 1 or 4");
@@ -267,11 +352,12 @@ Options parse_options(int argc, char** argv) {
 
 Kernel select_kernel(
     const Options& options, const char** symbol, int* mma_m, int* mma_n, int* mma_k) {
-  *mma_m = options.shape == "m16n8" ? 16 : 8;
+  *mma_m = options.shape == "m8n8k32" ? 8 : 16;
   *mma_n = 8;
-  *mma_k = options.kind == "s8s8" ? (*mma_m == 16 ? 32 : 16)
-                                      : (*mma_m == 16 ? 64 : 32);
-  if (options.shape == "m8n8") {
+  const bool short_k = options.shape != "m16n8k64";
+  *mma_k = options.kind == "s8s8" ? (short_k ? 16 : 32)
+                                      : (short_k ? 32 : 64);
+  if (options.shape == "m8n8k32") {
     if (options.kind == "u4s4" && options.chains == 1) {
       *symbol = "adangel_o3_mma_micro_m8n8_u4s4_c1";
       return adangel_o3_mma_micro_m8n8_u4s4_c1;
@@ -294,6 +380,30 @@ Kernel select_kernel(
     }
     *symbol = "adangel_o3_mma_micro_m8n8_s8s8_c4";
     return adangel_o3_mma_micro_m8n8_s8s8_c4;
+  }
+  if (options.shape == "m16n8k32") {
+    if (options.kind == "u4s4" && options.chains == 1) {
+      *symbol = "adangel_o3_mma_micro_m16n8k32_u4s4_c1";
+      return adangel_o3_mma_micro_m16n8k32_u4s4_c1;
+    }
+    if (options.kind == "u4s4" && options.chains == 4) {
+      *symbol = "adangel_o3_mma_micro_m16n8k32_u4s4_c4";
+      return adangel_o3_mma_micro_m16n8k32_u4s4_c4;
+    }
+    if (options.kind == "s4s4" && options.chains == 1) {
+      *symbol = "adangel_o3_mma_micro_m16n8k32_s4s4_c1";
+      return adangel_o3_mma_micro_m16n8k32_s4s4_c1;
+    }
+    if (options.kind == "s4s4" && options.chains == 4) {
+      *symbol = "adangel_o3_mma_micro_m16n8k32_s4s4_c4";
+      return adangel_o3_mma_micro_m16n8k32_s4s4_c4;
+    }
+    if (options.kind == "s8s8" && options.chains == 1) {
+      *symbol = "adangel_o3_mma_micro_m16n8k32_s8s8_c1";
+      return adangel_o3_mma_micro_m16n8k32_s8s8_c1;
+    }
+    *symbol = "adangel_o3_mma_micro_m16n8k32_s8s8_c4";
+    return adangel_o3_mma_micro_m16n8k32_s8s8_c4;
   }
   if (options.kind == "u4s4" && options.chains == 1) {
     *symbol = "adangel_o3_mma_micro_u4s4_c1";

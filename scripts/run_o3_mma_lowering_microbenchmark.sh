@@ -36,7 +36,7 @@ mkdir -p "$OUTPUT_DIR"
   > "$OUTPUT_DIR/microbench.resources.txt" 2>&1
 
 : > "$OUTPUT_DIR/results.jsonl"
-for shape in m16n8 m8n8; do
+for shape in m16n8k64 m16n8k32 m8n8k32; do
   for kind in u4s4 s4s4 s8s8; do
     for chains in 1 4; do
     "$BINARY" \
@@ -81,14 +81,14 @@ summary = {
             kind: by_key[(shape, kind, 4)]["logical_tops"]
             for kind in ("u4s4", "s4s4", "s8s8")
         }
-        for shape in ("m16n8", "m8n8")
+        for shape in ("m16n8k64", "m16n8k32", "m8n8k32")
     },
     "latency_chain1_median_ms": {
         shape: {
             kind: by_key[(shape, kind, 1)]["median_ms"]
             for kind in ("u4s4", "s4s4", "s8s8")
         }
-        for shape in ("m16n8", "m8n8")
+        for shape in ("m16n8k64", "m16n8k32", "m8n8k32")
     },
     "logical_throughput_vs_s8_chain4": {
         shape: {
@@ -96,7 +96,7 @@ summary = {
             by_key[(shape, "s8s8", 4)]["logical_tops"]
             for kind in ("u4s4", "s4s4", "s8s8")
         }
-        for shape in ("m16n8", "m8n8")
+        for shape in ("m16n8k64", "m16n8k32", "m8n8k32")
     },
 }
 pathlib.Path(sys.argv[2]).write_text(json.dumps(summary, indent=2) + "\n")

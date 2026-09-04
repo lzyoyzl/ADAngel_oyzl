@@ -14,6 +14,9 @@ def test_microbenchmark_keeps_all_three_mma_semantics() -> None:
     assert "SM80_8x8x32_S32U4S4S32_TN" in source
     assert "SM80_8x8x32_S32S4S4S32_TN" in source
     assert "SM80_8x8x16_S32S8S8S32_TN" in source
+    assert "SM80_16x8x32_S32U4S4S32_TN" in source
+    assert "SM80_16x8x32_S32S4S4S32_TN" in source
+    assert "SM80_16x8x16_S32S8S8S32_TN" in source
     assert "adangel_o3_mma_micro_u4s4_c1" in source
     assert "adangel_o3_mma_micro_u4s4_c4" in source
     assert "adangel_o3_mma_micro_s4s4_c1" in source
@@ -23,6 +26,9 @@ def test_microbenchmark_keeps_all_three_mma_semantics() -> None:
     assert "adangel_o3_mma_micro_m8n8_u4s4_c4" in source
     assert "adangel_o3_mma_micro_m8n8_s4s4_c4" in source
     assert "adangel_o3_mma_micro_m8n8_s8s8_c4" in source
+    assert "adangel_o3_mma_micro_m16n8k32_u4s4_c4" in source
+    assert "adangel_o3_mma_micro_m16n8k32_s4s4_c4" in source
+    assert "adangel_o3_mma_micro_m16n8k32_s8s8_c4" in source
 
 
 def test_microbenchmark_has_no_gemm_pipeline_or_scale_work() -> None:
