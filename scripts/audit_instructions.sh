@@ -187,6 +187,9 @@ case "$o3_production_impl" in
   n32_k128_cute_ldsm) o3_production_needle=O3ConfigILi32ELi1ELb0ELi128ELb1E ;;
   n16_k128_ldsm_swizzle) o3_production_needle=O3SwizzledConfigILi16ELb1E ;;
   n16_k128_ldsm_split_chains) o3_production_needle=O3N16K128LdsmSplitChainsConfig ;;
+  m64_n32_k128_aligned_factor_16w)
+    o3_production_needle=O3M64N32K128AlignedFactor16WConfig
+    ;;
   *) echo "unknown O3 production implementation: $o3_production_impl" >&2; exit 1 ;;
 esac
 
@@ -283,7 +286,7 @@ check_sass_symbol "$o2_symbol" o2 || {
   exit 1
 }
 check_sass_symbol "$o3_symbol" o3 || {
-  echo "O3 production SASS entry lacks TMA or INT4 IMMA: $o3_symbol" >&2
+  echo "O3 production SASS entry lacks TMA or integer IMMA lowering: $o3_symbol" >&2
   exit 1
 }
 check_sass_symbol "$o4_symbol" o4 || {
@@ -306,6 +309,12 @@ check_no_local_sass "$o4_symbol" && check_zero_stack_local_resource "$o4_resourc
   echo "O4 production kernel spills to local memory: $o4_symbol ($o4_resource)" >&2
   exit 1
 }
+
+o3_sass_lowering="unknown"
+if symbol_block "$o3_symbol" "$output_dir/extension.sass" |
+   grep -Eq 'IMMA\.[0-9]+\.U8\.U8'; then
+  o3_sass_lowering="U8_IMMA_plus_bit_operations"
+fi
 
 declare -a o34_candidate_audit_lines=()
 audit_o34_candidate() {
@@ -387,10 +396,13 @@ trap - EXIT
   echo "o3_production_implementation=$o3_production_impl"
   echo "o3_production_symbol=$o3_symbol"
   echo "o3_production_resource=$o3_resource"
+  echo "o3_ptx_semantics=U4xS4_and_S4xS4"
+  echo "o3_native_int4_sass=false"
+  echo "o3_sass_lowering=$o3_sass_lowering"
   echo "o4_production_implementation=$o4_production_impl"
   echo "o4_production_symbol=$o4_symbol"
   echo "o4_production_resource=$o4_resource"
   printf '%s\n' "${o34_candidate_audit_lines[@]}"
-  echo "verified=O0 Tensor Core; O1 same-entry TMA+INT8 MMA; O2 same-entry TMA+MXFP4 block-scaled MMA; O3 same-entry TMA+U4/S4 INT4 MMA; O4 same-entry TMA+B1 AND-POPC MMA"
+  echo "verified=O0 Tensor Core; O1 same-entry TMA+INT8 MMA; O2 same-entry TMA+MXFP4 block-scaled MMA; O3 same-entry TMA+U4/S4 PTX semantics with integer-IMMA SASS lowering; O4 same-entry TMA+B1 AND-POPC PTX semantics"
 } > "$summary_file"
 echo "instruction audit passed; review $output_dir/summary.txt and extension.sass"

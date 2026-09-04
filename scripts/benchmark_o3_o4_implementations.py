@@ -49,7 +49,7 @@ IMPLEMENTATIONS = {
     ),
 }
 PRODUCTION_IMPLEMENTATIONS = {
-    "o3": "n16_k128_cute_ldsm",
+    "o3": "m64_n32_k128_aligned_factor_16w",
     "o4": "m64_n64_k512_optimized",
 }
 MODES = ("compute_only", "cold", "steady_state")

@@ -51,7 +51,10 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('module.def("run_o4", &adangel_run_o4)', bindings)
         self.assertIn('"_benchmark_o3_impl"', bindings)
         self.assertIn('"_benchmark_o4_impl"', bindings)
-        self.assertIn('kProductionO3Implementation = "n16_k128_cute_ldsm"', o3)
+        self.assertIn(
+            '"m64_n32_k128_aligned_factor_16w";', o3
+        )
+        self.assertIn('result["native_int4_sass"] = false', o3)
         self.assertIn('using O3N16K256Config = O3Config<16, 2, false>', o3)
         self.assertIn('using O3N32K128Config = O3Config<32, 1, false>', o3)
         self.assertIn('using O3N16K128DualConfig = O3Config<16, 1, true>', o3)
@@ -76,7 +79,9 @@ class TestProjectContract(unittest.TestCase):
         benchmark = (
             ROOT / "scripts/benchmark_o3_o4_implementations.py"
         ).read_text()
-        self.assertIn('"o3": "n16_k128_cute_ldsm"', benchmark)
+        self.assertIn(
+            '"o3": "m64_n32_k128_aligned_factor_16w"', benchmark
+        )
         self.assertIn("PRODUCTION_IMPLEMENTATIONS[args.variant]", benchmark)
         self.assertIn("paired_speedup_median_bootstrap_95ci", benchmark)
         self.assertIn('"tma_swizzle_64b"', o3)

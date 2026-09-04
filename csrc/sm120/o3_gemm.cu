@@ -255,7 +255,11 @@ struct O3N16K128LdsmSplitChainsConfig : O3N16K128CuteLdsmConfig {
   static constexpr bool kIndependentK64Chains = true;
 };
 
-constexpr const char* kProductionO3Implementation = "n16_k128_cute_ldsm";
+// Fixed 4096^3 experiments use the aligned 64x32 fast path.  Public O3 calls
+// with edge tiles keep using the fully predicated 128x16 implementation; this
+// preserves the general API without putting bounds checks on the formal path.
+constexpr const char* kProductionO3Implementation =
+    "m64_n32_k128_aligned_factor_16w";
 
 enum class O3Implementation {
   kN16K128,
@@ -1122,17 +1126,23 @@ void launch_gemm(
 
 template <class Config>
 py::dict kernel_metadata(
-    int groups, const char* implementation_key, const char* kernel_symbol) {
+    int groups, const char* implementation_key, const char* kernel_symbol,
+    bool production_dispatch = false) {
   py::dict result;
   result["library"] = "CUTLASS CuTe + CUDA";
   result["implementation"] =
       "paper_split_g128_tma_warp_specialized_register_partial_candidate_matrix";
   result["implementation_key"] = implementation_key;
   result["production_selected"] =
+      production_dispatch ||
       std::string(implementation_key) == kProductionO3Implementation;
   result["kernel_symbol"] = kernel_symbol;
   result["tensor_core"] = true;
   result["mma_family"] = "IMMA_INT4";
+  result["ptx_mma_semantics"] = "U4xS4_and_S4xS4";
+  result["native_int4_sass"] = false;
+  result["sass_lowering"] =
+      "SM120 ptxas lowers legacy sub-byte integer MMA to U8 IMMA plus bit operations";
   result["mma_api"] = "cute::arch MMA wrapper with trait-derived lane mapping";
   if constexpr (Config::kBiasedHighU4) {
     result["mma_atoms"] = py::make_tuple(
@@ -1199,7 +1209,8 @@ py::dict benchmark_o3_config(
     const std::string& mode_name,
     int warmup,
     int repeats,
-    int conversion_inner_repeats) {
+    int conversion_inner_repeats,
+    bool production_dispatch = false) {
   validate_inputs(a_int8, a_scale, w_mxfp4_g128, w_scale_g128);
   TORCH_CHECK(warmup >= 0 && repeats > 0 && conversion_inner_repeats > 0,
               "invalid O3 timing repetition count");
@@ -1315,7 +1326,9 @@ py::dict benchmark_o3_config(
   result["timings_ms"] = timings;
   result["timing_method"] = timing_metadata(mode_name, conversion_inner_repeats);
   result["kernel"] =
-      kernel_metadata<Config>(k / kGroupSize, implementation_key, kernel_symbol);
+      kernel_metadata<Config>(
+          k / kGroupSize, implementation_key, kernel_symbol,
+          production_dispatch);
   return result;
 }
 
@@ -1505,10 +1518,25 @@ py::dict adangel_benchmark_o3(
     int warmup,
     int repeats,
     int conversion_inner_repeats) {
-  return adangel_benchmark_o3_impl(
-      kProductionO3Implementation, mode_name,
+  const int64_t m = a_int8.size(0);
+  const int64_t k = a_int8.size(1);
+  const int64_t n = w_mxfp4_g128.size(0);
+  if (m % O3M64N32K128AlignedFactor16WConfig::kTileM == 0 &&
+      n % O3M64N32K128AlignedFactor16WConfig::kTileN == 0 &&
+      (k / kGroupSize) %
+              O3M64N32K128AlignedFactor16WConfig::kGroupsPerStage ==
+          0) {
+    return benchmark_o3_config<O3M64N32K128AlignedFactor16WConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        kProductionO3Implementation,
+        "adangel_o3_split_tma_ws<O3M64N32K128AlignedFactor16WConfig>",
+        mode_name, warmup, repeats, conversion_inner_repeats, true);
+  }
+  return benchmark_o3_config<O3N16K128CuteLdsmConfig>(
       a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
-      warmup, repeats, conversion_inner_repeats);
+      "n16_k128_cute_ldsm_fallback",
+      "adangel_o3_split_tma_ws<O3Config<16,1,false,128,true>>",
+      mode_name, warmup, repeats, conversion_inner_repeats, true);
 }
 
 py::dict adangel_run_o3(

@@ -57,6 +57,8 @@ def test_arbitrary_bit_backend_matches_semantic_reference(variant):
     assert kernel["group_size"] == 128
     if variant == "o3":
         assert kernel["mma_family"] == "IMMA_INT4"
+        assert kernel["ptx_mma_semantics"] == "U4xS4_and_S4xS4"
+        assert kernel["native_int4_sass"] is False
         assert tuple(kernel["mma_atoms"]) == (
             "SM80_16x8x64_S32U4S4S32_TN",
             "SM80_16x8x64_S32S4S4S32_TN",
@@ -227,6 +229,21 @@ def test_o3_aligned_fast_path_matches_production(implementation):
     kernel = dict(candidate["kernel"])
     assert kernel["aligned_tile_fast_path"] is True
     assert kernel["formal_signed_high_mma"] is True
+
+
+@pytest.mark.sm120
+def test_o3_public_dispatch_selects_aligned_production_fast_path():
+    import torch
+
+    from adangel.ops.dispatch import run_o3
+
+    _, inputs = _inputs(m=128, n=32, k=256)
+    result = run_o3(inputs, mode="compute_only")
+    torch.cuda.synchronize()
+    kernel = dict(result["kernel"])
+    assert kernel["production_selected"] is True
+    assert kernel["implementation_key"] == "m64_n32_k128_aligned_factor_16w"
+    assert tuple(kernel["cta_tile"]) == (64, 32, 128)
 
 
 @pytest.mark.sm120
