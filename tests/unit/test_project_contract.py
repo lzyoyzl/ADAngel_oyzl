@@ -52,7 +52,8 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn('"_benchmark_o3_impl"', bindings)
         self.assertIn('"_benchmark_o4_impl"', bindings)
         self.assertIn(
-            '"m64_n32_k128_aligned_factor_16w";', o3
+            'kProductionO3Implementation = "m64_n32_k128_aligned_factor_16w"',
+            o3,
         )
         self.assertIn('result["native_int4_sass"] = false', o3)
         self.assertIn('using O3N16K256Config = O3Config<16, 2, false>', o3)

@@ -258,8 +258,7 @@ struct O3N16K128LdsmSplitChainsConfig : O3N16K128CuteLdsmConfig {
 // Fixed 4096^3 experiments use the aligned 64x32 fast path.  Public O3 calls
 // with edge tiles keep using the fully predicated 128x16 implementation; this
 // preserves the general API without putting bounds checks on the formal path.
-constexpr const char* kProductionO3Implementation =
-    "m64_n32_k128_aligned_factor_16w";
+constexpr const char* kProductionO3Implementation = "m64_n32_k128_aligned_factor_16w";
 
 enum class O3Implementation {
   kN16K128,
