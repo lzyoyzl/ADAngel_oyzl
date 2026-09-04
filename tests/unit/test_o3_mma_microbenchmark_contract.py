@@ -29,6 +29,10 @@ def test_microbenchmark_keeps_all_three_mma_semantics() -> None:
     assert "adangel_o3_mma_micro_m16n8k32_u4s4_c4" in source
     assert "adangel_o3_mma_micro_m16n8k32_s4s4_c4" in source
     assert "adangel_o3_mma_micro_m16n8k32_s8s8_c4" in source
+    assert "SM80_16x8x64_S32S4U4S32_TN" in source
+    assert "adangel_o3_mma_micro_split_pair_c1" in source
+    assert "adangel_o3_mma_micro_split_pair_c4" in source
+    assert "share the exact same signed-Q4 B fragment" in source
 
 
 def test_microbenchmark_has_no_gemm_pipeline_or_scale_work() -> None:

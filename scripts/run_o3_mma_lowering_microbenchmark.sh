@@ -64,6 +64,32 @@ PY
   done
 done
 
+for kind in s4u4 split_pair; do
+  for chains in 1 4; do
+    "$BINARY" \
+      --kind "$kind" \
+      --shape m16n8k64 \
+      --chains "$chains" \
+      --blocks 512 \
+      --warps 8 \
+      --iterations 512 \
+      --warmup 10 \
+      --repeats 50 \
+      | tee "$OUTPUT_DIR/m16n8k64_${kind}_c${chains}.json"
+    python - "$OUTPUT_DIR/m16n8k64_${kind}_c${chains}.json" "$OUTPUT_DIR/results.jsonl" <<'PY'
+import json
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1])
+destination = pathlib.Path(sys.argv[2])
+record = json.loads(source.read_text())
+with destination.open("a", encoding="utf-8") as handle:
+    handle.write(json.dumps(record, sort_keys=True) + "\n")
+PY
+  done
+done
+
 python - "$OUTPUT_DIR/results.jsonl" "$OUTPUT_DIR/summary.json" <<'PY'
 import json
 import pathlib
@@ -98,6 +124,10 @@ summary = {
         }
         for shape in ("m16n8k64", "m16n8k32", "m8n8k32")
     },
+    "operand_order_and_pair_chain4": {
+        kind: by_key[("m16n8k64", kind, 4)]["logical_tops"]
+        for kind in ("u4s4", "s4u4", "s4s4", "split_pair")
+    },
 }
 pathlib.Path(sys.argv[2]).write_text(json.dumps(summary, indent=2) + "\n")
 print(json.dumps(summary, indent=2))
@@ -115,6 +145,7 @@ checks = {
     "ptx_u4s4": bool(re.search(r"mma\.sync[^\n]*\.u4\.s4\.s32", ptx)),
     "ptx_s4s4": bool(re.search(r"mma\.sync[^\n]*\.s4\.s4\.s32", ptx)),
     "ptx_s8s8": bool(re.search(r"mma\.sync[^\n]*\.s8\.s8\.s32", ptx)),
+    "ptx_s4u4": bool(re.search(r"mma\.sync[^\n]*\.s4\.u4\.s32", ptx)),
     "sass_u8s8_imma": bool(re.search(r"IMMA[^\n]*\.U8\.S8", sass)),
     "sass_s8s8_imma": bool(re.search(r"IMMA[^\n]*\.S8\.S8", sass)),
     "sass_bit_ops": bool(re.search(r"\b(?:LOP3|SHF|IMAD)\b", sass)),

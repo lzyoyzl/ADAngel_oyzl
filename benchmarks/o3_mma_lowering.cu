@@ -217,6 +217,108 @@ void adangel_o3_mma_micro_s8s8_c4(
   run_kernel_body<cute::SM80_16x8x32_S32S8S8S32_TN, 4>(input, output, iterations);
 }
 
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_s4u4_c1(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_kernel_body<cute::SM80_16x8x64_S32S4U4S32_TN, 1>(input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_s4u4_c4(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_kernel_body<cute::SM80_16x8x64_S32S4U4S32_TN, 4>(input, output, iterations);
+}
+
+template <int Chains>
+__device__ __forceinline__ uint32_t run_split_pair_loop(
+    uint32_t seed, int iterations) {
+  uint32_t low_a0 = seed;
+  uint32_t low_a1 = seed ^ 0x00010001u;
+  uint32_t low_a2 = seed ^ 0x00100010u;
+  uint32_t low_a3 = seed ^ 0x01000100u;
+  uint32_t high_a0 = seed ^ 0x11111111u;
+  uint32_t high_a1 = seed ^ 0x22222222u;
+  uint32_t high_a2 = seed ^ 0x44444444u;
+  uint32_t high_a3 = seed ^ 0x33333333u;
+  uint32_t b0 = seed ^ 0x00000101u;
+  uint32_t b1 = seed ^ 0x00010000u;
+  uint32_t low[Chains][4];
+  uint32_t high[Chains][4];
+#pragma unroll
+  for (int chain = 0; chain < Chains; ++chain) {
+#pragma unroll
+    for (int item = 0; item < 4; ++item) {
+      low[chain][item] =
+          seed ^ static_cast<uint32_t>(0x01020408u * (chain + 1) + item);
+      high[chain][item] =
+          seed ^ static_cast<uint32_t>(0x10204080u * (chain + 1) + item);
+    }
+  }
+
+#pragma unroll 1
+  for (int iteration = 0; iteration < iterations; ++iteration) {
+#pragma unroll
+    for (int chain = 0; chain < Chains; ++chain) {
+      uint32_t l0, l1, l2, l3, h0, h1, h2, h3;
+      // Keep the two formal O3 PTX operations in one asm block and share the
+      // exact same signed-Q4 B fragment.  This tests whether ptxas can reuse
+      // operand expansion across the low/high pair without changing O3 math.
+      asm volatile(
+          "mma.sync.aligned.m16n8k64.row.col.s32.u4.s4.s32 "
+          "{%0,%1,%2,%3},{%8,%9,%10,%11},{%16,%17},{%18,%19,%20,%21};\n"
+          "mma.sync.aligned.m16n8k64.row.col.s32.s4.s4.s32 "
+          "{%4,%5,%6,%7},{%12,%13,%14,%15},{%16,%17},{%22,%23,%24,%25};\n"
+          : "=&r"(l0), "=&r"(l1), "=&r"(l2), "=&r"(l3),
+            "=&r"(h0), "=&r"(h1), "=&r"(h2), "=&r"(h3)
+          : "r"(low_a0), "r"(low_a1), "r"(low_a2), "r"(low_a3),
+            "r"(high_a0), "r"(high_a1), "r"(high_a2), "r"(high_a3),
+            "r"(b0), "r"(b1),
+            "r"(low[chain][0]), "r"(low[chain][1]),
+            "r"(low[chain][2]), "r"(low[chain][3]),
+            "r"(high[chain][0]), "r"(high[chain][1]),
+            "r"(high[chain][2]), "r"(high[chain][3]));
+      low[chain][0] = l0;
+      low[chain][1] = l1;
+      low[chain][2] = l2;
+      low[chain][3] = l3;
+      high[chain][0] = h0;
+      high[chain][1] = h1;
+      high[chain][2] = h2;
+      high[chain][3] = h3;
+    }
+  }
+
+  uint32_t checksum = 2166136261u;
+#pragma unroll
+  for (int chain = 0; chain < Chains; ++chain) {
+#pragma unroll
+    for (int item = 0; item < 4; ++item) {
+      checksum = (checksum ^ low[chain][item]) * 16777619u;
+      checksum = (checksum ^ high[chain][item]) * 16777619u;
+    }
+  }
+  return checksum;
+}
+
+template <int Chains>
+__device__ __forceinline__ void run_split_pair_kernel_body(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  const int thread = static_cast<int>(blockIdx.x) * blockDim.x + threadIdx.x;
+  output[thread] = run_split_pair_loop<Chains>(input[thread], iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_split_pair_c1(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_split_pair_kernel_body<1>(input, output, iterations);
+}
+
+extern "C" __global__ __launch_bounds__(256)
+void adangel_o3_mma_micro_split_pair_c4(
+    const uint32_t* input, uint32_t* output, int iterations) {
+  run_split_pair_kernel_body<4>(input, output, iterations);
+}
+
 template <class Mma, int Chains>
 __device__ __forceinline__ void run_m8n8_kernel_body(
     const uint32_t* input, uint32_t* output, int iterations) {
@@ -352,7 +454,7 @@ Options parse_options(int argc, char** argv) {
       options.repeats = parse_positive(require_value(), "--repeats");
     } else if (argument == "--help") {
       std::cout
-          << "Usage: o3_mma_lowering [--kind u4s4|s4s4|s8s8] "
+          << "Usage: o3_mma_lowering [--kind u4s4|s4s4|s4u4|s8s8|split_pair] "
              "[--shape m16n8k64|m16n8k32|m8n8k32] [--chains 1|4] "
              "[--blocks N] [--warps N] [--iterations N] [--warmup N] [--repeats N]\n";
       std::exit(0);
@@ -360,8 +462,11 @@ Options parse_options(int argc, char** argv) {
       throw std::runtime_error("unknown argument: " + argument);
     }
   }
-  if (options.kind != "u4s4" && options.kind != "s4s4" && options.kind != "s8s8") {
-    throw std::runtime_error("--kind must be u4s4, s4s4, or s8s8");
+  if (options.kind != "u4s4" && options.kind != "s4s4" &&
+      options.kind != "s4u4" && options.kind != "s8s8" &&
+      options.kind != "split_pair") {
+    throw std::runtime_error(
+        "--kind must be u4s4, s4s4, s4u4, s8s8, or split_pair");
   }
   if (options.shape != "m16n8k64" && options.shape != "m16n8k32" &&
       options.shape != "m8n8k32") {
@@ -374,6 +479,10 @@ Options parse_options(int argc, char** argv) {
   if (options.warps > 8) {
     throw std::runtime_error("--warps must not exceed 8 (__launch_bounds__(256))");
   }
+  if ((options.kind == "s4u4" || options.kind == "split_pair") &&
+      options.shape != "m16n8k64") {
+    throw std::runtime_error("s4u4 and split_pair require --shape m16n8k64");
+  }
   return options;
 }
 
@@ -384,6 +493,22 @@ Kernel select_kernel(
   const bool short_k = options.shape != "m16n8k64";
   *mma_k = options.kind == "s8s8" ? (short_k ? 16 : 32)
                                       : (short_k ? 32 : 64);
+  if (options.kind == "split_pair") {
+    if (options.chains == 1) {
+      *symbol = "adangel_o3_mma_micro_split_pair_c1";
+      return adangel_o3_mma_micro_split_pair_c1;
+    }
+    *symbol = "adangel_o3_mma_micro_split_pair_c4";
+    return adangel_o3_mma_micro_split_pair_c4;
+  }
+  if (options.kind == "s4u4") {
+    if (options.chains == 1) {
+      *symbol = "adangel_o3_mma_micro_s4u4_c1";
+      return adangel_o3_mma_micro_s4u4_c1;
+    }
+    *symbol = "adangel_o3_mma_micro_s4u4_c4";
+    return adangel_o3_mma_micro_s4u4_c4;
+  }
   if (options.shape == "m8n8k32") {
     if (options.kind == "u4s4" && options.chains == 1) {
       *symbol = "adangel_o3_mma_micro_m8n8_u4s4_c1";
@@ -531,8 +656,9 @@ int main(int argc, char** argv) {
     const double median_ms = percentile(milliseconds, 0.5);
     const double p5_ms = percentile(milliseconds, 0.05);
     const double p95_ms = percentile(milliseconds, 0.95);
+    const int mma_per_chain = options.kind == "split_pair" ? 2 : 1;
     const double mma_per_launch = static_cast<double>(options.blocks) * options.warps *
-        options.iterations * options.chains;
+        options.iterations * options.chains * mma_per_chain;
     const double logical_operations =
         mma_per_launch * 2.0 * mma_m * mma_n * mma_k;
     const double logical_tops = logical_operations / (median_ms * 1.0e9);
