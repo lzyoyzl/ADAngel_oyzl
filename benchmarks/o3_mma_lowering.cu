@@ -82,12 +82,12 @@ __device__ __forceinline__ uint32_t run_mma_loop(
     }
   }
 
-  uint32_t checksum = 0;
+  uint32_t checksum = 2166136261u;
 #pragma unroll
   for (int chain = 0; chain < Chains; ++chain) {
 #pragma unroll
     for (int item = 0; item < 4; ++item) {
-      checksum ^= accumulators[chain][item] + static_cast<uint32_t>(17 * chain + item);
+      checksum = (checksum ^ accumulators[chain][item]) * 16777619u;
     }
   }
   return checksum;
@@ -120,12 +120,12 @@ __device__ __forceinline__ uint32_t run_mma_loop_m8n8(
       accumulators[chain][1] = d1;
     }
   }
-  uint32_t checksum = 0;
+  uint32_t checksum = 2166136261u;
 #pragma unroll
   for (int chain = 0; chain < Chains; ++chain) {
 #pragma unroll
     for (int item = 0; item < 2; ++item) {
-      checksum ^= accumulators[chain][item] + static_cast<uint32_t>(17 * chain + item);
+      checksum = (checksum ^ accumulators[chain][item]) * 16777619u;
     }
   }
   return checksum;
@@ -162,12 +162,12 @@ __device__ __forceinline__ uint32_t run_mma_loop_m16n8k32(
       accumulators[chain][3] = d3;
     }
   }
-  uint32_t checksum = 0;
+  uint32_t checksum = 2166136261u;
 #pragma unroll
   for (int chain = 0; chain < Chains; ++chain) {
 #pragma unroll
     for (int item = 0; item < 4; ++item) {
-      checksum ^= accumulators[chain][item] + static_cast<uint32_t>(17 * chain + item);
+      checksum = (checksum ^ accumulators[chain][item]) * 16777619u;
     }
   }
   return checksum;
