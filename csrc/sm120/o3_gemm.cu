@@ -183,6 +183,11 @@ struct O3M64N32K128CuteLdsm16WConfig : O3Config<32, 1, false, 64, true> {
   static constexpr int kConsumerThreads = 32 * kConsumerWarps;
   static constexpr int kThreads = kProducerThreads + kConsumerThreads;
 };
+struct O3M64N32K128AlignedFactor16WConfig
+    : O3M64N32K128CuteLdsm16WConfig {
+  static constexpr bool kAssumeAlignedTiles = true;
+  static constexpr bool kFactorRowScaleAfterK = true;
+};
 struct O3M64N32K256CuteLdsm16WConfig : O3Config<32, 2, false, 64, true> {
   static constexpr int kNReplicas = 1;
   static constexpr int kNWarpGroups = 4;
@@ -264,6 +269,7 @@ enum class O3Implementation {
   kM64N32K128,
   kM64N16K128CuteLdsm,
   kM64N32K128CuteLdsm16W,
+  kM64N32K128AlignedFactor16W,
   kM64N32K256CuteLdsm16W,
   kM32N64K128CuteLdsm16W,
   kN16K128CuteLdsm,
@@ -296,6 +302,9 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   }
   if (selected == "m64_n32_k128_cute_ldsm_16w") {
     return O3Implementation::kM64N32K128CuteLdsm16W;
+  }
+  if (selected == "m64_n32_k128_aligned_factor_16w") {
+    return O3Implementation::kM64N32K128AlignedFactor16W;
   }
   if (selected == "m64_n32_k256_cute_ldsm_16w") {
     return O3Implementation::kM64N32K256CuteLdsm16W;
@@ -1381,6 +1390,13 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "m64_n32_k128_cute_ldsm_16w",
         "adangel_o3_split_tma_ws<O3M64N32K128CuteLdsm16WConfig>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kM64N32K128AlignedFactor16W) {
+    return benchmark_o3_config<O3M64N32K128AlignedFactor16WConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "m64_n32_k128_aligned_factor_16w",
+        "adangel_o3_split_tma_ws<O3M64N32K128AlignedFactor16WConfig>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   if (selected == O3Implementation::kM64N32K256CuteLdsm16W) {

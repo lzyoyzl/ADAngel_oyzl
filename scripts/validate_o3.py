@@ -34,6 +34,7 @@ def arguments():
             "m64_n32_k128",
             "m64_n16_k128_cute_ldsm",
             "m64_n32_k128_cute_ldsm_16w",
+            "m64_n32_k128_aligned_factor_16w",
             "m64_n32_k256_cute_ldsm_16w",
             "m32_n64_k128_cute_ldsm_16w",
             "n16_k128_cute_ldsm",

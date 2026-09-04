@@ -199,7 +199,11 @@ def test_o3_internal_optimization_candidates_match_production(implementation):
 @pytest.mark.sm120
 @pytest.mark.parametrize(
     "implementation",
-    ("n16_k128_ldsm_aligned", "n16_k128_ldsm_aligned_factor_row_scale"),
+    (
+        "n16_k128_ldsm_aligned",
+        "n16_k128_ldsm_aligned_factor_row_scale",
+        "m64_n32_k128_aligned_factor_16w",
+    ),
 )
 def test_o3_aligned_fast_path_matches_production(implementation):
     import torch
