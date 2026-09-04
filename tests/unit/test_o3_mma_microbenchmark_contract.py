@@ -32,7 +32,7 @@ def test_microbenchmark_keeps_all_three_mma_semantics() -> None:
     assert "SM80_16x8x64_S32S4U4S32_TN" in source
     assert "adangel_o3_mma_micro_split_pair_c1" in source
     assert "adangel_o3_mma_micro_split_pair_c4" in source
-    assert "share the exact same signed-Q4 B fragment" in source
+    assert "same signed-Q4 B fragment" in source
 
 
 def test_microbenchmark_has_no_gemm_pipeline_or_scale_work() -> None:
@@ -66,3 +66,12 @@ def test_static_attribution_script_counts_required_instructions() -> None:
     assert '"outlined_lowering_per_ptx_mma"' in analyzer
     assert '"direct_imma_per_ptx_mma"' in analyzer
     assert 'instruction["mnemonic"] == "RET"' in analyzer
+
+
+def test_toolchain_comparison_preserves_formal_o3_counting() -> None:
+    comparison = (ROOT / "scripts" / "compare_o3_mma_toolchains.py").read_text()
+    assert '"u4s4": "adangel_o3_mma_micro_u4s4_c4"' in comparison
+    assert '"s4s4": "adangel_o3_mma_micro_s4s4_c4"' in comparison
+    assert "2 * sum(u4_core.values()) + 2 * sum(s4_core.values())" in comparison
+    assert "4096 // 128" in comparison
+    assert '"floor_meets_target"' in comparison

@@ -20,6 +20,12 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
+{
+  "$NVCC" --version
+  "$CUDA_ROOT/bin/ptxas" --version
+  "$CUDA_ROOT/bin/cuobjdump" --version
+} > "$OUTPUT_DIR/toolchain.txt"
+
 "$NVCC" \
   -O3 \
   -std=c++17 \
