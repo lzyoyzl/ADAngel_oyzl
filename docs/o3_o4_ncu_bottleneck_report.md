@@ -79,8 +79,9 @@ median latency 的 median”，不是 NCU Duration。
 后续 NCU 只负责解释这个差距从哪里来。
 
 本表是优化前的同一 run 快照。当前 O3 production 已更新为 `64×32×128`、32个 G128
-循环完全展开；独立24样本 compute-only median 为 `2.015720 ms`，完整 NCU duration
-为 `1.933472 ms`。最新结论见 `docs/o3_half_o1_optimization_report.md`，本报告其余表格
+循环完全展开；独立24样本复跑和最终 O0–O4交错复跑的 compute-only median 分别为
+`2.015720/2.065672 ms`，完整 NCU duration为 `1.933472 ms`。最新结论见
+`docs/o3_half_o1_optimization_report.md`，本报告其余表格
 继续保留当时四个 variant 同条件采集的原始 NCU 对照，不混入后续单方案数据。
 
 ## 5. NCU 基础指标

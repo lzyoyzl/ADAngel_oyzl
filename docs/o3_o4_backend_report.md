@@ -276,6 +276,12 @@ O3 production 后续独立稳定24样本复跑的 compute-only/cold/steady-state
 `2.015720/2.086160/2.040800 ms`；它用于报告当前 O3绝对性能，不与上表其他 variant
 直接形成配对加速结论。
 
+最终同步后又完成一次新的 O0–O4同进程交错复跑。480条记录全部满足 `CV<3%`，其中
+O1/O3 compute-only median 为 `0.623776/2.065672 ms`，O3 cold/steady-state total
+median 为 `2.130128/2.093312 ms`，O3相对O1的逐样本等效吞吐比 median 为
+`30.526%`。该完整复跑是当前最直接的同一时段横向证据；与 O3单独复跑约2.5%的差异
+归因于未锁频长时间负载条件，不改变结论。
+
 conversion-only 跨样本 median：
 
 | variant | W conversion ms | A conversion ms | conversion total ms |

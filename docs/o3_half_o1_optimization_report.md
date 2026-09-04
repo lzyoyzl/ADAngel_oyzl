@@ -22,8 +22,9 @@ G128 loop       unroll factor 32
 配对加速，正确性、MSE、CV 和无 spill 审计全部通过，因而已晋升。
 
 但目标没有达到。当前 O1 compute-only 为 `0.622136 ms`，一半吞吐对应 O3 延迟上限
-`1.244272 ms`；最终 O3 正式 `4096³` 延迟为 `1.989008 ms`，只达到 O1 约31.3%的
-等效吞吐。
+`1.244272 ms`；最终 O3 正式 `4096³` 两次独立验证为 `1.989008/1.995968 ms`。
+24样本的 O3单独复跑和 O0–O4交错复跑分别给出 `31.3%/30.5%` 的 O1等效吞吐，
+均明显低于50%目标。
 
 原因不是 DRAM、TMA 或 conversion，而是当前 CUDA 12.8 对旧式 sub-byte integer PTX
 的实际 lowering：O3 的 PTX 保留两路 U4/S4 语义，SASS 却由 U8×S8/S8×S8 IMMA
@@ -132,6 +133,16 @@ stage `CV<3%`、全部 `production_selected=true`：compute-only、cold和steady
 回归精度。未锁频 GeForce的独立绝对值只用于最终报告；历史候选的晋升判断仍使用
 同进程交错配对速度比。
 
+最终提交同步并重新编译后，又运行一次完整的 O0–O4同进程、24样本交错实验
+`runs/final_b10ed0b_o0_o4`。全部480条记录有效且 `CV<3%`，最大 stage CV 为
+`2.021%`；所有96条 O3记录均确认 `production_selected=true`、实现键为
+`m64_n32_k128_aligned_factor_16w`、循环展开因子为32。该次 O1/O3 compute-only
+跨样本 median 为 `0.623776/2.065672 ms`，逐样本 O3/O1等效吞吐比 median 为
+`30.526%`；O3 cold/steady-state total median 为 `2.130128/2.093312 ms`。MSE
+median/mean/max仍为 `0.006653010195/0.007578844400/0.018079114689`。它与前一次
+O3单独复跑的绝对延迟相差约2.5%，但不改变性能边界结论；差异记录为未锁频 GeForce
+在长时间、包含O4的交错负载下产生的频率/温度条件变化。
+
 ## 6. 新 production 的正式 4096³ 结果
 
 重新编译后使用公开 `production` 调度，warmup=50、repeats=200：
@@ -163,6 +174,8 @@ stage `CV<3%`、全部 `production_selected=true`：compute-only、cold和steady
 | direct end-to-end total | 2.019680 | 2.014068 | 0.656% |
 
 `max_abs_error vs semantic reference = 9.1552734375e-05`；输出是 finite FP32。
+最终提交同步后的独立复核得到 compute-only median `1.995968 ms`、CV `0.734%`，
+其余正确性与 metadata均一致。
 
 ## 7. NCU 与指令审计
 
@@ -302,6 +315,11 @@ reports/o3_target_half/iteration18_unroll32/o3_full_raw.csv
 reports/o3_target_half/iteration18_unroll32/o3_full_source.csv
 reports/o3_target_half/iteration18_unroll32/audit/summary.txt
 reports/o3_target_half/satfinite_probe_cuda12_8/
+reports/o3_target_half/final_b10ed0b/validation_4096.json
+reports/o3_target_half/final_b10ed0b/toolchain_comparison.json
+reports/o3_target_half/final_b10ed0b/audit/summary.txt
+reports/o3_target_half/final_b10ed0b/analysis/
+runs/final_b10ed0b_o0_o4/results.jsonl
 ```
 
 ## 10. 官方资料

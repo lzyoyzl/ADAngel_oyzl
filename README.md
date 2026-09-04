@@ -459,8 +459,11 @@ python -m adangel run \
 
 当前 RTX 5090 的 O1 稳定基线为 `0.622136 ms`。O3 最新正式
 `m64_n32_k128_aligned_factor_16w` 在独立24样本 production 复跑中的 compute-only
-median 为 `2.015720 ms`，单独 `4096³` 正式验证为 `1.989008 ms`；相对 O1只达到
-约 `31.3%` 的等效吞吐。历史 `runs/rtx5090_o0_o4_k512` 中 O3 的
+median 为 `2.015720 ms`，单独 `4096³` 正式验证为 `1.989008 ms`。最终同步后又完成
+一次 O0–O4同进程交错的24样本复跑：O1/O3 compute-only median 为
+`0.623776/2.065672 ms`，O3配对等效吞吐中位数为 O1的 `30.5%`；480条记录全部满足
+`CV<3%`。两次未锁频结果共同给出约 `30.5%–31.3%` 的稳定结论。历史
+`runs/rtx5090_o0_o4_k512` 中 O3 的
 `2.223352 ms` 已不代表当前 production。O4 在该历史 run 中为 `7.632488 ms`。最新 O4 候选相对上一版
 `128x64x256` production 的逐样本配对几何平均加速为 `1.0806x`，bootstrap 95% CI
 为 `[1.0789x, 1.0827x]`。O3 最新 production 使用 `64x32x128` CTA、显式 LDSM、
