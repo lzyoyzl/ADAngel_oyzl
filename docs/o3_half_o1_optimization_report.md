@@ -15,13 +15,14 @@ warps           1 producer + 16 consumers
 MMA semantics   U4xS4 low + S4xS4 high，m16n8k64
 partial         INT32 registers
 acc/output      FP32 registers / FP32
+G128 loop       unroll factor 32
 ```
 
 它在24个 Llama-2-7B真实样本上相对上一版 O3 获得稳定的 `1.0313x` compute-only
 配对加速，正确性、MSE、CV 和无 spill 审计全部通过，因而已晋升。
 
 但目标没有达到。当前 O1 compute-only 为 `0.622136 ms`，一半吞吐对应 O3 延迟上限
-`1.244272 ms`；新 O3 正式 `4096³` 延迟为 `2.037664 ms`，只达到 O1 约30.5%的
+`1.244272 ms`；最终 O3 正式 `4096³` 延迟为 `1.989008 ms`，只达到 O1 约31.3%的
 等效吞吐。
 
 原因不是 DRAM、TMA 或 conversion，而是当前 CUDA 12.8 对旧式 sub-byte integer PTX
@@ -83,7 +84,8 @@ DRAM吞吐较低，TMA等待不是主导；大量动态指令用于 packed4 oper
 4. 对齐的4096³快路径，删除 M/N tail判断；
 5. `64x32`、`32x64` 平衡 CTA；
 6. 每个 pipeline stage 搬运两个 G128；
-7. 将平衡 CTA、对齐快路径和 row-scale factoring 组合。
+7. 将平衡 CTA、对齐快路径和 row-scale factoring 组合；
+8. 将 producer/consumer 的32个 G128 pipeline循环按 `4/8/16/32` 逐步展开。
 
 最终只有第7项形成稳定且统计显著的收益。新实现的关键变化是：
 
@@ -92,6 +94,7 @@ DRAM吞吐较低，TMA等待不是主导；大量动态指令用于 packed4 oper
 - producer 仍对每个 CTA/column/group 只解码一次 W scale并放到 stage-local shared；
 - A row scale 每线程只加载一次，并在完成全部 G128 FP32 accumulation 后统一乘；
 - 正式 `4096³` 删除不需要的 tile边界判断；
+- 最终对32个 G128 group采用 `#pragma unroll 32`，减少循环控制与整数地址指令；
 - 非整 `64x32` 输入自动回退到上一版 predicated kernel，公开 API 仍支持边界尺寸。
 
 双 G128 pipeline、额外 fragment复用、warp scale broadcast 和独立 MMA chain 均未带来
@@ -121,11 +124,13 @@ conversion_inner_repeats=100；24个样本均满足各 stage `CV<3%`。
 MSE 的末位差来自 row scale 与 FP32 accumulator 的等价结合顺序，远低于既定回归门槛；
 没有引入新的量化误差。
 
-晋升后又通过公开 production调度独立重跑24样本，得到72条记录且全部 stage
-`CV<3%`、全部 `production_selected=true`：compute-only、cold和steady-state的
-跨样本 median 分别为 `2.054640 ms`、`2.120000 ms` 和 `2.078960 ms`；MSE median/
-mean 分别为 `0.006653010195` / `0.007578844400`。这次独立绝对值与上表配对轮次的
-轻微差异来自未锁频 GeForce的动态频率；晋升判断仍以上表同进程配对速度比为准。
+最终完整展开版本又通过公开 production调度独立重跑24样本，得到72条记录且全部
+stage `CV<3%`、全部 `production_selected=true`：compute-only、cold和steady-state的
+跨样本 median 分别为 `2.015720 ms`、`2.086160 ms` 和 `2.040800 ms`；对应 stage 的
+最大 CV 分别为 `1.179%`、`0.772%` 和 `1.265%`。MSE median/mean/max 分别为
+`0.006653010195` / `0.007578844400` / `0.018079114689`，与展开前完全一致到既定
+回归精度。未锁频 GeForce的独立绝对值只用于最终报告；历史候选的晋升判断仍使用
+同进程交错配对速度比。
 
 ## 6. 新 production 的正式 4096³ 结果
 
@@ -135,27 +140,27 @@ mean 分别为 `0.006653010195` / `0.007578844400`。这次独立绝对值与上
 
 | 阶段 | median ms | mean ms | CV |
 |---|---:|---:|---:|
-| W: MXFP4-G128→Q4 | 0.029934 | 0.029934 | 0.066% |
-| A: INT8→low U4/high S4 | 0.016243 | 0.016239 | 0.047% |
-| isolated conversion total | 0.046176 | 0.046173 | 0.045% |
+| W: MXFP4-G128→Q4 | 0.029925 | 0.029928 | 0.077% |
+| A: INT8→low U4/high S4 | 0.016231 | 0.016231 | 0.054% |
+| isolated conversion total | 0.046157 | 0.046158 | 0.054% |
 
 ### 6.2 Compute-only
 
 | 阶段 | median ms | mean ms | CV |
 |---|---:|---:|---:|
-| O3 GEMM | 2.037664 | 2.031853 | 0.717% |
+| O3 GEMM | 1.989008 | 1.983463 | 0.700% |
 
 ### 6.3 Cold
 
 | 阶段 | median ms | mean ms | CV |
 |---|---:|---:|---:|
-| direct end-to-end total | 2.105504 | 2.104864 | 0.117% |
+| direct end-to-end total | 2.056416 | 2.056205 | 0.096% |
 
 ### 6.4 Steady-state
 
 | 阶段 | median ms | mean ms | CV |
 |---|---:|---:|---:|
-| direct end-to-end total | 2.068704 | 2.062792 | 0.671% |
+| direct end-to-end total | 2.019680 | 2.014068 | 0.656% |
 
 `max_abs_error vs semantic reference = 9.1552734375e-05`；输出是 finite FP32。
 
@@ -166,19 +171,20 @@ mean 分别为 `0.006653010195` / `0.007578844400`。这次独立绝对值与上
 
 | 指标 | 上一版 | 新 production | 变化 |
 |---|---:|---:|---:|
-| NCU duration | 2.073088 ms | 1.989248 ms | -4.0% |
-| 动态 SASS | 2.798B | 2.559B | -8.5% |
-| instruction throughput | 92.84% | 94.73% | 更接近饱和 |
-| IMMA pipe active | 13.55% | 14.11% | 略升 |
-| math-pipe throttle | 3.93 | 4.18 | 仍高 |
-| eligible warps/scheduler | 3.65 | 3.56 | 基本不变 |
+| NCU duration | 2.073088 ms | 1.933472 ms | -6.7% |
+| 动态 SASS | 2.798B | 2.507B | -10.4% |
+| SM throughput | 92.84% | 93.81% | 仍接近饱和 |
+| Tensor pipe active（elapsed） | 13.55% | 14.20% | 略升 |
+| math-pipe throttle | 3.93 | 4.17 | 仍高 |
+| eligible warps/scheduler | 3.65 | 3.59 | 基本不变 |
+| DRAM throughput | 低 | 2.00% | 非瓶颈 |
 
 production审计结果：
 
 ```text
 PTX same entry   TMA + U4xS4 MMA + S4xS4 MMA
 SASS             U8xS8/S8xS8 IMMA + bit operations
-resources        REG=55, STACK=0, LOCAL=0
+resources        REG=56, STACK=0, LOCAL=0
 spill            none
 ```
 
@@ -196,9 +202,9 @@ chain 与四条独立 chain。下表为 RTX 5090、四 chain 的逻辑吞吐；�
 
 | PTX shape | U4×S4 logical TOPS | S4×S4 logical TOPS | S8×S8 logical TOPS |
 |---|---:|---:|---:|
-| m16n8k64 | 163.72 | 77.94 | 746.43 |
-| m16n8k32 | 139.26 | 72.78 | 372.37 |
-| m8n8k32 | 83.15 | 53.76 | 174.88 |
+| m16n8k64 | 163.67 | 78.58 | 744.62 |
+| m16n8k32 | 138.68 | 72.93 | 372.44 |
+| m8n8k32 | 83.42 | 53.28 | 174.65 |
 
 结论有三点：
 
@@ -208,10 +214,24 @@ chain 与四条独立 chain。下表为 RTX 5090、四 chain 的逻辑吞吐；�
    legacy sub-byte PTX 的 lowering，而不是正式 O3 外围代码。
 
 最小内核反汇编同样表现为 U8×S8/S8×S8 IMMA 加 `LOP3/SHF/IMAD`，且
-`STACK=0, LOCAL=0`。针对四 chain 内核的 NCU replay 还显示：U4×S4 与 S4×S4 的
-动态指令分别约为 `778M` 与 `1.684B`，IMMA pipe active 约 `16.1%` 与 `7.7%`；
-S8×S8 对照动态指令约 `21.2M`，IMMA pipe active 约 `73.6%`。这与正式 O3 的
+`STACK=0, LOCAL=0`。一条 PTX U4×S4 MMA 的 outlined lowering核心包含
+`2 IMMA + 38 LOP3 + 20 SHF + 14 IMAD`；一条 S4×S4 包含
+`2 IMMA + 90 LOP3 + 48 SHF + 42 IMAD`。针对四 chain 内核的 NCU replay显示：
+U4×S4 与 S4×S4 的动态指令分别约为 `778M` 与 `1.684B`，Tensor pipe active
+约 `16.25%` 与 `7.79%`；S8×S8 对照动态指令约 `21.3M`，Tensor pipe active
+约 `74.11%`。这与正式 O3 的
 “指令前端/整数辅助工作饱和、Tensor pipe 利用率不高”结论一致。
+
+CUDA 13.1 独立工具链复测没有改变这一 lowering：U4×S4 吞吐相对 CUDA 12.8
+仅为 `1.010x`，S4×S4 为 `0.987x`，属于测量波动范围，不能支持迁移正式环境。
+`satfinite` 形式也没有缩短核心 lowering，反而为 helper增加4条指令；U4×S4/S4×S4
+吞吐分别从 `163.67/78.58` 降到 `159.41/77.22 logical TOPS`，因此未用于 production。
+
+按正式 O3 每个 G128、每 consumer warp的两条 low K64和两条 high K64计算，单是上述
+四类固有 lowering指令就至少产生 `2,147,483,648` 条动态 SASS，占最终实测
+`2,507,181,638` 条的 `85.65%`。即使乐观假设其余指令全部免费，按当前执行速率线性
+估算的延迟下界仍约 `1.704 ms`，高于 `1.244272 ms` 目标。这是目标在当前严格语义和
+工具链下不可达的定量证据，而不是根据完整 kernel 延迟做出的猜测。
 
 复现命令：
 
@@ -228,8 +248,9 @@ bash scripts/run_o3_mma_lowering_microbenchmark.sh \
 |---|---:|
 | O1 compute-only | 0.622136 ms |
 | O3 一半 O1吞吐的延迟上限 | 1.244272 ms |
-| 新 O3 compute-only | 2.037664 ms |
-| 新 O3 / O1等效吞吐 | 30.5% |
+| 新 O3 compute-only | 1.989008 ms |
+| 新 O3 / O1等效吞吐 | 31.3% |
+| lowering核心乐观延迟下界 | 1.704 ms |
 | 是否达到50% | 否 |
 
 继续进行一般 CTA、stage或scale微调，现有证据不支持它们还能提供所需的约1.64倍
@@ -273,11 +294,14 @@ python -m adangel doctor --require-native
 服务器本轮诊断产物位于：
 
 ```text
-reports/o3_target_half/iteration14/combined_24samples.json
-reports/o3_target_half/iteration14/production_24samples.json
-reports/o3_target_half/iteration14/production_4096_validation.json
-reports/o3_target_half/iteration14/o3_combined_compute.ncu-rep
-reports/o3_target_half/iteration14/production_audit/summary.txt
+reports/o3_target_half/iteration18_unroll32/production_24samples.json
+reports/o3_target_half/iteration18_unroll32/validation_4096.json
+reports/o3_target_half/iteration18_unroll32/o1_reference_4096.json
+reports/o3_target_half/iteration18_unroll32/o3_full.ncu-rep
+reports/o3_target_half/iteration18_unroll32/o3_full_raw.csv
+reports/o3_target_half/iteration18_unroll32/o3_full_source.csv
+reports/o3_target_half/iteration18_unroll32/audit/summary.txt
+reports/o3_target_half/satfinite_probe_cuda12_8/
 ```
 
 ## 10. 官方资料

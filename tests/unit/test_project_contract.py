@@ -56,6 +56,12 @@ class TestProjectContract(unittest.TestCase):
             o3,
         )
         self.assertIn('result["native_int4_sass"] = false', o3)
+        self.assertIn(
+            'result["pipeline_group_loop_unroll_factor"] = '
+            "kPipelineGroupLoopUnroll",
+            o3,
+        )
+        self.assertIn("#pragma unroll 32", o3)
         self.assertIn('using O3N16K256Config = O3Config<16, 2, false>', o3)
         self.assertIn('using O3N32K128Config = O3Config<32, 1, false>', o3)
         self.assertIn('using O3N16K128DualConfig = O3Config<16, 1, true>', o3)

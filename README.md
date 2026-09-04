@@ -51,6 +51,8 @@ O3/O4 使用独立的 G128 权重副本，并按论文的 Split/Bitwise 算术�
 subbyte fragment 通过显式 `LDSM` 从 TMA staging shared memory 装入寄存器，使用
 U4×S4/S4×S4 两路 `m16n8k64` PTX MMA 语义，在寄存器中重构 partial、应用 G128
 scale，并只写一次 FP32 输出。row A scale 移到32个 G128循环之外，最终统一乘一次；
+正式 `4096³` fast path 将32个 G128 pipeline循环完全展开，以减少循环控制与整数地址
+指令；该选择不改变每个 G128独立缩放、TMA或两路 INT4 MMA语义。
 非整 `64x32` 输出 tile 自动回退到带边界检查的 `128x16x128` kernel。
 
 必须区分接口语义和物理指令：SM120 的正式 PTX entry 确实包含 U4×S4 与 S4×S4
@@ -457,11 +459,12 @@ python -m adangel run \
 
 当前 RTX 5090 的 O1 稳定基线为 `0.622136 ms`。O3 最新正式
 `m64_n32_k128_aligned_factor_16w` 在独立24样本 production 复跑中的 compute-only
-median 为 `2.054640 ms`；历史 `runs/rtx5090_o0_o4_k512` 中 O3 的
+median 为 `2.015720 ms`，单独 `4096³` 正式验证为 `1.989008 ms`；相对 O1只达到
+约 `31.3%` 的等效吞吐。历史 `runs/rtx5090_o0_o4_k512` 中 O3 的
 `2.223352 ms` 已不代表当前 production。O4 在该历史 run 中为 `7.632488 ms`。最新 O4 候选相对上一版
 `128x64x256` production 的逐样本配对几何平均加速为 `1.0806x`，bootstrap 95% CI
 为 `[1.0789x, 1.0827x]`。O3 最新 production 使用 `64x32x128` CTA、显式 LDSM、
-对齐快路径和循环外 row-scale factoring；详细消融、资源审计、性能边界与 MSE 见
+对齐快路径、循环外 row-scale factoring和32组完全展开；详细消融、资源审计、性能边界与 MSE 见
 `docs/o3_o4_backend_report.md`。
 
 运行顺序按样本交错 O0/O1/O2/O3/O4；使用单 stream、CUDA Event、预热 50 次、测量

@@ -407,9 +407,11 @@ IMMA.16832.U8.S8
 IMMA.16832.S8.S8
 ```
 
-并伴随大量 `LOP3/SHF/IMAD` 做4-bit拆位、符号扩展和 operand准备。CUDA 对 compute
-capability 12.0 的原生 Tensor Core 整数类型只列出 INT8。这说明 O3 使用的是兼容的
-INT4 PTX语义，而不是具有2倍 INT8 吞吐的原生 INT4物理单元。
+并伴随大量 `LOP3/SHF/IMAD` 做4-bit拆位、符号扩展和 operand准备。当前 CUDA
+Programming Guide 的能力表将 compute capability 12.x 列为支持 INT4 Tensor Core
+输入；这里能够证明的是本项目固定的 legacy sub-byte PTX、CUDA 12.8和正式 kernel
+组合没有生成可区分的原生4-bit SASS路径，不能外推为 RTX 5090硬件完全没有 INT4
+能力。
 
 作为诊断上界，曾实现精确的 biased-high U4 重写；编译器可把 low/high 合并为更少的
 U8 IMMA，使单样本降到约 `1.452 ms`，但 SASS 不再保留正式要求的 signed-high 两路
@@ -421,3 +423,26 @@ TMA、warp specialization 与 FP32 输出约束下通过实测的最佳版本。
 吞吐约为 `0.622136 / 2.037664 = 30.5%`，没有达到50%目标。若必须达到目标，需要
 更换具备原生 INT4矩阵指令的硬件/ISA，或明确放宽“两路 INT4”要求并建立新的 INT8
 重写实验；继续小幅 CTA 微调没有足够的剩余空间。
+
+## Iteration 15–18：G128循环展开与最终下界
+
+在不改变 `64x32x128` CTA、两阶段 TMA、1 producer/16 consumer、G128独立 scale和
+两路 INT4 PTX语义的前提下，依次测试 producer/consumer G128循环展开因子
+`4/8/16/32`。正式 `K=4096` 恰好包含32个 G128，性能随展开深度小幅改善并在完全展开
+时饱和：最终 compute-only median 为 `1.989008 ms`，mean 为 `1.983463 ms`，CV 为
+`0.700%`；cold/steady-state total median 分别为 `2.056416/2.019680 ms`。24个真实
+样本的 compute-only 跨样本 median 为 `2.015720 ms`，所有 stage 均满足 `CV<3%`，
+MSE median/mean/max 为 `0.006653010195/0.007578844400/0.018079114689`，与展开前一致。
+
+最终完整 NCU 报告显示：duration `1.933472 ms`、动态 SASS `2,507,181,638`、SM
+throughput `93.81%`、DRAM throughput `2.00%`、Tensor pipe active（elapsed）
+`14.20%`，并且 `STACK=0, LOCAL=0`。最小微基准将一条 U4×S4 PTX MMA的固有
+lowering归因为 `2 IMMA + 38 LOP3 + 20 SHF + 14 IMAD`，一条 S4×S4为
+`2 IMMA + 90 LOP3 + 48 SHF + 42 IMAD`。按正式 kernel调用次数计算，这些核心指令
+至少占最终动态 SASS 的 `85.65%`；即使把其余指令全部视为免费，线性乐观延迟下界仍
+约为 `1.704 ms`，高于一半 O1吞吐要求的 `1.244272 ms`。
+
+CUDA 13.1独立工具链没有改变该 lowering，U4×S4/S4×S4微基准吞吐相对 CUDA 12.8
+分别为 `1.010x/0.987x`。`satfinite` 变体也没有缩短 lowering，反而略微降低吞吐。
+因此当前正式版本固定为展开因子32；在严格 O3语义与固定工具链下，未达到50%的原因
+已经由最小微基准、完整 kernel NCU和定量指令下界三类独立证据闭环。

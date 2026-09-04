@@ -31,6 +31,7 @@ constexpr int kMmaK = 64;
 constexpr int kKSubgroups = 2;
 constexpr int kProducerThreads = 32;
 constexpr int kMaxThreads = 544;
+constexpr int kPipelineGroupLoopUnroll = 32;
 constexpr int kPackedK = kGroupSize / 2;
 using LowMma = cute::SM80_16x8x64_S32U4S4S32_TN;
 using HighMma = cute::SM80_16x8x64_S32S4S4S32_TN;
@@ -518,6 +519,10 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
   if (warp == 0) {
     auto write_state = cutlass::make_producer_start_state<Pipeline>();
     const int pipeline_groups = (groups + kGroupsPerStage - 1) / kGroupsPerStage;
+    // The formal K=4096 path has exactly 32 G128 groups.  Partial-unroll
+    // sweeps saturated at 32 while preserving the same TMA and MMA semantics.
+    // Keep this literal synchronized with kPipelineGroupLoopUnroll so ptxas
+    // can consume it as a pragma argument.
 #pragma unroll 32
     for (int pipeline_group = 0; pipeline_group < pipeline_groups; ++pipeline_group) {
       if (lane == 0) pipeline.producer_acquire(write_state);
@@ -1159,6 +1164,7 @@ py::dict kernel_metadata(
       Config::kTileM, Config::kTileN, Config::kPipelineK);
   result["pipeline_stages"] = Config::kStages;
   result["groups_per_pipeline_stage"] = Config::kGroupsPerStage;
+  result["pipeline_group_loop_unroll_factor"] = kPipelineGroupLoopUnroll;
   result["dynamic_shared_memory_bytes"] = sizeof(typename Config::SharedStorage);
   result["instruction_double_buffer"] = Config::kDualK64Chains;
   result["operand_preload_double_buffer"] = Config::kDualK64Chains;

@@ -43,8 +43,8 @@ def main() -> None:
     parser.add_argument("cuda12_directory", type=Path)
     parser.add_argument("cuda13_directory", type=Path)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--production-dynamic-sass", type=int, default=2_559_000_000)
-    parser.add_argument("--production-ms", type=float, default=2.034335970878601)
+    parser.add_argument("--production-dynamic-sass", type=int, default=2_507_181_638)
+    parser.add_argument("--production-ms", type=float, default=1.989008)
     parser.add_argument("--o1-ms", type=float, default=0.622136)
     args = parser.parse_args()
 

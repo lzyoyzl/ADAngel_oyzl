@@ -239,9 +239,9 @@ RTX 5090、CUDA 12.8、CUTLASS 4.5.2 pinned commit 上：
 |---|---:|---:|
 | 128³ max abs error vs semantic reference | 0 | 0 |
 | 4096³ max abs error vs semantic reference | 9.1553e-05 | 9.1553e-05 |
-| 4096³ production compute median | 2.037664 ms | 7.4606 ms |
-| 4096³ production compute CV | 0.717% | 0.127% |
-| production resource | REG 55, STACK 0, LOCAL 0 | REG 92, STACK 0, LOCAL 0 |
+| 4096³ production compute median | 1.989008 ms | 7.4606 ms |
+| 4096³ production compute CV | 0.700% | 0.127% |
+| production resource | REG 56, STACK 0, LOCAL 0 | REG 92, STACK 0, LOCAL 0 |
 | same-entry instruction audit | TMA + U4/S4/S4/S4 PTX；U8/S8 IMMA SASS lowering | TMA + B1 AND-POPC PTX |
 
 O3 数字来自当前 production 正式形状验证（warmup=50、repeats=200）；
@@ -270,6 +270,11 @@ prefill 样本、warmup=50、repeats=200、conversion inner repeats=100。该次
 | O2 | 0.138512 | 992.25 | 5.541x | 0.204984 | 0.214224 |
 | O3 | 2.223352 | 61.82 | 0.345x | 2.300128 | 2.263328 |
 | O4 | 7.632488 | 18.01 | 0.101x | 7.758064 | 7.712608 |
+
+该表保留同一历史 run 的 O0–O4横向可比数据，不用不同时段的结果替换单独一行。当前
+O3 production 后续独立稳定24样本复跑的 compute-only/cold/steady-state median 为
+`2.015720/2.086160/2.040800 ms`；它用于报告当前 O3绝对性能，不与上表其他 variant
+直接形成配对加速结论。
 
 conversion-only 跨样本 median：
 
