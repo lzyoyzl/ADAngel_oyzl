@@ -154,6 +154,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
       py::arg("conversion_inner_repeats") =
           kAdangelDefaultConversionTimingInnerRepeats);
   module.def(
+      "_benchmark_o3_split_int8x2",
+      &adangel_benchmark_o3_split_int8x2_diagnostic,
+      py::arg("mode"),
+      py::arg("a_int8"),
+      py::arg("a_scale"),
+      py::arg("w_mxfp4"),
+      py::arg("w_scale"),
+      py::arg("warmup"),
+      py::arg("repeats"),
+      py::arg("conversion_inner_repeats") =
+          kAdangelDefaultConversionTimingInnerRepeats);
+  module.def(
       "_benchmark_o4_impl",
       &adangel_benchmark_o4_impl,
       py::arg("implementation"),

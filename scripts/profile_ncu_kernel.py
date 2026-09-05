@@ -17,6 +17,7 @@ NCU_KERNEL_FILTERS = {
     "o1": "regex:adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup",
     "o2": "regex:^device_kernel$",
     "o3": "regex:adangel_o3_split_tma_ws",
+    "o3_int8x2": "regex:adangel_o3_split_int8x2_tma_ws",
     "o4": "regex:adangel_o4_bitwise_tma_ws",
 }
 
@@ -79,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     validate_manifest(
         manifest,
         formal=True,
-        require_arbitrary_bits=args.variant in {"o3", "o4"},
+        require_arbitrary_bits=args.variant in {"o3", "o3_int8x2", "o4"},
     )
     sample = select_sample(manifest, args.sample_id)
     sample_path = args.data / sample["file"]
@@ -96,7 +97,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.implementation != "production" and args.variant != "o3":
         raise ValueError("--implementation is currently supported only for O3")
-    if args.variant == "o3" and args.implementation != "production":
+    if args.variant == "o3_int8x2":
+        native = require_variant("o3")
+        payload = native._benchmark_o3_split_int8x2(
+            "compute_only",
+            inputs.A_int8,
+            inputs.A_scale,
+            inputs.W_mxfp4_g128,
+            inputs.W_scale_g128,
+            args.warmup,
+            args.repeats,
+            args.conversion_inner_repeats,
+        )
+    elif args.variant == "o3" and args.implementation != "production":
         native = require_variant("o3")
         payload = native._benchmark_o3_impl(
             args.implementation,

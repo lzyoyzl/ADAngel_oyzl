@@ -152,6 +152,15 @@ pybind11::dict adangel_benchmark_o3_impl(
     int warmup,
     int repeats,
     int conversion_inner_repeats);
+pybind11::dict adangel_benchmark_o3_split_int8x2_diagnostic(
+    const std::string& mode,
+    const at::Tensor& a_int8,
+    const at::Tensor& a_scale,
+    const at::Tensor& w_mxfp4_g128,
+    const at::Tensor& w_scale_g128,
+    int warmup,
+    int repeats,
+    int conversion_inner_repeats);
 
 bool adangel_o4_is_implemented();
 pybind11::dict adangel_run_o4(
