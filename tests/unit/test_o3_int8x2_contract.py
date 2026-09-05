@@ -15,7 +15,7 @@ def test_o3_int8x2_is_explicitly_diagnostic_and_keeps_production_unchanged():
     assert 'result["production_selected"] = false' in source
     assert 'result["o3_requirement_compliant"] = false' in source
     assert 'result["logical_int8_paths_per_group"] = 2' in source
-    assert "tCrLowGroup(item) + 16 * tCrHighGroup(item)" in source
+    assert "tCrGroup(item) += 16 * tCrPartial(item)" in source
     assert (
         'kProductionO3Implementation = "m64_n32_k128_aligned_factor_16w"'
         in production

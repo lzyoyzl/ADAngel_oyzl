@@ -227,8 +227,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_int8x2_tma_ws(
       cute::make_shape(cute::Int<kTileM>{}, cute::Int<kTileN>{}));
   auto tCcC = thr_mma.partition_C(cC);
   auto tCrPartial = thr_mma.make_fragment_C(tCcC);
-  auto tCrLowGroup = thr_mma.make_fragment_C(tCcC);
-  auto tCrHighGroup = thr_mma.make_fragment_C(tCcC);
+  auto tCrGroup = thr_mma.make_fragment_C(tCcC);
   auto tCrAccumulator = cute::make_fragment_like<float>(tCrPartial);
   cute::clear(tCrAccumulator);
 
@@ -254,8 +253,7 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_int8x2_tma_ws(
   for (int group = 0; group < groups; ++group) {
     pipeline.consumer_wait(read_state);
     const int stage = read_state.index();
-    cute::clear(tCrLowGroup);
-    cute::clear(tCrHighGroup);
+    cute::clear(tCrGroup);
 #pragma unroll
     for (int subgroup = 0; subgroup < kKSubgroups; ++subgroup) {
       auto sLowSub = cute::make_tensor(
@@ -281,13 +279,13 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_int8x2_tma_ws(
       cute::gemm(tiled_mma, tCrLow, tCrB, tCrPartial);
 #pragma unroll
       for (int item = 0; item < cute::size(tCrPartial); ++item) {
-        tCrLowGroup(item) += tCrPartial(item);
+        tCrGroup(item) += tCrPartial(item);
       }
       cute::clear(tCrPartial);
       cute::gemm(tiled_mma, tCrHigh, tCrB, tCrPartial);
 #pragma unroll
       for (int item = 0; item < cute::size(tCrPartial); ++item) {
-        tCrHighGroup(item) += tCrPartial(item);
+        tCrGroup(item) += 16 * tCrPartial(item);
       }
     }
 
@@ -307,12 +305,10 @@ __global__ __launch_bounds__(kThreads) void adangel_o3_split_int8x2_tma_ws(
             0xffffffffu, warp_column_scales[round], local_column & 31);
         if ((local_column >> 5) == round) column_scale = candidate;
       }
-      const int32_t reconstructed =
-          tCrLowGroup(item) + 16 * tCrHighGroup(item);
       const float scale =
           __fmul_rn(row_scales[(item >> 1) & 1], column_scale);
       tCrAccumulator(item) = __fmaf_rn(
-          static_cast<float>(reconstructed), scale, tCrAccumulator(item));
+          static_cast<float>(tCrGroup(item)), scale, tCrAccumulator(item));
     }
     pipeline.consumer_release(read_state);
     ++read_state;
