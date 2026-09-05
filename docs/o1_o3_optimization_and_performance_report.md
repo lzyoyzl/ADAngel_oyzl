@@ -569,3 +569,73 @@ reports/o3_mma_lowering/
 其中 `o3_full.ncu-rep`/CSV 支撑正式 kernel 的动态指标，`audit/summary.txt` 支撑同入口
 PTX/SASS 判定，`o3_mma_lowering/` 支撑排除 TMA、scale 和完整 GEMM 调度后的 MMA
 lowering 结论。
+
+## 9. 附录：两路原生 INT8 的 O3 反事实诊断
+
+为验证 O3 的主要性能损失是否来自 SM120 对 U4/S4 PTX 的低效 lowering，工程中加入了
+一个**不参与正式实验、也不替换 production O3** 的诊断后端：
+
+```text
+A_int8 = low_u4 + 16 × high_s4
+low_u4  → int8 0...15
+high_s4 → int8 -8...7
+Q4 W    → int8 -8...7
+
+INT8 MMA(low, W) + 16 × INT8 MMA(high, W)
+→ G128 INT32 partial
+→ A_scale × W_scale
+→ FP32 accumulator/output
+```
+
+该路径保持 O3 的 Split、Q4、G128 和 FP32 累加语义，但使用两组
+`m16n8k32 S8×S8→S32` Tensor Core 指令，因此不满足正式 O3 的“INT4 Tensor Core”
+指令要求。它仅回答一个反事实问题：若避开 U4/S4 lowering，O3 可以快到什么程度。
+
+### 9.1 24 个真实样本结果
+
+测试仍使用 24 个 Llama-2-7B FP16 prefill trace、`M=N=K=4096`、50 次预热、
+200 次正式测量和单 CUDA stream。正式 O3 与 INT8×2 在样本和计时模式间交错运行。
+
+| 路径 | Conversion-only total median | Compute-only median | Cold total median | Steady-state total median | MSE vs O0 median | MSE vs O0 mean |
+|---|---:|---:|---:|---:|---:|---:|
+| 正式 O3 | 0.046124 ms | 2.038248 ms | 2.092336 ms | 2.060576 ms | 0.0066530102 | 0.0075788444 |
+| O3 INT8×2 诊断 | 0.062862 ms | 1.422664 ms | 1.502864 ms | 1.465560 ms | 0.0066530102 | 0.0075788444 |
+
+INT8×2 相对正式 O3 的 24 样本配对 compute-only 加速比中位数为 `1.4325×`。
+两者的 MSE 在显示精度下相同；4096³ 合成验证中，INT8×2 相对 O3 数学参考的
+最大绝对误差为 `9.1553e-5`，MSE 为 `4.1752e-11`。
+
+另一次同进程、同样本、交错顺序的 compute-only O1 对照得到：
+
+| 路径 | 24 样本 latency median | 相对 O1 吞吐 |
+|---|---:|---:|
+| O1 production | 0.619624 ms | 100% |
+| O3 INT8×2 诊断 | 1.415520 ms | 43.79% |
+
+因此该诊断路径已经接近、但尚未达到 O1 的 50% 吞吐目标：其延迟为 O1 的
+`2.284×`，比理想的严格 `2×` 下界高约 14.2%。剩余差距来自两路 MMA 之外的
+low/high fragment 装载与合并、G128 scale 处理，以及诊断路径把 4-bit 输入展开为
+int8 后增加的 shared-memory 数据量。
+
+### 9.2 同入口 SASS 与资源审计
+
+诊断 kernel `adangel_o3_split_int8x2_tma_ws` 的最终审计结果为：
+
+```text
+REG=79, STACK=0, LOCAL=0
+static IMMA.16832.S8.S8 = 32
+TMA/UTMALDG              = 4
+U4/S4 IMMA               = 0
+LDL/STL                  = 0
+```
+
+这证明结果来自同一个 TMA + 两路原生 INT8 IMMA kernel，且没有寄存器 spill。
+正式 O3 仍保持原有 production 选择；该诊断后端只能通过内部绑定
+`_benchmark_o3_split_int8x2` 调用。
+
+相关文件：
+
+- `csrc/sm120/o3_int8_split_diagnostic.cu`
+- `scripts/validate_o3_int8x2.py`
+- `scripts/benchmark_o3_int8x2_diagnostic.py`
+- `tests/integration/test_sm120_o3_int8x2.py`
