@@ -8,8 +8,21 @@
 - 已经落实在正式内核中的优化手段；
 - 24 个 Llama-2-7B 真实 prefill 样本的性能与 MSE；
 - O3 未达到“O1 一半吞吐”目标的原因。
+- 两路原生 INT8 模拟 O3 Split 计算的诊断结果。
 
-本文只描述当前最终方案，不列出候选内核、消融过程或历史迭代结果。
+第 3～8 节只描述当前最终 production 方案，不列出候选内核、消融过程或历史迭代结果。
+第 9 节单独记录 INT8×2 反事实诊断；它用于验证 O3 的性能瓶颈，不属于正式 O3，
+也没有改变 production kernel 的选择。
+
+### 1.1 结论摘要
+
+| 项目 | 当前结论 |
+|---|---|
+| O1 production | 原生 S8×S8 IMMA；24 样本 compute-only median 为 `0.623776 ms`，MSE median 为 `9.8234e-09` |
+| O3 production | Split Q4/G128；24 样本 compute-only median 为 `2.065672 ms`，MSE median 为 `6.6530e-03` |
+| O3 主要瓶颈 | U4/S4 PTX 在 SM120 SASS 中被展开为 INT8 IMMA 加大量位操作，并未获得标准原生 INT4 MMA 的预期吞吐 |
+| INT8×2 诊断 | 保持 O3 数学语义，以两路 S8 MMA 替代 U4/S4 lowering；compute-only 为 `1.422664 ms`，相对正式 O3 加速 `1.4325×` |
+| 相对 O1 目标 | 同进程配对测试达到 O1 的 `43.79%` 吞吐，接近但未达到 `50%` 目标；且该路径不满足正式 O3 的 INT4 指令要求 |
 
 ## 2. 公共实验条件
 
@@ -544,6 +557,10 @@ specialization、寄存器 partial、scale 共享、LDSM、对齐 tile 和循环
 O1 一半吞吐的根因不是缺少常规 kernel 优化，而是正式 U4/S4 PTX 在 SM120 上实际被
 编译为 INT8 IMMA 加大规模位操作。在不改变论文 Split/Q4/G128 实验定义的前提下，
 当前证据表明目标无法仅靠继续微调 tile 或 pipeline 达成。
+
+第 9 节的 INT8×2 诊断进一步验证了这一判断：绕开 U4/S4 lowering 后，O3 同语义
+计算可获得约 `1.43×` 加速，但由于需要两路 INT8 MMA 及额外合并、scale 和数据搬运，
+其吞吐仍只有 O1 的 `43.79%`。该结果用于解释硬件/工具链边界，不改变正式 O3 结论。
 
 ## 8. 相关实现与证据
 
