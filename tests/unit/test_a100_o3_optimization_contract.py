@@ -26,3 +26,25 @@ def test_o3_keeps_native_int4_and_g128_recurrence():
                      'NibbleLayout','ByteLayout','cp.async.wait_group']:
         assert expected in s
     assert 'SM80_16x8x32_S32S8S8S32_TN' not in s
+
+
+def test_cached_scale_panel_partition_covers_small_and_full_k():
+    for n in (32,64,128):
+        for groups in range(1,33):
+            seen=[]
+            for tid in range(256):
+                first=(tid%8)*4
+                for col in range(tid//8,n,32):
+                    for j in range(4):
+                        if first+j<groups: seen.append((col,first+j))
+            assert len(seen)==n*groups
+            assert set(seen)=={(c,g) for c in range(n) for g in range(groups)}
+
+
+def test_magic_audit_checks_final_template_boolean():
+    import re
+    for fast in (0,1):
+        for cached in (0,1):
+            for magic in (0,1):
+                symbol=f'_Z25adangel_sm80_o3_swizzledILi64ELi128ELi128ELb{fast}ELb{cached}ELb{magic}EEEvPKh'
+                assert bool(re.search(r'Lb1EEEv',symbol))==bool(magic)

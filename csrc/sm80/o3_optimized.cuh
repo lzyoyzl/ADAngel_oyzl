@@ -51,7 +51,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast>
 __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached>;
@@ -61,14 +61,28 @@ __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
     // Load the CTA's complete G128 scale panel once, coalescing four bytes.
     // Store group-major so consumers read adjacent columns without bank stride.
     int groups=k/128;
-    for(unsigned off=threadIdx.x*4;off<N*groups;off+=256*4) {
-      uint32_t codes=*reinterpret_cast<const uint32_t*>(ws+blockIdx.x*N*groups+off);
-      o1_static_for<0,4>([&](auto j) {
-        uint32_t code=(codes>>(8*j))&255;
-        uint32_t bits=code?code<<23:0x00400000u;
-        unsigned idx=off+j,col=idx/groups,group=idx%groups;
-        s.scales[group*N+col]=__uint_as_float(Fast?((code-127u)<<23):bits);
-      });
+    unsigned first_group=(threadIdx.x%8)*4;
+    for(unsigned col=threadIdx.x/8;col<N;col+=32) {
+      if(first_group<groups) {
+        const auto* src=ws+(blockIdx.x*N+col)*groups+first_group;
+        uint32_t codes=0;
+        // Vector loads need an aligned row stride; small/non-four group
+        // counts use scalar bytes and never read outside the scale panel.
+        if(groups%4==0 && first_group+4<=groups) {
+          codes=*reinterpret_cast<const uint32_t*>(src);
+        } else {
+          o1_static_for<0,4>([&](auto j) {
+            if(first_group+j<groups) codes|=uint32_t(src[j])<<(8*j);
+          });
+        }
+        o1_static_for<0,4>([&](auto j) {
+          if(first_group+j<groups) {
+            uint32_t code=(codes>>(8*j))&255;
+            uint32_t bits=code?code<<23:0x00400000u;
+            s.scales[(first_group+j)*N+col]=__uint_as_float(Fast?((code-127u)<<23):bits);
+          }
+        });
+      }
     }
   }
   typename C::Mma mma; typename C::HighMma high_mma;
@@ -120,11 +134,15 @@ __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
         float value,scale;
         int scale_group=(Cached?stage:slot)*C::Groups+group;
         float column=s.scales[scale_group*N+cute::get<1>(coords(i))];
-        if constexpr(Fast) {
+        if constexpr(Magic) {
           value=__fadd_rn(__int_as_float(0x4b400000+partial),-12582912.0f);
+        } else {
+          value=float(partial);
+        }
+        if constexpr(Fast) {
           scale=__uint_as_float(__float_as_uint(rows(i))+__float_as_uint(column));
         } else {
-          value=float(partial);scale=__fmul_rn(rows(i),column);
+          scale=__fmul_rn(rows(i),column);
         }
         acc(i)=__fmaf_rn(value,scale,acc(i));
       });
@@ -136,17 +154,17 @@ __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
   });
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast>
 void o3_configure() {
-  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached>;
+  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic>;
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributeMaxDynamicSharedMemorySize,
       sizeof(typename O3AmpereConfig<M,N,K,Cached>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributePreferredSharedMemoryCarveout,100)==cudaSuccess,"O3 carveout failed");
 }
-template<int M,int N,int K,bool Fast,bool Cached=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast>
 void o3_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,const at::Tensor& ws,
     at::Tensor& out,cudaStream_t stream) {
-  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached><<<dim3(out.size(1)/N,out.size(0)/M),256,
+  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic><<<dim3(out.size(1)/N,out.size(0)/M),256,
       sizeof(typename O3AmpereConfig<M,N,K,Cached>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
       as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),out.size(0),out.size(1),w.size(1)*2);
 }

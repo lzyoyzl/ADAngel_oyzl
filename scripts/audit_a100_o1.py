@@ -56,7 +56,9 @@ def main():
         # Itanium template arguments: ExponentScale=true, PairMma=false,
         # MagicCast=true. Match both streaming and non-streaming instances.
         magic='Lb1ELb0ELb1E' in symbol
-        if args.variant=='o3': magic='Lb1ELb' in symbol
+        # O3 template arguments end in Fast, Cached, Magic. Inspect the final
+        # boolean, not Fast: exponent-only candidates deliberately use I2F.
+        if args.variant=='o3': magic=bool(re.search(r'Lb1EEEv',symbol))
         instruction_counts={op:len(re.findall(r'\b'+op+r'(?:\.|\s)',block))
                             for op in ('I2F','FADD','FFMA','IMMA','LDSM','LDGSTS','LDL','STL')}
         if magic:

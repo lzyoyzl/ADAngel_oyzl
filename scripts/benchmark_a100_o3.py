@@ -37,7 +37,8 @@ def main():
         policy='No filtering, unlocked clocks, same-process alternating order; current production O1 reference'))
     if args.validate or args.validate_only:
         checks=[]
-        for m,n,k in [(128,128,256),(128,192,512),(256,128,4096),(64,64,128)]:
+        for m,n,k in [(128,128,256),(128,192,512),(256,128,4096),(64,64,128),
+                      (64,128,128),(64,128,384),(64,128,768)]:
             for pattern in ['zero','random','saturation','scale_codes']:
                 torch.manual_seed(832+k)
                 a=torch.randint(-128,128,(m,k),device='cuda',dtype=torch.int8)
