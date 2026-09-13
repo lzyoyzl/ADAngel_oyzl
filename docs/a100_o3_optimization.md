@@ -186,6 +186,19 @@ MSE median/mean与上述paired24相同。本轮没有改变W_scale解码的计�
 4-byte对齐和固定group下32列bank分布。增加一个初始化barrier及最多4KiB scratch，
 是否更快仍需实测；全部初始化保留在GEMM计时内，没有执行待确认的离线预解码方案。
 
+最新`static64x128_ncu`：Duration529.18us，REG128、occupancy25%、eligible0.73、
+No Eligible59.27%、动态warp指令126.71M；每issue-active的MIO、short-scoreboard、
+wait比率分别约1.391、1.304、1.507。静态copy减少了指令，但并未消除operand等待。
+第十一轮缓存候选通过340项GPU逐位检查及同函数原生INT4/无spill审计，但初筛
+0.559104ms仍慢于非缓存static的0.533504ms，不采用该候选。
+第十轮memcheck和racecheck各完成200项验证，分别为0 errors和0 hazards；
+这是验证脚本的小形状/长K覆盖，不等同于所有24个4096³样本都做过sanitizer。
+
+进一步准备atom-stream候选：两个K64的A低/高operand预先进入寄存器，W按
+`WN*16`列的小片加载两个K64并复用于低/高MMA，避免整块W双缓冲抬高寄存器数。每次
+只保留4个low和4个high的INT32 partial，立刻对对应FP32输出寄存器进行该G128的FMA。
+两条INT4 MMA路径、每个输出的group/FMA顺序及量化不变；这是待审计、待实测候选。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。

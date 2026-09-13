@@ -103,3 +103,12 @@ def test_cached_codes_swizzle_is_bijective_aligned_and_bank_distributed():
         for g in range(32):
             for start in range(0,n,32):
                 assert len({(address(c,g)//4)%32 for c in range(start,start+32)})==32
+
+
+def test_o3_atom_stream_keeps_both_integer_paths_and_ordered_fma():
+    s=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+    stream=s.split('if constexpr(Stream) {',1)[1].split('} else {\n      cute::clear(low);',1)[0]
+    for expected in ('ra1','rh1','br1','SliceN=WN*16','pl(vi)+16*ph(vi)',
+                     'SM80_16x8x64_S32U4S4S32_TN','SM80_16x8x64_S32S4S4S32_TN',
+                     '__fmaf_rn(value,scale,acc(vi,mi,full_ni))'):
+        assert expected in stream
