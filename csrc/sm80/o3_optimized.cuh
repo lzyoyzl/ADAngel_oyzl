@@ -69,8 +69,8 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false>
-__global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,int MinBlocks=1>
+__global__ __launch_bounds__(128*WN,MinBlocks) void adangel_sm80_o3_swizzled(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN>;
   extern __shared__ __align__(128) uint8_t buf[];
@@ -202,17 +202,17 @@ __global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
   });
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,int MinBlocks=1>
 void o3_configure() {
-  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy>;
+  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,MinBlocks>;
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributeMaxDynamicSharedMemorySize,
       sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributePreferredSharedMemoryCarveout,100)==cudaSuccess,"O3 carveout failed");
 }
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,int MinBlocks=1>
 void o3_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,const at::Tensor& ws,
     at::Tensor& out,cudaStream_t stream) {
-  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy><<<dim3(out.size(1)/N,out.size(0)/M),128*WN,
+  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,MinBlocks><<<dim3(out.size(1)/N,out.size(0)/M),128*WN,
       sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
       as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),out.size(0),out.size(1),w.size(1)*2);
 }

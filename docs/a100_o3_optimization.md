@@ -80,6 +80,13 @@ INT32界，且最终整数点积与`low+16*high`完全相同；FP32 scale/FMA顺
 每线程复制项，消除threadIdx驱动的运行时循环。保留旧copy loop，同进程比较
 8/16-warp、独立/合并partial，不更改数据布局、搬运字节数或G128数学语义。
 
+第七轮静态copy的8-warp独立/合并partial约0.540/0.534ms，相对同轮当前O1
+配对吞吐比约1.86/1.85，未达到2倍。500项GPU逐位检查、15项非法输入拒绝
+以及原生INT4/无spill审计通过。合并partial静态版125register/thread，仍限制驻留。
+下一步仅测试编译期launch-bounds驻留提示：8-warp至少3 CTA、16-warp至少2 CTA；
+不改GPU时钟或系统设置，不允许通过寄存器spill换取虚假的occupancy优势。
+候选必须重新审计和实测，不预设强制寄存器上限一定有利。
+
 ## 命令
 
 所有修改先在本地`/root/ADAngel_oyzl`完成并推送GitHub，A100仅同步、构建、运行。
