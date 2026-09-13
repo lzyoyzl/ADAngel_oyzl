@@ -108,9 +108,11 @@ class TestProjectContract(unittest.TestCase):
         self.assertIn("m16n8k64.row.col.f32.e2m1.e2m1.f32.ue8m0", source)
 
     def test_native_build_embeds_sm120a_sass_and_ptx(self):
+        from test_cuda_build_targets import configuration
         setup = (ROOT / "setup.py").read_text()
         self.assertIn(
-            "-gencode=arch=compute_120a,code=[sm_120a,compute_120a]", setup
+            "-gencode=arch=compute_120a,code=[sm_120a,compute_120a]",
+            configuration()[0].extra_compile_args["nvcc"],
         )
         self.assertIn("tools/util/include/cutlass/util/packed_stride.hpp", setup)
         self.assertIn('str(cutlass_root / "tools/util/include")', setup)

@@ -30,6 +30,7 @@ def main():
     p.add_argument('--inner', type=int, default=100)
     p.add_argument('--all-modes', action='store_true')
     p.add_argument('--validate', action='store_true')
+    p.add_argument('--validate-only', action='store_true')
     p.add_argument('--profile', action='store_true', help='Single target call for NCU; no reference kernels')
     args = p.parse_args()
     if args.output.exists():
@@ -50,7 +51,7 @@ def main():
          cuda=torch.version.cuda, gpu=torch.cuda.get_device_name(),
          binary_sha256=sha256_file(Path(native.__file__)), args={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
          policy='No filtering; unlocked clocks; per-round cyclic/reversed order; conversion amortized, total directly timed'))
-    if args.validate:
+    if args.validate or args.validate_only:
         checks = []
         for m,n,k in [(128,128,128),(256,128,256),(128,256,384),(128,128,4096)]:
             for pattern in ['zero','random','saturation','scale_codes']:
@@ -73,6 +74,20 @@ def main():
                         checks.append(dict(shape=[m,n,k],pattern=pattern,implementation=impl,mode=mode,bitwise_equal=True))
         save('validation.json',dict(passed=True,checks=checks))
         print(f'Synthetic bitwise checks passed: {len(checks)}',flush=True)
+        for impl in args.impl:
+            for bad in ['code255','negative_a_scale','nan_a_scale']:
+                bad_ws=ws.clone();bad_as=asc.clone()
+                if bad=='code255': bad_ws[0,0]=255
+                if bad=='negative_a_scale': bad_as[0]=-1
+                if bad=='nan_a_scale': bad_as[0]=float('nan')
+                try:
+                    native.benchmark('o1','compute_only',a,bad_as,w,bad_ws,0,1,1,impl)
+                except RuntimeError:
+                    checks.append(dict(implementation=impl,rejected=bad))
+                else:
+                    raise AssertionError(f'{impl} accepted {bad}')
+        save('validation.json',dict(passed=True,checks=checks))
+        if args.validate_only: return
     manifest=json.loads((args.data/'manifest.json').read_text())
     validate_manifest(manifest,formal=True,require_arbitrary_bits=True)
     save('data_manifest.json',manifest)
