@@ -1,6 +1,6 @@
 # A100 O3 优化：目标与验收记录
 
-状态：首批候选开发/验收中，O3 production仍保留原baseline。
+状态：多轮候选开发/验收中，O3 production仍保留原baseline。
 目标一未通过前，不开始目标二的5090 magic-bias部署。
 
 ## 目标
@@ -86,6 +86,33 @@ INT32界，且最终整数点积与`low+16*high`完全相同；FP32 scale/FMA顺
 下一步仅测试编译期launch-bounds驻留提示：8-warp至少3 CTA、16-warp至少2 CTA；
 不改GPU时钟或系统设置，不允许通过寄存器spill换取虚假的occupancy优势。
 候选必须重新审计和实测，不预设强制寄存器上限一定有利。
+
+第八轮驻留提示被否决：8-warp/3 CTA出现104-byte stack及LDL/STL，延迟约0.969ms；
+16-warp/2 CTA出现24-byte stack及LDL/STL，约0.713ms。虽然300项逐位检查通过，
+两者均未通过无spill审计，已移除这两条候选编译入口，负面证据保留在v8目录及Git历史。
+资源报告`LOCAL:0`不足以证明没有spill，必须同时检查STACK和SASS load/store。
+
+接下来显式展开双缓冲的两个phase：slot0/slot1作为编译期常量传入相同stage处理，
+减少buffer地址计算；仍为两个shared stage、顺序G128 FP32 FMA，奇数stage正确收尾。
+不降低精度、不改变K分组、不增加跨CTA归约；继续保持旧路径作为同进程对照。
+
+## 当前证据位置（尚非最终验收）
+
+- 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。
+- PTX、SASS、资源及逐函数审计：`reports/a100_o3_opt/audit_v1`至`audit_v7`。
+  v3的缓存初始化整数除法导致严格I2F检查失败，v4已修复；不得把v3写成审计通过。
+- NCU完整报告：`reports/a100_o3_opt/swizzle64_ncu.ncu-rep`及
+  `exp64x128_ncu.ncu-rep`，同目录保留raw CSV、details和source/SASS CSV。
+- 本地已收到上述文件；传输归档`tmp/a100_o3_evidence_v7_clean.tar.gz`的SHA-256为
+  `f9705ef0cd552f2893e0a3a884788db2dddcf01e28cd3b1478542d9fadf9d2aa`。
+- v7环境文件和audit均记录二进制SHA-256，环境还记录相关CUDA源码SHA-256。
+  67项CPU测试通过；v7单样本初筛无CV>=3%记录，但不能替代24样本覆盖。
+
+64×128指数位候选的NCU测得Duration549.15us、REG100、理论occupancy25%、
+eligible warp/scheduler0.85、No Eligible52.29%、DRAM9.51%。动态warp指令约154.49M；
+wait、math-pipe、barrier每issue-active比率约2.092、0.987、0.769。
+这些支持继续研究指令依赖和延迟隐藏，而不是把问题简单归为显存带宽不足。
+NCU replay duration不是正式CUDA Event性能统计，不能与另一次O1延迟直接算正式加速比。
 
 ## 命令
 

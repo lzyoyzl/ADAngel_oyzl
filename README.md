@@ -40,6 +40,10 @@ A100 原生 U4/S4 SASS 与数值验证已通过；**旧 O1 baseline** 的24样�
 cuBLASLt O0；不是硬件峰值比较。三路中的 O1/O3 CV 异常和 O0 四模式结果见报告。
 
 A100 O1 的当前优化与独立验收见 [A100 O1 优化](docs/a100_o1_optimization.md)。
+
+A100 O3 的候选优化、原生 INT4 审计与未完成的两倍性能目标见
+[A100 O3 优化记录](docs/a100_o3_optimization.md)。目前仍保留旧 production 默认值，
+候选初筛不能代替24样本正式验收；5090 magic-bias 移植将在该目标完成后单独验证。
 SM80 的 `implementation="production"` 在4096³选择 `swizzle_128x64_k128_magic`：
 保留原 K32/FMA 数值顺序，采用 swizzled shared-memory、CTA 内 scale 共享、
 精确 UE8M0 位解码和精确 bias-bit partial 转换；旧 `baseline` 继续保留作同进程对照。

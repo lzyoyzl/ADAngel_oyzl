@@ -78,3 +78,12 @@ def test_static_copy_exactly_covers_each_shared_tile():
                 offsets=[t*16+i*step for t in range(threads)
                          for i in range((size+step-1)//step) if t*16+i*step<size]
                 assert sorted(offsets)==list(range(0,size,16))
+
+
+def test_phase_pair_keeps_group_order_and_handles_odd_stage_count():
+    for count in range(1,33):
+        schedule=[]
+        for stage in range(0,count,2):
+            schedule.append((stage,0))
+            if stage+1<count:schedule.append((stage+1,1))
+        assert schedule==[(stage,stage%2) for stage in range(count)]
