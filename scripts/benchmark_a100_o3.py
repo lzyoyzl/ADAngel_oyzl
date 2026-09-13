@@ -56,7 +56,7 @@ def main():
                 base=native.benchmark('o3','compute_only',a,asc,w,ws,0,1,1,'baseline')['output']
                 for impl in args.impl:
                     if '128x64' in impl and m%128: continue
-                    if '64x128' in impl and n%128: continue
+                    if 'x128_' in impl and n%128: continue
                     if 'k256' in impl and k%256: continue
                     for mode in ['conversion_only','compute_only','cold','steady_state']:
                         r=native.benchmark('o3',mode,a,asc,w,ws,0,1,1,impl)
