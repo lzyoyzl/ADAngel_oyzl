@@ -190,6 +190,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
       implementation=="swizzle_64x64_k128_16w" || implementation=="swizzle_128x64_k128_16w" ||
       implementation=="swizzle_64x64_k128_16w_exp" || implementation=="swizzle_128x64_k128_exp" ||
       implementation=="swizzle_64x64_k128_pair" || implementation=="swizzle_64x32_k128_pair" ||
+      implementation=="swizzle_64x64_k128_magic" || implementation=="swizzle_128x64_k128_magic" ||
+      implementation=="swizzle_64x32_k128_magic" ||
       implementation=="swizzle_128x128_k128" || implementation=="swizzle_128x64_k64")),
       "unknown implementation or O1-only candidate requested for O3");
   TORCH_CHECK(a.is_cuda()&&as.is_cuda()&&w.is_cuda()&&ws.is_cuda(),"CUDA tensors required");
@@ -215,7 +217,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   TORCH_CHECK(at::isfinite(as).all().item<bool>()&&as.ge(0).all().item<bool>(),"invalid activation scale");
   TORCH_CHECK(ws.ne(255).all().item<bool>(),"UE8M0 code 255 is invalid");
   bool exponent_scale=false;
-  if(implementation.find("_exp")!=std::string::npos) {
+  if(implementation.find("_exp")!=std::string::npos||implementation.find("_magic")!=std::string::npos) {
     float amin=as.min().item<float>(),amax=as.max().item<float>();
     uint32_t lo,hi; std::memcpy(&lo,&amin,4);std::memcpy(&hi,&amax,4);
     int emin=(lo>>23)&255,emax=(hi>>23)&255;
@@ -240,6 +242,18 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   }
   if(implementation=="swizzle_64x64_k128_pair") o1_ampere_configure<64,64,128,4,2,false,true>();
   if(implementation=="swizzle_64x32_k128_pair") o1_ampere_configure<64,32,128,4,2,false,true>();
+  if(implementation=="swizzle_64x64_k128_magic") {
+    if(exponent_scale) o1_ampere_configure<64,64,128,4,2,true,false,true>();
+    else o1_ampere_configure<64,64,128>();
+  }
+  if(implementation=="swizzle_128x64_k128_magic") {
+    if(exponent_scale) o1_ampere_configure<128,64,128,4,2,true,false,true>();
+    else o1_ampere_configure<128,64,128>();
+  }
+  if(implementation=="swizzle_64x32_k128_magic") {
+    if(exponent_scale) o1_ampere_configure<64,32,128,4,2,true,false,true>();
+    else o1_ampere_configure<64,32,128>();
+  }
   if(implementation=="swizzle_128x64_k128") o1_ampere_configure<128,64,128>();
   if(implementation=="swizzle_128x128_k128") o1_ampere_configure<128,128,128>();
   if(implementation=="swizzle_128x64_k64") o1_ampere_configure<128,64,64>();
@@ -264,6 +278,18 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     }
     else if(implementation=="swizzle_64x64_k128_pair") o1_ampere_launch<64,64,128,4,2,false,true>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_64x32_k128_pair") o1_ampere_launch<64,32,128,4,2,false,true>(aa,wa,as,ws,out,stream);
+    else if(implementation=="swizzle_64x64_k128_magic") {
+      if(exponent_scale) o1_ampere_launch<64,64,128,4,2,true,false,true>(aa,wa,as,ws,out,stream);
+      else o1_ampere_launch<64,64,128>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="swizzle_128x64_k128_magic") {
+      if(exponent_scale) o1_ampere_launch<128,64,128,4,2,true,false,true>(aa,wa,as,ws,out,stream);
+      else o1_ampere_launch<128,64,128>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="swizzle_64x32_k128_magic") {
+      if(exponent_scale) o1_ampere_launch<64,32,128,4,2,true,false,true>(aa,wa,as,ws,out,stream);
+      else o1_ampere_launch<64,32,128>(aa,wa,as,ws,out,stream);
+    }
     else if(implementation=="swizzle_128x64_k128") o1_ampere_launch<128,64,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_128x128_k128") o1_ampere_launch<128,128,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_128x64_k64") o1_ampere_launch<128,64,64>(aa,wa,as,ws,out,stream);
@@ -303,6 +329,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   meta["implementation"]=implementation;
   meta["exponent_scale_fast_path"]=exponent_scale;
   meta["paired_mma_issue"]=implementation.find("_pair")!=std::string::npos;
+  meta["integer_conversion"]=(exponent_scale&&implementation.find("_magic")!=std::string::npos)?"exact_bias_bits_fadd":"i2f";
   meta["scale_storage"]=implementation=="baseline"?"global_per_fragment":"shared_per_cta_column_group";
   meta["smem_swizzle"]=implementation!="baseline";
   meta["pipeline_stages"]=STAGES;meta["threads"]=implementation.find("16w")!=std::string::npos?512:THREADS;

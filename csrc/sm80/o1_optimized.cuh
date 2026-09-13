@@ -58,7 +58,7 @@ __device__ __forceinline__ void o1_ampere_prefetch(
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M, int N, int K, int WM=4, int WN=2, bool ExponentScale=false, bool PairMma=false>
+template<int M, int N, int K, int WM=4, int WN=2, bool ExponentScale=false, bool PairMma=false, bool MagicCast=false>
 __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
     const int8_t* a, const int8_t* b, const float* as,
     const uint8_t* ws, float* y, int k) {
@@ -114,7 +114,15 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
         if constexpr(ExponentScale)
           scale=__uint_as_float(__float_as_uint(rows(i))+__float_as_uint(column));
         else scale=__fmul_rn(rows(i),column);
-        acc(i)=__fmaf_rn(float(partial(i)),scale,acc(i));
+        float value;
+        if constexpr(MagicCast) {
+          // |sum32(A8 * 2*E2M1)| <= 32*128*12 = 49152.
+          // Around 1.5*2^23 every float is an integer with ULP 1. Adding the
+          // signed partial to its bit pattern and subtracting the bias is
+          // EXACT (including negative partials); no I2F/XU instruction needed.
+          value=__fadd_rn(__int_as_float(0x4b400000+partial(i)),-12582912.0f);
+        } else value=float(partial(i));
+        acc(i)=__fmaf_rn(value,scale,acc(i));
       }
     };
     if constexpr(PairMma) {
@@ -145,22 +153,22 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
   }
 }
 
-template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false>
+template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false,bool MagicCast=false>
 void o1_ampere_configure() {
   using C=O1AmpereConfig<M,N,K,WM,WN>;
-  auto rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma>,
+  auto rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma,MagicCast>,
       cudaFuncAttributeMaxDynamicSharedMemorySize,sizeof(typename C::Storage));
   TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
-  rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma>,
+  rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma,MagicCast>,
       cudaFuncAttributePreferredSharedMemoryCarveout,100);
   TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
 }
 
-template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false>
+template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false,bool MagicCast=false>
 void o1_ampere_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,
     const at::Tensor& ws,at::Tensor& out,cudaStream_t stream) {
   using C=O1AmpereConfig<M,N,K,WM,WN>;
-  adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma><<<dim3(out.size(1)/N,out.size(0)/M),C::Threads,sizeof(typename C::Storage),stream>>>(
+  adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma,MagicCast><<<dim3(out.size(1)/N,out.size(0)/M),C::Threads,sizeof(typename C::Storage),stream>>>(
       a.data_ptr<int8_t>(),w.data_ptr<int8_t>(),as.data_ptr<float>(),ws.data_ptr<uint8_t>(),
       out.data_ptr<float>(),a.size(1));
 }
