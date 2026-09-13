@@ -73,8 +73,10 @@ __global__ __launch_bounds__(THREADS) void adangel_sm80_grouped_gemm(
       cute::make_stride(cute::Int<C::KStage>{},cute::_1{}));
   auto blayout = cute::make_layout(cute::make_shape(cute::Int<TN>{},cute::Int<C::KMma>{}),
       cute::make_stride(cute::Int<C::KStage>{},cute::_1{}));
-  auto sa = cute::make_tensor(cute::make_smem_ptr(reinterpret_cast<typename C::A*>(s.a[0])),layout);
-  auto sb = cute::make_tensor(cute::make_smem_ptr(reinterpret_cast<typename C::B*>(s.b[0])),blayout);
+  // Typed void* overload uses recast_ptr<T>: for 4-bit T this constructs a
+  // subbyte iterator. A raw int4b_t* advances by sizeof(T)==1 byte, not a nibble.
+  auto sa = cute::make_tensor(cute::make_smem_ptr<typename C::A>(static_cast<void*>(s.a[0])),layout);
+  auto sb = cute::make_tensor(cute::make_smem_ptr<typename C::B>(static_cast<void*>(s.b[0])),blayout);
   auto ra = thr.partition_fragment_A(sa);
   auto rb = thr.partition_fragment_B(sb);
   auto coord = thr.partition_C(cute::make_identity_tensor(cute::make_shape(cute::Int<TM>{},cute::Int<TN>{})));
@@ -100,7 +102,7 @@ __global__ __launch_bounds__(THREADS) void adangel_sm80_grouped_gemm(
     if constexpr(Split) {
       typename C::HighMma hm;
       auto ht=hm.get_slice(threadIdx.x);
-      auto hs = cute::make_tensor(cute::make_smem_ptr(reinterpret_cast<cutlass::int4b_t*>(s.high[slot])),layout);
+      auto hs = cute::make_tensor(cute::make_smem_ptr<cutlass::int4b_t>(static_cast<void*>(s.high[slot])),layout);
       auto rh=ht.partition_fragment_A(hs);
       auto high=ht.make_fragment_C(coord);
       using HCopy=cute::Copy_Atom<cute::SM75_U32x4_LDSM_N,cutlass::int4b_t>;
@@ -109,9 +111,9 @@ __global__ __launch_bounds__(THREADS) void adangel_sm80_grouped_gemm(
       cute::clear(partial); cute::clear(high);
       CUTE_UNROLL
       for(int sub=0;sub<2;++sub) {
-        auto al = cute::make_tensor(cute::make_smem_ptr(reinterpret_cast<cutlass::uint4b_t*>(s.a[slot]+sub*32)),layout);
-        auto ah = cute::make_tensor(cute::make_smem_ptr(reinterpret_cast<cutlass::int4b_t*>(s.high[slot]+sub*32)),layout);
-        auto bw = cute::make_tensor(cute::make_smem_ptr(reinterpret_cast<cutlass::int4b_t*>(s.b[slot]+sub*32)),blayout);
+        auto al = cute::make_tensor(cute::make_smem_ptr<cutlass::uint4b_t>(static_cast<void*>(s.a[slot]+sub*32)),layout);
+        auto ah = cute::make_tensor(cute::make_smem_ptr<cutlass::int4b_t>(static_cast<void*>(s.high[slot]+sub*32)),layout);
+        auto bw = cute::make_tensor(cute::make_smem_ptr<cutlass::int4b_t>(static_cast<void*>(s.b[slot]+sub*32)),blayout);
         cute::copy(ACopy{},ca.partition_S(al),da);
         cute::copy(HCopy{},ch.partition_S(ah),dh);
         cute::copy(BCopy{},cb.partition_S(bw),db);

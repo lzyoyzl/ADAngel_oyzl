@@ -56,7 +56,8 @@ def validate(native, torch):
                 for mode in ("conversion_only","compute_only","cold","steady_state"):
                     p=native.benchmark(variant,mode,a,asc,w,ws,2,3,10)
                     torch.cuda.synchronize()
-                    torch.testing.assert_close(p["output"],reference,rtol=1e-3,atol=1e-3)
+                    torch.testing.assert_close(p["output"],reference,rtol=1e-3,atol=1e-3,
+                        msg=lambda detail: f"{variant}/{mode}/K{k}/{pattern}: {detail}")
                     assert torch.isfinite(p["output"]).all()
                     checks.append(dict(variant=variant,k=k,pattern=pattern,mode=mode,
                         max_abs_error=float((p["output"]-reference).abs().max())))
