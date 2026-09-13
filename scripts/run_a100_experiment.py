@@ -43,7 +43,7 @@ def validate(native, torch):
                     weight = unpack_int4_tensor(mxfp4_to_q4_packed(w)).float()
                     factor = 1.0
                 else:
-                    nib = torch.stack((w&15,w>>4),dim=-1).reshape(64,k).long()
+                    nib = torch.stack((w&15,w>>4),dim=-1).reshape(n,k).long()
                     lut=torch.tensor([0,1,2,3,4,6,8,12,0,-1,-2,-3,-4,-6,-8,-12],device="cuda")
                     weight=lut[nib].float()
                     factor=0.5
