@@ -71,6 +71,7 @@ def main():
                         out=native.benchmark('o1',mode,a,asc,w,ws,0,1,1,impl)['output']
                         assert torch.isfinite(out).all() and out.dtype==torch.float32
                         torch.testing.assert_close(out,base,rtol=0,atol=0)
+                        assert torch.equal(out.view(torch.int32),base.view(torch.int32))
                         checks.append(dict(shape=[m,n,k],pattern=pattern,implementation=impl,mode=mode,bitwise_equal=True))
         save('validation.json',dict(passed=True,checks=checks))
         print(f'Synthetic bitwise checks passed: {len(checks)}',flush=True)
@@ -123,7 +124,9 @@ def main():
                     out=call(impl,mode)
                     y=out['output']
                     assert torch.isfinite(y).all()
-                    if impl!='o0': torch.testing.assert_close(y,base,rtol=0,atol=0)
+                    if impl!='o0':
+                        torch.testing.assert_close(y,base,rtol=0,atol=0)
+                        assert torch.equal(y.view(torch.int32),base.view(torch.int32))
                     mse=float((y.double()-ref.double()).square().mean())
                     st={k:stats(v) for k,v in out['timings_ms'].items()}
                     for key,vals in out['timings_ms'].items(): collected[impl].setdefault(key,[]).extend(vals)
