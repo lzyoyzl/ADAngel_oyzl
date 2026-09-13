@@ -49,8 +49,10 @@ def test_magic_audit_checks_final_template_boolean():
                 for wn in (2,4):
                     for merge in (0,1):
                         symbol=f'_Z25adangel_sm80_o3_swizzledILi64ELi128ELi128ELb{fast}ELb{cached}ELb{magic}ELi{wn}ELb{merge}EEEvPKh'
-                        match=re.search(r'swizzledILi\d+ELi\d+ELi\d+ELb([01])ELb([01])ELb([01])ELi[24]ELb([01])E',symbol)
-                        assert (match[3]=='1')==bool(magic)
+                        for name in ('swizzled','swizzled_bound2'):
+                            candidate=symbol.replace('swizzled',name)
+                            match=re.search(r'swizzled(?:_bound2)?ILi\d+ELi\d+ELi\d+ELb([01])ELb([01])ELb([01])ELi[24]ELb([01])E',candidate)
+                            assert (match[3]=='1')==bool(magic)
 
 
 def test_g128_integer_reconstruction_can_reuse_one_partial():
@@ -112,3 +114,10 @@ def test_o3_atom_stream_keeps_both_integer_paths_and_ordered_fma():
                      'SM80_16x8x64_S32U4S4S32_TN','SM80_16x8x64_S32S4S4S32_TN',
                      '__fmaf_rn(value,scale,acc(vi,mi,full_ni))'):
         assert expected in stream
+
+
+def test_bound2_uses_separate_entry_without_changing_default_launch_bounds():
+    s=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+    assert '__launch_bounds__(32*(M==32?2:4)*WN) void adangel_sm80_o3_swizzled(' in s
+    assert '__launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(' in s
+    assert s.count('o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>(a,w,as,ws,y,m,n,k)')==2

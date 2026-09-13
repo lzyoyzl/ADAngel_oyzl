@@ -60,7 +60,7 @@ def main():
         # Decode explicit O3 template arguments; do not infer Magic from Fast
         # or accidentally match the independent integer-merge boolean.
         if args.variant=='o3':
-            args_match=re.search(r'swizzledILi\d+ELi\d+ELi\d+ELb([01])ELb([01])ELb([01])ELi[24]ELb([01])E',symbol)
+            args_match=re.search(r'swizzled(?:_bound2)?ILi\d+ELi\d+ELi\d+ELb([01])ELb([01])ELb([01])ELi[24]ELb([01])E',symbol)
             if not args_match: raise RuntimeError(f'Unknown O3 template signature: {symbol}')
             magic=args_match[3]=='1'
         instruction_counts={op:len(re.findall(r'\b'+op+r'(?:\.|\s)',block))

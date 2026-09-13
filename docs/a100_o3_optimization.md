@@ -213,6 +213,12 @@ static和stream的REG从128变为135，单SM驻留由2 CTA降为1 CTA，初筛�
 也受此配置影响；下一轮恢复原单参数launch_bounds，重新对照K256，不混用两轮延迟。
 原始失败审计及结果保留在`audit_v13`和`runs/a100_o3_screen_v13`。
 
+第十四轮恢复后260项GPU逐位检查和完整O3审计通过。static/stream K128/K256分别
+约0.559104/0.570368/0.593920ms，当前O1约1.051648ms。K128恢复REG128，K256为
+REG130、无spill，仍越过2 CTA的寄存器上限。准备单独的`swizzled_bound2`入口，
+仅对K256指定minBlocks=2；所有其他入口保持原单参数launch_bounds。
+两个入口复用同一个forceinline函数体，量化及G128/FMA语义不变；需重新审计和实测。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。
