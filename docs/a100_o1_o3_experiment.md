@@ -35,6 +35,25 @@ ADANGEL_BUILD_CUDA=1 ADANGEL_CUDA_TARGET=sm80 MAX_JOBS=4 \
 
 编译生成 `adangel._sm80`；默认 `_sm120` 构建路径仍独立存在。
 
+### 兼容原有 RTX 5090 服务器
+
+这是新增 SM80 后端，不是把原项目改成仅支持 A100。`csrc/sm120/`、原有
+`csrc/bindings.cpp` 和 5090 Python 调度入口继续保留；A100 使用自己的绑定和
+`run_a100_experiment.py`。默认不设置 `ADANGEL_CUDA_TARGET` 时仍构建 SM120。
+
+在 5090 的 `/home/zlouyang/oyzl/ADAngel_oyzl` 中，激活原 `adangel-sm120` 环境后执行：
+
+```bash
+source scripts/activate_server_env.sh
+ADANGEL_BUILD_CUDA=1 ADANGEL_CUDA_TARGET=sm120 \
+  python -m pip install -v -e . --no-build-isolation --no-deps
+python -m adangel doctor --require-native
+```
+
+原有实验配置、prepared trace、审计脚本和正式运行命令无需改成 A100 版本。
+构建目标隔离由 `tests/unit/test_cuda_build_targets.py` 验证；此测试只验证构建选择，
+不能代替两台 GPU 各自的编译、正确性与指令审计。
+
 ## 验证、审计、真实数据运行
 
 ```bash

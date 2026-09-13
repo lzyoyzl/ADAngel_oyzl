@@ -15,6 +15,26 @@ SASS/PTX 指令审计，防止某个实现静默退化为 CUDA Core 或软件模
 
 ## 当前实现状态
 
+### RTX 5090 与 A100 后端独立保留
+
+新增 A100 对照实验不会替换 RTX 5090 实现。默认构建目标仍为 `sm120`，
+生成 `adangel._sm120`，原来的 O0–O4 运行入口、配置和审计流程保持不变。
+A100 仅在显式指定 `ADANGEL_CUDA_TARGET=sm80` 时构建独立的 `adangel._sm80`，
+通过专用实验脚本运行，不接管 5090 的正式调度。
+
+RTX 5090 重新构建时可显式指定目标，避免继承其他终端的环境变量：
+
+```bash
+ADANGEL_BUILD_CUDA=1 ADANGEL_CUDA_TARGET=sm120 \
+  python -m pip install -v -e . --no-build-isolation --no-deps
+python -m adangel doctor --require-native
+```
+
+A100 的环境、构建和测试见 [A100 O1/O3 对照实验](docs/a100_o1_o3_experiment.md)。
+两种架构的二进制需要分别编译，结果分别存储；不能用 A100 结果替换 RTX 5090 结果。
+
+### RTX 5090 实现
+
 数据采集/准备、五配置语义参考、正式调度、统计、MSE、四表四图和防误跑能力门
 已经实现。O0 正式后端使用预分配 CUDA kernel 完成 MXFP4→FP16 权重
 反量化和 INT8→FP16 激活反量化，再由 cuBLASLt 执行行主序 FP16×FP16、FP32
