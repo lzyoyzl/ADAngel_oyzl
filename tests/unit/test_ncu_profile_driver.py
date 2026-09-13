@@ -15,7 +15,7 @@ SPEC.loader.exec_module(MODULE)
 class NcuProfileDriverTest(unittest.TestCase):
     def test_production_kernel_filters_are_specific(self) -> None:
         self.assertEqual(set(MODULE.NCU_KERNEL_FILTERS), {"o1", "o2", "o3", "o4", "o3_int8x2"})
-        self.assertIn("adangel_o3_int8x2", MODULE.NCU_KERNEL_FILTERS["o3_int8x2"])
+        self.assertIn("adangel_o3_split_int8x2_tma_ws", MODULE.NCU_KERNEL_FILTERS["o3_int8x2"])
         self.assertIn(
             "adangel_o1_register_partial_128x64",
             MODULE.NCU_KERNEL_FILTERS["o1"],
