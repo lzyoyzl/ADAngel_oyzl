@@ -302,6 +302,8 @@ python scripts/measure_a100_paired_compute.py --include-o0 \
 本节证据：[三路汇总](evidence/a100_o0/paired_summary.json)、
 [720 条逐轮原始记录及 O0 算法信息](evidence/a100_o0/paired_rounds.jsonl)、
 [测量配置](evidence/a100_o0/paired_environment.json)。
+本次三路测量脚本版本为 `2b488a7`；下面 O0 独立四模式脚本版本为 `3ed9dcf`，
+具体完整 commit 和相同的二进制 SHA-256 见各自 environment.json。
 
 ### O0 独立四模式测量
 
@@ -379,7 +381,7 @@ python scripts/measure_a100_o0.py \
 
 ## 可核查证据与复现
 
-本次正式测量源码 commit 为 `e1ca46a542e3d21f66edc5912663d0f25f253ab9`，
+前轮 O1/O3 原生 INT4 四模式测量的源码 commit 为 `e1ca46a542e3d21f66edc5912663d0f25f253ab9`，
 `_sm80` 二进制 SHA-256 为
 `8a3f6ffed76cb13efd45a80db7a2e28033bb450de56267383018c51453663f5e`。
 后续只补充报告/测量脚本，不把不同 kernel 的结果混在一起。
