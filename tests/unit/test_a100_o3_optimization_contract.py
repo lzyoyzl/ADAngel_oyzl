@@ -87,3 +87,19 @@ def test_phase_pair_keeps_group_order_and_handles_odd_stage_count():
             schedule.append((stage,0))
             if stage+1<count:schedule.append((stage+1,1))
         assert schedule==[(stage,stage%2) for stage in range(count)]
+
+
+def test_cached_codes_swizzle_is_bijective_aligned_and_bank_distributed():
+    def address(col,group):
+        offset=col*32+group
+        return offset^((offset>>5)&28)  # CuTe Swizzle<3,2,5>
+    for n in (32,64,128):
+        offsets=[address(c,g) for c in range(n) for g in range(32)]
+        assert sorted(offsets)==list(range(n*32))
+        for c in range(n):
+            for g in range(0,32,4):
+                assert address(c,g)%4==0
+                assert [address(c,g+j) for j in range(4)]==list(range(address(c,g),address(c,g)+4))
+        for g in range(32):
+            for start in range(0,n,32):
+                assert len({(address(c,g)//4)%32 for c in range(start,start+32)})==32

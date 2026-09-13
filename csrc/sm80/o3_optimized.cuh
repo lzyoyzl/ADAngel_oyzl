@@ -1,5 +1,7 @@
 // SM80 O3: preserve two native U4/S4 MMA paths and the ordered G128 FMA.
 #pragma once
+template<int N,bool Cached> struct O3ScaleCodeScratch {};
+template<int N> struct O3ScaleCodeScratch<N,true> { uint8_t scale_codes[N*32]; };
 template<int M,int N,int K,bool Cached=false,int WN=2>
 struct O3AmpereConfig {
   static_assert(K==128||K==256);
@@ -20,7 +22,7 @@ struct O3AmpereConfig {
   template<int Rows> using NibbleLayout=decltype(cute::composition(
       cute::Swizzle<K==256?3:2,5,3>{},cute::Layout<cute::Shape<cute::Int<Rows>,cute::Int<K>>,
       cute::Stride<cute::Int<K>,cute::_1>>{}));
-  struct alignas(128) Storage {
+  struct alignas(128) Storage : O3ScaleCodeScratch<N,Cached> {
     alignas(128) uint8_t low[2][M*Bytes], high[2][M*Bytes], weight[2][N*Bytes];
     float scales[(Cached?32:2*Groups)*N];
   };
@@ -77,11 +79,15 @@ __global__ __launch_bounds__(32*(M==32?2:4)*WN) void adangel_sm80_o3_swizzled(
   extern __shared__ __align__(128) uint8_t buf[];
   auto& s=*reinterpret_cast<typename C::Storage*>(buf);
   if constexpr(Cached) {
-    // Load the CTA's complete G128 scale panel once, coalescing four bytes.
-    // Store group-major so consumers read adjacent columns without bank stride.
+    // First stage tightly packed codes in a bank-swizzled byte layout, then
+    // decode in group-major thread order. Direct vector-load -> group-major
+    // float stores made eight lanes contend for each bank during initialization.
+    using CodesLayout=decltype(cute::composition(cute::Swizzle<3,2,5>{},
+        cute::Layout<cute::Shape<cute::Int<N>,cute::_32>,cute::Stride<cute::_32,cute::_1>>{}));
+    CodesLayout codes_layout;
     int groups=k/128;
-    unsigned first_group=(threadIdx.x%8)*4;
-    for(unsigned col=threadIdx.x/8;col<N;col+=C::Threads/8) {
+    for(unsigned off=threadIdx.x*4;off<N*32;off+=C::Threads*4) {
+      unsigned col=off/32,first_group=off%32;
       if(first_group<groups) {
         const auto* src=ws+(blockIdx.x*N+col)*groups+first_group;
         uint32_t codes=0;
@@ -94,13 +100,16 @@ __global__ __launch_bounds__(32*(M==32?2:4)*WN) void adangel_sm80_o3_swizzled(
             if(first_group+j<groups) codes|=uint32_t(src[j])<<(8*j);
           });
         }
-        o1_static_for<0,4>([&](auto j) {
-          if(first_group+j<groups) {
-            uint32_t code=(codes>>(8*j))&255;
-            uint32_t bits=code?code<<23:0x00400000u;
-            s.scales[(first_group+j)*N+col]=__uint_as_float(Fast?((code-127u)<<23):bits);
-          }
-        });
+        *reinterpret_cast<uint32_t*>(s.scale_codes+codes_layout(col,first_group))=codes;
+      }
+    }
+    __syncthreads();
+    for(unsigned off=threadIdx.x;off<N*32;off+=C::Threads) {
+      unsigned col=off%N,group=off/N;
+      if(group<groups) {
+        uint32_t code=s.scale_codes[codes_layout(col,group)];
+        uint32_t bits=code?code<<23:0x00400000u;
+        s.scales[group*N+col]=__uint_as_float(Fast?((code-127u)<<23):bits);
       }
     }
   }
