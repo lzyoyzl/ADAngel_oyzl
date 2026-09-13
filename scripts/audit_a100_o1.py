@@ -45,7 +45,16 @@ def main():
             resource_no_stack=bool(stack and int(stack[1])==0),
             ptx_async='cp.async' in ptx,
             ptx_int8=bool(re.search(r'mma\.sync[^;]*\.s32\.s8\.s8\.s32',ptx)))
-        functions.append(dict(symbol=symbol,checks=checks,passed=all(checks.values()),resource=resource))
+        # Itanium template arguments: ExponentScale=true, PairMma=false,
+        # MagicCast=true. Match both streaming and non-streaming instances.
+        magic='Lb1ELb0ELb1E' in symbol
+        instruction_counts={op:len(re.findall(r'\b'+op+r'(?:\.|\s)',block))
+                            for op in ('I2F','FADD','FFMA','IMMA','LDSM','LDGSTS','LDL','STL')}
+        if magic:
+            checks['magic_no_i2f']=instruction_counts['I2F']==0
+            checks['magic_has_fadd']=instruction_counts['FADD']>0
+        functions.append(dict(symbol=symbol,checks=checks,passed=all(checks.values()),resource=resource,
+                              instruction_counts=instruction_counts))
     passed=bool(functions) and all(f['passed'] for f in functions)
     (args.output/'audit.json').write_text(json.dumps(dict(binary=binary,passed=passed,functions=functions),indent=2)+'\n')
     print(json.dumps(dict(passed=passed,functions=functions),indent=2))
