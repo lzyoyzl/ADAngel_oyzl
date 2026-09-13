@@ -110,7 +110,7 @@ def main():
                     assert torch.isfinite(y).all()
                     if impl!='o0': torch.testing.assert_close(y,base,rtol=0,atol=0)
                     mse=float((y.double()-ref.double()).square().mean())
-                st={k:stats(v) for k,v in out['timings_ms'].items()}
+                    st={k:stats(v) for k,v in out['timings_ms'].items()}
                     for key,vals in out['timings_ms'].items(): collected[impl].setdefault(key,[]).extend(vals)
                     metric='gemm' if mode=='compute_only' else 'total'
                     medians[impl]=st[metric]['median_ms']
