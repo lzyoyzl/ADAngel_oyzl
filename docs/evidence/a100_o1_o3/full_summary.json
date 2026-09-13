@@ -1,0 +1,672 @@
+{
+  "o1": {
+    "modes": {
+      "conversion_only": {
+        "weight_conversion": {
+          "median_ms": 0.06401536241173744,
+          "mean_ms": 0.06407551933079958
+        },
+        "total": {
+          "median_ms": 0.06401536241173744,
+          "mean_ms": 0.06407551933079958
+        }
+      },
+      "compute_only": {
+        "gemm": {
+          "median_ms": 4.45798397064209,
+          "mean_ms": 4.441002666950226
+        },
+        "total": {
+          "median_ms": 4.463615894317627,
+          "mean_ms": 4.446357349554698
+        }
+      },
+      "cold": {
+        "weight_conversion": {
+          "median_ms": 0.06466303952038288,
+          "mean_ms": 0.06429056078195572
+        },
+        "gemm": {
+          "median_ms": 4.45849609375,
+          "mean_ms": 4.439530710379283
+        },
+        "total": {
+          "median_ms": 4.529664039611816,
+          "mean_ms": 4.510101358095805
+        }
+      },
+      "steady_state": {
+        "gemm": {
+          "median_ms": 4.45849609375,
+          "mean_ms": 4.443840016921361
+        },
+        "total": {
+          "median_ms": 4.464128017425537,
+          "mean_ms": 4.449130674203237
+        }
+      }
+    },
+    "mse_median": 9.82338825329489e-09,
+    "mse_mean": 1.1142038139865581e-08
+  },
+  "o3": {
+    "modes": {
+      "conversion_only": {
+        "weight_conversion": {
+          "median_ms": 0.059479041025042534,
+          "mean_ms": 0.05935295973904431
+        },
+        "activation_conversion": {
+          "median_ms": 0.04104703851044178,
+          "mean_ms": 0.04093973323081931
+        },
+        "total": {
+          "median_ms": 0.10059007629752159,
+          "mean_ms": 0.10030698589980602
+        }
+      },
+      "compute_only": {
+        "gemm": {
+          "median_ms": 1.8718719482421875,
+          "mean_ms": 1.9970559726158779
+        },
+        "total": {
+          "median_ms": 1.8775039911270142,
+          "mean_ms": 2.002517340083917
+        }
+      },
+      "cold": {
+        "weight_conversion": {
+          "median_ms": 0.05951488018035889,
+          "mean_ms": 0.05945429392158985
+        },
+        "activation_conversion": {
+          "median_ms": 0.041034240275621414,
+          "mean_ms": 0.04091114605156084
+        },
+        "gemm": {
+          "median_ms": 1.8718719482421875,
+          "mean_ms": 2.072725305954615
+        },
+        "total": {
+          "median_ms": 1.9824639558792114,
+          "mean_ms": 2.18259197473526
+        }
+      },
+      "steady_state": {
+        "activation_conversion": {
+          "median_ms": 0.04107264056801796,
+          "mean_ms": 0.04099562756406764
+        },
+        "gemm": {
+          "median_ms": 1.8718719482421875,
+          "mean_ms": 1.863914633790652
+        },
+        "total": {
+          "median_ms": 1.9189759492874146,
+          "mean_ms": 1.9110826353232067
+        }
+      }
+    },
+    "mse_median": 0.006653010285119311,
+    "mse_mean": 0.00757884701115429
+  },
+  "o3_throughput_over_o1_paired_median": 2.3821116517220298,
+  "unstable_records": [
+    {
+      "sample_id": "layer_06_o_proj",
+      "variant": "o3",
+      "mode": "steady_state",
+      "bad_stages": {
+        "activation_conversion": 15.941869800814434
+      }
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "variant": "o1",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 27.166675260821833,
+        "total": 27.166675260821833
+      }
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "variant": "o3",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 24.28673623034244,
+        "activation_conversion": 28.7479600725305,
+        "total": 17.964395320314967
+      }
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "variant": "o3",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 37.68653589938452,
+        "total": 37.59299228965656
+      }
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "variant": "o1",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 28.614133534502518,
+        "total": 28.5830982950608
+      }
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "variant": "o1",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 20.739500962746963
+      }
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "activation_conversion": 28.22521564130368,
+        "gemm": 37.02985964225379,
+        "total": 35.24717434378886
+      }
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "variant": "o3",
+      "mode": "steady_state",
+      "bad_stages": {
+        "activation_conversion": 30.316050785609143
+      }
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "variant": "o1",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 29.396769094887983,
+        "total": 29.363636009634643
+      }
+    },
+    {
+      "sample_id": "layer_12_k_proj",
+      "variant": "o3",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 25.8583281810555,
+        "total": 15.717824997096002
+      }
+    },
+    {
+      "sample_id": "layer_12_k_proj",
+      "variant": "o1",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 20.7644900843221,
+        "total": 20.7644900843221
+      }
+    },
+    {
+      "sample_id": "layer_12_k_proj",
+      "variant": "o1",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 27.328143857311588,
+        "total": 27.29718028544412
+      }
+    },
+    {
+      "sample_id": "layer_12_k_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 28.6569024349167,
+        "activation_conversion": 28.012755171343212,
+        "gemm": 29.825032606685266,
+        "total": 29.156619406590963
+      }
+    },
+    {
+      "sample_id": "layer_12_k_proj",
+      "variant": "o1",
+      "mode": "cold",
+      "bad_stages": {
+        "gemm": 27.571652606162605,
+        "total": 27.170229405580887
+      }
+    },
+    {
+      "sample_id": "layer_12_k_proj",
+      "variant": "o1",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 27.053044365018604,
+        "total": 27.02222427490421
+      }
+    },
+    {
+      "sample_id": "layer_12_v_proj",
+      "variant": "o3",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 25.472658013724676,
+        "total": 15.530492948778862
+      }
+    },
+    {
+      "sample_id": "layer_12_v_proj",
+      "variant": "o1",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 28.564724658594653,
+        "total": 28.532478381404193
+      }
+    },
+    {
+      "sample_id": "layer_12_v_proj",
+      "variant": "o1",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 23.237580573970966
+      }
+    },
+    {
+      "sample_id": "layer_12_v_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 24.78765714892073,
+        "activation_conversion": 28.585787278770102
+      }
+    },
+    {
+      "sample_id": "layer_12_v_proj",
+      "variant": "o3",
+      "mode": "steady_state",
+      "bad_stages": {
+        "activation_conversion": 26.239002037802166
+      }
+    },
+    {
+      "sample_id": "layer_12_o_proj",
+      "variant": "o1",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 23.85129473211585,
+        "total": 23.85129473211585
+      }
+    },
+    {
+      "sample_id": "layer_12_o_proj",
+      "variant": "o1",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 28.73599278521109,
+        "total": 28.70313641304468
+      }
+    },
+    {
+      "sample_id": "layer_12_o_proj",
+      "variant": "o1",
+      "mode": "cold",
+      "bad_stages": {
+        "gemm": 24.42899176529206,
+        "total": 24.069608239113634
+      }
+    },
+    {
+      "sample_id": "layer_12_o_proj",
+      "variant": "o1",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 26.3880789843077,
+        "total": 27.435327236039225
+      }
+    },
+    {
+      "sample_id": "layer_18_q_proj",
+      "variant": "o3",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 23.388546484437846,
+        "total": 23.32327645265943
+      }
+    },
+    {
+      "sample_id": "layer_18_q_proj",
+      "variant": "o1",
+      "mode": "cold",
+      "bad_stages": {
+        "gemm": 30.13596526353297,
+        "total": 29.703378331124892
+      }
+    },
+    {
+      "sample_id": "layer_18_q_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "activation_conversion": 25.253549042954297
+      }
+    },
+    {
+      "sample_id": "layer_18_k_proj",
+      "variant": "o3",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "activation_conversion": 22.838980043666172,
+        "total": 9.630222820184443
+      }
+    },
+    {
+      "sample_id": "layer_18_k_proj",
+      "variant": "o1",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 20.86435186631555,
+        "total": 20.86435186631555
+      }
+    },
+    {
+      "sample_id": "layer_18_k_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "activation_conversion": 25.32970582349412
+      }
+    },
+    {
+      "sample_id": "layer_18_v_proj",
+      "variant": "o3",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "activation_conversion": 30.41540653896535,
+        "total": 13.28333432685408
+      }
+    },
+    {
+      "sample_id": "layer_18_v_proj",
+      "variant": "o1",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 24.47809117366346,
+        "total": 24.449559460195065
+      }
+    },
+    {
+      "sample_id": "layer_18_v_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 21.16175139641223,
+        "activation_conversion": 27.051652347020667
+      }
+    },
+    {
+      "sample_id": "layer_18_v_proj",
+      "variant": "o1",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 25.51309736064512,
+        "total": 25.482944911855782
+      }
+    },
+    {
+      "sample_id": "layer_18_o_proj",
+      "variant": "o3",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 22.40243885526039,
+        "activation_conversion": 26.093418831172766,
+        "total": 16.48277501496371
+      }
+    },
+    {
+      "sample_id": "layer_18_o_proj",
+      "variant": "o1",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 25.434651483217007,
+        "total": 25.40504217690785
+      }
+    },
+    {
+      "sample_id": "layer_18_o_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 18.82211348478001,
+        "activation_conversion": 19.538038927797032
+      }
+    },
+    {
+      "sample_id": "layer_18_o_proj",
+      "variant": "o1",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 23.66527006908083
+      }
+    },
+    {
+      "sample_id": "layer_18_o_proj",
+      "variant": "o1",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 19.746533120249815,
+        "total": 19.723921718576182
+      }
+    },
+    {
+      "sample_id": "layer_24_q_proj",
+      "variant": "o1",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 20.928348534291548,
+        "total": 20.928348534291548
+      }
+    },
+    {
+      "sample_id": "layer_24_q_proj",
+      "variant": "o3",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 21.690158137690208,
+        "total": 13.060508115469482
+      }
+    },
+    {
+      "sample_id": "layer_24_q_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 36.18005477519788
+      }
+    },
+    {
+      "sample_id": "layer_24_q_proj",
+      "variant": "o1",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 38.446819757986376,
+        "total": 38.40851516427245
+      }
+    },
+    {
+      "sample_id": "layer_24_k_proj",
+      "variant": "o3",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 22.069142599485566,
+        "total": 13.445827916664763
+      }
+    },
+    {
+      "sample_id": "layer_24_k_proj",
+      "variant": "o1",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 19.970017747464368,
+        "total": 19.970017747464368
+      }
+    },
+    {
+      "sample_id": "layer_24_k_proj",
+      "variant": "o1",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 24.00698135528547,
+        "total": 23.97871733336738
+      }
+    },
+    {
+      "sample_id": "layer_24_k_proj",
+      "variant": "o3",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 43.5515562182087,
+        "total": 42.57710703054948
+      }
+    },
+    {
+      "sample_id": "layer_24_v_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 38.98023052224263,
+        "gemm": 20.732672213481873,
+        "total": 15.575543930612762
+      }
+    },
+    {
+      "sample_id": "layer_24_o_proj",
+      "variant": "o3",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 22.027799948113557,
+        "total": 21.600018973174002
+      }
+    },
+    {
+      "sample_id": "layer_24_o_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 31.510515650979983,
+        "gemm": 18.028547306103,
+        "total": 13.90052893931574
+      }
+    },
+    {
+      "sample_id": "layer_24_o_proj",
+      "variant": "o1",
+      "mode": "cold",
+      "bad_stages": {
+        "gemm": 33.919674244910624,
+        "total": 34.59331709658427
+      }
+    },
+    {
+      "sample_id": "layer_31_q_proj",
+      "variant": "o3",
+      "mode": "conversion_only",
+      "bad_stages": {
+        "weight_conversion": 24.20660869955511,
+        "total": 14.696469161935797
+      }
+    },
+    {
+      "sample_id": "layer_31_q_proj",
+      "variant": "o1",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 10.612857810053104,
+        "total": 10.600842344484647
+      }
+    },
+    {
+      "sample_id": "layer_31_q_proj",
+      "variant": "o1",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 25.58173712752847
+      }
+    },
+    {
+      "sample_id": "layer_31_q_proj",
+      "variant": "o3",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 36.3497968377704,
+        "total": 35.57656390063551
+      }
+    },
+    {
+      "sample_id": "layer_31_q_proj",
+      "variant": "o1",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 21.117510496116328,
+        "total": 21.09310132919544
+      }
+    },
+    {
+      "sample_id": "layer_31_k_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "weight_conversion": 27.556658554468903
+      }
+    },
+    {
+      "sample_id": "layer_31_k_proj",
+      "variant": "o3",
+      "mode": "steady_state",
+      "bad_stages": {
+        "activation_conversion": 28.296299180958883,
+        "gemm": 28.12898947349005,
+        "total": 27.48136284726029
+      }
+    },
+    {
+      "sample_id": "layer_31_v_proj",
+      "variant": "o3",
+      "mode": "cold",
+      "bad_stages": {
+        "gemm": 34.642783635534,
+        "total": 33.19157935298537
+      }
+    },
+    {
+      "sample_id": "layer_31_v_proj",
+      "variant": "o3",
+      "mode": "steady_state",
+      "bad_stages": {
+        "gemm": 36.7502013117022,
+        "total": 36.466409003988495
+      }
+    },
+    {
+      "sample_id": "layer_31_o_proj",
+      "variant": "o1",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 41.81538497682983,
+        "total": 41.78078374951064
+      }
+    },
+    {
+      "sample_id": "layer_31_o_proj",
+      "variant": "o3",
+      "mode": "compute_only",
+      "bad_stages": {
+        "gemm": 40.25513793575218,
+        "total": 40.182801353435394
+      }
+    }
+  ]
+}
