@@ -1,5 +1,11 @@
 # A100 O0/O1/O3 对照实验：FP16 baseline 与原生 INT4
 
+> 历史基线说明：本报告的 O1 约4.39ms属于优化前 SM80 `baseline`，O3/O1约2.4×也只
+> 对该版本成立。当前 SM80 O1 已新增独立的精确优化实现，见
+> [A100 O1 优化与验收](a100_o1_optimization.md)。复现本报告的旧 O1 时应显式传入
+> `implementation="baseline"`；不带该参数的原生接口现在使用 `production`。
+> O0、O3及RTX5090后端不因本轮O1优化而替换。
+
 **新增 O0 结论**：同进程三路交错 GEMM median 为 O0 `0.603136 ms`、O1 `4.390912 ms`、
 O3 `1.833984 ms`。当前 O3 快于 O1，但仍慢于 cuBLASLt FP16 O0。O0 转换与端到端测量、
 数值验证和稳定性限制见“补充 FP16 O0 baseline”一节。

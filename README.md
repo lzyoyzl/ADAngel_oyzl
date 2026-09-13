@@ -7,8 +7,8 @@
 2. GEMM-only 与 cold/steady-state 端到端性能；
 3. O1、O2、O3、O4 相对 O0 输出的 MSE。
 
-显存占用、Roofline 和完整 GPU Profiling 不属于本实验。仓库只提供一次性的
-SASS/PTX 指令审计，防止某个实现静默退化为 CUDA Core 或软件模拟。
+显存占用和Roofline不属于上述主结果。SASS/PTX指令审计用于确认实际执行路径；
+后续优化中的NCU报告只用于瓶颈诊断，不替代普通CUDA Event性能测量。
 
 > **正式结果的硬约束**：必须在 RTX 5090 上用 `sm_120a` 原生扩展生成。
 > Python 参考后端用于正确性测试和开发，不允许写入正式性能结果。
@@ -32,17 +32,22 @@ python -m adangel doctor --require-native
 
 A100 的环境、构建和测试见 [A100 O0/O1/O3 对照实验](docs/a100_o1_o3_experiment.md)。
 两种架构的二进制需要分别编译，结果分别存储；不能用 A100 结果替换 RTX 5090 结果。
-A100 原生 U4/S4 SASS 与数值验证已通过；24 样本交错 compute-only 测量中 O3/O1
+A100 原生 U4/S4 SASS 与数值验证已通过；**旧 O1 baseline** 的24样本交错 compute-only 测量中 O3/O1
 吞吐比约为 2.41×。这是独立 SM80 移植实现的结果，不是架构峰值比；四模式全量测量的
 外部负载和 CV 异常在报告中单独说明。5090 默认重编译及 131 项回归测试也已通过。
 已补测 FP16 O0：同进程三路交错的 GEMM median 分别为 O0 `0.603136 ms`、
-O1 `4.390912 ms`、O3 `1.833984 ms`。这说明当前 A100 O3 虽快于 O1，仍慢于
+旧 O1 `4.390912 ms`、O3 `1.833984 ms`。这说明该历史版本的 A100 O3 虽快于旧 O1，仍慢于
 cuBLASLt O0；不是硬件峰值比较。三路中的 O1/O3 CV 异常和 O0 四模式结果见报告。
 
-A100 O1 的后续优化与独立验收见 [A100 O1 优化](docs/a100_o1_optimization.md)。
-候选保留原 K32/FMA 数值顺序，测试 swizzled shared-memory、CTA 内 scale 共享、
-精确 UE8M0 位解码及不同 occupancy 配置；旧 `baseline` 继续保留作同进程对照。
+A100 O1 的当前优化与独立验收见 [A100 O1 优化](docs/a100_o1_optimization.md)。
+SM80 的 `implementation="production"` 在4096³选择 `swizzle_128x64_k128_magic`：
+保留原 K32/FMA 数值顺序，采用 swizzled shared-memory、CTA 内 scale 共享、
+精确 UE8M0 位解码和精确 bias-bit partial 转换；旧 `baseline` 继续保留作同进程对照。
+不能继续将旧 O1 的4.39ms或旧 O3/O1比值作为优化后结果；O3路径不变。
 这些实验只修改 SM80 后端，不改变上述 5090 production。
+本轮24样本同进程配对：旧O1 `4.444928 ms` → 当前O1 `0.993280 ms`，配对加速
+约`4.47×`，输出逐位一致；同轮O0 `0.606720 ms`，**仍未超过O0**。四模式及外部负载/
+CV异常另见报告，不将较快的配对结果与另一轮端到端数据混合计算。
 
 ### RTX 5090 实现
 
