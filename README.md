@@ -30,11 +30,14 @@ ADANGEL_BUILD_CUDA=1 ADANGEL_CUDA_TARGET=sm120 \
 python -m adangel doctor --require-native
 ```
 
-A100 的环境、构建和测试见 [A100 O1/O3 对照实验](docs/a100_o1_o3_experiment.md)。
+A100 的环境、构建和测试见 [A100 O0/O1/O3 对照实验](docs/a100_o1_o3_experiment.md)。
 两种架构的二进制需要分别编译，结果分别存储；不能用 A100 结果替换 RTX 5090 结果。
 A100 原生 U4/S4 SASS 与数值验证已通过；24 样本交错 compute-only 测量中 O3/O1
 吞吐比约为 2.41×。这是独立 SM80 移植实现的结果，不是架构峰值比；四模式全量测量的
 外部负载和 CV 异常在报告中单独说明。5090 默认重编译及 131 项回归测试也已通过。
+已补测 FP16 O0：同进程三路交错的 GEMM median 分别为 O0 `0.603136 ms`、
+O1 `4.390912 ms`、O3 `1.833984 ms`。这说明当前 A100 O3 虽快于 O1，仍慢于
+cuBLASLt O0；不是硬件峰值比较。三路中的 O1/O3 CV 异常和 O0 四模式结果见报告。
 
 ### RTX 5090 实现
 

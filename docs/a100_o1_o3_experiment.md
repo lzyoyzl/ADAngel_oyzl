@@ -1,4 +1,8 @@
-# A100 O1/O3 原生 INT4 对照实验
+# A100 O0/O1/O3 对照实验：FP16 baseline 与原生 INT4
+
+**新增 O0 结论**：同进程三路交错 GEMM median 为 O0 `0.603136 ms`、O1 `4.390912 ms`、
+O3 `1.833984 ms`。当前 O3 快于 O1，但仍慢于 cuBLASLt FP16 O0。O0 转换与端到端测量、
+数值验证和稳定性限制见“补充 FP16 O0 baseline”一节。
 
 状态：SM80 编译、96 项正确性检查、内存检查、原生 INT4 指令审计和 24 样本测量已完成。
 运行中出现外部 GPU 负载，192 条记录中 62 条至少一个阶段 CV≥3%；不能将这次测量
@@ -234,6 +238,144 @@ python scripts/measure_a100_paired_compute.py \
 
 本轮完成的是原生路径与数值正确性验证，以及带运行条件说明的性能测量。若需要发布严格的
 独占 GPU 延迟，应在资源协调后重新运行同一命令；不需要改代码、重采数据或删除本次结果。
+
+## 补充 FP16 O0 baseline：同进程三路对照
+
+O0 从与 O1 相同的 prepared INT8 激活、G32 MXFP4 权重出发，分别反量化成 FP16，
+然后执行一次 cuBLASLt FP16×FP16、FP32 累加/输出 GEMM。**不是直接拿原始 FP16 trace
+做乘法**，因此没有改变之前 O0 参考的数值定义。
+复用 `_sm80.benchmark_o0` 中已有的 O0 实现，本次没有修改或重新编译 CUDA 后端。
+
+### O0/O1/O3 交错 GEMM-only
+
+运行目录为 `runs/a100_o0_o1_o3_paired_v1`。同一进程中对同一份 24 样本进行三路轮换：
+每样本 10 轮，每后端每轮预热 5 次、测量 20 次，按三种后端的 6 种排列循环运行。
+各后端每样本合计 200 次测量，未剔除任何计时值。
+
+| 后端 | GEMM median ms | 配对吞吐 / O0 | 24 样本聚合 CV 范围 | CV≥3% 样本数 |
+|---|---:|---:|---:|---:|
+| O0：cuBLASLt FP16 | 0.603136 | 1.000000× | 0.487%–1.843% | 0/24 |
+| O1：INT8/K32 | 4.390912 | 0.137073× | 1.066%–3.653% | 5/24 |
+| O3：两路原生 INT4/G128 | 1.833984 | 0.327290× | 2.533%–5.685% | 22/24 |
+
+吞吐比先在同一轮计算 `t_O0/t_variant`，再取每样本 10 轮 median 和 24 样本 median。
+因此不要求它恰好等于表中两个跨样本 median 延迟的比。
+本次三路测量的 O3/O1 配对吞吐比为 `2.403491×`，与前面的独立两路对照相近。
+
+O0 的 24 组聚合计时均稳定，但本轮 O1/O3 有上述 CV 异常，不能称三路均通过 CV 门槛。
+三路同进程运行、不同 kernel 的功耗/缓存状态、未锁频与可能的外部负载均属于本次测量条件；
+未单独隔离其影响，不能把每一个波动都认定为外部进程导致。
+
+### 本轮输出 MSE
+
+| 后端 | MSE median | MSE mean |
+|---|---:|---:|
+| O0 | 0 | 0 |
+| O1 | 9.823388e-09 | 1.114204e-08 |
+| O3 | 6.653010e-03 | 7.578847e-03 |
+
+本轮各样本最后一轮的 O0 FP32 输出作为参考，FP64 reduction；O1/O3 的结果与前一轮一致。
+O0 的自比较 MSE=0 不是它相对原始未量化 FP16 模型完全无误差的证明。
+
+### 为什么 O0 仍然更快
+
+这组结果支持：**A100 原生 INT4 使当前 O3 快于当前 O1，但 O3 仍明显慢于 O0。**
+O0 采用优化成熟的 cuBLASLt GEMM，反量化已移出 GEMM-only；其主循环不需要软件逐 K32/
+G128 重置 partial、拆分重构和应用 scale。当前 SM80 O1/O3 则是前文明确列出的移植 kernel，
+没有完成与 cuBLASLt 同等级的调优。较低位宽的单条指令潜在吞吐，并不等于整个复合 kernel
+必然更快。这里不能据此声称“INT4 硬件比 FP16 硬件慢”，也不能把结果归因于单一瓶颈。
+
+本次 O0 实际选用 cuBLASLt algorithm `6`，workspace 为 `0`，split-K 为 `1`，
+`numerical_impl_flags=66050`，`CUBLAS_COMPUTE_32F`，FP16 输入、FP32 输出。
+后端在调用前根据 cuBLASLt numerical implementation flags 检查 HMMA/FP16/FP32 属性；
+这里记录的是库算法属性，不是另外一次 O0 SASS 反汇编审计。
+
+复现三路对照：
+
+```bash
+python scripts/measure_a100_paired_compute.py --include-o0 \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --output runs/a100_o0_o1_o3_paired_new \
+  --rounds 10 --repeats 20 --warmup 5
+```
+
+本节证据：[三路汇总](evidence/a100_o0/paired_summary.json)、
+[720 条逐轮原始记录及 O0 算法信息](evidence/a100_o0/paired_rounds.jsonl)、
+[测量配置](evidence/a100_o0/paired_environment.json)。
+
+### O0 独立四模式测量
+
+运行目录为 `runs/a100_o0_baseline_v2`；每样本预热 50 次、测量 200 次，转换 inner=100。
+仍为 24 个样本，下面每个 median/mean 先基于单样本的 median 再跨样本汇总。
+这些数据与上面的三路交错测量属于**不同运行与调度口径**，不相互替换或跨表相加。
+
+#### Conversion-only
+
+| 阶段 | Median ms | Mean ms |
+|---|---:|---:|
+| MXFP4 权重→FP16 | 0.063130 | 0.062967 |
+| INT8 激活→FP16 | 0.049167 | 0.048985 |
+| W+A 转换合计 | 0.112845 | 0.112406 |
+
+W/A 各自在一个 CUDA Event 区间中重复 100 次后摊销。O0 的转换合计是
+**W+A 两个 kernel 一起重复 100 次的独立测量**，不是两个独立 median 之和。
+它与前文 SM80 O1/O3 脚本“独立阶段时间相加”的 conversion-only 合计定义有区别；
+端到端对比均应采用直接测量的 cold/steady-state，而不是这两个合计做强行比较。
+
+#### Compute-only
+
+| 阶段 | Median ms | Mean ms |
+|---|---:|---:|
+| FP16 GEMM | 0.761344 | 0.757888 |
+
+#### Cold total
+
+| 阶段 | Median ms | Mean ms |
+|---|---:|---:|
+| W 反量化 + A 反量化 + GEMM | 0.852480 | 0.842411 |
+
+#### Steady-state total
+
+| 阶段 | Median ms | Mean ms |
+|---|---:|---:|
+| 缓存 W_fp16，只执行 A 反量化 + GEMM | 0.800256 | 0.797355 |
+
+**稳定性说明**：O0 独立四模式的 96 条记录中有 57 条至少一个阶段 CV≥3%。
+分别为 conversion-only `0/24`、compute-only `18/24`、cold `20/24`、steady-state `19/24`。
+数据原样保留，不能标记为全量 CV 验收通过。
+
+该运行的样本起始快照从约 `1395 MHz / 50°C` 变化到 `1320 MHz / 70°C`；三路交错运行的
+对应首尾快照均为 `1410 MHz`、温度约 `40→60°C`。两次运行这些快照未见其他计算进程。
+时钟/温度、测量持续时间以及不同前序工作可能影响结果，但这些快照并未覆盖每个 kernel，
+所以没有证据将 `0.761344 ms` 与 `0.603136 ms` 的差额全部归因于某一因素。
+**横向比较 O0/O1/O3 时优先使用同次三路交错表；四模式表用于如实记录本次完整路径开销。**
+
+### O0 正确性与复现
+
+- 16 项合成检查通过：128×192×256 与正式 4096³，随机/全零输入、四种模式。
+- 所有 24 个真实样本、四种模式均与独立参考对照通过。
+- 反量化 A/W 与 Python FP16 参考逐元素一致；输出对 FP32 matmul 参考满足
+  `rtol=1e-3, atol=1e-3`，参考 matmul 禁用 TF32。
+- 真实数据最大绝对差为 `0.0010986328125`，合成检查为 `0.00019073486328125`。
+  验收使用上述相对/绝对组合容差，不能误写成所有绝对误差均小于 0.001。
+- 输出为 finite FP32；四模式共 96 次调用均选择上述 algorithm 6。
+- 使用同一 prepared manifest，SHA-256：
+  `05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c`。
+- `_sm80` 二进制 SHA-256 与前轮完全一致；本次仅增加/扩展 Python 测量脚本。
+
+```bash
+python scripts/measure_a100_o0.py \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --output runs/a100_o0_baseline_new \
+  --warmup 50 --repeats 200 --inner 100
+```
+
+证据：[96 条原始四模式记录](evidence/a100_o0/full_results.jsonl)、
+[汇总及所有 CV 异常](evidence/a100_o0/full_summary.json)、
+[16 项合成检查](evidence/a100_o0/validation.json)、[环境](evidence/a100_o0/environment.json)、
+[24 样本输入 manifest](evidence/a100_o0/data_manifest.json)、
+[四模式 GPU 快照](evidence/a100_o0/full_gpu_snapshots.jsonl)、
+[三路交错 GPU 快照](evidence/a100_o0/paired_gpu_snapshots.jsonl)。
 
 ## 可核查证据与复现
 

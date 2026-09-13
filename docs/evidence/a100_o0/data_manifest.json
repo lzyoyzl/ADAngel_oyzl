@@ -1,0 +1,412 @@
+{
+  "version": 3,
+  "format": "adangel-prepared-mxfp4-k32-g128-q4",
+  "matrix_shape": [
+    4096,
+    4096,
+    4096
+  ],
+  "dtypes": {
+    "A_int8": "torch.int8",
+    "A_scale": "torch.float32",
+    "W_mxfp4": "torch.uint8",
+    "W_scale": "torch.uint8",
+    "W_mxfp4_g128": "torch.uint8",
+    "W_scale_g128": "torch.uint8",
+    "W_q4": "torch.uint8"
+  },
+  "quantization": {
+    "activation": "int8_symmetric_per_row",
+    "weight": "mxfp4_e2m1_ue8m0_k32",
+    "arbitrary_bit_weight": "mxfp4_e2m1_ue8m0_k128_to_q4_rne",
+    "rounding": "round_ties_to_even"
+  },
+  "trace": {
+    "source": "external_fp16_prefill_trace",
+    "batch_size": 1,
+    "valid_tokens": 4096,
+    "layers": [
+      0,
+      6,
+      12,
+      18,
+      24,
+      31
+    ],
+    "projections": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj"
+    ]
+  },
+  "source_trace": {
+    "manifest_file": "trace_manifest.json",
+    "manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+    "format": "adangel-raw-fp16-prefill-trace",
+    "dataset": {
+      "corpus_joiner": "\n\n",
+      "corpus_sha256": "aee724fa58bfbdeb3fc6803297fb6bab27b203d7c40b39ddef9b9770e5d52fe5",
+      "dataset": "Salesforce/wikitext",
+      "fingerprint": "5d4fb603254a7a5b",
+      "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+      "row_count": 36718,
+      "split": "train",
+      "subset": "wikitext-2-raw-v1"
+    },
+    "tokenization": {
+      "seed": 20250805,
+      "start_index": 2018830,
+      "sampled_tokens": 4095,
+      "prepend_bos": true,
+      "bos_token_id": 1,
+      "corpus_token_count": 2874558,
+      "input_ids_sha256": "ca182ac407072a7ff591bbedcdfe7de1bb5977ff70bae75c626deeb324dfae14"
+    },
+    "model": {
+      "artifact_sha256": {
+        "config.json": "8d9d4ff048003935b5bd4da8f0002e9cc4ea768a56089636a7141345b4627b3b",
+        "generation_config.json": "03ad60d1e261480774937329d6b1bcf5ea5db925360e59201f57476078bf6c44",
+        "model-00001-of-00003.safetensors": "f141ed9aef5938c0add75c40402fad4d1cea3b1b7bac72d5d67bfea03f790871",
+        "model-00002-of-00003.safetensors": "206a7c14919e274e319a72f664694190faa2a73cf0bb53c137811bab9890b2ef",
+        "model-00003-of-00003.safetensors": "23556eb8dde4a20617bec38e50711c68fd1fdcfae328ddb07d5325a0f5d4b2bf",
+        "model.safetensors.index.json": "091fdb60b8ee3713df38fd6f9849c3aa82d7eeeb5f6d224a77139543b1db8652",
+        "rev_sha.txt": "029980d49c642143a5aad1695101040b329b349f3cf6dbd24dca29b1e1de2e82",
+        "special_tokens_map.json": "6fa06efa2785e450051989a6f8fb4416b10149ded485ddd3f127a40734f5cfd0",
+        "tokenizer.json": "bf467c9e0f536bda271283c6ef85eb1a943e3196b621c8a912d64953b205df83",
+        "tokenizer.model": "9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+        "tokenizer_config.json": "49395378f13f1f88fa2b55e3c93f72b4e53032af94bd35b126d8b0594e52d309"
+      },
+      "configured_name": "meta-llama/Llama-2-7b-hf",
+      "hidden_size": 4096,
+      "local_directory_name": "llama-2-7b-hf",
+      "max_position_embeddings": 4096,
+      "model_type": "llama",
+      "num_attention_heads": 32,
+      "num_hidden_layers": 32,
+      "num_key_value_heads": 32
+    },
+    "runtime": {
+      "accelerate": "1.4.0",
+      "compute_capability": [
+        9,
+        0
+      ],
+      "cuda_available": true,
+      "datasets": "3.3.2",
+      "driver": "575.57.08",
+      "gpu": "NVIDIA H100 80GB HBM3",
+      "gpu_total_memory_bytes": 85017886720,
+      "platform": "Linux-5.4.0-200-generic-x86_64-with-glibc2.31",
+      "protobuf": "5.29.3",
+      "python": "3.10.20",
+      "pyyaml": "6.0.2",
+      "safetensors": "0.5.3",
+      "sentencepiece": "0.2.0",
+      "torch": "2.7.1+cu128",
+      "torch_cuda": "12.8",
+      "transformers": "4.49.0"
+    },
+    "inference": {
+      "attention_implementation": "sdpa",
+      "base_model_only": true,
+      "dtype": "fp16",
+      "local_files_only": true,
+      "use_cache": false
+    },
+    "environment_source": {
+      "commit": "80888257f8f1ac1a5cf84659dbfe84e36c60a45c",
+      "project": "tensor_hook"
+    }
+  },
+  "samples": [
+    {
+      "sample_id": "layer_00_q_proj",
+      "file": "layer_00_q_proj.pt",
+      "sha256": "36577b8081adc9190b6b22a705a53ee39ef3e1d30c03823c5bde633819358c02",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 0,
+      "projection": "q_proj"
+    },
+    {
+      "sample_id": "layer_00_k_proj",
+      "file": "layer_00_k_proj.pt",
+      "sha256": "27e59543d5d92a935d43447288a5e59943d219a2be3bbd46a3268dff63e015d2",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 0,
+      "projection": "k_proj"
+    },
+    {
+      "sample_id": "layer_00_v_proj",
+      "file": "layer_00_v_proj.pt",
+      "sha256": "f05fdcfb21e82da9228ca063a1d02e7615e5aab59dfaa735bd4355a1f97b3fd8",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 0,
+      "projection": "v_proj"
+    },
+    {
+      "sample_id": "layer_00_o_proj",
+      "file": "layer_00_o_proj.pt",
+      "sha256": "1d52f1d7340dcce609f42a3558db78d88be1a6660105ec1bc58e1cda775bb883",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 0,
+      "projection": "o_proj"
+    },
+    {
+      "sample_id": "layer_06_q_proj",
+      "file": "layer_06_q_proj.pt",
+      "sha256": "e4166ee1a3d082a4414c32d917762c51e042b6356820419000cd18cc3c56a5a4",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 6,
+      "projection": "q_proj"
+    },
+    {
+      "sample_id": "layer_06_k_proj",
+      "file": "layer_06_k_proj.pt",
+      "sha256": "9c0b7b9a1fc02a798dc6f26e1d06298602a74f88a7c86d6c908f65f25525f503",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 6,
+      "projection": "k_proj"
+    },
+    {
+      "sample_id": "layer_06_v_proj",
+      "file": "layer_06_v_proj.pt",
+      "sha256": "7e20650637775e2363706f2ee65cad298dbd6a15e3a6378fd39b1f710f34721e",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 6,
+      "projection": "v_proj"
+    },
+    {
+      "sample_id": "layer_06_o_proj",
+      "file": "layer_06_o_proj.pt",
+      "sha256": "870fd7fc23333e114084b7f22da371ead5afaf297da32a48e970b5f254e2ceb7",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 6,
+      "projection": "o_proj"
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "file": "layer_12_q_proj.pt",
+      "sha256": "eba0e72a7b9a5902a81cf0e7f950d90bf22864d617ec12fdec7ecb36f04f5fc7",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 12,
+      "projection": "q_proj"
+    },
+    {
+      "sample_id": "layer_12_k_proj",
+      "file": "layer_12_k_proj.pt",
+      "sha256": "e3e400669613b863fdbf7e795390f7ddb6da9ad78110d4bfa1311ee84e1cb18e",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 12,
+      "projection": "k_proj"
+    },
+    {
+      "sample_id": "layer_12_v_proj",
+      "file": "layer_12_v_proj.pt",
+      "sha256": "d466af070f71f6be1360e6480aab9d0ae6149bfb4b5cf102c42e3ee7b12dff72",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 12,
+      "projection": "v_proj"
+    },
+    {
+      "sample_id": "layer_12_o_proj",
+      "file": "layer_12_o_proj.pt",
+      "sha256": "50cbc9b1657ec21085e0cd24fea5ff59eee67c8f0d77bea4a9afa37582d2091d",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 12,
+      "projection": "o_proj"
+    },
+    {
+      "sample_id": "layer_18_q_proj",
+      "file": "layer_18_q_proj.pt",
+      "sha256": "2f77a952e4114b6c1141ad0f466a89fc1576c3a8ec33c42ccd4c399031f19828",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 18,
+      "projection": "q_proj"
+    },
+    {
+      "sample_id": "layer_18_k_proj",
+      "file": "layer_18_k_proj.pt",
+      "sha256": "fffe352aa553a4692986d25da973cabe056f34a22baf6ae98c7a713190ca3d78",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 18,
+      "projection": "k_proj"
+    },
+    {
+      "sample_id": "layer_18_v_proj",
+      "file": "layer_18_v_proj.pt",
+      "sha256": "fa4afdc36a126ebc70a6dbae3b691095620b9966513d120fd50ae999c2f3c7f7",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 18,
+      "projection": "v_proj"
+    },
+    {
+      "sample_id": "layer_18_o_proj",
+      "file": "layer_18_o_proj.pt",
+      "sha256": "ecc8c27b4f5d329d50782c3f94e2ccaf211c6b1003edb3eee5b4dac0c6178d74",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 18,
+      "projection": "o_proj"
+    },
+    {
+      "sample_id": "layer_24_q_proj",
+      "file": "layer_24_q_proj.pt",
+      "sha256": "97d4660616c29e9699d61ba8f1a11fae6012b1026cdb33f58ee55a955fca2b88",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 24,
+      "projection": "q_proj"
+    },
+    {
+      "sample_id": "layer_24_k_proj",
+      "file": "layer_24_k_proj.pt",
+      "sha256": "70eec3d8831f019b19fed058db3bbbfd8479816bf6d5fbcd1f44186afec6d074",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 24,
+      "projection": "k_proj"
+    },
+    {
+      "sample_id": "layer_24_v_proj",
+      "file": "layer_24_v_proj.pt",
+      "sha256": "01664a091537182ca759b5f3a30dc3b4c5e6ebdfd422e048a6ef57f646479e59",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 24,
+      "projection": "v_proj"
+    },
+    {
+      "sample_id": "layer_24_o_proj",
+      "file": "layer_24_o_proj.pt",
+      "sha256": "6cccc412b53c19238ab40eb22e854530a246e43ff88aad0b6128c15cfb67d556",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 24,
+      "projection": "o_proj"
+    },
+    {
+      "sample_id": "layer_31_q_proj",
+      "file": "layer_31_q_proj.pt",
+      "sha256": "327724cf8e1f7e09d40bd0afc34f9952b43941bec16871c013f820c2cfe97943",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 31,
+      "projection": "q_proj"
+    },
+    {
+      "sample_id": "layer_31_k_proj",
+      "file": "layer_31_k_proj.pt",
+      "sha256": "12ac4891948272e666ee0da518fb417f8294b7aa7d5582a578079c341f075f2c",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 31,
+      "projection": "k_proj"
+    },
+    {
+      "sample_id": "layer_31_v_proj",
+      "file": "layer_31_v_proj.pt",
+      "sha256": "45ae753d03cbffc9755e0c99beabc9757efc75c0d83b5db4fa3c4b2e3c7916a4",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 31,
+      "projection": "v_proj"
+    },
+    {
+      "sample_id": "layer_31_o_proj",
+      "file": "layer_31_o_proj.pt",
+      "sha256": "e29475fd33414783b07eca21a213314e3b4f49d926133a39dc2ec9f9d7efce4f",
+      "shape": [
+        4096,
+        4096,
+        4096
+      ],
+      "layer": 31,
+      "projection": "o_proj"
+    }
+  ]
+}
