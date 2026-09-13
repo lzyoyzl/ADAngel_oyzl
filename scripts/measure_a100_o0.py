@@ -51,7 +51,9 @@ def main():
                timing="Existing O0 dual timing; conversion-only total batches W+A together")
     (args.output / "environment.json").write_text(json.dumps(env, indent=2) + "\n")
     validations = []
-    for m, n, k in ((128,192,256), (192,128,4096)):
+    # Use the actual experiment shape for long K. For skinny long-K matrices
+    # cuBLASLt may offer only split-K heuristics, rejected by the existing O0 contract.
+    for m, n, k in ((128,192,256), (4096,4096,4096)):
         for zero in (False, True):
             torch.manual_seed(406)
             a = torch.randint(-127,128,(m,k),device="cuda",dtype=torch.int8)
