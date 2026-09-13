@@ -44,6 +44,8 @@ __device__ void copy16(void* dst, const void* src) {
   asm volatile("cp.async.cg.shared.global [%0], [%1], 16;" ::
       "r"(address), "l"(src) : "memory");
 }
+
+#include "o1_optimized.cuh"
 template<bool Split>
 __device__ void prefetch(Storage& s, int slot, int group,
     const uint8_t* a, const uint8_t* b, int m, int n, int k) {
@@ -176,11 +178,15 @@ template<class F> std::vector<float> batch(F f,int repeats,int inner,cudaStream_
 }
 
 py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor as,
-    at::Tensor w,at::Tensor ws,int warmup,int repeats,int inner) {
+    at::Tensor w,at::Tensor ws,int warmup,int repeats,int inner,std::string implementation) {
   TORCH_CHECK(variant=="o1"||variant=="o3","variant must be o1 or o3");
   TORCH_CHECK(mode=="conversion_only"||mode=="compute_only"||mode=="cold"||mode=="steady_state","invalid mode");
   TORCH_CHECK(warmup>=0&&repeats>0&&inner>0,"invalid repetitions");
   bool split=variant=="o3";
+  TORCH_CHECK(implementation=="baseline" || (!split && (
+      implementation=="swizzle_64x64_k128" || implementation=="swizzle_128x64_k128" ||
+      implementation=="swizzle_128x128_k128" || implementation=="swizzle_128x64_k64")),
+      "unknown implementation or O1-only candidate requested for O3");
   TORCH_CHECK(a.is_cuda()&&as.is_cuda()&&w.is_cuda()&&ws.is_cuda(),"CUDA tensors required");
   TORCH_CHECK(a.device()==as.device()&&a.device()==w.device()&&a.device()==ws.device(),"device mismatch");
   TORCH_CHECK(a.dim()==2&&w.dim()==2&&as.dim()==1&&ws.dim()==2,"invalid ranks");
@@ -189,6 +195,13 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   int m=a.size(0),k=a.size(1),n=w.size(0),g=split?128:32;
   TORCH_CHECK(m>0&&n>0&&k>0&&m%TM==0&&n%TN==0&&k%(split?128:64)==0,"aligned M/N64 and K64(O1)/K128(O3) required");
   TORCH_CHECK(as.size(0)==m&&w.size(1)==k/2&&ws.size(0)==n&&ws.size(1)==k/g,"shape mismatch");
+  int tile_m=TM,tile_n=TN,tile_k=split?128:64;
+  if(implementation!="baseline") {
+    tile_m=implementation=="swizzle_64x64_k128"?64:128;
+    tile_n=implementation=="swizzle_128x128_k128"?128:64;
+    tile_k=implementation=="swizzle_128x64_k64"?64:128;
+    TORCH_CHECK(m%tile_m==0&&n%tile_n==0&&k%tile_k==0,"candidate tile alignment required");
+  }
   c10::cuda::CUDAGuard guard(a.device());
   cudaDeviceProp prop; check(cudaGetDeviceProperties(&prop,a.get_device()));
   TORCH_CHECK(prop.major==8&&prop.minor==0,"this experiment requires SM80 A100");
@@ -199,12 +212,20 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto out=at::empty({m,n},as.options());
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
+  if(implementation=="swizzle_64x64_k128") o1_ampere_configure<64,64,128>();
+  if(implementation=="swizzle_128x64_k128") o1_ampere_configure<128,64,128>();
+  if(implementation=="swizzle_128x128_k128") o1_ampere_configure<128,128,128>();
+  if(implementation=="swizzle_128x64_k64") o1_ampere_configure<128,64,64>();
   auto cvw=[&](){if(split) adangel_launch_mxfp4_to_q4(w,wa,stream); else adangel_launch_mxfp4_to_int8(w,wa,stream);};
   auto cva=[&](){if(split) adangel_launch_split_int8_to_int4(a,aa,stream);};
   auto gemm=[&](){
     dim3 grid(n/TN,m/TM);
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
     if(split) adangel_sm80_grouped_gemm<true><<<grid,THREADS,0,stream>>>(ap,bp,as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
+    else if(implementation=="swizzle_64x64_k128") o1_ampere_launch<64,64,128>(aa,wa,as,ws,out,stream);
+    else if(implementation=="swizzle_128x64_k128") o1_ampere_launch<128,64,128>(aa,wa,as,ws,out,stream);
+    else if(implementation=="swizzle_128x128_k128") o1_ampere_launch<128,128,128>(aa,wa,as,ws,out,stream);
+    else if(implementation=="swizzle_128x64_k64") o1_ampere_launch<128,64,64>(aa,wa,as,ws,out,stream);
     else adangel_sm80_grouped_gemm<false><<<grid,THREADS,0,stream>>>(ap,bp,as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
     check(cudaGetLastError());
   };
@@ -237,12 +258,15 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   timings["total"]=total;
   py::dict meta;
   meta["architecture"]="sm80";meta["variant"]=variant;
-  meta["cta_tile"]=py::make_tuple(TM,TN,split?128:64);
+  meta["cta_tile"]=py::make_tuple(tile_m,tile_n,tile_k);
+  meta["implementation"]=implementation;
+  meta["scale_storage"]=implementation=="baseline"?"global_per_fragment":"shared_per_cta_column_group";
+  meta["smem_swizzle"]=implementation!="baseline";
   meta["pipeline_stages"]=STAGES;meta["threads"]=THREADS;
   meta["data_movement"]="cp.async";meta["scheduling"]="warp_cooperative";
   meta["partial_storage"]="register";meta["output_dtype"]="fp32";
   meta["group_size"]=g;
-  meta["kernel_symbol"]="adangel_sm80_grouped_gemm";
+  meta["kernel_symbol"]=implementation=="baseline"?"adangel_sm80_grouped_gemm":"adangel_sm80_o1_swizzled";
   meta["mma"]=split?"m16n8k64.u4.s4 + m16n8k64.s4.s4":"m16n8k32.s8.s8";
   py::dict r;r["output"]=out;r["timings_ms"]=timings;r["kernel"]=meta;
   r["converted_weight"]=wa;r["converted_activation"]=aa;
@@ -250,6 +274,6 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
 }
 } // namespace
 PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
-  m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100);
+  m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100,py::arg("implementation")="baseline");
   m.def("benchmark_o0",&adangel_benchmark_o0);
 }
