@@ -41,7 +41,7 @@ def main():
                     if s['cv_percent']>=3:
                         summary['cv_failures'].append(dict(sample_id=sample,mode=mode,implementation=impl,stage=stage,cv_percent=s['cv_percent']))
             pairs={}
-            for ref in ('o0','baseline'):
+            for ref in ('o0','o1','baseline'):
                 if ref not in impls: continue
                 metric='gemm' if mode=='compute_only' else 'total'
                 ratios=[]
