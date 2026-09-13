@@ -58,7 +58,7 @@ __device__ __forceinline__ void o1_ampere_prefetch(
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M, int N, int K, int WM=4, int WN=2, bool ExponentScale=false>
+template<int M, int N, int K, int WM=4, int WN=2, bool ExponentScale=false, bool PairMma=false>
 __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
     const int8_t* a, const int8_t* b, const float* as,
     const uint8_t* ws, float* y, int k) {
@@ -95,14 +95,15 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
     if(stage+1<k/K) o1_ampere_prefetch<M,N,K,WM,WN,ExponentScale>(s,1-slot,stage+1,a,b,ws,k);
     auto sa=cute::make_tensor(cute::make_smem_ptr(s.a[slot]),typename C::ASmem{});
     auto sb=cute::make_tensor(cute::make_smem_ptr(s.b[slot]),typename C::BSmem{});
-    CUTE_UNROLL
-    for(int sub=0;sub<C::Groups;++sub) {
+    auto multiply=[&](auto& target,int sub) {
       auto ta=cute::local_tile(sa,cute::make_shape(cute::Int<M>{},cute::_32{}),cute::make_coord(0,sub));
       auto tb=cute::local_tile(sb,cute::make_shape(cute::Int<N>{},cute::_32{}),cute::make_coord(0,sub));
       cute::copy(Copy{},ca.partition_S(ta),da);
       cute::copy(Copy{},cb.partition_S(tb),db);
-      cute::clear(partial);
-      cute::gemm(mma,ra,rb,partial);
+      cute::clear(target);
+      cute::gemm(mma,ra,rb,target);
+    };
+    auto accumulate=[&](auto const& partial,int sub) {
       CUTE_UNROLL
       for(int i=0;i<cute::size(acc);++i) {
         float column=s.scales[slot][sub*N+cute::get<1>(coords(i))];
@@ -114,6 +115,22 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
           scale=__uint_as_float(__float_as_uint(rows(i))+__float_as_uint(column));
         else scale=__fmul_rn(rows(i),column);
         acc(i)=__fmaf_rn(float(partial(i)),scale,acc(i));
+      }
+    };
+    if constexpr(PairMma) {
+      auto pending=thr.make_fragment_C(coords);
+      CUTE_UNROLL
+      for(int sub=0;sub<C::Groups;sub+=2) {
+        multiply(partial,sub);
+        multiply(pending,sub+1);
+        accumulate(partial,sub);
+        accumulate(pending,sub+1);
+      }
+    } else {
+      CUTE_UNROLL
+      for(int sub=0;sub<C::Groups;++sub) {
+        multiply(partial,sub);
+        accumulate(partial,sub);
       }
     }
     // No trailing CTA barrier: the next iteration's wait+barrier executes
@@ -128,22 +145,22 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
   }
 }
 
-template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false>
+template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false>
 void o1_ampere_configure() {
   using C=O1AmpereConfig<M,N,K,WM,WN>;
-  auto rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale>,
+  auto rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma>,
       cudaFuncAttributeMaxDynamicSharedMemorySize,sizeof(typename C::Storage));
   TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
-  rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale>,
+  rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma>,
       cudaFuncAttributePreferredSharedMemoryCarveout,100);
   TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
 }
 
-template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false>
+template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false>
 void o1_ampere_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,
     const at::Tensor& ws,at::Tensor& out,cudaStream_t stream) {
   using C=O1AmpereConfig<M,N,K,WM,WN>;
-  adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale><<<dim3(out.size(1)/N,out.size(0)/M),C::Threads,sizeof(typename C::Storage),stream>>>(
+  adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma><<<dim3(out.size(1)/N,out.size(0)/M),C::Threads,sizeof(typename C::Storage),stream>>>(
       a.data_ptr<int8_t>(),w.data_ptr<int8_t>(),as.data_ptr<float>(),ws.data_ptr<uint8_t>(),
       out.data_ptr<float>(),a.size(1));
 }

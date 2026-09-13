@@ -8,7 +8,7 @@ def test_sm80_candidates_preserve_group_scale_and_register_partial():
     source = (ROOT / 'csrc/sm80/o1_optimized.cuh').read_text()
     assert 'SM80_16x8x32_S32S8S8S32_TN' in source
     assert 'Groups = K / 32' in source
-    assert 'cute::clear(partial)' in source
+    assert 'cute::clear(target)' in source
     assert '__fmaf_rn(float(partial(i)),scale,acc(i))' in source
     assert 'float scales[Stages][Groups*N]' in source
     assert 'Swizzle<' in source
