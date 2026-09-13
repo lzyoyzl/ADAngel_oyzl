@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Audit every instantiated optimized O1 function, never a probe or old kernel."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -70,7 +71,9 @@ def main():
         functions.append(dict(symbol=symbol,checks=checks,passed=all(checks.values()),resource=resource,
                               instruction_counts=instruction_counts))
     passed=bool(functions) and all(f['passed'] for f in functions)
-    (args.output/'audit.json').write_text(json.dumps(dict(binary=binary,passed=passed,functions=functions),indent=2)+'\n')
+    (args.output/'audit.json').write_text(json.dumps(dict(binary=binary,
+        binary_sha256=hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
+        passed=passed,functions=functions),indent=2)+'\n')
     print(json.dumps(dict(passed=passed,functions=functions),indent=2))
     if not passed: raise SystemExit(1)
 
