@@ -79,7 +79,7 @@ def main():
             for impl in args.impl: call(impl,'compute_only')
             return
         base=native.benchmark('o1','compute_only',x.A_int8,x.A_scale,x.W_mxfp4,x.W_scale,0,1,1,'baseline')['output']
-        ref=native.benchmark_o0(x.A_int8,x.A_scale,x.W_mxfp4,x.W_scale,'compute_only',0,1,1)['output']
+        ref=native.benchmark_o0(x.A_int8,x.A_scale,x.W_mxfp4,x.W_scale,'compute_only',0,1,100)['output']
         baseline_mse=float((base.double()-ref.double()).square().mean())
         append('gpu_snapshots.jsonl',dict(sample_id=x.sample_id,time=time.time(),
             gpu=command('nvidia-smi','--query-gpu=clocks.sm,temperature.gpu,power.draw,utilization.gpu','--format=csv'),
