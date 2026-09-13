@@ -41,10 +41,19 @@ __device__ __forceinline__ void o1_ampere_prefetch(
     copy16(s.b[slot]+lb(row,col),b+(int(blockIdx.x)*N+row)*k+stage*K+col);
   }
   // One decode per CTA/column/K32. This small buffer is shared by output rows.
-  for(int i=threadIdx.x;i<N*C::Groups;i+=C::Threads) {
-    int col=i/C::Groups, sub=i%C::Groups;
-    s.scales[slot][sub*N+col]=__fmul_rn(adangel::decode_ue8m0(
-        ws[(int(blockIdx.x)*N+col)*(k/32)+stage*C::Groups+sub]),0.5f);
+  for(int col=threadIdx.x;col<N;col+=C::Threads) {
+    const auto* src=ws+(int(blockIdx.x)*N+col)*(k/32)+stage*C::Groups;
+    // K/32 and stage*Groups align this vector load. Avoid generic ldexpf,
+    // retaining exact code 0/1 subnormal behavior; code 255 is rejected by host.
+    uint32_t codes;
+    if constexpr(C::Groups==4) codes=*reinterpret_cast<const uint32_t*>(src);
+    else codes=*reinterpret_cast<const uint16_t*>(src);
+    CUTE_UNROLL
+    for(int sub=0;sub<C::Groups;++sub) {
+      uint32_t code=(codes>>(8*sub))&255;
+      uint32_t bits=code>=2 ? ((code-1)<<23) : (0x00200000u<<code);
+      s.scales[slot][sub*N+col]=__uint_as_float(bits);
+    }
   }
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
