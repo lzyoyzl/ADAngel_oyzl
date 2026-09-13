@@ -47,6 +47,7 @@ __device__ void copy16(void* dst, const void* src) {
 }
 
 #include "o1_optimized.cuh"
+#include "o3_optimized.cuh"
 template<bool Split>
 __device__ void prefetch(Storage& s, int slot, int group,
     const uint8_t* a, const uint8_t* b, int m, int n, int k) {
@@ -195,7 +196,9 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
       implementation="swizzle_64x64_k128_magic";
     else implementation="swizzle_64x64_k64";
   }
-  TORCH_CHECK(implementation=="baseline" || (!split && (
+  const bool o3_candidate=split&&(implementation=="o3_swizzle_64x64_k128_magic"||
+      implementation=="o3_swizzle_128x64_k128_magic"||implementation=="o3_swizzle_128x64_k256_magic");
+  TORCH_CHECK(implementation=="baseline" || o3_candidate || (!split && (
       implementation=="swizzle_64x64_k128" || implementation=="swizzle_128x64_k128" ||
       implementation=="swizzle_64x64_k64" || implementation=="swizzle_64x32_k128" ||
       implementation=="swizzle_64x64_k128_16w" || implementation=="swizzle_128x64_k128_16w" ||
@@ -216,9 +219,10 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   TORCH_CHECK(as.size(0)==m&&w.size(1)==k/2&&ws.size(0)==n&&ws.size(1)==k/g,"shape mismatch");
   int tile_m=TM,tile_n=TN,tile_k=split?128:64;
   if(implementation!="baseline") {
-    tile_m=implementation.rfind("swizzle_64x",0)==0?64:128;
+    tile_m=(implementation.rfind("swizzle_64x",0)==0||implementation.rfind("o3_swizzle_64x",0)==0)?64:128;
     tile_n=implementation=="swizzle_128x128_k128"?128:(implementation.rfind("swizzle_64x32_",0)==0?32:64);
     tile_k=implementation=="swizzle_128x64_k64"||implementation=="swizzle_64x64_k64"?64:128;
+    if(implementation=="o3_swizzle_128x64_k256_magic") tile_k=256;
     TORCH_CHECK(m%tile_m==0&&n%tile_n==0&&k%tile_k==0,"candidate tile alignment required");
   }
   c10::cuda::CUDAGuard guard(a.device());
@@ -234,11 +238,21 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     uint32_t lo,hi; std::memcpy(&lo,&amin,4);std::memcpy(&hi,&amax,4);
     int emin=(lo>>23)&255,emax=(hi>>23)&255;
     int wmin=ws.min().item<int>(),wmax=ws.max().item<int>();
-    exponent_scale=amin>0&&emin>0&&emin+wmin-128>=1&&emax+wmax-128<=254;
+    const int bias=split?127:128;
+    exponent_scale=amin>0&&emin>0&&emin+wmin-bias>=1&&emax+wmax-bias<=254;
   }
   auto out=at::empty({m,n},as.options());
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
+  if(implementation=="o3_swizzle_64x64_k128_magic") {
+    if(exponent_scale) o3_configure<64,64,128,true>(); else o3_configure<64,64,128,false>();
+  }
+  if(implementation=="o3_swizzle_128x64_k128_magic") {
+    if(exponent_scale) o3_configure<128,64,128,true>(); else o3_configure<128,64,128,false>();
+  }
+  if(implementation=="o3_swizzle_128x64_k256_magic") {
+    if(exponent_scale) o3_configure<128,64,256,true>(); else o3_configure<128,64,256,false>();
+  }
   if(implementation=="swizzle_64x64_k128") o1_ampere_configure<64,64,128>();
   if(implementation=="swizzle_64x64_k64") o1_ampere_configure<64,64,64>();
   if(implementation=="swizzle_64x32_k128") o1_ampere_configure<64,32,128>();
@@ -282,7 +296,16 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto gemm=[&](){
     dim3 grid(n/TN,m/TM);
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
-    if(split) adangel_sm80_grouped_gemm<true><<<grid,THREADS,0,stream>>>(ap,bp,as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
+    if(implementation=="o3_swizzle_64x64_k128_magic") {
+      if(exponent_scale) o3_launch<64,64,128,true>(aa,wa,as,ws,out,stream); else o3_launch<64,64,128,false>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_128x64_k128_magic") {
+      if(exponent_scale) o3_launch<128,64,128,true>(aa,wa,as,ws,out,stream); else o3_launch<128,64,128,false>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_128x64_k256_magic") {
+      if(exponent_scale) o3_launch<128,64,256,true>(aa,wa,as,ws,out,stream); else o3_launch<128,64,256,false>(aa,wa,as,ws,out,stream);
+    }
+    else if(split) adangel_sm80_grouped_gemm<true><<<grid,THREADS,0,stream>>>(ap,bp,as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
     else if(implementation=="swizzle_64x64_k128") o1_ampere_launch<64,64,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_64x64_k64") o1_ampere_launch<64,64,64>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_64x32_k128") o1_ampere_launch<64,32,128>(aa,wa,as,ws,out,stream);
@@ -367,6 +390,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   meta["partial_storage"]="register";meta["output_dtype"]="fp32";
   meta["group_size"]=g;
   meta["kernel_symbol"]=implementation=="baseline"?"adangel_sm80_grouped_gemm":"adangel_sm80_o1_swizzled";
+  if(o3_candidate) meta["kernel_symbol"]="adangel_sm80_o3_swizzled";
   meta["mma"]=split?"m16n8k64.u4.s4 + m16n8k64.s4.s4":"m16n8k32.s8.s8";
   py::dict r;r["output"]=out;r["timings_ms"]=timings;r["kernel"]=meta;
   r["converted_weight"]=wa;r["converted_activation"]=aa;

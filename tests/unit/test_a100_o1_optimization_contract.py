@@ -17,7 +17,8 @@ def test_sm80_candidates_preserve_group_scale_and_register_partial():
     assert '__fmul_rn(rows(i),column)' in source
     assert '__float_as_uint(rows(i))+__float_as_uint(column)' in source
     host=(ROOT / 'csrc/sm80/o1_o3.cu').read_text()
-    assert 'emin+wmin-128>=1' in host and 'emax+wmax-128<=254' in host
+    assert 'bias=split?127:128' in host
+    assert 'emin+wmin-bias>=1' in host and 'emax+wmax-bias<=254' in host
 
 
 def test_exact_integer_bias_cast_entire_o1_partial_range():
