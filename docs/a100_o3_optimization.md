@@ -206,6 +206,13 @@ wait比率分别约1.391、1.304、1.507。静态copy减少了指令，但并未
 spill，必须拒绝该候选，不能为了名义occupancy接受local-memory退化。
 K256仍逐个G128缩放/FMA，不把两个group合并缩放。
 
+第十三轮360项逐位检查通过，但3 CTA候选出现REG80/STACK48以及18条LDL、18条STL，
+审计失败，已拒绝并移除该候选。与此同时，显式minBlocks=1并不等价于省略该参数：
+static和stream的REG从128变为135，单SM驻留由2 CTA降为1 CTA，初筛约0.724/0.725ms。
+该轮不能用于声称原static回退或stream加速。K256候选REG194、无spill、约0.616ms，
+也受此配置影响；下一轮恢复原单参数launch_bounds，重新对照K256，不混用两轮延迟。
+原始失败审计及结果保留在`audit_v13`和`runs/a100_o3_screen_v13`。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。

@@ -197,7 +197,6 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     else implementation="swizzle_64x64_k64";
   }
   const bool o3_candidate=split&&(implementation=="o3_swizzle_64x64_k128_magic"||
-      implementation=="o3_swizzle_64x128_k128_exp_static_stream_occ3"||
       implementation=="o3_swizzle_64x128_k256_exp_static_stream"||
       implementation=="o3_swizzle_64x128_k128_exp_static_stream"||
       implementation=="o3_swizzle_64x128_k128_exp_static_cached"||
@@ -263,9 +262,6 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
   if(implementation=="o3_swizzle_64x128_k128_exp_static_stream") {
     if(exponent_scale) o3_configure<64,128,128,true,false,false,2,false,true,false,true>(); else o3_configure<64,128,128,false,false,false,2,false,true,false,true>();
-  }
-  if(implementation=="o3_swizzle_64x128_k128_exp_static_stream_occ3") {
-    if(exponent_scale) o3_configure<64,128,128,true,false,false,2,false,true,false,true,true>(); else o3_configure<64,128,128,false,false,false,2,false,true,false,true,true>();
   }
   if(implementation=="o3_swizzle_64x128_k256_exp_static_stream") {
     if(exponent_scale) o3_configure<64,128,256,true,false,false,2,false,true,false,true>(); else o3_configure<64,128,256,false,false,false,2,false,true,false,true>();
@@ -378,9 +374,6 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
     if(implementation=="o3_swizzle_64x128_k128_exp_static_stream") {
       if(exponent_scale) o3_launch<64,128,128,true,false,false,2,false,true,false,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,2,false,true,false,true>(aa,wa,as,ws,out,stream);
-    }
-    else if(implementation=="o3_swizzle_64x128_k128_exp_static_stream_occ3") {
-      if(exponent_scale) o3_launch<64,128,128,true,false,false,2,false,true,false,true,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,2,false,true,false,true,true>(aa,wa,as,ws,out,stream);
     }
     else if(implementation=="o3_swizzle_64x128_k256_exp_static_stream") {
       if(exponent_scale) o3_launch<64,128,256,true,false,false,2,false,true,false,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,256,false,false,false,2,false,true,false,true>(aa,wa,as,ws,out,stream);
@@ -532,7 +525,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
       "high_times16_then_low_mma":"separate_low_high_then_imad";
   if(split) meta["copy_loop"]=implementation.find("_static")!=std::string::npos?"compile_time":"runtime";
   if(o3_candidate) meta["pipeline_phase_pair"]=implementation.find("_phase")!=std::string::npos;
-  if(o3_candidate) meta["minimum_blocks_launch_bound"]=implementation.find("_occ3")!=std::string::npos?3:1;
+  if(o3_candidate) meta["minimum_blocks_launch_bound"]="unspecified";
   meta["scale_storage"]=implementation=="baseline"?"global_per_fragment":"shared_per_cta_column_group";
   meta["smem_swizzle"]=implementation!="baseline";
   meta["whole_scale_panel_cached"]=implementation.find("_cached")!=std::string::npos;
