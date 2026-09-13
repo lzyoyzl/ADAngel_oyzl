@@ -1,6 +1,6 @@
 // SM80 O3: preserve two native U4/S4 MMA paths and the ordered G128 FMA.
 #pragma once
-template<int M,int N,int K>
+template<int M,int N,int K,bool Cached=false>
 struct O3AmpereConfig {
   static_assert(K==128||K==256);
   static constexpr int Threads=256, Groups=K/128, Bytes=K/2;
@@ -21,14 +21,14 @@ struct O3AmpereConfig {
       cute::Stride<cute::Int<K>,cute::_1>>{}));
   struct alignas(128) Storage {
     alignas(128) uint8_t low[2][M*Bytes], high[2][M*Bytes], weight[2][N*Bytes];
-    float scales[2][Groups*N];
+    float scales[(Cached?32:2*Groups)*N];
   };
 };
 
-template<int M,int N,int K,bool Fast>
-__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K>::Storage& s,
+template<int M,int N,int K,bool Fast,bool Cached>
+__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached>::Storage& s,
     int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k) {
-  using C=O3AmpereConfig<M,N,K>;
+  using C=O3AmpereConfig<M,N,K,Cached>;
   typename C::template ByteLayout<M> la;
   typename C::template ByteLayout<N> lb;
   for(unsigned off=threadIdx.x*16;off<M*C::Bytes;off+=256*16) {
@@ -41,22 +41,36 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K>::Stor
     unsigned row=off/C::Bytes,col=off%C::Bytes;
     copy16(s.weight[slot]+lb(row,col),w+(blockIdx.x*N+row)*(k/2)+stage*C::Bytes+col);
   }
-  if(threadIdx.x<N) {
+  if(!Cached && threadIdx.x<N) {
     o1_static_for<0,C::Groups>([&](auto group) {
       uint32_t code=ws[(blockIdx.x*N+threadIdx.x)*(k/128)+stage*C::Groups+group];
       uint32_t bits=code?code<<23:0x00400000u;
-      s.scales[slot][group*N+threadIdx.x]=__uint_as_float(Fast?((code-127u)<<23):bits);
+      s.scales[(slot*C::Groups+group)*N+threadIdx.x]=__uint_as_float(Fast?((code-127u)<<23):bits);
     });
   }
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast>
+template<int M,int N,int K,bool Fast,bool Cached=false>
 __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
-  using C=O3AmpereConfig<M,N,K>;
+  using C=O3AmpereConfig<M,N,K,Cached>;
   extern __shared__ __align__(128) uint8_t buf[];
   auto& s=*reinterpret_cast<typename C::Storage*>(buf);
+  if constexpr(Cached) {
+    // Load the CTA's complete G128 scale panel once, coalescing four bytes.
+    // Store group-major so consumers read adjacent columns without bank stride.
+    int groups=k/128;
+    for(unsigned off=threadIdx.x*4;off<N*groups;off+=256*4) {
+      uint32_t codes=*reinterpret_cast<const uint32_t*>(ws+blockIdx.x*N*groups+off);
+      o1_static_for<0,4>([&](auto j) {
+        uint32_t code=(codes>>(8*j))&255;
+        uint32_t bits=code?code<<23:0x00400000u;
+        unsigned idx=off+j,col=idx/groups,group=idx%groups;
+        s.scales[group*N+col]=__uint_as_float(Fast?((code-127u)<<23):bits);
+      });
+    }
+  }
   typename C::Mma mma; typename C::HighMma high_mma;
   auto thr=mma.get_slice(threadIdx.x); auto ht=high_mma.get_slice(threadIdx.x);
   auto coords=thr.partition_C(cute::make_identity_tensor(cute::make_shape(cute::Int<M>{},cute::Int<N>{})));
@@ -83,12 +97,12 @@ __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
   auto hc=cute::make_tiled_copy_A(SCopy{},high_mma).get_slice(threadIdx.x);
   auto bc=cute::make_tiled_copy_B(SCopy{},mma).get_slice(threadIdx.x);
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
-  o3_prefetch<M,N,K,Fast>(s,0,0,a,w,ws,m,k);
+  o3_prefetch<M,N,K,Fast,Cached>(s,0,0,a,w,ws,m,k);
   for(int stage=0;stage<k/K;++stage) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
     int slot=stage%2;
-    if(stage+1<k/K) o3_prefetch<M,N,K,Fast>(s,1-slot,stage+1,a,w,ws,m,k);
+    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached>(s,1-slot,stage+1,a,w,ws,m,k);
     o1_static_for<0,C::Groups>([&](auto group) {
       cute::clear(low);cute::clear(high);
       o1_static_for<0,2>([&](auto half) {
@@ -104,7 +118,8 @@ __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
         // Reconstructed INT8 x signed INT4 G128 bound:128*128*8=131072.
         // Exact bias conversion stays well inside the unit-ULP FP32 binade.
         float value,scale;
-        float column=s.scales[slot][group*N+cute::get<1>(coords(i))];
+        int scale_group=(Cached?stage:slot)*C::Groups+group;
+        float column=s.scales[scale_group*N+cute::get<1>(coords(i))];
         if constexpr(Fast) {
           value=__fadd_rn(__int_as_float(0x4b400000+partial),-12582912.0f);
           scale=__uint_as_float(__float_as_uint(rows(i))+__float_as_uint(column));
@@ -121,17 +136,17 @@ __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
   });
 }
 
-template<int M,int N,int K,bool Fast>
+template<int M,int N,int K,bool Fast,bool Cached=false>
 void o3_configure() {
-  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast>;
+  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached>;
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributeMaxDynamicSharedMemorySize,
-      sizeof(typename O3AmpereConfig<M,N,K>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
+      sizeof(typename O3AmpereConfig<M,N,K,Cached>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributePreferredSharedMemoryCarveout,100)==cudaSuccess,"O3 carveout failed");
 }
-template<int M,int N,int K,bool Fast>
+template<int M,int N,int K,bool Fast,bool Cached=false>
 void o3_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,const at::Tensor& ws,
     at::Tensor& out,cudaStream_t stream) {
-  adangel_sm80_o3_swizzled<M,N,K,Fast><<<dim3(out.size(1)/N,out.size(0)/M),256,
-      sizeof(typename O3AmpereConfig<M,N,K>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
+  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached><<<dim3(out.size(1)/N,out.size(0)/M),256,
+      sizeof(typename O3AmpereConfig<M,N,K,Cached>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
       as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),out.size(0),out.size(1),w.size(1)*2);
 }

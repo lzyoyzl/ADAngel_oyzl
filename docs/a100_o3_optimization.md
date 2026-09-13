@@ -33,6 +33,19 @@
 初筛候选：`64×64×128`、`128×64×128`、`128×64×256`，均256线程。
 遇到非normal/极端scale时使用同tile的正常浮点转换路径，显式记录guard状态，不进入软件GEMM。
 
+首轮单样本初筛（不是最终验收）：旧O3约1.858ms，64×64/K128候选约0.613ms，
+同轮优化后的O1约1.010ms；O3/O1配对吞吐比约1.64，未达到2倍。三个候选逐位一致、
+原生INT4指令及无spill审计通过。128×64/K256用了173register/thread，初筛没有优势。
+
+`swizzle64_ncu`：Duration约606.46us，DRAM8.81%、L1/TEX63.58%、FMA43.0%；
+No Eligible43.93%、理论occupancy37.5%。按每issue-active的平均warp stall比率，
+barrier约1.914、wait约1.776、math-pipe约1.216、short-scoreboard约0.881，
+long-scoreboard约0.295；这些是ratio，不是百分比。
+
+因此继续测试64×32/64×128输出tile，以及CTA完整scale panel预取。后者限制K<=4096，
+在**同一个被计时的GEMM kernel内部**加载、解码全部W scales，然后按G128顺序读取；
+不跨调用缓存shared memory，也不把这部分处理挪到计时之外。
+
 ## 命令
 
 所有修改先在本地`/root/ADAngel_oyzl`完成并推送GitHub，A100仅同步、构建、运行。
