@@ -50,6 +50,9 @@ def extensions():
         raise RuntimeError(
             f"CUTLASS revision mismatch: expected {EXPECTED_CUTLASS_COMMIT}, got {actual_cutlass}"
         )
+    target = os.environ.get("ADANGEL_CUDA_TARGET", "sm120")
+    if target not in {"sm120", "sm80"}:
+        raise RuntimeError("ADANGEL_CUDA_TARGET must be sm120 or sm80")
     sources = [
         "csrc/bindings.cpp",
         "csrc/common/validation.cu",
@@ -62,8 +65,16 @@ def extensions():
         "csrc/sm120/o3_int8_split_diagnostic.cu",
         "csrc/sm120/o4_gemm.cu",
     ]
+    if target == "sm80":
+        sources = [
+            "csrc/sm80/o1_o3.cu",
+            "csrc/common/validation.cu",
+            "csrc/sm120/conversion.cu",
+            "csrc/sm120/o0_gemm.cu",
+        ]
+    arch = "80" if target == "sm80" else "120a"
     extension = CUDAExtension(
-        "adangel._sm120",
+        f"adangel._{target}",
         sources=sources,
         include_dirs=[
             str(root / "include"),
@@ -78,7 +89,7 @@ def extensions():
                 "-std=c++17",
                 "--expt-relaxed-constexpr",
                 "-lineinfo",
-                "-gencode=arch=compute_120a,code=[sm_120a,compute_120a]",
+                f"-gencode=arch=compute_{arch},code=[sm_{arch},compute_{arch}]",
             ],
         },
     )
