@@ -47,5 +47,24 @@ def test_magic_audit_checks_final_template_boolean():
         for cached in (0,1):
             for magic in (0,1):
                 for wn in (2,4):
-                    symbol=f'_Z25adangel_sm80_o3_swizzledILi64ELi128ELi128ELb{fast}ELb{cached}ELb{magic}ELi{wn}EEEvPKh'
-                    assert bool(re.search(r'Lb1ELi[24]EEEv',symbol))==bool(magic)
+                    for merge in (0,1):
+                        symbol=f'_Z25adangel_sm80_o3_swizzledILi64ELi128ELi128ELb{fast}ELb{cached}ELb{magic}ELi{wn}ELb{merge}EEEvPKh'
+                        match=re.search(r'swizzledILi\d+ELi\d+ELi\d+ELb([01])ELb([01])ELb([01])ELi[24]ELb([01])E',symbol)
+                        assert (match[3]=='1')==bool(magic)
+
+
+def test_g128_integer_reconstruction_can_reuse_one_partial():
+    import random
+    rng=random.Random(20260914)
+    for pattern in range(1000):
+        a=[rng.randrange(-128,128) for _ in range(128)]
+        w=[rng.randrange(-8,8) for _ in range(128)]
+        if pattern<4:
+            a=[(-128,127)[pattern%2]]*128
+            w=[(-8,7)[pattern//2]]*128
+        high=[v//16 for v in a];low=[v&15 for v in a]
+        partial=16*sum(x*y for x,y in zip(high,w))
+        for start in (0,64):
+            partial+=sum(low[i]*w[i] for i in range(start,start+64))
+            assert -(2**31)<=partial<2**31
+        assert partial==sum(x*y for x,y in zip(a,w))

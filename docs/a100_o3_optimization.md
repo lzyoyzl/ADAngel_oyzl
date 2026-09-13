@@ -61,6 +61,16 @@ O3每G128转换一次，而O1每K32转换一次，两者的转换吞吐压力不
 下一候选保持64×128/K128，采用4×4即16个warp，减少每线程fragment大小；
 不得预设更多warp一定更快，继续比较资源使用、正确性和配对结果。
 
+第五轮16-warp候选约0.74ms，慢于8-warp指数位版本约0.554ms；寄存器仍达
+81/83个每线程，512线程CTA未获得预期的驻留CTA数优势。240项GPU逐位检查和
+指令/无spill审计通过，但性能不满足采纳条件。
+
+新增单partial整数重构候选：G128内先计算high的两个K64 MMA，再将INT32 partial
+乘16，最后把low的两个K64 MMA直接累加到同一fragment。两份K64 weight fragment
+保留以供两条路径复用；移除第二份完整INT32 partial。所有整数中间结果远小于
+INT32界，且最终整数点积与`low+16*high`完全相同；FP32 scale/FMA顺序不变。
+它不是改为INT8或FP16 GEMM，仍要求同一正式函数内原生U4×S4及S4×S4 SASS。
+
 ## 命令
 
 所有修改先在本地`/root/ADAngel_oyzl`完成并推送GitHub，A100仅同步、构建、运行。

@@ -51,7 +51,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false>
 __global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN>;
@@ -105,12 +105,14 @@ __global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
   auto ra=thr.partition_fragment_A(tile_a(make_low(0),cute::_0{}));
   auto rh=ht.partition_fragment_A(tile_a(make_high(0),cute::_0{}));
   auto rb=thr.partition_fragment_B(tile_b(make_weight(0),cute::_0{}));
+  auto rb1=cute::make_fragment_like(rb);
   using LCopy=cute::Copy_Atom<cute::SM75_U32x4_LDSM_N,cutlass::uint4b_t>;
   using SCopy=cute::Copy_Atom<cute::SM75_U32x4_LDSM_N,cutlass::int4b_t>;
   auto lc=cute::make_tiled_copy_A(LCopy{},mma).get_slice(threadIdx.x);
   auto hc=cute::make_tiled_copy_A(SCopy{},high_mma).get_slice(threadIdx.x);
   auto bc=cute::make_tiled_copy_B(SCopy{},mma).get_slice(threadIdx.x);
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
+  auto bd1=bc.retile_D(rb1);
   o3_prefetch<M,N,K,Fast,Cached,WN>(s,0,0,a,w,ws,m,k);
   for(int stage=0;stage<k/K;++stage) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
@@ -118,17 +120,45 @@ __global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
     int slot=stage%2;
     if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN>(s,1-slot,stage+1,a,w,ws,m,k);
     o1_static_for<0,C::Groups>([&](auto group) {
-      cute::clear(low);cute::clear(high);
-      o1_static_for<0,2>([&](auto half) {
-        auto sub=group*cute::_2{}+half;
-        cute::copy(LCopy{},lc.partition_S(tile_a(make_low(slot),sub)),ld);
-        cute::copy(SCopy{},hc.partition_S(tile_a(make_high(slot),sub)),hd);
-        cute::copy(SCopy{},bc.partition_S(tile_b(make_weight(slot),sub)),bd);
-        cute::gemm(mma,ra,rb,low);
-        cute::gemm(high_mma,rh,rb,high);
-      });
+      cute::clear(low);
+      if constexpr(Merge) {
+        // Exact integer reassociation INSIDE one G128 only. Compute the high
+        // path, multiply its INT32 accumulator by16, then add both low MMAs
+        // directly into it. One partial fragment instead of two; keep both
+        // weight fragments to avoid reloading them for the low path.
+        o1_static_for<0,2>([&](auto half) {
+          auto sub=group*cute::_2{}+half;
+          cute::copy(SCopy{},hc.partition_S(tile_a(make_high(slot),sub)),hd);
+          if constexpr(decltype(half)::value==0) {
+            cute::copy(SCopy{},bc.partition_S(tile_b(make_weight(slot),sub)),bd);
+            cute::gemm(high_mma,rh,rb,low);
+          } else {
+            cute::copy(SCopy{},bc.partition_S(tile_b(make_weight(slot),sub)),bd1);
+            cute::gemm(high_mma,rh,rb1,low);
+          }
+        });
+        o1_static_for<0,decltype(cute::size(low))::value>([&](auto i) {low(i)*=16;});
+        o1_static_for<0,2>([&](auto half) {
+          auto sub=group*cute::_2{}+half;
+          cute::copy(LCopy{},lc.partition_S(tile_a(make_low(slot),sub)),ld);
+          if constexpr(decltype(half)::value==0) cute::gemm(mma,ra,rb,low);
+          else cute::gemm(mma,ra,rb1,low);
+        });
+      } else {
+        cute::clear(high);
+        o1_static_for<0,2>([&](auto half) {
+          auto sub=group*cute::_2{}+half;
+          cute::copy(LCopy{},lc.partition_S(tile_a(make_low(slot),sub)),ld);
+          cute::copy(SCopy{},hc.partition_S(tile_a(make_high(slot),sub)),hd);
+          cute::copy(SCopy{},bc.partition_S(tile_b(make_weight(slot),sub)),bd);
+          cute::gemm(mma,ra,rb,low);
+          cute::gemm(high_mma,rh,rb,high);
+        });
+      }
       o1_static_for<0,decltype(cute::size(acc))::value>([&](auto i) {
-        int partial=low(i)+16*high(i);
+        int partial;
+        if constexpr(Merge) partial=low(i);
+        else partial=low(i)+16*high(i);
         // Reconstructed INT8 x signed INT4 G128 bound:128*128*8=131072.
         // Exact bias conversion stays well inside the unit-ULP FP32 binade.
         float value,scale;
@@ -154,17 +184,17 @@ __global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
   });
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false>
 void o3_configure() {
-  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN>;
+  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge>;
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributeMaxDynamicSharedMemorySize,
       sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributePreferredSharedMemoryCarveout,100)==cudaSuccess,"O3 carveout failed");
 }
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false>
 void o3_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,const at::Tensor& ws,
     at::Tensor& out,cudaStream_t stream) {
-  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN><<<dim3(out.size(1)/N,out.size(0)/M),128*WN,
+  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge><<<dim3(out.size(1)/N,out.size(0)/M),128*WN,
       sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
       as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),out.size(0),out.size(1),w.size(1)*2);
 }
