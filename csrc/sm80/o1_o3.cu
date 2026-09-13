@@ -186,6 +186,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   TORCH_CHECK(implementation=="baseline" || (!split && (
       implementation=="swizzle_64x64_k128" || implementation=="swizzle_128x64_k128" ||
       implementation=="swizzle_64x64_k64" || implementation=="swizzle_64x32_k128" ||
+      implementation=="swizzle_64x64_k128_16w" || implementation=="swizzle_128x64_k128_16w" ||
       implementation=="swizzle_128x128_k128" || implementation=="swizzle_128x64_k64")),
       "unknown implementation or O1-only candidate requested for O3");
   TORCH_CHECK(a.is_cuda()&&as.is_cuda()&&w.is_cuda()&&ws.is_cuda(),"CUDA tensors required");
@@ -216,6 +217,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(implementation=="swizzle_64x64_k128") o1_ampere_configure<64,64,128>();
   if(implementation=="swizzle_64x64_k64") o1_ampere_configure<64,64,64>();
   if(implementation=="swizzle_64x32_k128") o1_ampere_configure<64,32,128>();
+  if(implementation=="swizzle_64x64_k128_16w") o1_ampere_configure<64,64,128,4,4>();
+  if(implementation=="swizzle_128x64_k128_16w") o1_ampere_configure<128,64,128,8,2>();
   if(implementation=="swizzle_128x64_k128") o1_ampere_configure<128,64,128>();
   if(implementation=="swizzle_128x128_k128") o1_ampere_configure<128,128,128>();
   if(implementation=="swizzle_128x64_k64") o1_ampere_configure<128,64,64>();
@@ -228,6 +231,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     else if(implementation=="swizzle_64x64_k128") o1_ampere_launch<64,64,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_64x64_k64") o1_ampere_launch<64,64,64>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_64x32_k128") o1_ampere_launch<64,32,128>(aa,wa,as,ws,out,stream);
+    else if(implementation=="swizzle_64x64_k128_16w") o1_ampere_launch<64,64,128,4,4>(aa,wa,as,ws,out,stream);
+    else if(implementation=="swizzle_128x64_k128_16w") o1_ampere_launch<128,64,128,8,2>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_128x64_k128") o1_ampere_launch<128,64,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_128x128_k128") o1_ampere_launch<128,128,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_128x64_k64") o1_ampere_launch<128,64,64>(aa,wa,as,ws,out,stream);
@@ -267,7 +272,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   meta["implementation"]=implementation;
   meta["scale_storage"]=implementation=="baseline"?"global_per_fragment":"shared_per_cta_column_group";
   meta["smem_swizzle"]=implementation!="baseline";
-  meta["pipeline_stages"]=STAGES;meta["threads"]=THREADS;
+  meta["pipeline_stages"]=STAGES;meta["threads"]=implementation.find("16w")!=std::string::npos?512:THREADS;
   meta["data_movement"]="cp.async";meta["scheduling"]="warp_cooperative";
   meta["partial_storage"]="register";meta["output_dtype"]="fp32";
   meta["group_size"]=g;

@@ -6,7 +6,15 @@ from pathlib import Path
 import statistics
 import time
 
-from run_a100_experiment import command, stats
+from run_a100_experiment import command, stats as basic_stats
+
+
+def stats(values):
+    import numpy as np
+    result=basic_stats(values)
+    q=np.percentile(values,[5,25,75,95])
+    result.update(p5_ms=float(q[0]),p95_ms=float(q[3]),iqr_ms=float(q[2]-q[1]))
+    return result
 
 
 def main():
@@ -45,7 +53,7 @@ def main():
     if args.validate:
         checks = []
         for m,n,k in [(128,128,128),(256,128,256),(128,256,384),(128,128,4096)]:
-            for pattern in ['zero','random','saturation']:
+            for pattern in ['zero','random','saturation','scale_codes']:
                 torch.manual_seed(718+k)
                 a=torch.randint(-128,128,(m,k),dtype=torch.int8,device='cuda')
                 w=torch.randint(0,256,(n,k//2),dtype=torch.uint8,device='cuda')
@@ -53,6 +61,9 @@ def main():
                 if pattern=='saturation': a[:]=(torch.arange(k,device='cuda')%256-128).to(torch.int8)
                 asc=torch.linspace(.0001,.1,m,device='cuda')
                 ws=(torch.arange(n*(k//32),device='cuda').reshape(n,k//32)%17+116).to(torch.uint8)
+                if pattern=='scale_codes':
+                    ws=(torch.arange(n*(k//32),device='cuda').reshape(n,k//32)%255).to(torch.uint8)
+                    asc=torch.linspace(1e-7,1e-6,m,device='cuda')
                 base=native.benchmark('o1','compute_only',a,asc,w,ws,0,1,1,'baseline')['output']
                 for impl in args.impl:
                     for mode in ['conversion_only','compute_only','cold','steady_state']:
@@ -99,7 +110,7 @@ def main():
                     assert torch.isfinite(y).all()
                     if impl!='o0': torch.testing.assert_close(y,base,rtol=0,atol=0)
                     mse=float((y.double()-ref.double()).square().mean())
-                    st={k:stats(v) for k,v in out['timings_ms'].items()}
+                st={k:stats(v) for k,v in out['timings_ms'].items()}
                     for key,vals in out['timings_ms'].items(): collected[impl].setdefault(key,[]).extend(vals)
                     metric='gemm' if mode=='compute_only' else 'total'
                     medians[impl]=st[metric]['median_ms']

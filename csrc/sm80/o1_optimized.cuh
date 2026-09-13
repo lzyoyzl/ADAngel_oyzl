@@ -109,7 +109,9 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
         acc(i)=__fmaf_rn(float(partial(i)),scale,acc(i));
       }
     }
-    __syncthreads();
+    // No trailing CTA barrier: the next iteration's wait+barrier executes
+    // before prefetch can overwrite this slot, and therefore protects all
+    // current readers. The final iteration has no slot reuse.
   }
   CUTE_UNROLL
   for(int i=0;i<cute::size(acc);++i) {
@@ -124,6 +126,9 @@ void o1_ampere_configure() {
   using C=O1AmpereConfig<M,N,K,WM,WN>;
   auto rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN>,
       cudaFuncAttributeMaxDynamicSharedMemorySize,sizeof(typename C::Storage));
+  TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
+  rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN>,
+      cudaFuncAttributePreferredSharedMemoryCarveout,100);
   TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
 }
 
