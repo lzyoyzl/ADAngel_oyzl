@@ -25,7 +25,7 @@ struct O1AmpereConfig {
   };
 };
 
-template<int M, int N, int K, int WM, int WN>
+template<int M, int N, int K, int WM, int WN, bool ExponentScale=false>
 __device__ __forceinline__ void o1_ampere_prefetch(
     typename O1AmpereConfig<M,N,K,WM,WN>::Storage& s, int slot, int stage,
     const int8_t* a, const int8_t* b, const uint8_t* ws, int k) {
@@ -52,13 +52,13 @@ __device__ __forceinline__ void o1_ampere_prefetch(
     for(int sub=0;sub<C::Groups;++sub) {
       uint32_t code=(codes>>(8*sub))&255;
       uint32_t bits=code>=2 ? ((code-1)<<23) : (0x00200000u<<code);
-      s.scales[slot][sub*N+col]=__uint_as_float(bits);
+      s.scales[slot][sub*N+col]=__uint_as_float(ExponentScale ? ((code-128u)<<23) : bits);
     }
   }
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M, int N, int K, int WM=4, int WN=2>
+template<int M, int N, int K, int WM=4, int WN=2, bool ExponentScale=false>
 __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
     const int8_t* a, const int8_t* b, const float* as,
     const uint8_t* ws, float* y, int k) {
@@ -87,12 +87,12 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
   auto cb=cute::make_tiled_copy_B(Copy{},mma).get_slice(threadIdx.x);
   auto da=ca.retile_D(ra);
   auto db=cb.retile_D(rb);
-  o1_ampere_prefetch<M,N,K,WM,WN>(s,0,0,a,b,ws,k);
+  o1_ampere_prefetch<M,N,K,WM,WN,ExponentScale>(s,0,0,a,b,ws,k);
   for(int stage=0;stage<k/K;++stage) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
     int slot=stage%2;
-    if(stage+1<k/K) o1_ampere_prefetch<M,N,K,WM,WN>(s,1-slot,stage+1,a,b,ws,k);
+    if(stage+1<k/K) o1_ampere_prefetch<M,N,K,WM,WN,ExponentScale>(s,1-slot,stage+1,a,b,ws,k);
     auto sa=cute::make_tensor(cute::make_smem_ptr(s.a[slot]),typename C::ASmem{});
     auto sb=cute::make_tensor(cute::make_smem_ptr(s.b[slot]),typename C::BSmem{});
     CUTE_UNROLL
@@ -105,7 +105,14 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
       cute::gemm(mma,ra,rb,partial);
       CUTE_UNROLL
       for(int i=0;i<cute::size(acc);++i) {
-        float scale=__fmul_rn(rows(i),s.scales[slot][sub*N+cute::get<1>(coords(i))]);
+        float column=s.scales[slot][sub*N+cute::get<1>(coords(i))];
+        // Host proves normal positive row scales and normal finite products.
+        // Power-of-two multiplication then changes only the exponent bits,
+        // exactly matching FMUL.rn without changing the ordered FMA recurrence.
+        float scale;
+        if constexpr(ExponentScale)
+          scale=__uint_as_float(__float_as_uint(rows(i))+__float_as_uint(column));
+        else scale=__fmul_rn(rows(i),column);
         acc(i)=__fmaf_rn(float(partial(i)),scale,acc(i));
       }
     }
@@ -121,22 +128,22 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
   }
 }
 
-template<int M,int N,int K,int WM=4,int WN=2>
+template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false>
 void o1_ampere_configure() {
   using C=O1AmpereConfig<M,N,K,WM,WN>;
-  auto rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN>,
+  auto rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale>,
       cudaFuncAttributeMaxDynamicSharedMemorySize,sizeof(typename C::Storage));
   TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
-  rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN>,
+  rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale>,
       cudaFuncAttributePreferredSharedMemoryCarveout,100);
   TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
 }
 
-template<int M,int N,int K,int WM=4,int WN=2>
+template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false>
 void o1_ampere_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,
     const at::Tensor& ws,at::Tensor& out,cudaStream_t stream) {
   using C=O1AmpereConfig<M,N,K,WM,WN>;
-  adangel_sm80_o1_swizzled<M,N,K,WM,WN><<<dim3(out.size(1)/N,out.size(0)/M),C::Threads,sizeof(typename C::Storage),stream>>>(
+  adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale><<<dim3(out.size(1)/N,out.size(0)/M),C::Threads,sizeof(typename C::Storage),stream>>>(
       a.data_ptr<int8_t>(),w.data_ptr<int8_t>(),as.data_ptr<float>(),ws.data_ptr<uint8_t>(),
       out.data_ptr<float>(),a.size(1));
 }

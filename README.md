@@ -39,6 +39,11 @@ A100 原生 U4/S4 SASS 与数值验证已通过；24 样本交错 compute-only �
 O1 `4.390912 ms`、O3 `1.833984 ms`。这说明当前 A100 O3 虽快于 O1，仍慢于
 cuBLASLt O0；不是硬件峰值比较。三路中的 O1/O3 CV 异常和 O0 四模式结果见报告。
 
+A100 O1 的后续优化与独立验收见 [A100 O1 优化](docs/a100_o1_optimization.md)。
+候选保留原 K32/FMA 数值顺序，测试 swizzled shared-memory、CTA 内 scale 共享、
+精确 UE8M0 位解码及不同 occupancy 配置；旧 `baseline` 继续保留作同进程对照。
+这些实验只修改 SM80 后端，不改变上述 5090 production。
+
 ### RTX 5090 实现
 
 数据采集/准备、五配置语义参考、正式调度、统计、MSE、四表四图和防误跑能力门

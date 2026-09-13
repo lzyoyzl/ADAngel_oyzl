@@ -24,6 +24,19 @@
 4. K64/K128 stage 内分别处理 2/4 个 K32，不合并不同 scale 的 partial；
 5. 比较固定 64×64、128×64、128×128 输出 tile，256线程/CTA；没有运行时 autotune。
 
+后续有界候选增加 64×32 输出 tile、512线程/CTA 配置，并消除尾部冗余 CTA barrier：
+下一轮开头 wait+barrier 已保护旧槽位全部 reader，下一次 prefetch 在该 barrier 后才覆盖。
+所有候选仍需要 Compute Sanitizer 验证，不以源代码推理代替运行验收。
+
+UE8M0/2 通过 FP32 位模式精确生成，包括 code 0/1 的 subnormal；不再调用通用 ldexpf。
+scale 以每列连续2/4字节读取，shared store 按列合并，避免转置式写入的 bank 冲突。
+
+带 `_exp` 的候选还将 `A_scale * 2^(code-128)` 改为指数位加法。计时前严格检查所有
+A_scale 是正 normal，且全部可能乘积也为有限 normal；否则明确记录
+`exponent_scale_fast_path=false` 并执行相同 tile 的正常 FP32 FMUL kernel。
+正常范围内该操作逐位等价，不改变最后 FMA 或 group 顺序，不是把 A_scale 移到末尾。
+此候选目的是将部分 scale 工作从 FP32 乘法换为整数加法，是否有收益由配对测试决定。
+
 动态 shared-memory opt-in 在计时前完成。新候选要求 M/N/K 被相应 tile 整除；
 非法候选/对齐条件直接报错，不伪装成自动 fallback。
 

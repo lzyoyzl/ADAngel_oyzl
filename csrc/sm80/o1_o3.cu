@@ -12,6 +12,7 @@
 #include <pybind11/stl.h>
 #include <torch/extension.h>
 #include <vector>
+#include <cstring>
 #include "adangel/kernel_api.h"
 #include "adangel/data_types.cuh"
 
@@ -187,6 +188,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
       implementation=="swizzle_64x64_k128" || implementation=="swizzle_128x64_k128" ||
       implementation=="swizzle_64x64_k64" || implementation=="swizzle_64x32_k128" ||
       implementation=="swizzle_64x64_k128_16w" || implementation=="swizzle_128x64_k128_16w" ||
+      implementation=="swizzle_64x64_k128_16w_exp" || implementation=="swizzle_128x64_k128_16w_exp" ||
       implementation=="swizzle_128x128_k128" || implementation=="swizzle_128x64_k64")),
       "unknown implementation or O1-only candidate requested for O3");
   TORCH_CHECK(a.is_cuda()&&as.is_cuda()&&w.is_cuda()&&ws.is_cuda(),"CUDA tensors required");
@@ -211,6 +213,14 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   // Validation and allocation are outside every timing range.
   TORCH_CHECK(at::isfinite(as).all().item<bool>()&&as.ge(0).all().item<bool>(),"invalid activation scale");
   TORCH_CHECK(ws.ne(255).all().item<bool>(),"UE8M0 code 255 is invalid");
+  bool exponent_scale=false;
+  if(implementation.find("_exp")!=std::string::npos) {
+    float amin=as.min().item<float>(),amax=as.max().item<float>();
+    uint32_t lo,hi; std::memcpy(&lo,&amin,4);std::memcpy(&hi,&amax,4);
+    int emin=(lo>>23)&255,emax=(hi>>23)&255;
+    int wmin=ws.min().item<int>(),wmax=ws.max().item<int>();
+    exponent_scale=amin>0&&emin>0&&emin+wmin-128>=1&&emax+wmax-128<=254;
+  }
   auto out=at::empty({m,n},as.options());
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
@@ -219,6 +229,14 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(implementation=="swizzle_64x32_k128") o1_ampere_configure<64,32,128>();
   if(implementation=="swizzle_64x64_k128_16w") o1_ampere_configure<64,64,128,4,4>();
   if(implementation=="swizzle_128x64_k128_16w") o1_ampere_configure<128,64,128,8,2>();
+  if(implementation=="swizzle_64x64_k128_16w_exp") {
+    if(exponent_scale) o1_ampere_configure<64,64,128,4,4,true>();
+    else o1_ampere_configure<64,64,128,4,4>();
+  }
+  if(implementation=="swizzle_128x64_k128_16w_exp") {
+    if(exponent_scale) o1_ampere_configure<128,64,128,8,2,true>();
+    else o1_ampere_configure<128,64,128,8,2>();
+  }
   if(implementation=="swizzle_128x64_k128") o1_ampere_configure<128,64,128>();
   if(implementation=="swizzle_128x128_k128") o1_ampere_configure<128,128,128>();
   if(implementation=="swizzle_128x64_k64") o1_ampere_configure<128,64,64>();
@@ -233,6 +251,14 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     else if(implementation=="swizzle_64x32_k128") o1_ampere_launch<64,32,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_64x64_k128_16w") o1_ampere_launch<64,64,128,4,4>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_128x64_k128_16w") o1_ampere_launch<128,64,128,8,2>(aa,wa,as,ws,out,stream);
+    else if(implementation=="swizzle_64x64_k128_16w_exp") {
+      if(exponent_scale) o1_ampere_launch<64,64,128,4,4,true>(aa,wa,as,ws,out,stream);
+      else o1_ampere_launch<64,64,128,4,4>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="swizzle_128x64_k128_16w_exp") {
+      if(exponent_scale) o1_ampere_launch<128,64,128,8,2,true>(aa,wa,as,ws,out,stream);
+      else o1_ampere_launch<128,64,128,8,2>(aa,wa,as,ws,out,stream);
+    }
     else if(implementation=="swizzle_128x64_k128") o1_ampere_launch<128,64,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_128x128_k128") o1_ampere_launch<128,128,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_128x64_k64") o1_ampere_launch<128,64,64>(aa,wa,as,ws,out,stream);
@@ -270,6 +296,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   meta["architecture"]="sm80";meta["variant"]=variant;
   meta["cta_tile"]=py::make_tuple(tile_m,tile_n,tile_k);
   meta["implementation"]=implementation;
+  meta["exponent_scale_fast_path"]=exponent_scale;
   meta["scale_storage"]=implementation=="baseline"?"global_per_fragment":"shared_per_cta_column_group";
   meta["smem_swizzle"]=implementation!="baseline";
   meta["pipeline_stages"]=STAGES;meta["threads"]=implementation.find("16w")!=std::string::npos?512:THREADS;
