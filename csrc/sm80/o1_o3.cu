@@ -197,6 +197,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     else implementation="swizzle_64x64_k64";
   }
   const bool o3_candidate=split&&(implementation=="o3_swizzle_64x64_k128_magic"||
+      implementation=="o3_swizzle_64x32_k128_magic"||implementation=="o3_swizzle_64x128_k128_magic"||
       implementation=="o3_swizzle_128x64_k128_magic"||implementation=="o3_swizzle_128x64_k256_magic");
   TORCH_CHECK(implementation=="baseline" || o3_candidate || (!split && (
       implementation=="swizzle_64x64_k128" || implementation=="swizzle_128x64_k128" ||
@@ -221,6 +222,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(implementation!="baseline") {
     tile_m=(implementation.rfind("swizzle_64x",0)==0||implementation.rfind("o3_swizzle_64x",0)==0)?64:128;
     tile_n=implementation=="swizzle_128x128_k128"?128:(implementation.rfind("swizzle_64x32_",0)==0?32:64);
+    if(implementation=="o3_swizzle_64x32_k128_magic") tile_n=32;
+    if(implementation=="o3_swizzle_64x128_k128_magic") tile_n=128;
     tile_k=implementation=="swizzle_128x64_k64"||implementation=="swizzle_64x64_k64"?64:128;
     if(implementation=="o3_swizzle_128x64_k256_magic") tile_k=256;
     TORCH_CHECK(m%tile_m==0&&n%tile_n==0&&k%tile_k==0,"candidate tile alignment required");
@@ -244,6 +247,12 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto out=at::empty({m,n},as.options());
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
+  if(implementation=="o3_swizzle_64x32_k128_magic") {
+    if(exponent_scale) o3_configure<64,32,128,true>(); else o3_configure<64,32,128,false>();
+  }
+  if(implementation=="o3_swizzle_64x128_k128_magic") {
+    if(exponent_scale) o3_configure<64,128,128,true>(); else o3_configure<64,128,128,false>();
+  }
   if(implementation=="o3_swizzle_64x64_k128_magic") {
     if(exponent_scale) o3_configure<64,64,128,true>(); else o3_configure<64,64,128,false>();
   }
@@ -296,7 +305,13 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto gemm=[&](){
     dim3 grid(n/TN,m/TM);
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
-    if(implementation=="o3_swizzle_64x64_k128_magic") {
+    if(implementation=="o3_swizzle_64x32_k128_magic") {
+      if(exponent_scale) o3_launch<64,32,128,true>(aa,wa,as,ws,out,stream); else o3_launch<64,32,128,false>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x128_k128_magic") {
+      if(exponent_scale) o3_launch<64,128,128,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x64_k128_magic") {
       if(exponent_scale) o3_launch<64,64,128,true>(aa,wa,as,ws,out,stream); else o3_launch<64,64,128,false>(aa,wa,as,ws,out,stream);
     }
     else if(implementation=="o3_swizzle_128x64_k128_magic") {
