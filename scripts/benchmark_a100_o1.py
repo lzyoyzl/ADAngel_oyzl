@@ -53,7 +53,11 @@ def main():
          policy='No filtering; unlocked clocks; per-round cyclic/reversed order; conversion amortized, total directly timed'))
     if args.validate or args.validate_only:
         checks = []
-        for m,n,k in [(128,128,128),(256,128,256),(128,256,384),(128,128,4096)]:
+        shapes=[(128,128,128),(256,128,256),(128,256,384),(128,128,4096)]
+        if set(args.impl)<= {'production','baseline'}:
+            # Exercise every fixed production dispatch branch, not only4096³.
+            shapes += [(64,64,64),(64,64,128),(128,192,192),(192,128,320)]
+        for m,n,k in shapes:
             for pattern in ['zero','random','saturation','scale_codes']:
                 torch.manual_seed(718+k)
                 a=torch.randint(-128,128,(m,k),dtype=torch.int8,device='cuda')
