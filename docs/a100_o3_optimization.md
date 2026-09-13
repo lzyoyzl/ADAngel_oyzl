@@ -199,6 +199,13 @@ wait比率分别约1.391、1.304、1.507。静态copy减少了指令，但并未
 只保留4个low和4个high的INT32 partial，立刻对对应FP32输出寄存器进行该G128的FMA。
 两条INT4 MMA路径、每个输出的group/FMA顺序及量化不变；这是待审计、待实测候选。
 
+第十二轮atom-stream已通过200项GPU逐位检查、同函数原生INT4/无spill审计。
+单样本五轮初筛：stream 0.544768ms、static对照0.566272ms、当前O1 1.031168ms；
+这不是24样本最终结论，寄存器仍为128，目标尚未证明达成。
+下一轮独立测试stream的3 CTA launch-bound及K256搬运候选。若launch-bound导致
+spill，必须拒绝该候选，不能为了名义occupancy接受local-memory退化。
+K256仍逐个G128缩放/FMA，不把两个group合并缩放。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。
