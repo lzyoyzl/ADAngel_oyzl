@@ -197,6 +197,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     else implementation="swizzle_64x64_k64";
   }
   const bool o3_candidate=split&&(implementation=="o3_swizzle_64x64_k128_magic"||
+      implementation=="o3_swizzle_64x128_k128_16w_magic"||implementation=="o3_swizzle_64x128_k128_16w_exp"||
       implementation=="o3_swizzle_64x128_k128_exp"||implementation=="o3_swizzle_64x64_k128_exp"||
       implementation=="o3_swizzle_64x32_k128_magic"||implementation=="o3_swizzle_64x128_k128_magic"||
       implementation=="o3_swizzle_64x32_k128_magic_cached"||implementation=="o3_swizzle_64x64_k128_magic_cached"||
@@ -250,6 +251,12 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto out=at::empty({m,n},as.options());
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
+  if(implementation=="o3_swizzle_64x128_k128_16w_magic") {
+    if(exponent_scale) o3_configure<64,128,128,true,false,true,4>(); else o3_configure<64,128,128,false,false,false,4>();
+  }
+  if(implementation=="o3_swizzle_64x128_k128_16w_exp") {
+    if(exponent_scale) o3_configure<64,128,128,true,false,false,4>(); else o3_configure<64,128,128,false,false,false,4>();
+  }
   if(implementation=="o3_swizzle_64x128_k128_exp") {
     if(exponent_scale) o3_configure<64,128,128,true,false,false>(); else o3_configure<64,128,128,false>();
   }
@@ -320,7 +327,13 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto gemm=[&](){
     dim3 grid(n/TN,m/TM);
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
-    if(implementation=="o3_swizzle_64x128_k128_exp") {
+    if(implementation=="o3_swizzle_64x128_k128_16w_magic") {
+      if(exponent_scale) o3_launch<64,128,128,true,false,true,4>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,4>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x128_k128_16w_exp") {
+      if(exponent_scale) o3_launch<64,128,128,true,false,false,4>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,4>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x128_k128_exp") {
       if(exponent_scale) o3_launch<64,128,128,true,false,false>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false>(aa,wa,as,ws,out,stream);
     }
     else if(implementation=="o3_swizzle_64x64_k128_exp") {

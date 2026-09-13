@@ -46,5 +46,6 @@ def test_magic_audit_checks_final_template_boolean():
     for fast in (0,1):
         for cached in (0,1):
             for magic in (0,1):
-                symbol=f'_Z25adangel_sm80_o3_swizzledILi64ELi128ELi128ELb{fast}ELb{cached}ELb{magic}EEEvPKh'
-                assert bool(re.search(r'Lb1EEEv',symbol))==bool(magic)
+                for wn in (2,4):
+                    symbol=f'_Z25adangel_sm80_o3_swizzledILi64ELi128ELi128ELb{fast}ELb{cached}ELb{magic}ELi{wn}EEEvPKh'
+                    assert bool(re.search(r'Lb1ELi[24]EEEv',symbol))==bool(magic)

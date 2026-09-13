@@ -1,16 +1,16 @@
 // SM80 O3: preserve two native U4/S4 MMA paths and the ordered G128 FMA.
 #pragma once
-template<int M,int N,int K,bool Cached=false>
+template<int M,int N,int K,bool Cached=false,int WN=2>
 struct O3AmpereConfig {
   static_assert(K==128||K==256);
-  static constexpr int Threads=256, Groups=K/128, Bytes=K/2;
+  static constexpr int Threads=128*WN, Groups=K/128, Bytes=K/2;
   using Low=cutlass::uint4b_t;
   using Signed=cutlass::int4b_t;
   using Mma=cute::TiledMMA<cute::MMA_Atom<cute::SM80_16x8x64_S32U4S4S32_TN>,
-      cute::Layout<cute::Shape<cute::_4,cute::_2,cute::_1>>,
+      cute::Layout<cute::Shape<cute::_4,cute::Int<WN>,cute::_1>>,
       cute::Tile<cute::Int<M>,cute::Int<N>,cute::_64>>;
   using HighMma=cute::TiledMMA<cute::MMA_Atom<cute::SM80_16x8x64_S32S4S4S32_TN>,
-      cute::Layout<cute::Shape<cute::_4,cute::_2,cute::_1>>,
+      cute::Layout<cute::Shape<cute::_4,cute::Int<WN>,cute::_1>>,
       cute::Tile<cute::Int<M>,cute::Int<N>,cute::_64>>;
   template<int Rows> using ByteLayout=decltype(cute::composition(
       cute::Swizzle<K==256?3:2,4,3>{},cute::Layout<cute::Shape<cute::Int<Rows>,cute::Int<Bytes>>,
@@ -25,19 +25,19 @@ struct O3AmpereConfig {
   };
 };
 
-template<int M,int N,int K,bool Fast,bool Cached>
-__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached>::Storage& s,
+template<int M,int N,int K,bool Fast,bool Cached,int WN>
+__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage& s,
     int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k) {
-  using C=O3AmpereConfig<M,N,K,Cached>;
+  using C=O3AmpereConfig<M,N,K,Cached,WN>;
   typename C::template ByteLayout<M> la;
   typename C::template ByteLayout<N> lb;
-  for(unsigned off=threadIdx.x*16;off<M*C::Bytes;off+=256*16) {
+  for(unsigned off=threadIdx.x*16;off<M*C::Bytes;off+=C::Threads*16) {
     unsigned row=off/C::Bytes,col=off%C::Bytes;
     auto src=a+(blockIdx.y*M+row)*(k/2)+stage*C::Bytes+col;
     copy16(s.low[slot]+la(row,col),src);
     copy16(s.high[slot]+la(row,col),src+m*(k/2));
   }
-  for(unsigned off=threadIdx.x*16;off<N*C::Bytes;off+=256*16) {
+  for(unsigned off=threadIdx.x*16;off<N*C::Bytes;off+=C::Threads*16) {
     unsigned row=off/C::Bytes,col=off%C::Bytes;
     copy16(s.weight[slot]+lb(row,col),w+(blockIdx.x*N+row)*(k/2)+stage*C::Bytes+col);
   }
@@ -51,10 +51,10 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast>
-__global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2>
+__global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
-  using C=O3AmpereConfig<M,N,K,Cached>;
+  using C=O3AmpereConfig<M,N,K,Cached,WN>;
   extern __shared__ __align__(128) uint8_t buf[];
   auto& s=*reinterpret_cast<typename C::Storage*>(buf);
   if constexpr(Cached) {
@@ -62,7 +62,7 @@ __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
     // Store group-major so consumers read adjacent columns without bank stride.
     int groups=k/128;
     unsigned first_group=(threadIdx.x%8)*4;
-    for(unsigned col=threadIdx.x/8;col<N;col+=32) {
+    for(unsigned col=threadIdx.x/8;col<N;col+=C::Threads/8) {
       if(first_group<groups) {
         const auto* src=ws+(blockIdx.x*N+col)*groups+first_group;
         uint32_t codes=0;
@@ -111,12 +111,12 @@ __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
   auto hc=cute::make_tiled_copy_A(SCopy{},high_mma).get_slice(threadIdx.x);
   auto bc=cute::make_tiled_copy_B(SCopy{},mma).get_slice(threadIdx.x);
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
-  o3_prefetch<M,N,K,Fast,Cached>(s,0,0,a,w,ws,m,k);
+  o3_prefetch<M,N,K,Fast,Cached,WN>(s,0,0,a,w,ws,m,k);
   for(int stage=0;stage<k/K;++stage) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
     int slot=stage%2;
-    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached>(s,1-slot,stage+1,a,w,ws,m,k);
+    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN>(s,1-slot,stage+1,a,w,ws,m,k);
     o1_static_for<0,C::Groups>([&](auto group) {
       cute::clear(low);cute::clear(high);
       o1_static_for<0,2>([&](auto half) {
@@ -154,17 +154,17 @@ __global__ __launch_bounds__(256) void adangel_sm80_o3_swizzled(
   });
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2>
 void o3_configure() {
-  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic>;
+  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN>;
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributeMaxDynamicSharedMemorySize,
-      sizeof(typename O3AmpereConfig<M,N,K,Cached>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
+      sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributePreferredSharedMemoryCarveout,100)==cudaSuccess,"O3 carveout failed");
 }
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2>
 void o3_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,const at::Tensor& ws,
     at::Tensor& out,cudaStream_t stream) {
-  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic><<<dim3(out.size(1)/N,out.size(0)/M),256,
-      sizeof(typename O3AmpereConfig<M,N,K,Cached>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
+  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN><<<dim3(out.size(1)/N,out.size(0)/M),128*WN,
+      sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
       as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),out.size(0),out.size(1),w.size(1)*2);
 }
