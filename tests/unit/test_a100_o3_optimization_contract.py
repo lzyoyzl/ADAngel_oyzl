@@ -68,3 +68,13 @@ def test_g128_integer_reconstruction_can_reuse_one_partial():
             partial+=sum(low[i]*w[i] for i in range(start,start+64))
             assert -(2**31)<=partial<2**31
         assert partial==sum(x*y for x,y in zip(a,w))
+
+
+def test_static_copy_exactly_covers_each_shared_tile():
+    for rows in (32,64,128):
+        for k in (128,256):
+            for threads in (256,512):
+                step=threads*16;size=rows*(k//2)
+                offsets=[t*16+i*step for t in range(threads)
+                         for i in range((size+step-1)//step) if t*16+i*step<size]
+                assert sorted(offsets)==list(range(0,size,16))

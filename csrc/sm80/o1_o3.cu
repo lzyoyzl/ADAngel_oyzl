@@ -197,6 +197,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     else implementation="swizzle_64x64_k64";
   }
   const bool o3_candidate=split&&(implementation=="o3_swizzle_64x64_k128_magic"||
+      implementation=="o3_swizzle_64x128_k128_exp_static"||implementation=="o3_swizzle_64x128_k128_exp_merge_static"||
+      implementation=="o3_swizzle_64x128_k128_16w_exp_static"||implementation=="o3_swizzle_64x128_k128_16w_exp_merge_static"||
       implementation=="o3_swizzle_64x128_k128_exp_merge"||implementation=="o3_swizzle_64x128_k128_16w_exp_merge"||
       implementation=="o3_swizzle_64x128_k128_16w_magic"||implementation=="o3_swizzle_64x128_k128_16w_exp"||
       implementation=="o3_swizzle_64x128_k128_exp"||implementation=="o3_swizzle_64x64_k128_exp"||
@@ -252,6 +254,18 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto out=at::empty({m,n},as.options());
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
+  if(implementation=="o3_swizzle_64x128_k128_16w_exp_static") {
+    if(exponent_scale) o3_configure<64,128,128,true,false,false,4,false,true>(); else o3_configure<64,128,128,false,false,false,4,false,true>();
+  }
+  if(implementation=="o3_swizzle_64x128_k128_16w_exp_merge_static") {
+    if(exponent_scale) o3_configure<64,128,128,true,false,false,4,true,true>(); else o3_configure<64,128,128,false,false,false,4,true,true>();
+  }
+  if(implementation=="o3_swizzle_64x128_k128_exp_static") {
+    if(exponent_scale) o3_configure<64,128,128,true,false,false,2,false,true>(); else o3_configure<64,128,128,false,false,false,2,false,true>();
+  }
+  if(implementation=="o3_swizzle_64x128_k128_exp_merge_static") {
+    if(exponent_scale) o3_configure<64,128,128,true,false,false,2,true,true>(); else o3_configure<64,128,128,false,false,false,2,true,true>();
+  }
   if(implementation=="o3_swizzle_64x128_k128_exp_merge") {
     if(exponent_scale) o3_configure<64,128,128,true,false,false,2,true>(); else o3_configure<64,128,128,false,false,false,2,true>();
   }
@@ -334,7 +348,19 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto gemm=[&](){
     dim3 grid(n/TN,m/TM);
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
-    if(implementation=="o3_swizzle_64x128_k128_exp_merge") {
+    if(implementation=="o3_swizzle_64x128_k128_16w_exp_static") {
+      if(exponent_scale) o3_launch<64,128,128,true,false,false,4,false,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,4,false,true>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x128_k128_16w_exp_merge_static") {
+      if(exponent_scale) o3_launch<64,128,128,true,false,false,4,true,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,4,true,true>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x128_k128_exp_static") {
+      if(exponent_scale) o3_launch<64,128,128,true,false,false,2,false,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,2,false,true>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x128_k128_exp_merge_static") {
+      if(exponent_scale) o3_launch<64,128,128,true,false,false,2,true,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,2,true,true>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x128_k128_exp_merge") {
       if(exponent_scale) o3_launch<64,128,128,true,false,false,2,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,2,true>(aa,wa,as,ws,out,stream);
     }
     else if(implementation=="o3_swizzle_64x128_k128_16w_exp_merge") {
@@ -453,6 +479,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   meta["integer_conversion"]=(exponent_scale&&implementation.find("_magic")!=std::string::npos)?"exact_bias_bits_fadd":"i2f";
   if(split) meta["integer_partial_reconstruction"]=implementation.find("_merge")!=std::string::npos?
       "high_times16_then_low_mma":"separate_low_high_then_imad";
+  if(split) meta["copy_loop"]=implementation.find("_static")!=std::string::npos?"compile_time":"runtime";
   meta["scale_storage"]=implementation=="baseline"?"global_per_fragment":"shared_per_cta_column_group";
   meta["smem_swizzle"]=implementation!="baseline";
   meta["whole_scale_panel_cached"]=implementation.find("_cached")!=std::string::npos;

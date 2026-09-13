@@ -25,21 +25,39 @@ struct O3AmpereConfig {
   };
 };
 
-template<int M,int N,int K,bool Fast,bool Cached,int WN>
+template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy>
 __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage& s,
     int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN>;
   typename C::template ByteLayout<M> la;
   typename C::template ByteLayout<N> lb;
-  for(unsigned off=threadIdx.x*16;off<M*C::Bytes;off+=C::Threads*16) {
+  auto copy_a=[&](unsigned off) {
     unsigned row=off/C::Bytes,col=off%C::Bytes;
     auto src=a+(blockIdx.y*M+row)*(k/2)+stage*C::Bytes+col;
     copy16(s.low[slot]+la(row,col),src);
     copy16(s.high[slot]+la(row,col),src+m*(k/2));
-  }
-  for(unsigned off=threadIdx.x*16;off<N*C::Bytes;off+=C::Threads*16) {
+  };
+  auto copy_b=[&](unsigned off) {
     unsigned row=off/C::Bytes,col=off%C::Bytes;
     copy16(s.weight[slot]+lb(row,col),w+(blockIdx.x*N+row)*(k/2)+stage*C::Bytes+col);
+  };
+  if constexpr(StaticCopy) {
+    // The per-thread copy count is known from the CTA shape. Do not make
+    // ptxas infer a runtime loop trip count from threadIdx.x/launch bounds.
+    constexpr int Step=C::Threads*16;
+    o1_static_for<0,(M*C::Bytes+Step-1)/Step>([&](auto chunk) {
+      unsigned off=threadIdx.x*16+chunk*Step;
+      if constexpr(M*C::Bytes%Step==0) copy_a(off);
+      else if(off<M*C::Bytes) copy_a(off);
+    });
+    o1_static_for<0,(N*C::Bytes+Step-1)/Step>([&](auto chunk) {
+      unsigned off=threadIdx.x*16+chunk*Step;
+      if constexpr(N*C::Bytes%Step==0) copy_b(off);
+      else if(off<N*C::Bytes) copy_b(off);
+    });
+  } else {
+    for(unsigned off=threadIdx.x*16;off<M*C::Bytes;off+=C::Threads*16) copy_a(off);
+    for(unsigned off=threadIdx.x*16;off<N*C::Bytes;off+=C::Threads*16) copy_b(off);
   }
   if(!Cached && threadIdx.x<N) {
     o1_static_for<0,C::Groups>([&](auto group) {
@@ -51,7 +69,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false>
 __global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN>;
@@ -113,12 +131,12 @@ __global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
   auto bc=cute::make_tiled_copy_B(SCopy{},mma).get_slice(threadIdx.x);
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
   auto bd1=bc.retile_D(rb1);
-  o3_prefetch<M,N,K,Fast,Cached,WN>(s,0,0,a,w,ws,m,k);
+  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy>(s,0,0,a,w,ws,m,k);
   for(int stage=0;stage<k/K;++stage) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
     int slot=stage%2;
-    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN>(s,1-slot,stage+1,a,w,ws,m,k);
+    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy>(s,1-slot,stage+1,a,w,ws,m,k);
     o1_static_for<0,C::Groups>([&](auto group) {
       cute::clear(low);
       if constexpr(Merge) {
@@ -184,17 +202,17 @@ __global__ __launch_bounds__(128*WN) void adangel_sm80_o3_swizzled(
   });
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false>
 void o3_configure() {
-  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge>;
+  auto f=adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy>;
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributeMaxDynamicSharedMemorySize,
       sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributePreferredSharedMemoryCarveout,100)==cudaSuccess,"O3 carveout failed");
 }
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false>
 void o3_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,const at::Tensor& ws,
     at::Tensor& out,cudaStream_t stream) {
-  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge><<<dim3(out.size(1)/N,out.size(0)/M),128*WN,
+  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy><<<dim3(out.size(1)/N,out.size(0)/M),128*WN,
       sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
       as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),out.size(0),out.size(1),w.size(1)*2);
 }
