@@ -43,3 +43,12 @@ def test_candidate_validation_is_bitwise_and_unfiltered():
     assert 'binary_sha256' in script
     assert "'timings_ms'" in script
     assert 'baseline_mse_vs_o0' in script
+    assert 'torch.equal(y.view(torch.int32),base.view(torch.int32))' in script
+
+
+def test_sm80_production_keeps_old_baseline_and_o3():
+    source=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
+    assert 'if(split) implementation="baseline"' in source
+    assert 'py::arg("implementation")="production"' in source
+    assert 'requested_implementation' in source
+    assert 'implementation="swizzle_128x64_k128_magic"' in source

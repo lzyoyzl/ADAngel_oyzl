@@ -184,6 +184,17 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   TORCH_CHECK(mode=="conversion_only"||mode=="compute_only"||mode=="cold"||mode=="steady_state","invalid mode");
   TORCH_CHECK(warmup>=0&&repeats>0&&inner>0,"invalid repetitions");
   bool split=variant=="o3";
+  const auto requested_implementation=implementation;
+  if(implementation=="production") {
+    // Fixed, validated SM80 policy. O3 retains its original native INT4 path.
+    // Smaller aligned O1 shapes use the corresponding tested exact kernel.
+    if(split) implementation="baseline";
+    else if(a.dim()==2 && a.size(0)%128==0 && a.size(1)%128==0)
+      implementation="swizzle_128x64_k128_magic";
+    else if(a.dim()==2 && a.size(1)%128==0)
+      implementation="swizzle_64x64_k128_magic";
+    else implementation="swizzle_64x64_k64";
+  }
   TORCH_CHECK(implementation=="baseline" || (!split && (
       implementation=="swizzle_64x64_k128" || implementation=="swizzle_128x64_k128" ||
       implementation=="swizzle_64x64_k64" || implementation=="swizzle_64x32_k128" ||
@@ -344,6 +355,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   meta["architecture"]="sm80";meta["variant"]=variant;
   meta["cta_tile"]=py::make_tuple(tile_m,tile_n,tile_k);
   meta["implementation"]=implementation;
+  meta["requested_implementation"]=requested_implementation;
   meta["exponent_scale_fast_path"]=exponent_scale;
   meta["paired_mma_issue"]=implementation.find("_pair")!=std::string::npos;
   meta["stream_atom_partial"]=exponent_scale&&implementation.find("_stream")!=std::string::npos;
@@ -362,6 +374,6 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
 }
 } // namespace
 PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
-  m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100,py::arg("implementation")="baseline");
+  m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100,py::arg("implementation")="production");
   m.def("benchmark_o0",&adangel_benchmark_o0);
 }
