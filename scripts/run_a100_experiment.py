@@ -26,19 +26,19 @@ def validate(native, torch):
     )
     torch.backends.cuda.matmul.allow_tf32 = False
     checks = []
-    for k in (128, 256, 384):
+    for m, n, k in ((64,64,128), (128,192,256), (192,128,384), (128,128,4096)):
         for pattern in ("zero", "codes_and_saturation", "random"):
             torch.manual_seed(174+k)
-            a = torch.randint(-128,128,(64,k),dtype=torch.int8,device="cuda")
-            w = torch.randint(0,256,(64,k//2),dtype=torch.uint8,device="cuda")
+            a = torch.randint(-128,128,(m,k),dtype=torch.int8,device="cuda")
+            w = torch.randint(0,256,(n,k//2),dtype=torch.uint8,device="cuda")
             if pattern == "zero":
                 a.zero_()
             if pattern == "codes_and_saturation":
                 a[:] = (torch.arange(k,device="cuda")%256-128).to(torch.int8)
                 w[:] = (torch.arange(k//2,device="cuda")%256).to(torch.uint8)
-            asc = torch.linspace(0.002,0.08,64,device="cuda")
+            asc = torch.linspace(0.002,0.08,m,device="cuda")
             for variant, g in (("o1",32),("o3",128)):
-                ws = (torch.arange(64*(k//g),device="cuda").reshape(64,k//g)%7+123).to(torch.uint8)
+                ws = (torch.arange(n*(k//g),device="cuda").reshape(n,k//g)%7+123).to(torch.uint8)
                 if variant == "o3":
                     weight = unpack_int4_tensor(mxfp4_to_q4_packed(w)).float()
                     factor = 1.0
@@ -48,7 +48,7 @@ def validate(native, torch):
                     weight=lut[nib].float()
                     factor=0.5
                 scale=decode_ue8m0_tensor(ws)
-                reference=torch.zeros((64,64),device="cuda")
+                reference=torch.zeros((m,n),device="cuda")
                 for group in range(k//g):
                     sl=slice(group*g,(group+1)*g)
                     partial=a[:,sl].float()@weight[:,sl].T
@@ -57,9 +57,9 @@ def validate(native, torch):
                     p=native.benchmark(variant,mode,a,asc,w,ws,2,3,10)
                     torch.cuda.synchronize()
                     torch.testing.assert_close(p["output"],reference,rtol=1e-3,atol=1e-3,
-                        msg=lambda detail: f"{variant}/{mode}/K{k}/{pattern}: {detail}")
+                        msg=lambda detail: f"{variant}/{mode}/{m}x{n}x{k}/{pattern}: {detail}")
                     assert torch.isfinite(p["output"]).all()
-                    checks.append(dict(variant=variant,k=k,pattern=pattern,mode=mode,
+                    checks.append(dict(variant=variant,m=m,n=n,k=k,pattern=pattern,mode=mode,
                         max_abs_error=float((p["output"]-reference).abs().max())))
     return dict(passed=True,checks=checks)
 
