@@ -192,6 +192,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
       implementation=="swizzle_64x64_k128_pair" || implementation=="swizzle_64x32_k128_pair" ||
       implementation=="swizzle_64x64_k128_magic" || implementation=="swizzle_128x64_k128_magic" ||
       implementation=="swizzle_64x32_k128_magic" ||
+      implementation=="swizzle_64x64_k128_magic_stream" || implementation=="swizzle_128x64_k128_magic_stream" ||
       implementation=="swizzle_128x128_k128" || implementation=="swizzle_128x64_k64")),
       "unknown implementation or O1-only candidate requested for O3");
   TORCH_CHECK(a.is_cuda()&&as.is_cuda()&&w.is_cuda()&&ws.is_cuda(),"CUDA tensors required");
@@ -255,6 +256,14 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     else o1_ampere_configure<64,32,128>();
   }
   if(implementation=="swizzle_128x64_k128") o1_ampere_configure<128,64,128>();
+  if(implementation=="swizzle_64x64_k128_magic_stream") {
+    if(exponent_scale) o1_ampere_configure<64,64,128,4,2,true,false,true,true>();
+    else o1_ampere_configure<64,64,128>();
+  }
+  if(implementation=="swizzle_128x64_k128_magic_stream") {
+    if(exponent_scale) o1_ampere_configure<128,64,128,4,2,true,false,true,true>();
+    else o1_ampere_configure<128,64,128>();
+  }
   if(implementation=="swizzle_128x128_k128") o1_ampere_configure<128,128,128>();
   if(implementation=="swizzle_128x64_k64") o1_ampere_configure<128,64,64>();
   auto cvw=[&](){if(split) adangel_launch_mxfp4_to_q4(w,wa,stream); else adangel_launch_mxfp4_to_int8(w,wa,stream);};
@@ -291,6 +300,14 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
       else o1_ampere_launch<64,32,128>(aa,wa,as,ws,out,stream);
     }
     else if(implementation=="swizzle_128x64_k128") o1_ampere_launch<128,64,128>(aa,wa,as,ws,out,stream);
+    else if(implementation=="swizzle_64x64_k128_magic_stream") {
+      if(exponent_scale) o1_ampere_launch<64,64,128,4,2,true,false,true,true>(aa,wa,as,ws,out,stream);
+      else o1_ampere_launch<64,64,128>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="swizzle_128x64_k128_magic_stream") {
+      if(exponent_scale) o1_ampere_launch<128,64,128,4,2,true,false,true,true>(aa,wa,as,ws,out,stream);
+      else o1_ampere_launch<128,64,128>(aa,wa,as,ws,out,stream);
+    }
     else if(implementation=="swizzle_128x128_k128") o1_ampere_launch<128,128,128>(aa,wa,as,ws,out,stream);
     else if(implementation=="swizzle_128x64_k64") o1_ampere_launch<128,64,64>(aa,wa,as,ws,out,stream);
     else adangel_sm80_grouped_gemm<false><<<grid,THREADS,0,stream>>>(ap,bp,as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
@@ -329,6 +346,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   meta["implementation"]=implementation;
   meta["exponent_scale_fast_path"]=exponent_scale;
   meta["paired_mma_issue"]=implementation.find("_pair")!=std::string::npos;
+  meta["stream_atom_partial"]=exponent_scale&&implementation.find("_stream")!=std::string::npos;
   meta["integer_conversion"]=(exponent_scale&&implementation.find("_magic")!=std::string::npos)?"exact_bias_bits_fadd":"i2f";
   meta["scale_storage"]=implementation=="baseline"?"global_per_fragment":"shared_per_cta_column_group";
   meta["smem_swizzle"]=implementation!="baseline";

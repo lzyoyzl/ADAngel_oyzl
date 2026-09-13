@@ -68,7 +68,7 @@ __device__ __forceinline__ void o1_ampere_prefetch(
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M, int N, int K, int WM=4, int WN=2, bool ExponentScale=false, bool PairMma=false, bool MagicCast=false>
+template<int M, int N, int K, int WM=4, int WN=2, bool ExponentScale=false, bool PairMma=false, bool MagicCast=false, bool StreamPartial=false>
 __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
     const int8_t* a, const int8_t* b, const float* as,
     const uint8_t* ws, float* y, int k) {
@@ -134,7 +134,38 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
         acc(i)=__fmaf_rn(value,scale,acc(i));
       });
     };
-    if constexpr(PairMma) {
+    if constexpr(StreamPartial) {
+      // Consume each 16x8 atom immediately: only four INT32 values per thread
+      // are live, instead of a whole warp output tile of INT32 partials.
+      // Coordinates still come from partition_C; group order is unchanged.
+      o1_static_for<0,C::Groups>([&](auto sub) {
+        auto ta=cute::local_tile(sa,cute::make_shape(cute::Int<M>{},cute::_32{}),cute::make_coord(cute::_0{},sub));
+        auto tb=cute::local_tile(sb,cute::make_shape(cute::Int<N>{},cute::_32{}),cute::make_coord(cute::_0{},sub));
+        cute::copy(Copy{},ca.partition_S(ta),da);
+        cute::copy(Copy{},cb.partition_S(tb),db);
+        o1_static_for<0,decltype(cute::size<1>(acc))::value>([&](auto mi) {
+          o1_static_for<0,decltype(cute::size<2>(acc))::value>([&](auto ni) {
+            auto small=cute::make_tensor<int>(cute::make_shape(cute::_4{}));
+            cute::clear(small);
+            cute::gemm(cute::MMA_Atom<cute::SM80_16x8x32_S32S8S8S32_TN>{},
+                small,ra(cute::_,mi,cute::_0{}),rb(cute::_,ni,cute::_0{}),small);
+            o1_static_for<0,4>([&](auto vi) {
+              auto coord=coords(vi,mi,ni);
+              float column=s.scales[slot][sub*N+cute::get<1>(coord)];
+              float scale;
+              if constexpr(ExponentScale)
+                scale=__uint_as_float(__float_as_uint(rows(vi,mi,ni))+__float_as_uint(column));
+              else scale=__fmul_rn(rows(vi,mi,ni),column);
+              float value;
+              if constexpr(MagicCast)
+                value=__fadd_rn(__int_as_float(0x4b400000+small(vi)),-12582912.0f);
+              else value=float(small(vi));
+              acc(vi,mi,ni)=__fmaf_rn(value,scale,acc(vi,mi,ni));
+            });
+          });
+        });
+      });
+    } else if constexpr(PairMma) {
       auto pending=thr.make_fragment_C(coords);
       o1_static_for<0,C::Groups/2>([&](auto pair) {
         auto sub=pair*cute::_2{};
@@ -160,22 +191,22 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
   });
 }
 
-template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false,bool MagicCast=false>
+template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false,bool MagicCast=false,bool StreamPartial=false>
 void o1_ampere_configure() {
   using C=O1AmpereConfig<M,N,K,WM,WN>;
-  auto rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma,MagicCast>,
+  auto rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma,MagicCast,StreamPartial>,
       cudaFuncAttributeMaxDynamicSharedMemorySize,sizeof(typename C::Storage));
   TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
-  rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma,MagicCast>,
+  rc=cudaFuncSetAttribute(adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma,MagicCast,StreamPartial>,
       cudaFuncAttributePreferredSharedMemoryCarveout,100);
   TORCH_CHECK(rc==cudaSuccess,cudaGetErrorString(rc));
 }
 
-template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false,bool MagicCast=false>
+template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false,bool MagicCast=false,bool StreamPartial=false>
 void o1_ampere_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,
     const at::Tensor& ws,at::Tensor& out,cudaStream_t stream) {
   using C=O1AmpereConfig<M,N,K,WM,WN>;
-  adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma,MagicCast><<<dim3(out.size(1)/N,out.size(0)/M),C::Threads,sizeof(typename C::Storage),stream>>>(
+  adangel_sm80_o1_swizzled<M,N,K,WM,WN,ExponentScale,PairMma,MagicCast,StreamPartial><<<dim3(out.size(1)/N,out.size(0)/M),C::Threads,sizeof(typename C::Storage),stream>>>(
       a.data_ptr<int8_t>(),w.data_ptr<int8_t>(),as.data_ptr<float>(),ws.data_ptr<uint8_t>(),
       out.data_ptr<float>(),a.size(1));
 }
