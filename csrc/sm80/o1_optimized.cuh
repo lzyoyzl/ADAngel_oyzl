@@ -2,6 +2,16 @@
 // No change to E2M1->INT8 mapping or the ordered K32 FMA recurrence.
 #pragma once
 
+// Keep fragment indices as CuTe integral constants through layout algebra,
+// rather than generating dynamic index arithmetic and only unrolling later.
+template<int I,int End,class F>
+__device__ __forceinline__ void o1_static_for(F const& f) {
+  if constexpr(I<End) {
+    f(cute::Int<I>{});
+    o1_static_for<I+1,End>(f);
+  }
+}
+
 template<int M, int N, int K, int WM = 4, int WN = 2>
 struct O1AmpereConfig {
   static constexpr int Threads = WM * WN * 32;
@@ -32,12 +42,12 @@ __device__ __forceinline__ void o1_ampere_prefetch(
   using C = O1AmpereConfig<M,N,K,WM,WN>;
   typename C::ASmem la;
   typename C::BSmem lb;
-  for(int offset=threadIdx.x*16;offset<M*K;offset+=C::Threads*16) {
-    int row=offset/K, col=offset%K;
+  for(unsigned offset=threadIdx.x*16;offset<M*K;offset+=C::Threads*16) {
+    unsigned row=offset/K, col=offset%K;
     copy16(s.a[slot]+la(row,col),a+(int(blockIdx.y)*M+row)*k+stage*K+col);
   }
-  for(int offset=threadIdx.x*16;offset<N*K;offset+=C::Threads*16) {
-    int row=offset/K, col=offset%K;
+  for(unsigned offset=threadIdx.x*16;offset<N*K;offset+=C::Threads*16) {
+    unsigned row=offset/K, col=offset%K;
     copy16(s.b[slot]+lb(row,col),b+(int(blockIdx.x)*N+row)*k+stage*K+col);
   }
   // One decode per CTA/column/K32. This small buffer is shared by output rows.
@@ -73,9 +83,9 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
   auto acc=cute::make_fragment_like<float>(partial);
   auto rows=cute::make_fragment_like<float>(partial);
   cute::clear(acc);
-  CUTE_UNROLL
-  for(int i=0;i<cute::size(rows);++i)
+  o1_static_for<0,decltype(cute::size(rows))::value>([&](auto i) {
     rows(i)=as[int(blockIdx.y)*M+cute::get<0>(coords(i))];
+  });
   auto sa0=cute::make_tensor(cute::make_smem_ptr(s.a[0]),typename C::ASmem{});
   auto sb0=cute::make_tensor(cute::make_smem_ptr(s.b[0]),typename C::BSmem{});
   auto ta0=cute::local_tile(sa0,cute::make_shape(cute::Int<M>{},cute::_32{}),cute::make_coord(0,0));
@@ -95,17 +105,16 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
     if(stage+1<k/K) o1_ampere_prefetch<M,N,K,WM,WN,ExponentScale>(s,1-slot,stage+1,a,b,ws,k);
     auto sa=cute::make_tensor(cute::make_smem_ptr(s.a[slot]),typename C::ASmem{});
     auto sb=cute::make_tensor(cute::make_smem_ptr(s.b[slot]),typename C::BSmem{});
-    auto multiply=[&](auto& target,int sub) {
-      auto ta=cute::local_tile(sa,cute::make_shape(cute::Int<M>{},cute::_32{}),cute::make_coord(0,sub));
-      auto tb=cute::local_tile(sb,cute::make_shape(cute::Int<N>{},cute::_32{}),cute::make_coord(0,sub));
+    auto multiply=[&](auto& target,auto sub) {
+      auto ta=cute::local_tile(sa,cute::make_shape(cute::Int<M>{},cute::_32{}),cute::make_coord(cute::_0{},sub));
+      auto tb=cute::local_tile(sb,cute::make_shape(cute::Int<N>{},cute::_32{}),cute::make_coord(cute::_0{},sub));
       cute::copy(Copy{},ca.partition_S(ta),da);
       cute::copy(Copy{},cb.partition_S(tb),db);
       cute::clear(target);
       cute::gemm(mma,ra,rb,target);
     };
-    auto accumulate=[&](auto const& partial,int sub) {
-      CUTE_UNROLL
-      for(int i=0;i<cute::size(acc);++i) {
+    auto accumulate=[&](auto const& partial,auto sub) {
+      o1_static_for<0,decltype(cute::size(acc))::value>([&](auto i) {
         float column=s.scales[slot][sub*N+cute::get<1>(coords(i))];
         // Host proves normal positive row scales and normal finite products.
         // Power-of-two multiplication then changes only the exponent bits,
@@ -123,34 +132,32 @@ __global__ __launch_bounds__(WM*WN*32) void adangel_sm80_o1_swizzled(
           value=__fadd_rn(__int_as_float(0x4b400000+partial(i)),-12582912.0f);
         } else value=float(partial(i));
         acc(i)=__fmaf_rn(value,scale,acc(i));
-      }
+      });
     };
     if constexpr(PairMma) {
       auto pending=thr.make_fragment_C(coords);
-      CUTE_UNROLL
-      for(int sub=0;sub<C::Groups;sub+=2) {
+      o1_static_for<0,C::Groups/2>([&](auto pair) {
+        auto sub=pair*cute::_2{};
         multiply(partial,sub);
-        multiply(pending,sub+1);
+        multiply(pending,sub+cute::_1{});
         accumulate(partial,sub);
-        accumulate(pending,sub+1);
-      }
+        accumulate(pending,sub+cute::_1{});
+      });
     } else {
-      CUTE_UNROLL
-      for(int sub=0;sub<C::Groups;++sub) {
+      o1_static_for<0,C::Groups>([&](auto sub) {
         multiply(partial,sub);
         accumulate(partial,sub);
-      }
+      });
     }
     // No trailing CTA barrier: the next iteration's wait+barrier executes
     // before prefetch can overwrite this slot, and therefore protects all
     // current readers. The final iteration has no slot reuse.
   }
-  CUTE_UNROLL
-  for(int i=0;i<cute::size(acc);++i) {
+  o1_static_for<0,decltype(cute::size(acc))::value>([&](auto i) {
     int row=int(blockIdx.y)*M+cute::get<0>(coords(i));
     int col=int(blockIdx.x)*N+cute::get<1>(coords(i));
     y[row*int(gridDim.x)*N+col]=acc(i);
-  }
+  });
 }
 
 template<int M,int N,int K,int WM=4,int WN=2,bool ExponentScale=false,bool PairMma=false,bool MagicCast=false>

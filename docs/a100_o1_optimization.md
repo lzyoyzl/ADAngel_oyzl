@@ -37,6 +37,31 @@ A_scale 是正 normal，且全部可能乘积也为有限 normal；否则明确�
 正常范围内该操作逐位等价，不改变最后 FMA 或 group 顺序，不是把 A_scale 移到末尾。
 此候选目的是将部分 scale 工作从 FP32 乘法换为整数加法，是否有收益由配对测试决定。
 
+### 精确 partial 转换（magic bias）
+
+O1 每个 K32 的整数点积满足 `abs(partial) <= 32*128*12 = 49152`。在 FP32 数值
+`12582912 = 1.5*2^23` 附近，ULP 恰为1。因此
+
+```cpp
+float value = __fadd_rn(__int_as_float(0x4b400000 + partial), -12582912.0f);
+```
+
+对该完整范围逐位等价于 `float(partial)`，包括负整数与零。它不是近似量化，也不改变
+group/FMA 顺序。其目的在于把常规 I2F 转换从 XU 管线换成 IADD+FADD。
+CPU 单元测试穷举98305个可能整数；GPU 再做新旧输出逐位对照、MSE回归和SASS审计。
+`_magic` 候选还使用上述安全指数位 scale；不满足 guard 时明确回到普通精确 kernel。
+
+### NCU 定位的阶段性证据
+
+不锁频 `baseline_full_ncu` 的旧 O1 Duration 约4.36ms，动态 warp 指令为1,429,766,144，
+shared load bank conflicts 为150,994,944。首个 swizzle/shared-scale 候选 Duration约1.19ms，
+动态指令427,556,864，DRAM throughput约7.56%，XU执行管线的 elapsed峰值占比约77.31%。
+这里 NCU 指标用于定位原因，性能验收仍用普通 CUDA Event，不将 profiler Duration混入主表。
+
+4096³的 K32 partial 转换数为 `4096*4096*128 = 2,147,483,648`，不是 Tensor Core MMA
+指令数。常规类型转换的吞吐应与INT8 Tensor Core峰值分开分析；参见
+[CUDA 12.8 Arithmetic Instructions](https://docs.nvidia.com/cuda/archive/12.8.0/cuda-c-programming-guide/index.html#arithmetic-instructions)。
+
 动态 shared-memory opt-in 在计时前完成。新候选要求 M/N/K 被相应 tile 整除；
 非法候选/对齐条件直接报错，不伪装成自动 fallback。
 
