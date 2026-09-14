@@ -47,9 +47,11 @@ A100 O3 的优化、原生 INT4 审计与验收状态见
 正式入口四模式与内存安全复验已完成。四模式独立运行的compute-only约1.998×，
 cold/steady约1.794×/1.828×；主门槛通过但超过2×的余量很小，不保证每种运行状态均超过2×。
 5090 O1/O3的magic-bias候选已完成24样本配对：速度比分别0.957×/0.995×，MSE不变，
-暂不晋升。racecheck同时发现旧/新实现的共享scale同步风险；经用户确认已添加统一的
-post-store release修复，等待5090重新编译和安全/数值回归；
-完整四模式及最终安全验收尚未完成，5090 production仍保持原实现。
+暂不晋升。上述为同步修复前v4数据。共享scale同步风险已在v7修复：每个writer直接
+acquire可复用stage、写后release；5090已重编译，合成集及真实4096³的racecheck/memcheck、
+216项synccheck、129项集成测试和完整指令审计通过。24样本输出逐位一致、MSE不变。
+production保留普通INT32转换，但已包含同步修复；不是继续使用原有不安全二进制。
+四模式单样本冒烟通过，修复后的24样本正式magic配对与四模式性能仍需重测。
 隔离变量、精确性边界及构建/验证命令见[5090 magic-bias实验](docs/sm120_magic_bias.md)。
 SM80 O1 的 `implementation="production"` 在4096³仍选择 `swizzle_128x64_k128_magic`：
 保留原 K32/FMA 数值顺序，采用 swizzled shared-memory、CTA 内 scale 共享、

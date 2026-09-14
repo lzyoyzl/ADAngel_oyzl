@@ -1,9 +1,10 @@
 # RTX 5090：O1/O3 exact magic-bias 实验
 
-状态：24样本正式配对完成，两项magic候选均未加速；81项CPU测试、216项GPU逐位检查、
-129项集成测试和专门指令审计通过。memcheck零错误，但racecheck报告旧/新O1及O3共享scale
-竞争，v4安全验收不能标为通过。用户已同意修复：本地已补充post-store release，
-等待5090重新编译、racecheck及修复前后逐位回归；当前production实现选择未切换。
+状态：v4历史24样本配对中，两项magic候选均未加速，但同期racecheck发现共享scale竞争，
+不能把v4标为安全验收通过。经用户确认，v7已修复每个scale writer的acquire/release，
+并在5090编译通过：82项CPU测试、216项racecheck/memcheck/synccheck、129项集成测试、
+60项O1候选racecheck及真实4096³ racecheck/memcheck均通过，24样本输出逐位一致、MSE不变。
+production已使用修复后的普通转换实现；magic仍为内部候选，未切换默认。
 目标一A100的结果见`a100_o3_optimization.md`；不得将其速度收益直接套用到5090。
 用户确认本轮同时测试O1和O3。
 
@@ -85,10 +86,10 @@ repeats200、inner100，所有原始计时完整，保留2个跨轮汇总CV>=3%�
 `column_scale_factor`写入（`o1_gemm.cu:895`）与读取（`:1017`）。
 这不能被逐位相同或MSE通过抵消，也不能未经进一步核实称为工具误报。
 旧O1机器指令未改变，表明风险不只出现在magic新增转换上；是否单独修复原有同步
-已向用户确认。在取得结论前保留原始日志、默认不晋升。
+当时向用户确认；后续修复及验收见下文v7记录。原始失败日志保留、magic默认不晋升。
 单独O3 racecheck完成96项数值检查后仍报1050 errors，显示100条hazards，定位到
 `o3_gemm.cu:559`写入与`:983`读取。因此不能认为第一次混合报告仅出现O1就代表O3无风险。
-已补充询问是否单独修复O1/O3的同步并重新测试；暂不把同步修改混入magic转换实验。
+后续按用户确认分别修复并重新测试，不把同步修改的收益归因于magic转换。
 
 ### v4同步风险的源码与内存模型佐证
 
@@ -125,7 +126,7 @@ CUDA12.8 PTX8.7规定，bulk异步拷贝的隐式complete-tx只为该异步操�
 旧实现与magic候选应用同一个同步修复，然后重新进行racecheck、MSE逐位回归、
 24样本配对和四模式计时；保留v4原始证据，不能将同步修复的收益归因于magic-bias。
 
-### 同步修复v7（已实现，等待GPU验收）
+### 同步修复v7
 
 v5尝试让lane0在写后额外arrival：编译/ISA审计通过，但racecheck仍报告其他writer的
 scale竞争，因此不验收v5，也不删除失败日志。v6改为每个producer lane直接发布自己的写入，
@@ -147,6 +148,59 @@ full barrier只有在全部33次arrival和TMA事务均完成后才放行；empty
 `benchmark_sm120_magic.py --snapshot-only`可保存24样本×5实现的输出SHA-256与MSE；
 修复后传入`--compare-snapshot <修复前目录>/snapshot.json`，要求全部逐位指纹和MSE一致。
 指纹比较不能替代racecheck或独立语义参考，两者均需通过。
+
+#### v7验收记录
+
+编译源码commit为`140fcd2`。修改只涉及SM120 O1/O3及验证/说明文件，未修改A100后端、
+O0/O2/O4 CUDA实现，也未修改服务器项目目录以外的环境。
+
+| 检查 | 结果 | 证据（`reports/sm120_magic/`下） |
+|---|---|---|
+| CPU单元测试 | 82 passed | `unit_sync_v7.log` |
+| 原报错合成集，旧/新O1和O3 | 216项完成，racecheck 0 errors / 0 warnings | `race_sync_v7.log` |
+| 同一合成集内存检查 | 216项完成，memcheck 0 errors | `mem_sync_v7.log` |
+| 同步指令使用检查 | 216项完成，synccheck 0 errors | `synccheck_sync_v7.log` |
+| O0—O4集成测试及独立语义参考 | 129 passed | `integration_sync_v7.log` |
+| O1不同tile/K边界的寄存器候选 | 60 passed，racecheck 0 errors / 0 warnings | `race_o1_candidates_v7.log` |
+| 真实4096³，O0及普通/magic O1/O3 | racecheck 0 errors / 0 warnings，5份输出指纹与修复前一致 | `race4096_sync_v7.log` |
+| 同一真实4096³内存检查 | memcheck 0 errors，5份输出指纹一致 | `mem4096_sync_v7.log` |
+| 24真实样本修复前后输出 | 120份输出SHA-256和MSE全部相同 | `snapshot_after_v7.log` |
+| 4个正式/magic函数指令审计 | 全部通过；各56寄存器，STACK/LOCAL=0，无spill | `audit_sync_v7/audit.json` |
+| 完整生产指令审计 | PASS，O3仍为legacy INT4 PTX→INT8 SASS | `audit_all_sync_v7/summary.txt` |
+| 原生后端doctor | `doctor --require-native`成功 | `doctor_sync_v7.json` |
+| 四模式冒烟 | 单样本×5实现×4模式=20条；所有阶段CV最高0.505% | `modes_smoke_v7.log` |
+
+修复前指纹：`runs/sm120_sync_before_v5/snapshot.json`；修复后：
+`runs/sm120_sync_after_v7/snapshot.json`。两份均为24样本×O0/O1/O1magic/O3/O3magic，
+包含MSE而不只有输出checksum；相等性按全部key及value核对。
+
+| 后端（普通和magic相同） | 修复后MSE median | 修复后MSE mean | 相对修复前 |
+|---|---:|---:|---|
+| O1 | 9.823381579891711e-9 | 1.1141469767717465e-8 | 完全不变 |
+| O3 | 0.006653010195220884 | 0.007578844400053298 | 完全不变 |
+
+完整四模式及24样本magic性能配对需在修复后重新测量。
+上文v4性能表是历史数据，不能作为同步修复后的性能结论。
+
+单样本冒烟（warmup5/repeats20/inner100）仅用于排除明显运行回归：普通O1 GEMM为
+0.556704 ms、magic O1为0.577184 ms；普通O3为1.942176 ms、magic O3为1.976480 ms。
+不能与v4不同日期/运行状态的数据相除后宣称同步修复加速，也不能替代24样本正式配对。
+
+复验使用已配置好的5090环境，在仓库根目录执行（输出目录需使用未存在的新名称）：
+
+```bash
+ADANGEL_BUILD_CUDA=1 ADANGEL_CUDA_TARGET=sm120 MAX_JOBS=4 python setup.py build_ext --inplace
+compute-sanitizer --tool racecheck --error-exitcode 99 \
+  python scripts/benchmark_sm120_magic.py --validate-only --output runs/sync_race_recheck
+python -m pytest tests/integration -q --run-sm120
+python scripts/audit_sm120_magic.py --output reports/sync_audit_recheck
+python -m adangel doctor --require-native
+```
+
+v5/v6失败日志、v7全部审计/安全日志、前后指纹与冒烟原始结果已下载到本地：
+`tmp/sm120_sync_v7_evidence.tar.gz`，SHA-256为
+`d74dad575afeb81214e4f9dac4ec5822caa076d33863f2dabe5544c714a6d931`。
+传输后验证SHA-256一致，未将旧v4性能数据替换为v7数据。
 
 ## 针对性NCU观察（v4，非正式计时）
 
