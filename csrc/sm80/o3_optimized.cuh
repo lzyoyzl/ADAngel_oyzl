@@ -72,7 +72,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN>;
@@ -291,9 +291,27 @@ __device__ __forceinline__ void o3_body(
   } else {
     for(int stage=0;stage<k/K;++stage) process_stage(stage,stage%2);
   }
+  if constexpr(VectorStore) {
+    // SM80_16x8_Row pairs values 0/1 and 2/3 along N. Addresses still come
+    // from partition_C(identity), never from a hand-written lane mapping.
+    static_assert(decltype(cute::size<0>(acc))::value==4);
+    o1_static_for<0,decltype(cute::size(acc))::value/2>([&](auto pair) {
+      auto i=pair*cute::_2{};
+      auto p=coords(i),q=coords(i+cute::_1{});
+      int offset=(blockIdx.y*M+cute::get<0>(p))*n+blockIdx.x*N+cute::get<1>(p);
+      // Guard also keeps this safe if a future CuTe layout changes adjacency.
+      if(cute::get<0>(p)==cute::get<0>(q) && cute::get<1>(q)==cute::get<1>(p)+1 && (offset&1)==0) {
+        *reinterpret_cast<float2*>(y+offset)=make_float2(acc(i),acc(i+cute::_1{}));
+      } else {
+        y[offset]=acc(i);
+        y[(blockIdx.y*M+cute::get<0>(q))*n+blockIdx.x*N+cute::get<1>(q)]=acc(i+cute::_1{});
+      }
+    });
+  } else {
   o1_static_for<0,decltype(cute::size(acc))::value>([&](auto i) {
     y[(blockIdx.y*M+cute::get<0>(coords(i)))*n+blockIdx.x*N+cute::get<1>(coords(i))]=acc(i);
   });
+  }
 }
 
 template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false>
@@ -303,28 +321,29 @@ __global__ __launch_bounds__(32*(M==32?2:4)*WN) void adangel_sm80_o3_swizzled(
 }
 
 // A distinct entry keeps the original one-argument launch policy unchanged.
-template<int M,int N,int K,bool Fast,bool Cached,bool Magic,int WN,bool Merge,bool StaticCopy,bool PhasePair,bool Stream>
+template<int M,int N,int K,bool Fast,bool Cached,bool Magic,int WN,bool Merge,bool StaticCopy,bool PhasePair,bool Stream,bool VectorStore=false>
 __global__ __launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   static_assert(M==64 && N==128 && K==256 && WN==2 && (Stream || Merge));
-  o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true>(a,w,as,ws,y,m,n,k);
+  o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true,VectorStore>(a,w,as,ws,y,m,n,k);
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool Bound2=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool Bound2=false,bool VectorStore=false>
 void o3_configure() {
+  static_assert(!VectorStore || Bound2);
   auto f=[]() {
-    if constexpr(Bound2) return adangel_sm80_o3_swizzled_bound2<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>;
+    if constexpr(Bound2) return adangel_sm80_o3_swizzled_bound2<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,VectorStore>;
     else return adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>;
   }();
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributeMaxDynamicSharedMemorySize,
       sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
   TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributePreferredSharedMemoryCarveout,100)==cudaSuccess,"O3 carveout failed");
 }
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool Bound2=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool Bound2=false,bool VectorStore=false>
 void o3_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,const at::Tensor& ws,
     at::Tensor& out,cudaStream_t stream) {
   if constexpr(Bound2) {
-  adangel_sm80_o3_swizzled_bound2<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream><<<dim3(out.size(1)/N,out.size(0)/M),32*(M==32?2:4)*WN,
+  adangel_sm80_o3_swizzled_bound2<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,VectorStore><<<dim3(out.size(1)/N,out.size(0)/M),32*(M==32?2:4)*WN,
       sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),out.size(0),out.size(1),w.size(1)*2);
   } else {
   adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream><<<dim3(out.size(1)/N,out.size(0)/M),32*(M==32?2:4)*WN,

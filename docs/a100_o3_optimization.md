@@ -299,6 +299,30 @@ O1独立指令审计通过，74项单元测试通过；memcheck/racecheck各完�
 候选名为`o3_swizzle_64x128_k256_exp_static_stream_bound2`；准确版本以git commit、
 源码和binary SHA为准（中间历史曾对同名入口试验warp边界）。不改production默认值。
 
+第二十二轮：120项逐位验证通过，24样本/3轮/warmup50/repeats200的独立partial
+配对加速比为1.98060，bootstrap 95%区间[1.97354,1.98424]；合并版本1.91781。
+独立版本GEMM样本中位数0.580096ms、当前O1为1.144832ms，尚未达到2倍。
+两版本的24样本输出均逐位等于旧O3，MSE median/mean与v21完全相同。
+保留64条跨轮汇总阶段CV异常，指令审计通过并明确保留spill警告；74项单元测试通过。
+
+补充只读功率诊断：分别连续运行O1/O3 4000次并每100ms记录nvidia-smi。
+两者均检测到软件功率限制Active，SM频率从1410降至约1200–1260MHz；没有锁频、
+没有调整250W功率上限。文件为`reports/a100_o3_opt/power_v22_*.csv`。
+这证明短初筛不能替代持续负载下的比较，但不能据此把全部性能差异归因于功率限制。
+
+当前独立候选的full NCU（49 passes，clock-control none）记录Duration476.77us、
+SM平均频率1.37GHz、DRAM11.10%、L1/TEX62.12%、No Eligible57.18%、eligible
+warp/scheduler0.79，动态warp指令118145024；理论occupancy25%、REG128。
+global store平均每32B sector使用16B，shared store还有bank-conflict提示；
+NCU的自动潜在加速估计不能相加，也不能当作可兑现收益。
+NCU回放频率不同，因此476.77us不用于替换正式CUDA Event的0.580096ms。
+
+下一固定候选`o3_swizzle_64x128_k256_exp_static_stream_bound2_store2`仅把最终
+相邻两个FP32输出合并成float2 store。地址取自CuTe partition_C(identity)，
+根据pinned SM80_16x8_Row布局验证成对坐标；另保留邻接和8-byte对齐guard。
+每个输出元素仍只写一次，不改变MMA、G128 scale和FP32累加顺序；需审计STG.64、
+GPU逐位/MSE及配对长测后才决定是否采纳。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。

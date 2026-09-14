@@ -121,7 +121,7 @@ def test_bound2_uses_separate_entry_without_changing_default_launch_bounds():
     assert '__launch_bounds__(32*(M==32?2:4)*WN) void adangel_sm80_o3_swizzled(' in s
     assert '__launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(' in s
     assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>(a,w,as,ws,y,m,n,k)' in s
-    assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true>(a,w,as,ws,y,m,n,k)' in s
+    assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true,VectorStore>(a,w,as,ws,y,m,n,k)' in s
     assert 'if constexpr(BoundedOperands && Merge) __syncwarp()' in s
     assert 'o1_static_for<0,C::Groups>(process_group)' in s
 
@@ -161,3 +161,19 @@ def test_audit_spill_exception_never_waives_isa_or_missing_metadata():
         assert not policy(broken,True)['passed']
         assert name in policy(broken,True)['errors']
     assert checks['sass_no_local'] is False
+
+
+def test_vector_store_pairs_follow_pinned_cute_c_layout():
+    # SM80_16x8_Row: ((4,8),(2,2)):((32,1),(16,8)), in M-major coordinates.
+    seen=[]
+    for lane in range(32):
+        for value in (0,2):
+            offsets=[(lane%4)*32+lane//4+(v%2)*16+(v//2)*8 for v in (value,value+1)]
+            p,q=[(x%16,x//16) for x in offsets]
+            assert p[0]==q[0] and q[1]==p[1]+1 and p[1]%2==0
+            seen.extend([p,q])
+    assert len(set(seen))==128
+    s=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+    assert 'make_float2(acc(i),acc(i+cute::_1{}))' in s
+    assert 'auto p=coords(i),q=coords(i+cute::_1{});' in s
+    assert '(offset&1)==0' in s
