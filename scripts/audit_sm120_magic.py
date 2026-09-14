@@ -33,12 +33,9 @@ def ptx_entry(ptx, symbol):
 def instruction_counts(block):
     result = {op: len(re.findall(r'\b'+op+r'(?:\.|\s)', block))
               for op in ['I2F', 'I2FP', 'IADD3', 'IADD', 'FADD', 'FFMA', 'IMMA', 'UTMALDG', 'LDL', 'STL']}
-    # For these four instantiated kernels the producer code precedes the
-    # consumer MMA/postprocessing region. Preserve global counts as well;
-    # producer scale decoding deliberately still contains integer conversions.
-    first = re.search(r'\bIMMA\.', block)
-    result['post_mma_i2f'] = (len(re.findall(r'\bI2F(?:P)?\.', block[first.start():]))
-                              if first else -1)
+    # Do not infer execution regions from PC ordering: ptxas may place an MMA
+    # block after its loop-carried postprocessing block. Pair whole-function
+    # instruction deltas with the isolated source change and GPU bitwise tests.
     return result
 
 
@@ -80,11 +77,10 @@ def main():
             # Preserve and explicitly document CUDA 12.8 SM120 legacy lowering.
             checks['sass_int8_lowering'] = bool(re.search(r'IMMA[^;]*\.[SU]8\.[SU]8', block))
         if variant.endswith('_magic'):
-            checks['magic_no_post_mma_i2f'] = counts['post_mma_i2f'] == 0
             checks['magic_fadd'] = counts['FADD'] > 0
             checks['magic_iadd'] = counts['IADD3']+counts['IADD'] > 0
         else:
-            checks['baseline_post_mma_i2f'] = counts['post_mma_i2f'] > 0
+            checks['baseline_i2fp'] = counts['I2FP'] > 0
         functions.append(dict(variant=variant, symbol=symbol, resource=resource,
                               instruction_counts=counts, checks=checks,
                               passed=all(checks.values())))
@@ -97,9 +93,10 @@ def main():
             new = by_name[variant+'_magic']['instruction_counts']
             removed = old['I2FP']-new['I2FP']
             pairs[variant] = dict(
-                partial_i2fp_to_fadd=removed > 0 and removed == new['FADD']-old['FADD'] == old['post_mma_i2f'],
-                producer_i2f_preserved=old['I2F'] == new['I2F'] and old['I2FP']-old['post_mma_i2f'] == new['I2FP'],
-                mma_tma_preserved=old['IMMA'] == new['IMMA'] and old['UTMALDG'] == new['UTMALDG'])
+                partial_i2fp_to_fadd=removed > 0 and removed == new['FADD']-old['FADD'],
+                iadd3_matches_removed_i2fp=removed == new['IADD3']-old['IADD3'],
+                other_i2f_preserved=old['I2F'] == new['I2F'],
+                mma_tma_fma_preserved=old['IMMA'] == new['IMMA'] and old['UTMALDG'] == new['UTMALDG'] and old['FFMA'] == new['FFMA'])
     result = dict(binary=native.__file__, binary_sha256=hashlib.sha256(Path(native.__file__).read_bytes()).hexdigest(),
                   complete_coverage=coverage, functions=functions, paired_checks=pairs,
                   passed=coverage and all(f['passed'] for f in functions) and all(all(x.values()) for x in pairs.values()),

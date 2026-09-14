@@ -45,6 +45,8 @@ def test_magic_audit_preserves_producer_conversion_counts():
     counts = runpy.run_path(str(ROOT/'scripts/audit_sm120_magic.py'))['instruction_counts']
     old = counts('I2F.S16 R1; I2FP.F32.S32 R2; UTMALDG.2D R3; IMMA.16816.S8.S8 R4; I2FP.F32.S32 R5;')
     new = counts('I2F.S16 R1; I2FP.F32.S32 R2; UTMALDG.2D R3; IMMA.16816.S8.S8 R4; IADD3 R5; FADD R6;')
-    assert old['post_mma_i2f'] == 1 and new['post_mma_i2f'] == 0
     assert old['I2FP'] == 2 and new['I2FP'] == 1 and new['I2F'] == 1
     assert old['UTMALDG'] == new['UTMALDG'] == 1
+    # Instruction placement cannot identify a loop's execution order.
+    reordered = counts('I2FP.F32.S32 R5; I2F.S16 R1; I2FP.F32.S32 R2; UTMALDG.2D R3; IMMA.16816.S8.S8 R4;')
+    assert reordered == old
