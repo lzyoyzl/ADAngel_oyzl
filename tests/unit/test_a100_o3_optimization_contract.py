@@ -121,7 +121,7 @@ def test_bound2_uses_separate_entry_without_changing_default_launch_bounds():
     assert '__launch_bounds__(32*(M==32?2:4)*WN) void adangel_sm80_o3_swizzled(' in s
     assert '__launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(' in s
     assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>(a,w,as,ws,y,m,n,k)' in s
-    assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true,VectorStore>(a,w,as,ws,y,m,n,k)' in s
+    assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true,VectorStore,VectorScale>(a,w,as,ws,y,m,n,k)' in s
     assert 'if constexpr(BoundedOperands && Merge) __syncwarp()' in s
     assert 'o1_static_for<0,C::Groups>(process_group)' in s
 
@@ -177,3 +177,19 @@ def test_vector_store_pairs_follow_pinned_cute_c_layout():
     assert 'make_float2(acc(i),acc(i+cute::_1{}))' in s
     assert 'auto p=coords(i),q=coords(i+cute::_1{});' in s
     assert '(offset&1)==0' in s
+
+
+def test_vector_scale_load_preserves_all_codes_and_alignment():
+    for first in range(256):
+        for second in range(256):
+            packed=first|(second<<8)
+            assert [(packed>>(8*g))&255 for g in range(2)]==[first,second]
+    for k in (256,512,768,4096):
+        for col in range(128):
+            for stage in range(k//256):
+                offset=col*(k//128)+stage*2
+                assert offset%2==0 and offset+1<(col+1)*(k//128)
+    s=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+    assert '*reinterpret_cast<const uint16_t*>(src)' in s
+    assert 'static_assert(K==256 && !Cached)' in s
+    assert 'code=(packed_codes>>(8*group))&255u' in s

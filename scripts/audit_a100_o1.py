@@ -79,6 +79,8 @@ def main():
             magic=args_match[3]=='1'
         instruction_counts={op:len(re.findall(r'\b'+op+r'(?:\.|\s)',block))
                             for op in ('I2F','FADD','FFMA','IMMA','LDSM','LDGSTS','LDL','STL')}
+        instruction_counts['STG64']=len(re.findall(r'\bSTG(?:\.[A-Z]+)*\.64\b',block))
+        instruction_counts['LDG_U16']=len(re.findall(r'\bLDG(?:\.[A-Z]+)*\.U16\b',block))
         if magic:
             checks['magic_no_i2f']=instruction_counts['I2F']==0
             checks['magic_has_fadd']=instruction_counts['FADD']>0

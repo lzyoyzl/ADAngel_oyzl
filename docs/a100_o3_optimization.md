@@ -323,6 +323,15 @@ NCU回放频率不同，因此476.77us不用于替换正式CUDA Event的0.580096
 每个输出元素仍只写一次，不改变MMA、G128 scale和FP32累加顺序；需审计STG.64、
 GPU逐位/MSE及配对长测后才决定是否采纳。
 
+Source/SASS进一步显示，两条循环内`LDG.E.U8`各执行122880次，分别产生
+3809280个L2 theoretical excessive sectors；这指向跨列stride=32的W scale读取，
+并不表示同等数量的DRAM访问（L2 hit约96.25%）。
+另增`*_scale2`和`*_store2_scale2`固定候选：每K256 stage/列合并读取两个相邻
+UE8M0字节为uint16，再分别解码两组G128 scale。K为256倍数确保scale行stride和
+stage偏移均为偶数；穷举全部65536种字节组合并检查小K/4096对齐与边界。
+不新增离线预处理、不改变计时边界、不把两个G128合并缩放。验收需看到LDG.U16、
+保持原两种INT4 MMA，以及输出逐位一致；只读合并、只写合并和组合均需同进程比较。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。

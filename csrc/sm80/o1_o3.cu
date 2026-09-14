@@ -200,6 +200,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
       implementation=="o3_swizzle_64x128_k256_exp_merge_static_stream_bound2"||
       implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2"||
       implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2"||
+      implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2_scale2"||
+      implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2_scale2"||
       implementation=="o3_swizzle_64x128_k256_exp_static_stream"||
       implementation=="o3_swizzle_64x128_k128_exp_static_stream"||
       implementation=="o3_swizzle_64x128_k128_exp_static_cached"||
@@ -277,6 +279,12 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   }
   if(implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2") {
     if(exponent_scale) o3_configure<64,128,256,true,false,false,2,false,true,false,true,true,true>(); else o3_configure<64,128,256,false,false,false,2,false,true,false,true,true,true>();
+  }
+  if(implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2_scale2") {
+    if(exponent_scale) o3_configure<64,128,256,true,false,false,2,false,true,false,true,true,false,true>(); else o3_configure<64,128,256,false,false,false,2,false,true,false,true,true,false,true>();
+  }
+  if(implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2_scale2") {
+    if(exponent_scale) o3_configure<64,128,256,true,false,false,2,false,true,false,true,true,true,true>(); else o3_configure<64,128,256,false,false,false,2,false,true,false,true,true,true,true>();
   }
   if(implementation=="o3_swizzle_64x128_k128_exp_static_cached") {
     if(exponent_scale) o3_configure<64,128,128,true,true,false,2,false,true>(); else o3_configure<64,128,128,false,true,false,2,false,true>();
@@ -398,6 +406,12 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     }
     else if(implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2") {
       if(exponent_scale) o3_launch<64,128,256,true,false,false,2,false,true,false,true,true,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,256,false,false,false,2,false,true,false,true,true,true>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2_scale2") {
+      if(exponent_scale) o3_launch<64,128,256,true,false,false,2,false,true,false,true,true,false,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,256,false,false,false,2,false,true,false,true,true,false,true>(aa,wa,as,ws,out,stream);
+    }
+    else if(implementation=="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2_scale2") {
+      if(exponent_scale) o3_launch<64,128,256,true,false,false,2,false,true,false,true,true,true,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,256,false,false,false,2,false,true,false,true,true,true,true>(aa,wa,as,ws,out,stream);
     }
     else if(implementation=="o3_swizzle_64x128_k128_exp_static_cached") {
       if(exponent_scale) o3_launch<64,128,128,true,true,false,2,false,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,true,false,2,false,true>(aa,wa,as,ws,out,stream);
@@ -549,6 +563,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(o3_candidate) meta["minimum_blocks_launch_bound"]=implementation.find("_bound2")!=std::string::npos?"2":"unspecified";
   if(o3_candidate) meta["group_loop"]="unrolled";
   if(o3_candidate) meta["output_store_bits"]=implementation.find("_store2")!=std::string::npos?64:32;
+  if(o3_candidate) meta["scale_load_bits"]=implementation.find("_scale2")!=std::string::npos?16:8;
   if(o3_candidate&&implementation.find("_stream")!=std::string::npos)
     meta["weight_register_slice_n"]=32;
   if(o3_candidate) meta["warp_operand_boundary"]=implementation.find("_bound2")!=std::string::npos&&implementation.find("_stream")!=std::string::npos&&implementation.find("_merge")!=std::string::npos;
