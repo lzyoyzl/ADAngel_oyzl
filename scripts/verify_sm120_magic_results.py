@@ -22,6 +22,8 @@ def verify(paired, four_modes, safety_run, audit_path):
         (paired, ['compute_only'], 3),
         (four_modes, ['conversion_only', 'compute_only', 'cold', 'steady_state'], 1),
     ]:
+        if directory is None:
+            continue
         env = load(directory / 'environment.json')
         for field in ['binary_sha256', 'cuda_sources_sha256', 'torch', 'cuda', 'gpu']:
             assert env[field] == safety[field], (directory, field)
@@ -77,14 +79,18 @@ def verify(paired, four_modes, safety_run, audit_path):
         assert found == expected, ('missing records', directory, len(found), len(expected))
         results.append(dict(run=str(directory), records=len(rows), samples=24,
                             cv_failed_stage_measurements=cv_failures))
-    return dict(passed=True, binary_sha256=safety['binary_sha256'], runs=results,
+    return dict(passed=True, scope='paired_only' if four_modes is None else 'paired_and_four_modes',
+                binary_sha256=safety['binary_sha256'], runs=results,
                 policy='All outliers retained; CV findings are disclosed, not filtered or relabeled')
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--paired', type=Path, required=True)
-    p.add_argument('--four-modes', type=Path, required=True)
+    scope = p.add_mutually_exclusive_group(required=True)
+    scope.add_argument('--four-modes', type=Path)
+    scope.add_argument('--paired-only', action='store_true',
+                       help='Verify only completed primary pairing; does not certify four-mode coverage')
     p.add_argument('--safety-run', type=Path, required=True)
     p.add_argument('--audit', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)

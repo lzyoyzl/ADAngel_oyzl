@@ -55,6 +55,13 @@ def test_complete_formal_magic_results(formal_fixture):
     assert [r['records'] for r in result['runs']] == [360, 480]
 
 
+def test_explicit_paired_only_does_not_certify_four_modes(formal_fixture):
+    paired, _, safety, audit = formal_fixture
+    result = VERIFY(paired, None, safety, audit)
+    assert result['passed'] and result['scope'] == 'paired_only'
+    assert [r['records'] for r in result['runs']] == [360]
+
+
 @pytest.mark.parametrize('corruption', ['duplicate', 'missing', 'short_timing', 'old_sync', 'mse'])
 def test_formal_magic_results_reject_corruption(formal_fixture, corruption):
     p = formal_fixture[0] / 'results.jsonl'
