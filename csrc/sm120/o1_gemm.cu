@@ -22,6 +22,7 @@
 
 #include "adangel/data_types.cuh"
 #include "adangel/kernel_api.h"
+#include "adangel/exact_partial_cast.cuh"
 
 namespace py = pybind11;
 
@@ -272,6 +273,7 @@ enum class O1Implementation {
   kRegister64x64K64ScaleShared,
   kRegister128x64K64ScaleShared,
   kRegister128x64K64ScaleSharedRowDedup,
+  kRegister128x64K64ScaleSharedRowDedupMagic,
   kRegister128x64K64ScaleSharedRowDedupSparseScale,
   kRegister128x128,
 };
@@ -800,6 +802,7 @@ template <
     class Config,
     bool kDeduplicateRowScale,
     bool kSparseColumnScaleLoads,
+    bool kMagicCast = false,
     class TmaA,
     class TmaB>
 __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
@@ -1032,7 +1035,7 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
         }
         const float scale = __fmul_rn(row_scale, column_scale);
         tCrAccumulator(item) = __fmaf_rn(
-            static_cast<float>(tCrPartial(item)),
+            adangel_exact_partial_cast<kMagicCast, 32 * 128 * 12>(tCrPartial(item)),
             scale,
             tCrAccumulator(item));
       }
@@ -1240,6 +1243,21 @@ void adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup(
 
 template <class TmaA, class TmaB>
 __global__ __launch_bounds__(O1Register128x64K64Config::kThreadsPerBlock)
+void adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup_magic(
+    CUTE_GRID_CONSTANT TmaA const tma_a,
+    CUTE_GRID_CONSTANT TmaB const tma_b,
+    const float* a_scale, const uint8_t* w_scale, float* output,
+    int m, int n, int k, int groups) {
+  extern __shared__ __align__(128) uint8_t shared_bytes[];
+  auto& storage = *reinterpret_cast<
+      O1RegisterScaleSharedStorage<O1Register128x64K64Config>*>(shared_bytes);
+  adangel_o1_register_partial_k64_body<
+      O1Register128x64K64Config, true, false, true>(
+      tma_a, tma_b, a_scale, w_scale, output, m, n, k, groups, storage);
+}
+
+template <class TmaA, class TmaB>
+__global__ __launch_bounds__(O1Register128x64K64Config::kThreadsPerBlock)
 void adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup_sparse_scale(
     CUTE_GRID_CONSTANT TmaA const tma_a,
     CUTE_GRID_CONSTANT TmaB const tma_b,
@@ -1396,6 +1414,7 @@ template <
     bool kShareColumnScale = false,
     bool kDeduplicateRowScale = false,
     bool kSparseColumnScaleLoads = false,
+    bool kMagicCast = false,
     class TmaA,
     class TmaB>
 void launch_register_o1(
@@ -1468,7 +1487,13 @@ void launch_register_o1(
         groups);
   } else if constexpr (
       std::is_same_v<Config, O1Register128x64K64Config>) {
-    if constexpr (kSparseColumnScaleLoads) {
+    if constexpr (kMagicCast) {
+      static_assert(kShareColumnScale && kDeduplicateRowScale && !kSparseColumnScaleLoads);
+      adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup_magic<<<
+          grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
+          tma_a, tma_b, a_scale.data_ptr<float>(), w_scale.data_ptr<uint8_t>(),
+          output.data_ptr<float>(), m, n, k, groups);
+    } else if constexpr (kSparseColumnScaleLoads) {
       adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup_sparse_scale<<<
           grid, Config::kThreadsPerBlock, shared_bytes, stream>>>(
           tma_a,
@@ -1574,6 +1599,9 @@ O1Implementation parse_o1_implementation(const std::string& implementation) {
   if (selected == "register_128x64_k64_scale_shared_row_dedup") {
     return O1Implementation::kRegister128x64K64ScaleSharedRowDedup;
   }
+  if (selected == "register_128x64_k64_scale_shared_row_dedup_magic") {
+    return O1Implementation::kRegister128x64K64ScaleSharedRowDedupMagic;
+  }
   if (selected ==
       "register_128x64_k64_scale_shared_row_dedup_sparse_scale") {
     return O1Implementation::kRegister128x64K64ScaleSharedRowDedupSparseScale;
@@ -1584,7 +1612,17 @@ O1Implementation parse_o1_implementation(const std::string& implementation) {
 }
 
 py::dict o1_metadata(O1Implementation implementation, int groups) {
+  if (implementation == O1Implementation::kRegister128x64K64ScaleSharedRowDedupMagic) {
+    auto result = o1_metadata(O1Implementation::kRegister128x64K64ScaleSharedRowDedup, groups);
+    result["implementation_key"] = "register_128x64_k64_scale_shared_row_dedup_magic";
+    result["kernel_symbol"] = "adangel_o1_register_partial_128x64_k64_scale_shared_row_dedup_magic";
+    result["integer_conversion"] = "exact_magic_bias";
+    result["partial_absolute_bound"] = 32 * 128 * 12;
+    result["production_selected"] = implementation == parse_o1_implementation("production");
+    return result;
+  }
   py::dict result;
+  result["integer_conversion"] = "i2f";
   result["algorithm_id"] = -1;
   result["workspace_bytes"] = 0;
   result["numerical_impl_flags"] = 0;
@@ -1854,7 +1892,8 @@ template <
     class Config,
     bool kShareColumnScale = false,
     bool kDeduplicateRowScale = false,
-    bool kSparseColumnScaleLoads = false>
+    bool kSparseColumnScaleLoads = false,
+    bool kMagicCast = false>
 py::dict benchmark_register_implementation(
     const at::Tensor& a_int8,
     const at::Tensor& a_scale,
@@ -1879,7 +1918,8 @@ py::dict benchmark_register_implementation(
         Config,
         kShareColumnScale,
         kDeduplicateRowScale,
-        kSparseColumnScaleLoads>(
+        kSparseColumnScaleLoads,
+        kMagicCast>(
         a_scale, w_scale, output, m, n, k, tma_a, tma_b, stream);
   };
   return measure_o1_implementation(
@@ -2103,6 +2143,12 @@ py::dict benchmark_o1_selected(
         w_int8,
         output,
         stream);
+  }
+  if (implementation == O1Implementation::kRegister128x64K64ScaleSharedRowDedupMagic) {
+    return benchmark_register_implementation<
+        O1Register128x64K64Config, true, true, false, true>(
+        a_int8, a_scale, w_mxfp4, w_scale, mode_name, mode, implementation,
+        warmup, repeats, conversion_inner_repeats, w_int8, output, stream);
   }
   return benchmark_register_implementation<O1Register128Config>(
       a_int8,

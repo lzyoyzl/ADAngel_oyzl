@@ -21,6 +21,7 @@
 
 #include "adangel/data_types.cuh"
 #include "adangel/kernel_api.h"
+#include "adangel/exact_partial_cast.cuh"
 
 namespace py = pybind11;
 
@@ -70,6 +71,7 @@ struct O3Config {
   static constexpr bool kFactorRowScaleAfterK = false;
   static constexpr bool kBiasedHighU4 = false;
   static constexpr bool kAssumeAlignedTiles = false;
+  static constexpr bool kMagicCast = false;
   using Pipeline = cutlass::PipelineTmaAsync<kStages>;
   using ByteLayoutA = decltype(cute::make_layout(
       cute::make_shape(
@@ -261,6 +263,12 @@ struct O3N16K128LdsmSplitChainsConfig : O3N16K128CuteLdsmConfig {
 // preserves the general API without putting bounds checks on the formal path.
 constexpr const char* kProductionO3Implementation = "m64_n32_k128_aligned_factor_16w";
 
+// Identical tile, pipeline, nibble split and scale/FMA order to production.
+// Only the bounded INT32 partial -> FP32 conversion differs.
+struct O3M64N32K128AlignedFactor16WMagicConfig : O3M64N32K128AlignedFactor16WConfig {
+  static constexpr bool kMagicCast = true;
+};
+
 enum class O3Implementation {
   kN16K128,
   kN16K256,
@@ -274,6 +282,7 @@ enum class O3Implementation {
   kM64N16K128CuteLdsm,
   kM64N32K128CuteLdsm16W,
   kM64N32K128AlignedFactor16W,
+  kM64N32K128AlignedFactor16WMagic,
   kM64N32K256CuteLdsm16W,
   kM32N64K128CuteLdsm16W,
   kN16K128CuteLdsm,
@@ -309,6 +318,9 @@ O3Implementation parse_o3_implementation(const std::string& implementation) {
   }
   if (selected == "m64_n32_k128_aligned_factor_16w") {
     return O3Implementation::kM64N32K128AlignedFactor16W;
+  }
+  if (selected == "m64_n32_k128_aligned_factor_16w_magic") {
+    return O3Implementation::kM64N32K128AlignedFactor16WMagic;
   }
   if (selected == "m64_n32_k256_cute_ldsm_16w") {
     return O3Implementation::kM64N32K256CuteLdsm16W;
@@ -685,7 +697,8 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
         const float scale =
             __fmul_rn(tCrRowScale(item), column_scale);
         tCrAccumulator(item) = __fmaf_rn(
-            static_cast<float>(partial), scale, tCrAccumulator(item));
+            adangel_exact_partial_cast<Config::kMagicCast, 128 * 128 * 8>(partial),
+            scale, tCrAccumulator(item));
       }
       pipeline.consumer_release(read_state);
       ++read_state;
@@ -1008,16 +1021,16 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
               ? column_scale1
               : __fmul_rn(row_scale1[m_replica], column_scale1);
           accumulators[m_replica][replica][0] = __fmaf_rn(
-              static_cast<float>(partial[0]), scale00,
+              adangel_exact_partial_cast<Config::kMagicCast, 128 * 128 * 8>(partial[0]), scale00,
               accumulators[m_replica][replica][0]);
           accumulators[m_replica][replica][1] = __fmaf_rn(
-              static_cast<float>(partial[1]), scale01,
+              adangel_exact_partial_cast<Config::kMagicCast, 128 * 128 * 8>(partial[1]), scale01,
               accumulators[m_replica][replica][1]);
           accumulators[m_replica][replica][2] = __fmaf_rn(
-              static_cast<float>(partial[2]), scale10,
+              adangel_exact_partial_cast<Config::kMagicCast, 128 * 128 * 8>(partial[2]), scale10,
               accumulators[m_replica][replica][2]);
           accumulators[m_replica][replica][3] = __fmaf_rn(
-              static_cast<float>(partial[3]), scale11,
+              adangel_exact_partial_cast<Config::kMagicCast, 128 * 128 * 8>(partial[3]), scale11,
               accumulators[m_replica][replica][3]);
         }
       }
@@ -1143,6 +1156,8 @@ py::dict kernel_metadata(
       production_dispatch ||
       std::string(implementation_key) == kProductionO3Implementation;
   result["kernel_symbol"] = kernel_symbol;
+  result["integer_conversion"] = Config::kMagicCast ? "exact_magic_bias" : "i2f";
+  result["partial_absolute_bound"] = 128 * 128 * 8;
   result["tensor_core"] = true;
   result["mma_family"] = "IMMA_INT4";
   result["ptx_mma_semantics"] = "U4xS4_and_S4xS4";
@@ -1417,6 +1432,13 @@ py::dict adangel_benchmark_o3_impl(
         a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
         "m64_n32_k128_aligned_factor_16w",
         "adangel_o3_split_tma_ws<O3M64N32K128AlignedFactor16WConfig>",
+        mode_name, warmup, repeats, conversion_inner_repeats);
+  }
+  if (selected == O3Implementation::kM64N32K128AlignedFactor16WMagic) {
+    return benchmark_o3_config<O3M64N32K128AlignedFactor16WMagicConfig>(
+        a_int8, a_scale, w_mxfp4_g128, w_scale_g128,
+        "m64_n32_k128_aligned_factor_16w_magic",
+        "adangel_o3_split_tma_ws<O3M64N32K128AlignedFactor16WMagicConfig>",
         mode_name, warmup, repeats, conversion_inner_repeats);
   }
   if (selected == O3Implementation::kM64N32K256CuteLdsm16W) {
