@@ -28,7 +28,7 @@ struct O3AmpereConfig {
   };
 };
 
-template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool CompactOffsets=false>
+template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy>
 __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage& s,
     int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN>;
@@ -36,28 +36,13 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   typename C::template ByteLayout<N> lb;
   auto copy_a=[&](unsigned off) {
     unsigned row=off/C::Bytes,col=off%C::Bytes;
-    if constexpr(CompactOffsets) {
-      // Host guards both packed allocations below 2^32 bytes. Form the whole
-      // offset in u32 before adding the pointer, rather than keeping a low
-      // and high 64-bit row pointer live through the entire K loop.
-      unsigned lo=(blockIdx.y*M+row)*unsigned(k/2)+unsigned(stage)*C::Bytes+col;
-      unsigned hi=lo+unsigned(m)*unsigned(k/2);
-      copy16(s.low[slot]+la(row,col),a+lo);
-      copy16(s.high[slot]+la(row,col),a+hi);
-    } else {
     auto src=a+(blockIdx.y*M+row)*(k/2)+stage*C::Bytes+col;
     copy16(s.low[slot]+la(row,col),src);
     copy16(s.high[slot]+la(row,col),src+m*(k/2));
-    }
   };
   auto copy_b=[&](unsigned off) {
     unsigned row=off/C::Bytes,col=off%C::Bytes;
-    if constexpr(CompactOffsets) {
-      unsigned pos=(blockIdx.x*N+row)*unsigned(k/2)+unsigned(stage)*C::Bytes+col;
-      copy16(s.weight[slot]+lb(row,col),w+pos);
-    } else {
     copy16(s.weight[slot]+lb(row,col),w+(blockIdx.x*N+row)*(k/2)+stage*C::Bytes+col);
-    }
   };
   if constexpr(StaticCopy) {
     // The per-thread copy count is known from the CTA shape. Do not make
@@ -87,7 +72,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool NarrowB=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN>;
@@ -158,11 +143,11 @@ __device__ __forceinline__ void o3_body(
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
   auto bd1=bc.retile_D(rb1);
   auto ld1=lc.retile_D(ra1);auto hd1=hc.retile_D(rh1);
-  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,NarrowB>(s,0,0,a,w,ws,m,k);
+  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy>(s,0,0,a,w,ws,m,k);
   auto process_stage=[&](int stage,auto slot) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
-    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,NarrowB>(s,1-slot,stage+1,a,w,ws,m,k);
+    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy>(s,1-slot,stage+1,a,w,ws,m,k);
     auto process_group=[&](auto group) {
       if constexpr(Stream) {
         // Preload both K64 A sets, but retain only a narrow N slice of B.
@@ -173,9 +158,8 @@ __device__ __forceinline__ void o3_body(
         cute::copy(SCopy{},hc.partition_S(tile_a(make_high(slot),sub)),hd);
         cute::copy(LCopy{},lc.partition_S(tile_a(make_low(slot),sub+cute::_1{})),ld1);
         cute::copy(SCopy{},hc.partition_S(tile_a(make_high(slot),sub+cute::_1{})),hd1);
-        constexpr int SliceN=WN*(NarrowB?8:16);
-        using SmallCopy=cute::Copy_Atom<std::conditional_t<NarrowB,cute::SM75_U32x2_LDSM_N,
-            cute::SM75_U32x4_LDSM_N>,cutlass::int4b_t>;
+        constexpr int SliceN=WN*16;
+        using SmallCopy=SCopy;
         using SliceMma=typename O3AmpereConfig<M,SliceN,K,Cached,WN>::Mma;
         SliceMma slice_mma;
         auto slice_thr=slice_mma.get_slice(threadIdx.x);
@@ -217,6 +201,9 @@ __device__ __forceinline__ void o3_body(
             });
           });
         });
+          // All lanes take every slice. Keep next-slice shared loads after
+          // this warp-scoped boundary, limiting cross-slice operand hoisting.
+          if constexpr(BoundedOperands) __syncwarp();
         });
       } else {
       cute::clear(low);

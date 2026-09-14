@@ -236,6 +236,12 @@ SASS显示这次溢出的是预取激活所用的64位地址，不再是partial/
 加上64位基地址。两份packed A合计和packed W均须小于2^32字节，否则明确报错；
 4096³满足该条件。其他候选继续使用原指针表达式。
 
+第十八轮160项逐位检查通过，初筛0.491008ms；快速路径STACK32和7 LDL/7 STL，
+比原地址方式更差，故撤回compact offsets及其容量限制。
+下一轮回到32列W片/LDSM x4，在每个W片消费完成后增加warp-scoped同步，限制编译器
+跨片提前加载造成的寄存器存活范围扩张。所有32个lane执行相同固定片数，
+没有partial shared-memory中转，也没有新增CTA级barrier；实际收益及无spill仍需验证。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。

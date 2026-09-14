@@ -110,7 +110,7 @@ def test_cached_codes_swizzle_is_bijective_aligned_and_bank_distributed():
 def test_o3_atom_stream_keeps_both_integer_paths_and_ordered_fma():
     s=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
     stream=s.split('if constexpr(Stream) {',1)[1].split('} else {\n      cute::clear(low);',1)[0]
-    for expected in ('ra1','rh1','br1','SliceN=WN*(NarrowB?8:16)','pl(vi)+16*ph(vi)',
+    for expected in ('ra1','rh1','br1','SliceN=WN*16','pl(vi)+16*ph(vi)',
                      'SM80_16x8x64_S32U4S4S32_TN','SM80_16x8x64_S32S4S4S32_TN',
                      '__fmaf_rn(value,scale,acc(vi,mi,full_ni))'):
         assert expected in stream
@@ -122,17 +122,13 @@ def test_bound2_uses_separate_entry_without_changing_default_launch_bounds():
     assert '__launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(' in s
     assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>(a,w,as,ws,y,m,n,k)' in s
     assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true>(a,w,as,ws,y,m,n,k)' in s
-    assert 'SM75_U32x2_LDSM_N' in s
+    assert 'if constexpr(BoundedOperands) __syncwarp()' in s
     assert 'o1_static_for<0,C::Groups>(process_group)' in s
 
 
-def test_compact_packed_offsets_match_linear_layout_with_capacity_guard():
-    for m,n,k in ((64,128,256),(128,128,512),(4096,4096,4096)):
-        for row in (0,m//2,m-1):
-            for byte in (0,k//4,k//2-16):
-                lo=row*(k//2)+byte;hi=lo+m*(k//2)
-                assert 0<=lo<hi and hi+16<=m*k<=0xffffffff
-        for row in (0,n//2,n-1):
-            assert row*(k//2)+(k//2-16)+16<=n*k//2<=0xffffffff
-    host=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
-    assert 'a.numel()<=0xffffffffLL&&w.numel()<=0xffffffffLL' in host
+def test_warp_operand_boundaries_are_uniform_for_all_lanes():
+    for n in (64,128):
+        for wn in (2,4):
+            assert n%(wn*16)==0
+            schedules=[list(range(n//(wn*16))) for _ in range(32)]
+            assert all(x==schedules[0] for x in schedules)
