@@ -41,13 +41,20 @@ cuBLASLt O0；不是硬件峰值比较。三路中的 O1/O3 CV 异常和 O0 四�
 
 A100 O1 的当前优化与独立验收见 [A100 O1 优化](docs/a100_o1_optimization.md)。
 
-A100 O3 的候选优化、原生 INT4 审计与未完成的两倍性能目标见
-[A100 O3 优化记录](docs/a100_o3_optimization.md)。目前仍保留旧 production 默认值，
-候选初筛不能代替24样本正式验收；5090 magic-bias 移植将在该目标完成后单独验证。
-SM80 的 `implementation="production"` 在4096³选择 `swizzle_128x64_k128_magic`：
+A100 O3 的优化、原生 INT4 审计与验收状态见
+[A100 O3 优化记录](docs/a100_o3_optimization.md)。store2候选在24样本/3轮配对中达到
+当前O1的2.026×（95% CI [2.015,2.035]），输出逐位一致；正在完成production切换复验，
+不把候选结果冒充切换后的结果。5090 magic-bias 移植将在目标一验收后单独验证。
+SM80 O1 的 `implementation="production"` 在4096³仍选择 `swizzle_128x64_k128_magic`：
 保留原 K32/FMA 数值顺序，采用 swizzled shared-memory、CTA 内 scale 共享、
 精确 UE8M0 位解码和精确 bias-bit partial 转换；旧 `baseline` 继续保留作同进程对照。
-不能继续将旧 O1 的4.39ms或旧 O3/O1比值作为优化后结果；O3路径不变。
+O3 production改为固定`o3_swizzle_64x128_k256_exp_static_stream_bound2_store2`：
+CTA64×128×256、双缓冲cp.async、独立low/high寄存器partial、G128软件scale、
+最终float2输出。K256内仍分别缩放两个G128；不使用scale2候选，也不更改定点转换。
+M/N/K不满足64/128/256对齐时保留原生INT4 baseline。O3允许经过数值/安全/性能
+验证的spill，审计须显式使用`--variant o3 --allow-spills`，警告和资源数据仍保留；
+此政策不放宽O1或SM120审计。修改CUDA后须重新编译，旧二进制不会自动切换。
+不能继续将旧 O1 的4.39ms或旧 O3/O1比值作为优化后结果。
 这些实验只修改 SM80 后端，不改变上述 5090 production。
 本轮24样本同进程配对：旧O1 `4.444928 ms` → 当前O1 `0.993280 ms`，配对加速
 约`4.47×`，输出逐位一致；同轮O0 `0.606720 ms`，**仍未超过O0**。四模式及外部负载/

@@ -1,6 +1,6 @@
 # A100 O3 优化：目标与验收记录
 
-状态：多轮候选开发/验收中，O3 production仍保留原baseline。
+状态：store2候选已通过24样本配对门槛，production切换及独立复验中，尚未关闭目标一。
 目标一未通过前，不开始目标二的5090 magic-bias部署。
 
 ## 目标
@@ -365,6 +365,27 @@ REG128/STACK40，保留spill警告。scale2版本确认2条静态LDG.E.U16，但
 选中store2另完成60项memcheck、60项racecheck，以及完整4096³各一次：全部
 0 errors/0 hazards。四模式运行位置为`runs/a100_o3_four_modes_v24`（运行中），
 仍需完成该结果及production切换后独立复验；目标一尚未正式关闭，目标二仍未开始。
+
+## Production切换的固定规则与复验
+
+O3 `implementation="production"`在M%64=N%128=K%256=0时选择上述store2实现，
+其他原本支持的形状保留原生INT4 baseline。元数据同时记录requested/实际implementation、
+shape fallback、CTA、output_store_bits=64、scale_load_bits=8和spill政策。
+O1 production规则不变。验证脚本主动检查选择结果，旧二进制即使标记production也不能
+通过新选择规则的验证。以下步骤需在同步并重新编译后执行，使用新的输出目录：
+
+```bash
+python scripts/benchmark_a100_o3.py --validate --impl production \
+  --samples 0 --warmup 50 --repeats 200 --rounds 3 --inner 100 \
+  --output runs/a100_o3_production_acceptance
+python scripts/summarize_a100_o1.py --input runs/a100_o3_production_acceptance \
+  --output runs/a100_o3_production_acceptance/aggregate.json
+python scripts/audit_a100_o1.py --variant o3 --allow-spills \
+  --output reports/a100_o3_production_audit
+python scripts/audit_a100_o1.py --variant o1 --output reports/a100_o1_regression_audit
+```
+
+production复验尚未完成，不能仅凭候选2.026×结果宣布目标一正式交付。
 
 ## 当前证据位置（尚非最终验收）
 

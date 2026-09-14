@@ -193,3 +193,25 @@ def test_vector_scale_load_preserves_all_codes_and_alignment():
     assert '*reinterpret_cast<const uint16_t*>(src)' in s
     assert 'static_assert(K==256 && !Cached)' in s
     assert 'code=(packed_codes>>(8*group))&255u' in s
+
+
+def test_production_o3_has_fixed_native_shape_fallback():
+    import runpy
+    import sys
+    sys.path.insert(0,str(ROOT/'scripts'))
+    try:
+        d=runpy.run_path(str(ROOT/'scripts/benchmark_a100_o3.py'))
+    finally:
+        sys.path.pop(0)
+    expected=d['expected_o3_production']
+    for shape in ((4096,4096,4096),(64,128,256),(128,128,768)):
+        assert expected(*shape).endswith('_bound2_store2')
+    for shape in ((64,64,128),(128,192,512),(64,128,384)):
+        assert expected(*shape)=='baseline'
+    s=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
+    selector=s.split('if(implementation=="production") {',1)[1].split('const bool o3_candidate',1)[0]
+    assert 'a.size(0)%64==0' in selector and 'w.size(0)%128==0' in selector
+    assert 'a.size(1)%256==0' in selector
+    assert 'o3_swizzle_64x128_k256_exp_static_stream_bound2_store2' in selector
+    assert 'else implementation="baseline";' in selector
+    assert 'swizzle_128x64_k128_magic' in selector

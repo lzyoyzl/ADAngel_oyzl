@@ -7,6 +7,24 @@ import time
 from benchmark_a100_o1 import stats, command
 
 
+def expected_o3_production(m,n,k):
+    if m%64==0 and n%128==0 and k%256==0:
+        return 'o3_swizzle_64x128_k256_exp_static_stream_bound2_store2'
+    return 'baseline'
+
+
+def check_o3_production_metadata(result,m,n,k):
+    kernel=dict(result['kernel'])
+    expected=expected_o3_production(m,n,k)
+    assert kernel['requested_implementation']=='production'
+    assert kernel['implementation']==expected,(kernel,expected)
+    assert kernel['production_shape_fallback']==(expected=='baseline')
+    if expected!='baseline':
+        assert list(kernel['cta_tile'])==[64,128,256]
+        assert kernel['kernel_symbol']=='adangel_sm80_o3_swizzled_bound2'
+        assert kernel['output_store_bits']==64 and kernel['scale_load_bits']==8
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
@@ -60,6 +78,7 @@ def main():
                     if 'k256' in impl and k%256: continue
                     for mode in ['conversion_only','compute_only','cold','steady_state']:
                         r=native.benchmark('o3',mode,a,asc,w,ws,0,1,1,impl)
+                        if impl=='production':check_o3_production_metadata(r,m,n,k)
                         y=r['output']
                         assert y.dtype==torch.float32 and torch.isfinite(y).all()
                         torch.testing.assert_close(y,base,rtol=0,atol=0)
@@ -97,7 +116,9 @@ def main():
         def call(impl,mode):
             if impl=='o0': return native.benchmark_o0(x.A_int8,x.A_scale,x.W_mxfp4,x.W_scale,mode,args.warmup,args.repeats,args.inner)
             if impl=='o1': return native.benchmark('o1',mode,x.A_int8,x.A_scale,x.W_mxfp4,x.W_scale,args.warmup,args.repeats,args.inner,'production')
-            return native.benchmark('o3',mode,x.A_int8,x.A_scale,x.W_mxfp4_g128,x.W_scale_g128,args.warmup,args.repeats,args.inner,impl)
+            result=native.benchmark('o3',mode,x.A_int8,x.A_scale,x.W_mxfp4_g128,x.W_scale_g128,args.warmup,args.repeats,args.inner,impl)
+            if impl=='production':check_o3_production_metadata(result,x.A_int8.shape[0],x.W_mxfp4_g128.shape[0],x.A_int8.shape[1])
+            return result
         if args.profile:
             for impl in args.impl: call(impl,'compute_only')
             return

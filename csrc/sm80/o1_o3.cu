@@ -1,6 +1,6 @@
 // Ampere port: ordinary warp-cooperative cp.async double buffering replaces
-// SM120 TMA. Both variants use the same output tile and copy/synchronization
-// policy. O1 retains K32 scale; O3 retains two's-complement Split and G128/Q4.
+// SM120 TMA. Baselines share a tile; optimized variants have independently
+// validated tiles. O1 keeps K32; O3 keeps two's-complement Split and G128/Q4.
 #include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
 #include <cute/tensor.hpp>
@@ -187,9 +187,14 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   bool split=variant=="o3";
   const auto requested_implementation=implementation;
   if(implementation=="production") {
-    // Fixed, validated SM80 policy. O3 retains its original native INT4 path.
-    // Smaller aligned O1 shapes use the corresponding tested exact kernel.
-    if(split) implementation="baseline";
+    // Fixed SM80 policy; both O3 branches remain native U4/S4 Tensor Core.
+    // Preserve the original baseline for shapes outside the optimized tile.
+    if(split) {
+      if(a.dim()==2 && w.dim()==2 && a.size(0)%64==0 &&
+         w.size(0)%128==0 && a.size(1)%256==0)
+        implementation="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2";
+      else implementation="baseline";
+    }
     else if(a.dim()==2 && a.size(0)%128==0 && a.size(1)%128==0)
       implementation="swizzle_128x64_k128_magic";
     else if(a.dim()==2 && a.size(1)%128==0)
@@ -550,6 +555,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   meta["cta_tile"]=py::make_tuple(tile_m,tile_n,tile_k);
   meta["implementation"]=implementation;
   meta["requested_implementation"]=requested_implementation;
+  if(split) meta["production_shape_fallback"]=requested_implementation=="production"&&implementation=="baseline";
+  if(o3_candidate) meta["spill_policy"]="report_and_validate_correctness_and_performance";
   meta["exponent_scale_fast_path"]=exponent_scale;
   meta["paired_mma_issue"]=implementation.find("_pair")!=std::string::npos;
   meta["stream_atom_partial"]=exponent_scale&&implementation.find("_stream")!=std::string::npos;
