@@ -125,18 +125,20 @@ CUDA12.8 PTX8.7规定，bulk异步拷贝的隐式complete-tx只为该异步操�
 旧实现与magic候选应用同一个同步修复，然后重新进行racecheck、MSE逐位回归、
 24样本配对和四模式计时；保留v4原始证据，不能将同步修复的收益归因于magic-bias。
 
-### 同步修复v5（已实现，等待GPU验收）
+### 同步修复v5/v6（已实现，等待GPU验收）
 
+v5尝试让lane0在写后额外arrival：编译/ISA审计通过，但racecheck仍报告其他writer的
+scale竞争，因此不验收v5，也不删除失败日志。v6改为每个producer lane直接发布自己的写入。
 O1的K32 shared-scale与K64 shared-scale路径，以及O3共同TMA路径，将full barrier
-每stage的预期arrival数从1改成2：第一次仍在`producer_acquire`登记TMA事务；
-第二次由producer lane0在所有scale/correction写入、fence和warp同步后执行
+每stage的预期arrival数从1改成33：一次在`producer_acquire`登记TMA事务；
+其余32次由producer warp各lane在自身scale/correction写入后执行
 `cutlass::arch::ClusterBarrier::arrive`（默认release）。既有consumer wait是获取端。
-这里的2是arrival计数，不增加producer warp；没有改动CUTLASS源码。
+这里的33是arrival计数，不增加producer warp；没有改动CUTLASS源码。
 
-full barrier只有在两次arrival和全部TMA事务均完成后才放行；empty barrier仍保护stage复用。
+full barrier只有在全部33次arrival和TMA事务均完成后才放行；empty barrier仍保护stage复用。
 不使用shared scale的O1保留一次arrival。数学公式、CTA、stage数、量化和MMA选择均不变。
-元数据新增`scale_publication=full_barrier_post_store_release_v1`和
-`full_barrier_arrivals_per_stage=2`，区分同名kernel修复前后的运行。
+元数据新增`scale_publication=full_barrier_per_writer_release_v2`和
+`full_barrier_arrivals_per_stage=33`，区分同名kernel修复前后的运行。
 
 `benchmark_sm120_magic.py --snapshot-only`可保存24样本×5实现的输出SHA-256与MSE；
 修复后传入`--compare-snapshot <修复前目录>/snapshot.json`，要求全部逐位指纹和MSE一致。

@@ -244,6 +244,8 @@ def test_o3_public_dispatch_selects_aligned_production_fast_path():
     assert kernel["production_selected"] is True
     assert kernel["implementation_key"] == "m64_n32_k128_aligned_factor_16w"
     assert tuple(kernel["cta_tile"]) == (64, 32, 128)
+    assert kernel["scale_publication"] == "full_barrier_per_writer_release_v2"
+    assert kernel["full_barrier_arrivals_per_stage"] == 33
 
 
 @pytest.mark.sm120

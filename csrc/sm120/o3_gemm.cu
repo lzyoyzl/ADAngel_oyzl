@@ -517,9 +517,8 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
   const int lane = thread & 31;
   typename Pipeline::Params params;
   params.num_consumers = Config::kConsumerThreads;
-  // FULL requires both the acquire/expect-tx arrival and a release after
-  // ordinary shared scale/correction stores (joined by producer __syncwarp).
-  params.num_producers = 2;
+  // One acquire/expect-tx arrival plus direct releases from 32 scale writers.
+  params.num_producers = 33;
   params.transaction_bytes =
       2 * Config::kATransactionBytes + Config::kBTransactionBytes;
   params.initializing_warp = 0;
@@ -573,11 +572,12 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
       }
       __threadfence_block();
       __syncwarp();
+      // Every lane publishes its own scale/correction stores. FULL also
+      // waits for the transaction bytes registered in producer_acquire.
+      cutlass::arch::ClusterBarrier::arrive(
+          pipeline.producer_get_barrier(write_state));
       if (lane == 0) {
         auto* barrier = pipeline.producer_get_barrier(write_state);
-        // This second arrival publishes scale/correction to consumer_wait;
-        // the pending transaction bytes still protect all three TMA loads.
-        cutlass::arch::ClusterBarrier::arrive(barrier);
         cute::copy(
             tma_low.with(*barrier), tLgL(cute::_, pipeline_group), tLsL(cute::_, stage));
         cute::copy(
@@ -1199,8 +1199,8 @@ py::dict kernel_metadata(
       (Config::kDualK64Chains || Config::kIndependentK64Chains)
       ? kKSubgroups : 1;
   result["producer_warps"] = 1;
-  result["scale_publication"] = "full_barrier_post_store_release_v1";
-  result["full_barrier_arrivals_per_stage"] = 2;
+  result["scale_publication"] = "full_barrier_per_writer_release_v2";
+  result["full_barrier_arrivals_per_stage"] = 33;
   result["consumer_warps"] = Config::kConsumerWarps;
   result["m_mma_replicas_per_consumer_warp"] = Config::kMReplicas;
   result["column_scale_distribution"] = Config::kWarpBroadcastColumnScale

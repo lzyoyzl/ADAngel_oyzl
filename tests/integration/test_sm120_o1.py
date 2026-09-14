@@ -269,6 +269,10 @@ def test_o1_register_partial_candidates_match_reference(implementation, m, n, k)
     assert kernel["column_scale_load_scope"] == (
         "cta_once_per_column_group" if scale_shared else "consumer_warp"
     )
+    assert kernel["scale_publication"] == (
+        "full_barrier_per_writer_release_v2" if scale_shared else "not_shared"
+    )
+    assert kernel["full_barrier_arrivals_per_stage"] == (33 if scale_shared else 1)
     sparse_column_scale_loads = (
         implementation
         == "register_128x64_k64_scale_shared_row_dedup_sparse_scale"

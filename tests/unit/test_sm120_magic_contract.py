@@ -55,25 +55,27 @@ def test_magic_audit_preserves_producer_conversion_counts():
 def test_shared_scale_has_post_store_release_and_matching_arrival_count():
     o1 = (ROOT/'csrc/sm120/o1_gemm.cu').read_text()
     o3 = (ROOT/'csrc/sm120/o3_gemm.cu').read_text()
-    assert 'pipeline_params.num_producers = kShareColumnScale ? 2 : 1;' in o1
-    assert 'pipeline_params.num_producers = 2;' in o1
-    assert 'params.num_producers = 2;' in o3
-    assert o1.count('cutlass::arch::ClusterBarrier::arrive(tma_barrier);') == 2
-    assert o3.count('cutlass::arch::ClusterBarrier::arrive(barrier);') == 1
+    assert 'pipeline_params.num_producers = kShareColumnScale ? 33 : 1;' in o1
+    assert 'pipeline_params.num_producers = 33;' in o1
+    assert 'params.num_producers = 33;' in o3
+    assert o1.count('cutlass::arch::ClusterBarrier::arrive(') == 2
+    assert o3.count('cutlass::arch::ClusterBarrier::arrive(') == 1
     # Check all three producer-shared-scale paths. The empty-stage acquire
     # protects reuse; joined stores must precede the extra release and TMA.
-    for source, storage, barrier in [
-        (o1, 'shared_storage.column_scale_factor[', 'tma_barrier'),
-        (o3, 'storage.column_scale[', 'barrier'),
+    for source, storage in [
+        (o1, 'shared_storage.column_scale_factor['),
+        (o3, 'storage.column_scale['),
     ]:
-        release = f'cutlass::arch::ClusterBarrier::arrive({barrier});'
+        release = 'cutlass::arch::ClusterBarrier::arrive('
         start = 0
         while (pos := source.find(release, start)) >= 0:
             acquire = source.rfind('pipeline.producer_acquire(write_state)', 0, pos)
             store = source.find(storage, acquire, pos)
             sync = source.rfind('__syncwarp();', acquire, pos)
             assert 0 <= acquire < store < sync < pos
+            # Publication is before the lane0-only TMA branch, not inside it.
+            assert source.find('if (lane == 0)', sync) > pos
             assert source.find('cute::copy(', pos) > pos
             start = pos + len(release)
     for source in [o1, o3]:
-        assert 'full_barrier_post_store_release_v1' in source
+        assert 'full_barrier_per_writer_release_v2' in source
