@@ -72,7 +72,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool SerialGroups=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool NarrowB=false>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN>;
@@ -158,7 +158,9 @@ __device__ __forceinline__ void o3_body(
         cute::copy(SCopy{},hc.partition_S(tile_a(make_high(slot),sub)),hd);
         cute::copy(LCopy{},lc.partition_S(tile_a(make_low(slot),sub+cute::_1{})),ld1);
         cute::copy(SCopy{},hc.partition_S(tile_a(make_high(slot),sub+cute::_1{})),hd1);
-        constexpr int SliceN=WN*16;
+        constexpr int SliceN=WN*(NarrowB?8:16);
+        using SmallCopy=cute::Copy_Atom<std::conditional_t<NarrowB,cute::SM75_U32x2_LDSM_N,
+            cute::SM75_U32x4_LDSM_N>,cutlass::int4b_t>;
         using SliceMma=typename O3AmpereConfig<M,SliceN,K,Cached,WN>::Mma;
         SliceMma slice_mma;
         auto slice_thr=slice_mma.get_slice(threadIdx.x);
@@ -166,13 +168,13 @@ __device__ __forceinline__ void o3_body(
             cute::make_shape(cute::Int<SliceN>{},cute::_64{}),cute::make_coord(nb,half));};
         auto br0=slice_thr.partition_fragment_B(slice_b(cute::_0{},sub));
         auto br1=cute::make_fragment_like(br0);
-        auto sbc=cute::make_tiled_copy_B(SCopy{},slice_mma).get_slice(threadIdx.x);
+        auto sbc=cute::make_tiled_copy_B(SmallCopy{},slice_mma).get_slice(threadIdx.x);
         auto sd0=sbc.retile_D(br0);auto sd1=sbc.retile_D(br1);
         constexpr int NAtoms=decltype(cute::size<1>(br0))::value;
         static_assert(NAtoms*(N/SliceN)==decltype(cute::size<2>(acc))::value);
         o1_static_for<0,N/SliceN>([&](auto nb) {
-          cute::copy(SCopy{},sbc.partition_S(slice_b(nb,sub)),sd0);
-          cute::copy(SCopy{},sbc.partition_S(slice_b(nb,sub+cute::_1{})),sd1);
+          cute::copy(SmallCopy{},sbc.partition_S(slice_b(nb,sub)),sd0);
+          cute::copy(SmallCopy{},sbc.partition_S(slice_b(nb,sub+cute::_1{})),sd1);
           o1_static_for<0,decltype(cute::size<1>(acc))::value>([&](auto mi) {
           o1_static_for<0,NAtoms>([&](auto ni) {
             auto full_ni=nb*cute::Int<NAtoms>{}+ni;
@@ -260,14 +262,7 @@ __device__ __forceinline__ void o3_body(
       });
       }
     };
-    if constexpr(SerialGroups) {
-      // Keep just one G128's operand/address temporaries live. The two groups
-      // still execute in order inside one K256 shared-memory pipeline stage.
-      #pragma unroll 1
-      for(int group=0;group<C::Groups;++group) process_group(group);
-    } else {
-      o1_static_for<0,C::Groups>(process_group);
-    }
+    o1_static_for<0,C::Groups>(process_group);
     // Next iteration's barrier protects this slot before it is overwritten.
   };
   if constexpr(PhasePair) {

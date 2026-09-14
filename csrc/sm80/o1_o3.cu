@@ -533,7 +533,9 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(split) meta["copy_loop"]=implementation.find("_static")!=std::string::npos?"compile_time":"runtime";
   if(o3_candidate) meta["pipeline_phase_pair"]=implementation.find("_phase")!=std::string::npos;
   if(o3_candidate) meta["minimum_blocks_launch_bound"]=implementation.find("_bound2")!=std::string::npos?"2":"unspecified";
-  if(o3_candidate) meta["group_loop"]=implementation.find("_bound2")!=std::string::npos?"serial_g128_in_k256":"unrolled";
+  if(o3_candidate) meta["group_loop"]="unrolled";
+  if(o3_candidate&&implementation.find("_stream")!=std::string::npos)
+    meta["weight_register_slice_n"]=implementation.find("_bound2")!=std::string::npos?16:32;
   meta["scale_storage"]=implementation=="baseline"?"global_per_fragment":"shared_per_cta_column_group";
   meta["smem_swizzle"]=implementation!="baseline";
   meta["whole_scale_panel_cached"]=implementation.find("_cached")!=std::string::npos;
