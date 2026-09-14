@@ -89,6 +89,41 @@ repeats200、inner100，所有原始计时完整，保留2个跨轮汇总CV>=3%�
 `o3_gemm.cu:559`写入与`:983`读取。因此不能认为第一次混合报告仅出现O1就代表O3无风险。
 已补充询问是否单独修复O1/O3的同步并重新测试；暂不把同步修改混入magic转换实验。
 
+### 同步风险的源码与内存模型佐证（尚未修复）
+
+当前O1和O3的producer实际顺序为：
+
+```text
+producer_acquire：等候空stage，并对full barrier执行arrive_and_expect_tx
+→ producer warp写入普通shared-memory scale
+→ __threadfence_block + __syncwarp
+→ 发出A/W的TMA copy
+consumer：等候full barrier完成 → 读取A/W以及shared scale
+```
+
+关键不在于缺少TMA等待，而在于scale的发布发生在full barrier的release arrival之后。
+固定CUTLASS源码`include/cutlass/pipeline/sm90_pipeline.hpp`中的
+`PipelineTmaAsync::producer_acquire(stage, phase)`先等empty barrier，随后由leader
+调用`full_barrier_ptr_[stage].arrive_and_expect_tx(...)`。O1/O3均在该调用返回后才写scale。
+
+CUDA12.8 PTX8.7规定，bulk异步拷贝的隐式complete-tx只为该异步操作自身的访问建立顺序，
+不会传递发布发起线程之前的其他访问；mbarrier等待也不为release arrival之后的普通访问
+提供该发布保证。因此TMA数据完成，不能直接推导普通shared scale也已通过同一barrier
+正确发布给consumer。[官方PTX内存模型及mbarrier说明](https://docs.nvidia.com/cuda/archive/12.8.0/parallel-thread-execution/index.html)
+
+这里的`__syncwarp`只同步producer warp；现有fence与warp同步没有补上consumer所需的
+跨warp发布/获取关系。这与racecheck定位的scale读写hazard一致，不能仅以数值回归通过
+判定为误报。它不证明已保存的所有输出都是错误的，但意味着不能保证所有调度下正确。
+
+拟议最小修复是：保留empty-stage保护，在所有scale写入结束后增加明确的release发布，
+并让consumer必须等到该发布及TMA完成后才能使用stage。可评估额外full-barrier arrival
+或独立的每stage scale-ready barrier；必须同时核对arrival计数、phase及stage复用，
+不能简单把scale写入移到`producer_acquire`前，否则可能覆盖尚被consumer使用的stage。
+具体实现仍待用户确认，本文没有声称该修复已完成或已通过GPU验证。
+
+若获准，旧实现与magic候选将应用同一个同步修复，然后重新进行racecheck、MSE逐位回归、
+24样本配对和四模式计时；保留v4原始证据，不能将同步修复的收益归因于magic-bias。
+
 ## 针对性NCU观察（v4，非正式计时）
 
 四份报告为`reports/sm120_magic/ncu_{o1,o1_magic,o3,o3_magic}_v4.ncu-rep`，
