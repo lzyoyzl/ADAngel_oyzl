@@ -122,7 +122,7 @@ def test_bound2_uses_separate_entry_without_changing_default_launch_bounds():
     assert '__launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(' in s
     assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>(a,w,as,ws,y,m,n,k)' in s
     assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true>(a,w,as,ws,y,m,n,k)' in s
-    assert 'if constexpr(BoundedOperands) __syncwarp()' in s
+    assert 'if constexpr(BoundedOperands && Merge) __syncwarp()' in s
     assert 'o1_static_for<0,C::Groups>(process_group)' in s
 
 

@@ -215,7 +215,9 @@ __device__ __forceinline__ void o3_body(
         });
           // All lanes take every slice. Keep next-slice shared loads after
           // this warp-scoped boundary, limiting cross-slice operand hoisting.
-          if constexpr(BoundedOperands) __syncwarp();
+          // Keep this boundary only for the merged candidate. The independent
+          // partial candidate restores the v15 schedule (no extra warp fence).
+          if constexpr(BoundedOperands && Merge) __syncwarp();
         });
       } else {
       cute::clear(low);

@@ -278,6 +278,22 @@ STACK48/16 LDL/16 STL，均不满足无spill要求，也未显示性能优势，
 保留双K64 A fragment、W片复用、warp片边界和K256内两个独立G128；不更改量化、
 不移动转换计时。该候选须重新验证，不能以第二十轮结果代表它。
 
+第二十一轮单MMA atom合并：160项GPU逐位检查通过，单样本配对初筛2.0186倍；
+快速路径REG128/STACK8/2 LDL/2 STL，fallback STACK16。按用户确认后的政策，
+原生INT4/cp.async审计通过并保留spill警告，`strict_passed=false`。
+24样本、每样本3轮、warmup50/repeats200的正式配对结果为1.91953倍，bootstrap
+95%区间[1.91252,1.92881]，未达2倍；O3 GEMM样本中位数0.595968ms，当前O1
+1.149952ms。二者中位数之比并非配对加速比的定义，不可混用。
+全部24样本新旧O3输出逐位一致，MSE median=0.006653010285119311、
+mean=0.00757884701115429；保留74条跨轮汇总阶段CV异常，不删样本。
+O1独立指令审计通过，74项单元测试通过，memcheck的60项边界/形状验证为0 errors。
+完整4096³ sanitizer与四种性能口径仍待补齐，不能把上述窄范围验证称为完整验收。
+
+既然用户允许少量spill，恢复第十五轮的独立partial/K256/2CTA候选，保留
+32列W片、LDSM x4、原始指针运算且不增加warp片边界，与合并候选同进程比较。
+候选名为`o3_swizzle_64x128_k256_exp_static_stream_bound2`；准确版本以git commit、
+源码和binary SHA为准（中间历史曾对同名入口试验warp边界）。不改production默认值。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。
