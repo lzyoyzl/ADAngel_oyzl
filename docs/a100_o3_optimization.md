@@ -242,6 +242,12 @@ SASS显示这次溢出的是预取激活所用的64位地址，不再是partial/
 跨片提前加载造成的寄存器存活范围扩张。所有32个lane执行相同固定片数，
 没有partial shared-memory中转，也没有新增CTA级barrier；实际收益及无spill仍需验证。
 
+第十九轮160项逐位检查通过，初筛0.488448ms，但快速路径STACK16/2 LDL/2 STL，
+fallback STACK8，仍未通过无spill门槛。stream-bound2候选从当前入口中移除，历史
+提交和全部原始结果保留。下一轮测试K256的`exp_merge_static_bound2`：在每个G128内
+按high→乘16→low的整数重构方式复用一个完整INT32 fragment（该恒等式已穷举/随机验证），
+保持原FP32 group/FMA顺序、原指针地址和单独2 CTA入口，不增加warp小片同步。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。

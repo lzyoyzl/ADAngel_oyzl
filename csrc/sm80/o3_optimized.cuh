@@ -292,7 +292,7 @@ __global__ __launch_bounds__(32*(M==32?2:4)*WN) void adangel_sm80_o3_swizzled(
 template<int M,int N,int K,bool Fast,bool Cached,bool Magic,int WN,bool Merge,bool StaticCopy,bool PhasePair,bool Stream>
 __global__ __launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
-  static_assert(M==64 && N==128 && K==256 && WN==2 && Stream);
+  static_assert(M==64 && N==128 && K==256 && WN==2 && (Stream || Merge));
   o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true>(a,w,as,ws,y,m,n,k);
 }
 
