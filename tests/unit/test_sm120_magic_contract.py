@@ -70,6 +70,7 @@ def test_shared_scale_has_post_store_release_and_matching_arrival_count():
         start = 0
         while (pos := source.find(release, start)) >= 0:
             acquire = source.rfind('pipeline.producer_acquire(write_state)', 0, pos)
+            assert 'if (lane == 0)' not in source[source.rfind('\n', 0, acquire):acquire]
             store = source.find(storage, acquire, pos)
             sync = source.rfind('__syncwarp();', acquire, pos)
             assert 0 <= acquire < store < sync < pos
@@ -78,4 +79,4 @@ def test_shared_scale_has_post_store_release_and_matching_arrival_count():
             assert source.find('cute::copy(', pos) > pos
             start = pos + len(release)
     for source in [o1, o3]:
-        assert 'full_barrier_per_writer_release_v2' in source
+        assert 'per_writer_acquire_release_v3' in source

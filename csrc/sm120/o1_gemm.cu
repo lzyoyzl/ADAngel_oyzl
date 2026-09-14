@@ -613,9 +613,9 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
   pipeline_params.transaction_bytes =
       Config::kAStageElements + Config::kBStageElements;
   pipeline_params.initializing_warp = 0;
-  if (warp == 0 && lane == 0) {
+  if (warp == 0 && (kShareColumnScale || lane == 0)) {
     pipeline_params.role = Config::Pipeline::ThreadCategory::Producer;
-    pipeline_params.is_leader = 1;
+    pipeline_params.is_leader = lane == 0;
   } else if (warp > 0) {
     pipeline_params.role = Config::Pipeline::ThreadCategory::Consumer;
   }
@@ -630,7 +630,9 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
       auto write_state =
           cutlass::make_producer_start_state<typename Config::Pipeline>();
       for (int group = 0; group < groups; ++group) {
-        if (lane == 0) pipeline.producer_acquire(write_state);
+        // Every scale writer must acquire the empty phase before overwriting
+        // a recycled stage; only lane0 registers the TMA transaction bytes.
+        pipeline.producer_acquire(write_state);
         __syncwarp();
         const int write_stage = write_state.index();
         for (int local_column = lane;
@@ -861,9 +863,9 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
   pipeline_params.transaction_bytes =
       Config::kAStageElements + Config::kBStageElements;
   pipeline_params.initializing_warp = 0;
-  if (warp == 0 && lane == 0) {
+  if (warp == 0) {
     pipeline_params.role = Config::Pipeline::ThreadCategory::Producer;
-    pipeline_params.is_leader = 1;
+    pipeline_params.is_leader = lane == 0;
   } else if (warp > 0) {
     pipeline_params.role = Config::Pipeline::ThreadCategory::Consumer;
   }
@@ -881,7 +883,8 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
     for (int pipeline_group = 0;
          pipeline_group < pipeline_groups;
          ++pipeline_group) {
-      if (lane == 0) pipeline.producer_acquire(write_state);
+      // All writers acquire the empty phase, not just the TMA leader.
+      pipeline.producer_acquire(write_state);
       __syncwarp();
       const int write_stage = write_state.index();
 #pragma unroll
@@ -1765,7 +1768,7 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
     result["column_scale_storage"] =
         scale_shared ? "stage_local_shared_fp32" : "warp_register";
     result["scale_publication"] =
-        scale_shared ? "full_barrier_per_writer_release_v2" : "not_shared";
+        scale_shared ? "per_writer_acquire_release_v3" : "not_shared";
     result["full_barrier_arrivals_per_stage"] = scale_shared ? 33 : 1;
     result["column_scale_consumer_load_scope"] = sparse_column_scale_loads
         ? "warp_n_owned_lanes"

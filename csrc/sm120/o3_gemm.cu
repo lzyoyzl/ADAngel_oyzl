@@ -522,9 +522,9 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
   params.transaction_bytes =
       2 * Config::kATransactionBytes + Config::kBTransactionBytes;
   params.initializing_warp = 0;
-  if (warp == 0 && lane == 0) {
+  if (warp == 0) {
     params.role = Pipeline::ThreadCategory::Producer;
-    params.is_leader = 1;
+    params.is_leader = lane == 0;
   } else if (warp > 0) {
     params.role = Pipeline::ThreadCategory::Consumer;
   }
@@ -540,7 +540,9 @@ __global__ __launch_bounds__(kMaxThreads) void adangel_o3_split_tma_ws(
     // can consume it as a pragma argument.
 #pragma unroll 32
     for (int pipeline_group = 0; pipeline_group < pipeline_groups; ++pipeline_group) {
-      if (lane == 0) pipeline.producer_acquire(write_state);
+      // Each scale/correction writer acquires the recycled stage directly.
+      // Only lane0 performs arrive_and_expect_tx inside producer_acquire.
+      pipeline.producer_acquire(write_state);
       __syncwarp();
       const int stage = write_state.index();
 #pragma unroll
@@ -1199,7 +1201,7 @@ py::dict kernel_metadata(
       (Config::kDualK64Chains || Config::kIndependentK64Chains)
       ? kKSubgroups : 1;
   result["producer_warps"] = 1;
-  result["scale_publication"] = "full_barrier_per_writer_release_v2";
+  result["scale_publication"] = "per_writer_acquire_release_v3";
   result["full_barrier_arrivals_per_stage"] = 33;
   result["consumer_warps"] = Config::kConsumerWarps;
   result["m_mma_replicas_per_consumer_warp"] = Config::kMReplicas;
