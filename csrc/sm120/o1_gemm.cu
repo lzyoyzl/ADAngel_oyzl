@@ -607,6 +607,9 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
   const int lane = thread & 31;
   typename Config::Pipeline::Params pipeline_params;
   pipeline_params.num_consumers = Config::kConsumerThreads;
+  // FULL needs the acquire/expect-tx arrival plus a release after shared
+  // scales are written. This is an arrival count, not an extra producer warp.
+  pipeline_params.num_producers = kShareColumnScale ? 2 : 1;
   pipeline_params.transaction_bytes =
       Config::kAStageElements + Config::kBStageElements;
   pipeline_params.initializing_warp = 0;
@@ -647,6 +650,9 @@ __device__ __forceinline__ void adangel_o1_register_partial_body(
         __syncwarp();
         if (lane == 0) {
           auto* tma_barrier = pipeline.producer_get_barrier(write_state);
+          // __syncwarp above joins all producer scale stores before this
+          // release. FULL still waits for the registered TMA transactions.
+          cutlass::arch::ClusterBarrier::arrive(tma_barrier);
           cute::copy(
               tma_a.with(*tma_barrier),
               tAgA(cute::_, group),
@@ -850,6 +856,8 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
   const int lane = thread & 31;
   typename Config::Pipeline::Params pipeline_params;
   pipeline_params.num_consumers = Config::kConsumerThreads;
+  // One arrival in producer_acquire and one post-scale release per stage.
+  pipeline_params.num_producers = 2;
   pipeline_params.transaction_bytes =
       Config::kAStageElements + Config::kBStageElements;
   pipeline_params.initializing_warp = 0;
@@ -899,6 +907,9 @@ __device__ __forceinline__ void adangel_o1_register_partial_k64_body(
       __syncwarp();
       if (lane == 0) {
         auto* tma_barrier = pipeline.producer_get_barrier(write_state);
+        // Publish ordinary shared stores, which TMA complete-tx alone does
+        // not order. Empty-stage acquire must remain BEFORE these stores.
+        cutlass::arch::ClusterBarrier::arrive(tma_barrier);
 #pragma unroll
         for (int subgroup = 0; subgroup < Config::kGroupsPerStage; ++subgroup) {
           const int requested_group =
@@ -1752,6 +1763,9 @@ py::dict o1_metadata(O1Implementation implementation, int groups) {
         scale_shared ? "cta_once_per_column_group" : "consumer_warp";
     result["column_scale_storage"] =
         scale_shared ? "stage_local_shared_fp32" : "warp_register";
+    result["scale_publication"] =
+        scale_shared ? "full_barrier_post_store_release_v1" : "not_shared";
+    result["full_barrier_arrivals_per_stage"] = scale_shared ? 2 : 1;
     result["column_scale_consumer_load_scope"] = sparse_column_scale_loads
         ? "warp_n_owned_lanes"
         : "all_warp_lanes";

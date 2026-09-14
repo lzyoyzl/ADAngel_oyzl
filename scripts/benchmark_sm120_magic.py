@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Isolated exact-partial-cast A/B tests on RTX 5090; production is unchanged."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import time
@@ -28,6 +29,10 @@ def main():
     p.add_argument('--validate', action='store_true')
     p.add_argument('--validate-only', action='store_true')
     p.add_argument('--profile', choices=['o1', 'o1_magic', 'o3', 'o3_magic'])
+    p.add_argument('--snapshot-only', action='store_true',
+                   help='Save output hashes/MSE for before/after synchronization regression')
+    p.add_argument('--compare-snapshot', type=Path,
+                   help='Require identical hashes/MSE to a previous snapshot.json')
     args = p.parse_args()
     if args.output.exists(): p.error('Use a fresh output directory')
     if min(args.repeats, args.rounds) < 1 or args.warmup < 0 or args.inner < 2:
@@ -45,6 +50,9 @@ def main():
         with (args.output / name).open('a') as f: f.write(json.dumps(obj) + '\n')
 
     root = Path(__file__).resolve().parents[1]
+    previous_snapshot = (json.loads(args.compare_snapshot.read_text())
+                         if args.compare_snapshot else None)
+    snapshots = {}
     save('environment.json', dict(
         commit=command('git', 'rev-parse', 'HEAD'), torch=torch.__version__,
         cuda=torch.version.cuda, gpu=torch.cuda.get_device_name(),
@@ -126,6 +134,21 @@ def main():
         if args.profile:
             run(args.profile, 'compute_only')
             return
+        if args.snapshot_only:
+            ref = run('o0', 'compute_only')['output']
+            for impl in ['o0'] + [name for v in args.variants for name in [v, v+'_magic']]:
+                result = run(impl, 'compute_only')
+                y = result['output']
+                assert y.dtype == torch.float32 and torch.isfinite(y).all()
+                key = x.sample_id + '/' + impl
+                value = dict(output_sha256=hashlib.sha256(
+                    y.contiguous().cpu().numpy().tobytes()).hexdigest(),
+                    mse_vs_o0=float((y.double()-ref.double()).square().mean()))
+                if previous_snapshot is not None:
+                    assert value == previous_snapshot[key], (key, value, previous_snapshot[key])
+                snapshots[key] = value
+            print(x.sample_id, 'snapshot passed', flush=True)
+            continue
         ref = run('o0', 'compute_only')['output']
         bases = {v: run(v, 'compute_only')['output'] for v in args.variants}
         base_mse = {v: float((y.double()-ref.double()).square().mean()) for v, y in bases.items()}
@@ -153,6 +176,11 @@ def main():
                         mse_vs_o0=mse, baseline_mse_vs_o0=base_mse.get(variant, 0),
                         bitwise_equal_baseline=impl != 'o0'))
             print(x.sample_id, mode, 'done', flush=True)
+    if args.snapshot_only:
+        if previous_snapshot is not None:
+            assert snapshots.keys() == previous_snapshot.keys(), 'Snapshot coverage differs'
+        save('snapshot.json', snapshots)
+        print('Snapshot entries:', len(snapshots), flush=True)
 
 
 if __name__ == '__main__': main()

@@ -2,7 +2,8 @@
 
 状态：24样本正式配对完成，两项magic候选均未加速；81项CPU测试、216项GPU逐位检查、
 129项集成测试和专门指令审计通过。memcheck零错误，但racecheck报告旧/新O1及O3共享scale
-竞争，安全验收不能标为通过。完整四模式与进一步分析尚未完成，当前production未切换。
+竞争，v4安全验收不能标为通过。用户已同意修复：本地已补充post-store release，
+等待5090重新编译、racecheck及修复前后逐位回归；当前production实现选择未切换。
 目标一A100的结果见`a100_o3_optimization.md`；不得将其速度收益直接套用到5090。
 用户确认本轮同时测试O1和O3。
 
@@ -89,9 +90,9 @@ repeats200、inner100，所有原始计时完整，保留2个跨轮汇总CV>=3%�
 `o3_gemm.cu:559`写入与`:983`读取。因此不能认为第一次混合报告仅出现O1就代表O3无风险。
 已补充询问是否单独修复O1/O3的同步并重新测试；暂不把同步修改混入magic转换实验。
 
-### 同步风险的源码与内存模型佐证（尚未修复）
+### v4同步风险的源码与内存模型佐证
 
-当前O1和O3的producer实际顺序为：
+修复前O1和O3的producer实际顺序为：
 
 ```text
 producer_acquire：等候空stage，并对full barrier执行arrive_and_expect_tx
@@ -119,10 +120,27 @@ CUDA12.8 PTX8.7规定，bulk异步拷贝的隐式complete-tx只为该异步操�
 并让consumer必须等到该发布及TMA完成后才能使用stage。可评估额外full-barrier arrival
 或独立的每stage scale-ready barrier；必须同时核对arrival计数、phase及stage复用，
 不能简单把scale写入移到`producer_acquire`前，否则可能覆盖尚被consumer使用的stage。
-具体实现仍待用户确认，本文没有声称该修复已完成或已通过GPU验证。
+以上为修复方案约束；下面记录用户确认后的具体实现。
 
-若获准，旧实现与magic候选将应用同一个同步修复，然后重新进行racecheck、MSE逐位回归、
+旧实现与magic候选应用同一个同步修复，然后重新进行racecheck、MSE逐位回归、
 24样本配对和四模式计时；保留v4原始证据，不能将同步修复的收益归因于magic-bias。
+
+### 同步修复v5（已实现，等待GPU验收）
+
+O1的K32 shared-scale与K64 shared-scale路径，以及O3共同TMA路径，将full barrier
+每stage的预期arrival数从1改成2：第一次仍在`producer_acquire`登记TMA事务；
+第二次由producer lane0在所有scale/correction写入、fence和warp同步后执行
+`cutlass::arch::ClusterBarrier::arrive`（默认release）。既有consumer wait是获取端。
+这里的2是arrival计数，不增加producer warp；没有改动CUTLASS源码。
+
+full barrier只有在两次arrival和全部TMA事务均完成后才放行；empty barrier仍保护stage复用。
+不使用shared scale的O1保留一次arrival。数学公式、CTA、stage数、量化和MMA选择均不变。
+元数据新增`scale_publication=full_barrier_post_store_release_v1`和
+`full_barrier_arrivals_per_stage=2`，区分同名kernel修复前后的运行。
+
+`benchmark_sm120_magic.py --snapshot-only`可保存24样本×5实现的输出SHA-256与MSE；
+修复后传入`--compare-snapshot <修复前目录>/snapshot.json`，要求全部逐位指纹和MSE一致。
+指纹比较不能替代racecheck或独立语义参考，两者均需通过。
 
 ## 针对性NCU观察（v4，非正式计时）
 

@@ -50,3 +50,30 @@ def test_magic_audit_preserves_producer_conversion_counts():
     # Instruction placement cannot identify a loop's execution order.
     reordered = counts('I2FP.F32.S32 R5; I2F.S16 R1; I2FP.F32.S32 R2; UTMALDG.2D R3; IMMA.16816.S8.S8 R4;')
     assert reordered == old
+
+
+def test_shared_scale_has_post_store_release_and_matching_arrival_count():
+    o1 = (ROOT/'csrc/sm120/o1_gemm.cu').read_text()
+    o3 = (ROOT/'csrc/sm120/o3_gemm.cu').read_text()
+    assert 'pipeline_params.num_producers = kShareColumnScale ? 2 : 1;' in o1
+    assert 'pipeline_params.num_producers = 2;' in o1
+    assert 'params.num_producers = 2;' in o3
+    assert o1.count('cutlass::arch::ClusterBarrier::arrive(tma_barrier);') == 2
+    assert o3.count('cutlass::arch::ClusterBarrier::arrive(barrier);') == 1
+    # Check all three producer-shared-scale paths. The empty-stage acquire
+    # protects reuse; joined stores must precede the extra release and TMA.
+    for source, storage, barrier in [
+        (o1, 'shared_storage.column_scale_factor[', 'tma_barrier'),
+        (o3, 'storage.column_scale[', 'barrier'),
+    ]:
+        release = f'cutlass::arch::ClusterBarrier::arrive({barrier});'
+        start = 0
+        while (pos := source.find(release, start)) >= 0:
+            acquire = source.rfind('pipeline.producer_acquire(write_state)', 0, pos)
+            store = source.find(storage, acquire, pos)
+            sync = source.rfind('__syncwarp();', acquire, pos)
+            assert 0 <= acquire < store < sync < pos
+            assert source.find('cute::copy(', pos) > pos
+            start = pos + len(release)
+    for source in [o1, o3]:
+        assert 'full_barrier_post_store_release_v1' in source
