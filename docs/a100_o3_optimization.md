@@ -304,6 +304,8 @@ O1独立指令审计通过，74项单元测试通过；memcheck/racecheck各完�
 独立版本GEMM样本中位数0.580096ms、当前O1为1.144832ms，尚未达到2倍。
 两版本的24样本输出均逐位等于旧O3，MSE median/mean与v21完全相同。
 保留64条跨轮汇总阶段CV异常，指令审计通过并明确保留spill警告；74项单元测试通过。
+独立候选另通过60项memcheck、60项racecheck及完整4096³各一次检查，均为0 errors/
+0 hazards。v22归档SHA-256为`ceca39b201eff3414fe712551243e486523b4935c0650a52d80a5b98d5e8f682`。
 
 补充只读功率诊断：分别连续运行O1/O3 4000次并每100ms记录nvidia-smi。
 两者均检测到软件功率限制Active，SM频率从1410降至约1200–1260MHz；没有锁频、
@@ -322,6 +324,13 @@ NCU回放频率不同，因此476.77us不用于替换正式CUDA Event的0.580096
 根据pinned SM80_16x8_Row布局验证成对坐标；另保留邻接和8-byte对齐guard。
 每个输出元素仍只写一次，不改变MMA、G128 scale和FP32累加顺序；需审计STG.64、
 GPU逐位/MSE及配对长测后才决定是否采纳。
+
+第二十三轮store2候选：120项GPU逐位检查和75项单元测试通过，原生指令审计通过并
+保留spill警告；快速路径REG128/STACK40，fallback STACK32，SASS两者均有16条
+静态STG.E.64。单样本（warmup50/repeats200/3轮）store2约0.528384ms、普通store
+约0.534528ms，配对当前O1分别2.07699/2.06501；这不是24样本验收，也不能用它
+与v22绝对延迟混比。输出仍逐位一致；该候选尚未通过独立sanitizer和完整四模式。
+v23归档SHA-256为`fbf67861d4d99411c7ae6bd1b7c849ca78b4ca05ef5d856ba9f63b3f1868993b`。
 
 Source/SASS进一步显示，两条循环内`LDG.E.U8`各执行122880次，分别产生
 3809280个L2 theoretical excessive sectors；这指向跨列stride=32的W scale读取，
