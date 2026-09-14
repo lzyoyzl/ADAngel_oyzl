@@ -1,6 +1,6 @@
 # A100 O3 优化：目标与验收记录
 
-状态：store2候选已通过24样本配对门槛，production切换及独立复验中，尚未关闭目标一。
+状态：production已通过独立24样本配对门槛，正式入口四模式及内存安全补充复验中，尚未关闭目标一。
 目标一未通过前，不开始目标二的5090 magic-bias部署。
 
 ## 目标
@@ -436,7 +436,32 @@ python scripts/audit_a100_o1.py --variant o3 --allow-spills \
 python scripts/audit_a100_o1.py --variant o1 --output reports/a100_o1_regression_audit
 ```
 
-production复验尚未完成，不能仅凭候选2.026×结果宣布目标一正式交付。
+### v25 production独立配对复验
+
+`runs/a100_o3_production_v25`使用正式`production`入口，24样本、3轮、
+warmup=50、repeats=200、conversion_inner_repeats=100，共288条完整记录。
+140项GPU形状/数值/四模式检查通过，包含非优化tile对齐形状的原生INT4 fallback，
+非法输入拒绝检查通过。77项CPU单元测试通过。
+
+| 实现 | Compute-only GEMM median ms | 对O0输出的MSE median | MSE mean |
+|---|---:|---:|---:|
+| O0 | 0.722944 | 0 | 0 |
+| 当前O1 | 1.143296 | 9.82338825329489e-9 | 1.1142038139865581e-8 |
+| 旧O3 baseline | 1.852416 | 0.006653010285119311 | 0.00757884701115429 |
+| 正式O3 production | 0.565248 | 0.006653010285119311 | 0.00757884701115429 |
+
+正式O3相对当前O1的同样本/同轮配对加速比为**2.021739×**，bootstrap 95% CI为
+**[2.012658, 2.025362]**。所有O3输出与旧O3逐位一致，MSE完全相同。
+保留全部计时；跨轮汇总共有70个CV>=3%的stage条目，O3 GEMM最大跨轮CV为5.8073%。
+这里不能宣称所有计时阶段CV<3%，也不把每个离群值都归因于已观测到的功耗限频。
+
+`reports/a100_o3_opt/audit_v25`通过允许spill的原生INT4审计，
+`strict_passed=false`如实保留；O1严格审计通过。对比v24/v25反汇编中10个
+64×128×256 bound2实例的机器指令编码，全部一致，包含选定store2的快速和fallback路径。
+这证明切换production没有改变已验证的GPU指令，不等于消除了spill。
+
+正式入口的补充memcheck/racecheck及24样本完整四模式仍在运行，结果未完成前
+不宣布目标一正式交付。候选四模式数据仍仅归属于v24，不改名为v25结果。
 
 ## 当前证据位置（尚非最终验收）
 

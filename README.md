@@ -42,9 +42,9 @@ cuBLASLt O0；不是硬件峰值比较。三路中的 O1/O3 CV 异常和 O0 四�
 A100 O1 的当前优化与独立验收见 [A100 O1 优化](docs/a100_o1_optimization.md)。
 
 A100 O3 的优化、原生 INT4 审计与验收状态见
-[A100 O3 优化记录](docs/a100_o3_optimization.md)。store2候选在24样本/3轮配对中达到
-当前O1的2.026×（95% CI [2.015,2.035]），输出逐位一致；正在完成production切换复验，
-不把候选结果冒充切换后的结果。5090 magic-bias 移植将在目标一验收后单独验证。
+[A100 O3 优化记录](docs/a100_o3_optimization.md)。production切换后的独立24样本/3轮
+配对达到当前O1的2.022×（95% CI [2.013,2.025]），输出逐位一致、MSE不变。
+正式入口的四模式与内存安全补充复验仍在进行；5090 magic-bias移植将在目标一验收后单独验证。
 SM80 O1 的 `implementation="production"` 在4096³仍选择 `swizzle_128x64_k128_magic`：
 保留原 K32/FMA 数值顺序，采用 swizzled shared-memory、CTA 内 scale 共享、
 精确 UE8M0 位解码和精确 bias-bit partial 转换；旧 `baseline` 继续保留作同进程对照。
