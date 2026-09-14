@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit every instantiated optimized O1 function, never a probe or old kernel."""
+"""Audit instantiated SM80 O1/O3 functions; retain explicit spill diagnostics."""
 import argparse
 import hashlib
 import json
@@ -8,11 +8,24 @@ import re
 import subprocess
 
 
+def audit_policy(checks, allow_spills=False):
+    """Keep raw checks intact; only known spill checks can become warnings."""
+    spill_checks={'sass_no_local','resource_no_local','resource_no_stack'}
+    failed=[name for name,value in checks.items() if not value]
+    warnings=[name for name in failed if allow_spills and name in spill_checks]
+    errors=[name for name in failed if name not in warnings]
+    return dict(passed=not errors,strict_passed=not failed,
+                errors=errors,warnings=warnings)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--variant',choices=['o1','o3'],default='o1')
+    p.add_argument('--allow-spills',action='store_true',
+                   help='O3 only: report spill checks as warnings, never waive ISA checks or missing resource data')
     args=p.parse_args()
+    if args.allow_spills and args.variant!='o3': p.error('--allow-spills is only supported for O3')
     if args.output.exists(): raise SystemExit('Use a fresh output directory')
     import torch  # load libc10 before the extension
     from adangel import _sm80 as native
@@ -42,6 +55,7 @@ def main():
                 end+=1
             ptx=outputs['extension.ptx'][start:end]
         checks=dict(sass_int8=bool(re.search(r'IMMA\.\w+\.S8\.S8',block)),
+            resource_metadata_present=bool(local and stack),
             sass_async='LDGSTS' in block, sass_no_local=not bool(re.search(r'\b(?:LDL|STL)\b',block)),
             resource_no_local=bool(local and int(local[1])==0),
             resource_no_stack=bool(stack and int(stack[1])==0),
@@ -68,13 +82,15 @@ def main():
         if magic:
             checks['magic_no_i2f']=instruction_counts['I2F']==0
             checks['magic_has_fadd']=instruction_counts['FADD']>0
-        functions.append(dict(symbol=symbol,checks=checks,passed=all(checks.values()),resource=resource,
+        functions.append(dict(symbol=symbol,checks=checks,**audit_policy(checks,args.allow_spills),resource=resource,
                               instruction_counts=instruction_counts))
     passed=bool(functions) and all(f['passed'] for f in functions)
+    strict_passed=bool(functions) and all(f['strict_passed'] for f in functions)
+    policy='spill_warnings_isa_required' if args.allow_spills else 'zero_spill_required'
     (args.output/'audit.json').write_text(json.dumps(dict(binary=binary,
         binary_sha256=hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
-        passed=passed,functions=functions),indent=2)+'\n')
-    print(json.dumps(dict(passed=passed,functions=functions),indent=2))
+        passed=passed,strict_passed=strict_passed,policy=policy,functions=functions),indent=2)+'\n')
+    print(json.dumps(dict(passed=passed,strict_passed=strict_passed,policy=policy,functions=functions),indent=2))
     if not passed: raise SystemExit(1)
 
 

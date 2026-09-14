@@ -8,7 +8,15 @@
 在同一A100、相同24份4096³真实输入上，让O3相对**当前优化后O1**的配对吞吐比
 `T_O1 / T_O3 > 2`，即O3延迟低于O1的一半；不能拿旧O1约4.44ms作为目标分母。
 验收不仅看一次最快值，还包括24样本配对、四模式、MSE、同function原生INT4指令审计、
-无spill与Compute Sanitizer；保留全部原始计时及CV异常。
+Compute Sanitizer与资源使用检查；保留全部原始计时及CV异常。
+
+2026-09-14用户确认：若正确性/MSE不受影响，可采用存在少量spill的更快实现。
+因此零spill不再单独作为O3淘汰条件；历史严格审计失败记录不回写为通过。
+新版审计默认仍严格，可显式传`--variant o3 --allow-spills`把local/stack诊断
+列为warnings，同时保留`strict_passed=false`、原始checks、资源及LDL/STL数量。
+原生U4/S4指令、禁止INT8退化、cp.async及资源元数据完整性仍是硬性条件。
+此开关只改变结构审计政策，不证明数值正确或内存安全；还须通过GPU逐位/MSE、
+Compute Sanitizer及24样本同进程性能验收。O1和SM120政策不变。
 
 ### 理论目标的解释
 

@@ -145,3 +145,19 @@ def test_stream_merge_reconstructs_before_unchanged_fp32_fma():
     assert '__fmaf_rn(value,scale,acc(vi,mi,full_ni))' in stream
     host=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
     assert 'o3_swizzle_64x128_k256_exp_merge_static_stream_bound2' in host
+
+
+def test_audit_spill_exception_never_waives_isa_or_missing_metadata():
+    import runpy
+    policy=runpy.run_path(str(ROOT/'scripts/audit_a100_o1.py'))['audit_policy']
+    checks=dict(sass_no_local=False,resource_no_stack=False,resource_no_local=True,
+                sass_u4s4=True,sass_s4s4=True,sass_no_int8=True,resource_metadata_present=True)
+    assert not policy(checks)['passed']
+    allowed=policy(checks,True)
+    assert allowed['passed'] and not allowed['strict_passed']
+    assert set(allowed['warnings'])=={'sass_no_local','resource_no_stack'}
+    for name in ('sass_u4s4','sass_s4s4','sass_no_int8','resource_metadata_present'):
+        broken={**checks,name:False}
+        assert not policy(broken,True)['passed']
+        assert name in policy(broken,True)['errors']
+    assert checks['sass_no_local'] is False
