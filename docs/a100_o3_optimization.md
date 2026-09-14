@@ -219,6 +219,12 @@ REG130、无spill，仍越过2 CTA的寄存器上限。准备单独的`swizzled_
 仅对K256指定minBlocks=2；所有其他入口保持原单参数launch_bounds。
 两个入口复用同一个forceinline函数体，量化及G128/FMA语义不变；需重新审计和实测。
 
+第十五轮独立bound2入口初筛0.478208ms，当前O1约1.071104ms，单样本配对比2.1761。
+320项逐位检查通过，但快速路径REG128/STACK8（fallback STACK16），各有2 LDL/2 STL，
+因此**尚未通过验收**。SASS中spill对应一项FP32输出accumulator，而不是量化误差。
+下一轮仅在bound2入口禁止两个G128的编译期展开，保留K256搬运和顺序G128循环，
+尝试缩短operand/地址临时量生命周期；不能用这次有spill的初筛宣称目标完成。
+
 ## 当前证据位置（尚非最终验收）
 
 - 原始初筛与逐位验证：`runs/a100_o3_screen_v1`至`runs/a100_o3_screen_v7`。

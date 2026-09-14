@@ -120,4 +120,6 @@ def test_bound2_uses_separate_entry_without_changing_default_launch_bounds():
     s=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
     assert '__launch_bounds__(32*(M==32?2:4)*WN) void adangel_sm80_o3_swizzled(' in s
     assert '__launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(' in s
-    assert s.count('o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>(a,w,as,ws,y,m,n,k)')==2
+    assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>(a,w,as,ws,y,m,n,k)' in s
+    assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true>(a,w,as,ws,y,m,n,k)' in s
+    assert 'for(int group=0;group<C::Groups;++group) process_group(group)' in s

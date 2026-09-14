@@ -72,7 +72,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool SerialGroups=false>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN>;
@@ -148,7 +148,7 @@ __device__ __forceinline__ void o3_body(
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
     if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy>(s,1-slot,stage+1,a,w,ws,m,k);
-    o1_static_for<0,C::Groups>([&](auto group) {
+    auto process_group=[&](auto group) {
       if constexpr(Stream) {
         // Preload both K64 A sets, but retain only a narrow N slice of B.
         // Only 4 low + 4 high INT32 partials remain live per thread; FP32
@@ -259,7 +259,15 @@ __device__ __forceinline__ void o3_body(
         acc(i)=__fmaf_rn(value,scale,acc(i));
       });
       }
-    });
+    };
+    if constexpr(SerialGroups) {
+      // Keep just one G128's operand/address temporaries live. The two groups
+      // still execute in order inside one K256 shared-memory pipeline stage.
+      #pragma unroll 1
+      for(int group=0;group<C::Groups;++group) process_group(group);
+    } else {
+      o1_static_for<0,C::Groups>(process_group);
+    }
     // Next iteration's barrier protects this slot before it is overwritten.
   };
   if constexpr(PhasePair) {
@@ -288,7 +296,7 @@ template<int M,int N,int K,bool Fast,bool Cached,bool Magic,int WN,bool Merge,bo
 __global__ __launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   static_assert(M==64 && N==128 && K==256 && WN==2 && Stream);
-  o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>(a,w,as,ws,y,m,n,k);
+  o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true>(a,w,as,ws,y,m,n,k);
 }
 
 template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool Bound2=false>
