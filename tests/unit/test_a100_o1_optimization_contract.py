@@ -47,9 +47,17 @@ def test_candidate_validation_is_bitwise_and_unfiltered():
     assert 'torch.equal(y.view(torch.int32),base.view(torch.int32))' in script
 
 
-def test_sm80_production_keeps_old_baseline_and_o3():
+def test_sm80_production_keeps_o1_policy_and_explicit_baseline():
     source=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
-    assert 'if(split) implementation="baseline"' in source
+    # O3 now has its own validated selector (covered by the O3 tests). O1
+    # must retain the existing exact policy and the explicitly named baseline.
+    selector=source.split('if(implementation=="production") {',1)[1].split('const bool o3_candidate',1)[0]
+    assert 'else if(a.dim()==2 && a.size(0)%128==0 && a.size(1)%128==0)' in selector
+    assert 'implementation="swizzle_128x64_k128_magic"' in selector
+    assert 'else if(a.dim()==2 && a.size(1)%128==0)' in selector
+    assert 'implementation="swizzle_64x64_k128_magic"' in selector
+    assert 'else implementation="swizzle_64x64_k64";' in selector
+    assert 'TORCH_CHECK(implementation=="baseline" ||' in source
     assert 'py::arg("implementation")="production"' in source
     assert 'requested_implementation' in source
     assert 'implementation="swizzle_128x64_k128_magic"' in source
