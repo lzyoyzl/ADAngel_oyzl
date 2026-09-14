@@ -182,12 +182,24 @@ __device__ __forceinline__ void o3_body(
             cute::clear(pl);cute::clear(ph);
             using LA=cute::MMA_Atom<cute::SM80_16x8x64_S32U4S4S32_TN>;
             using HA=cute::MMA_Atom<cute::SM80_16x8x64_S32S4S4S32_TN>;
+            if constexpr(Merge) {
+            // Exact G128 reconstruction using four INT32 registers, not
+            // a full output-tile partial. W fragments still serve both paths.
+            cute::gemm(HA{},pl,rh(cute::_,mi,cute::_0{}),br0(cute::_,ni,cute::_0{}),pl);
+            cute::gemm(HA{},pl,rh1(cute::_,mi,cute::_0{}),br1(cute::_,ni,cute::_0{}),pl);
+            o1_static_for<0,4>([&](auto vi) { pl(vi)*=16; });
+            cute::gemm(LA{},pl,ra(cute::_,mi,cute::_0{}),br0(cute::_,ni,cute::_0{}),pl);
+            cute::gemm(LA{},pl,ra1(cute::_,mi,cute::_0{}),br1(cute::_,ni,cute::_0{}),pl);
+            } else {
             cute::gemm(LA{},pl,ra(cute::_,mi,cute::_0{}),br0(cute::_,ni,cute::_0{}),pl);
             cute::gemm(HA{},ph,rh(cute::_,mi,cute::_0{}),br0(cute::_,ni,cute::_0{}),ph);
             cute::gemm(LA{},pl,ra1(cute::_,mi,cute::_0{}),br1(cute::_,ni,cute::_0{}),pl);
             cute::gemm(HA{},ph,rh1(cute::_,mi,cute::_0{}),br1(cute::_,ni,cute::_0{}),ph);
+            }
             o1_static_for<0,4>([&](auto vi) {
-              int partial=pl(vi)+16*ph(vi);
+              int partial;
+              if constexpr(Merge) partial=pl(vi);
+              else partial=pl(vi)+16*ph(vi);
               auto coord=coords(vi,mi,full_ni);
               int scale_group=(Cached?stage:slot)*C::Groups+group;
               float column=s.scales[scale_group*N+cute::get<1>(coord)];

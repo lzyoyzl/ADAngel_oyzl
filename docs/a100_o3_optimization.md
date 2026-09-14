@@ -10,6 +10,20 @@
 验收不仅看一次最快值，还包括24样本配对、四模式、MSE、同function原生INT4指令审计、
 无spill与Compute Sanitizer；保留全部原始计时及CV异常。
 
+### 理论目标的解释
+
+A100的非稀疏INT8/INT4峰值分别为624/1248 TOPS，见
+[NVIDIA A100数据表](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet.pdf)。
+若O1的整数乘加工作量为C，O3需要低位和高位两路，共2C；仅计算Tensor Core
+乘加的理想时间为`2C/P_INT4 = C/P_INT8`，因此不能从INT4峰值直接推出O3快2倍。
+两路由同一warp交错发出，独立partial提供指令流水机会，不代表独占两块物理Tensor Core。
+单partial候选则主动引入high→乘16→low依赖，换取更少的活跃寄存器。
+
+完整kernel的潜在收益主要来自G128相对G32：K=4096时，逐输出元素的分组
+转换/缩放/FP32累加从128次降为32次，同时新增两路整数重构等开销。
+“吞吐超过当前O1两倍”是需由配对实测证明的优化目标，不是架构必然保证；
+不能通过更换O1分母、移动计时边界或改变FP32分组顺序满足目标。
+
 ## 不变的数学语义
 
 - 原INT8激活无损拆成低U4、高S4，`a=lo+16*hi`，不改变原激活量化。
@@ -247,6 +261,14 @@ fallback STACK8，仍未通过无spill门槛。stream-bound2候选从当前入�
 提交和全部原始结果保留。下一轮测试K256的`exp_merge_static_bound2`：在每个G128内
 按high→乘16→low的整数重构方式复用一个完整INT32 fragment（该恒等式已穷举/随机验证），
 保持原FP32 group/FMA顺序、原指针地址和单独2 CTA入口，不增加warp小片同步。
+
+第二十轮260项GPU逐位检查通过，单样本MSE仍为0.0005745973478203796。
+完整fragment合并候选约0.570368ms，快速路径STACK32/8 LDL/8 STL、fallback
+STACK48/16 LDL/16 STL，均不满足无spill要求，也未显示性能优势，故撤回该入口。
+下一候选`exp_merge_static_stream_bound2`在32列W片内逐MMA atom重构：
+仅四个INT32寄存器先积累两个high K64，乘16后加入两个low K64，再做原FP32 FMA。
+保留双K64 A fragment、W片复用、warp片边界和K256内两个独立G128；不更改量化、
+不移动转换计时。该候选须重新验证，不能以第二十轮结果代表它。
 
 ## 当前证据位置（尚非最终验收）
 

@@ -132,3 +132,16 @@ def test_warp_operand_boundaries_are_uniform_for_all_lanes():
             assert n%(wn*16)==0
             schedules=[list(range(n//(wn*16))) for _ in range(32)]
             assert all(x==schedules[0] for x in schedules)
+
+
+def test_stream_merge_reconstructs_before_unchanged_fp32_fma():
+    s=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+    stream=s.split('if constexpr(Stream) {',1)[1].split('} else {\n      cute::clear(low);',1)[0]
+    merged=stream.split('if constexpr(Merge) {',1)[1].split('} else {',1)[0]
+    assert merged.count('cute::gemm(HA{},pl,')==2
+    assert merged.count('cute::gemm(LA{},pl,')==2
+    assert merged.index('rh1(')<merged.index('pl(vi)*=16')<merged.index('ra(')
+    assert 'if constexpr(Merge) partial=pl(vi);' in stream
+    assert '__fmaf_rn(value,scale,acc(vi,mi,full_ni))' in stream
+    host=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
+    assert 'o3_swizzle_64x128_k256_exp_merge_static_stream_bound2' in host
