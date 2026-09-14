@@ -124,3 +124,15 @@ def test_bound2_uses_separate_entry_without_changing_default_launch_bounds():
     assert 'o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true>(a,w,as,ws,y,m,n,k)' in s
     assert 'SM75_U32x2_LDSM_N' in s
     assert 'o1_static_for<0,C::Groups>(process_group)' in s
+
+
+def test_compact_packed_offsets_match_linear_layout_with_capacity_guard():
+    for m,n,k in ((64,128,256),(128,128,512),(4096,4096,4096)):
+        for row in (0,m//2,m-1):
+            for byte in (0,k//4,k//2-16):
+                lo=row*(k//2)+byte;hi=lo+m*(k//2)
+                assert 0<=lo<hi and hi+16<=m*k<=0xffffffff
+        for row in (0,n//2,n-1):
+            assert row*(k//2)+(k//2-16)+16<=n*k//2<=0xffffffff
+    host=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
+    assert 'a.numel()<=0xffffffffLL&&w.numel()<=0xffffffffLL' in host

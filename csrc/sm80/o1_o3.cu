@@ -241,6 +241,9 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     if(o3_candidate&&implementation.find("_k256_")!=std::string::npos) tile_k=256;
     TORCH_CHECK(m%tile_m==0&&n%tile_n==0&&k%tile_k==0,"candidate tile alignment required");
     if(implementation.find("_cached")!=std::string::npos) TORCH_CHECK(k<=4096,"cached scale panel requires K<=4096");
+    if(implementation.find("_bound2")!=std::string::npos)
+      TORCH_CHECK(a.numel()<=0xffffffffLL&&w.numel()<=0xffffffffLL,
+          "bound2 packed buffers must fit unsigned 32-bit byte offsets");
   }
   c10::cuda::CUDAGuard guard(a.device());
   cudaDeviceProp prop; check(cudaGetDeviceProperties(&prop,a.get_device()));
@@ -536,6 +539,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(o3_candidate) meta["group_loop"]="unrolled";
   if(o3_candidate&&implementation.find("_stream")!=std::string::npos)
     meta["weight_register_slice_n"]=implementation.find("_bound2")!=std::string::npos?16:32;
+  if(o3_candidate) meta["packed_addressing"]=implementation.find("_bound2")!=std::string::npos?"guarded_u32_offset":"pointer_expression";
   meta["scale_storage"]=implementation=="baseline"?"global_per_fragment":"shared_per_cta_column_group";
   meta["smem_swizzle"]=implementation!="baseline";
   meta["whole_scale_panel_cached"]=implementation.find("_cached")!=std::string::npos;
