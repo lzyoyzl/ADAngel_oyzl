@@ -35,7 +35,9 @@ O3继续保持当前SM120 legacy U4/S4 PTX路径，其CUDA12.8 SASS为INT8 IMMA�
 - 24真实样本重新计算对O0的FP64 reduction MSE；新旧同后端MSE必须完全相同。
 - 同进程、相同输入、交错顺序、warmup50/repeats200/3轮；保留所有CV及离群值，不锁频。
 - conversion-only独立批量摊销inner100；compute-only GEMM、cold及steady total均保留直接计时。
-- 同一候选function必须有TMA、正确MMA语义，I2F消失且FADD/IADD存在；资源和spill检查保留。
+- 同一候选function必须有TMA、正确MMA语义，partial的I2FP由FADD/IADD替换；
+  producer用于scale解码的I2F/I2FP保留，不能声称整个kernel没有I2F。审计保留全局计数，
+  同时核对MMA后处理区和新旧指令差值；资源和spill检查保留。
 - 逐后端比较旧/新配对速度。正确性和安全是硬条件；无明确收益则保持旧production。
 - memcheck/racecheck与现有O0—O4集成测试分别执行，不与正式GPU计时并行。
 

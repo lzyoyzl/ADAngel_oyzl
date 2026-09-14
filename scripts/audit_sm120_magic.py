@@ -30,6 +30,18 @@ def ptx_entry(ptx, symbol):
     return ptx[start:end] if depth == 0 else ''
 
 
+def instruction_counts(block):
+    result = {op: len(re.findall(r'\b'+op+r'(?:\.|\s)', block))
+              for op in ['I2F', 'I2FP', 'IADD3', 'IADD', 'FADD', 'FFMA', 'IMMA', 'UTMALDG', 'LDL', 'STL']}
+    # For these four instantiated kernels the producer code precedes the
+    # consumer MMA/postprocessing region. Preserve global counts as well;
+    # producer scale decoding deliberately still contains integer conversions.
+    first = re.search(r'\bIMMA\.', block)
+    result['post_mma_i2f'] = (len(re.findall(r'\bI2F(?:P)?\.', block[first.start():]))
+                              if first else -1)
+    return result
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output', type=Path, required=True)
@@ -53,10 +65,9 @@ def main():
         match = re.search(r'Function\s+(?:\:\s*)?'+re.escape(symbol)+r'\s*:\s*([^\n]+)', outputs['resources.txt'])
         resource = match[0] if match else ''
         local, stack = re.search(r'LOCAL:(\d+)', resource), re.search(r'STACK:(\d+)', resource)
-        counts = {op: len(re.findall(r'\b'+op+r'(?:\.|\s)', block))
-                  for op in ['I2F', 'I2FP', 'IADD3', 'IADD', 'FADD', 'FFMA', 'IMMA', 'UTMA', 'LDL', 'STL']}
+        counts = instruction_counts(block)
         checks = dict(ptx_present=bool(ptx), ptx_tma='cp.async.bulk.tensor' in ptx,
-                      sass_tma=counts['UTMA'] > 0, sass_imma=counts['IMMA'] > 0,
+                      sass_tma=counts['UTMALDG'] > 0, sass_imma=counts['IMMA'] > 0,
                       resource_present=bool(local and stack),
                       no_local_stack=bool(local and stack and int(local[1]) == int(stack[1]) == 0),
                       no_spill_instructions=counts['LDL'] == counts['STL'] == 0)
@@ -69,18 +80,29 @@ def main():
             # Preserve and explicitly document CUDA 12.8 SM120 legacy lowering.
             checks['sass_int8_lowering'] = bool(re.search(r'IMMA[^;]*\.[SU]8\.[SU]8', block))
         if variant.endswith('_magic'):
-            checks['magic_no_i2f'] = counts['I2F'] == counts['I2FP'] == 0
+            checks['magic_no_post_mma_i2f'] = counts['post_mma_i2f'] == 0
             checks['magic_fadd'] = counts['FADD'] > 0
             checks['magic_iadd'] = counts['IADD3']+counts['IADD'] > 0
         else:
-            checks['baseline_i2f'] = counts['I2F']+counts['I2FP'] > 0
+            checks['baseline_post_mma_i2f'] = counts['post_mma_i2f'] > 0
         functions.append(dict(variant=variant, symbol=symbol, resource=resource,
                               instruction_counts=counts, checks=checks,
                               passed=all(checks.values())))
-    coverage = {f['variant'] for f in functions} == {'o1', 'o1_magic', 'o3', 'o3_magic'}
+    coverage = len(functions) == 4 and {f['variant'] for f in functions} == {'o1', 'o1_magic', 'o3', 'o3_magic'}
+    pairs = {}
+    if coverage:
+        by_name = {f['variant']: f for f in functions}
+        for variant in ['o1', 'o3']:
+            old = by_name[variant]['instruction_counts']
+            new = by_name[variant+'_magic']['instruction_counts']
+            removed = old['I2FP']-new['I2FP']
+            pairs[variant] = dict(
+                partial_i2fp_to_fadd=removed > 0 and removed == new['FADD']-old['FADD'] == old['post_mma_i2f'],
+                producer_i2f_preserved=old['I2F'] == new['I2F'] and old['I2FP']-old['post_mma_i2f'] == new['I2FP'],
+                mma_tma_preserved=old['IMMA'] == new['IMMA'] and old['UTMALDG'] == new['UTMALDG'])
     result = dict(binary=native.__file__, binary_sha256=hashlib.sha256(Path(native.__file__).read_bytes()).hexdigest(),
-                  complete_coverage=coverage, functions=functions,
-                  passed=coverage and all(f['passed'] for f in functions),
+                  complete_coverage=coverage, functions=functions, paired_checks=pairs,
+                  passed=coverage and all(f['passed'] for f in functions) and all(all(x.values()) for x in pairs.values()),
                   note='O3 remains legacy U4/S4 PTX lowered to INT8 IMMA; not native INT4 SASS')
     (args.output/'audit.json').write_text(json.dumps(result, indent=2)+'\n')
     print(json.dumps(result, indent=2))
