@@ -120,6 +120,7 @@ struct O3Config {
 // allocation while rotating the K-byte address with the logical row bits.
 template <int TileN, bool UseLdsm = false>
 struct O3SwizzledConfig {
+  static constexpr bool kMagicCast = false;
   static constexpr int kTileM = 128;
   static constexpr int kTileN = TileN;
   static constexpr int kNReplicas = TileN / 16;

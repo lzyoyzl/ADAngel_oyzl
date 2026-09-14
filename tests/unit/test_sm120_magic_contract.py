@@ -25,6 +25,8 @@ def test_magic_candidates_do_not_change_production_or_scale_math():
     assert 'AbsoluteBound < (1 << 22)' in h
     assert 'const float scale = __fmul_rn(row_scale, column_scale);' in o1
     assert 'Config::kFactorRowScaleAfterK' in o3
+    # This legacy family does not derive from O3Config.
+    assert 'struct O3SwizzledConfig {\n  static constexpr bool kMagicCast = false;' in o3
 
 
 def test_magic_audit_classifies_only_exact_candidate_families():
