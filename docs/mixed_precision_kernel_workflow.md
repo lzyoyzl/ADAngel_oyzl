@@ -1,11 +1,12 @@
 # 混合低精度 kernel 的分层工作流（阶段稿）
 
 范围：总结现有 O3 与正在开发的 O5/O6 共用计算路径。
-O5/O6 前端格式尚未确认，本文不是最终实验验收报告。
+O5/O6 格式与定点 F 已确认，正式数据处理口径仍待澄清。
+本文不是最终实验验收报告。
 
 ## Conversion：先证明数值，再组织数据
 
-    FP16 原始 A/W
+    浮点 A/W（必须记录原始 FP16 或 prepared 反量化来源）
       → 指定浮点格式及 G128 scale/内部指数
       → 解码局部数值并对齐
       → RNE + clamp 得到 Q4 / Q8 / Q6
@@ -22,9 +23,36 @@ O5/O6 前端格式尚未确认，本文不是最终实验验收报告。
 MSE 至少区分原始 FP16→格式的损失、格式→定点的新增损失，以及
 实际 CUDA 输出对定点语义参考的实现误差。三者不可用一个 MSE 混淆。
 
-在格式定义完成后，正式转换计时仍采用批量摊销，端到端直接计时。
+转换阶段采用批量摊销，端到端直接计时。
 compute-only 的前处理必须提前完成；缓存静态 W 不等于免除在线 A 转换。
-目前新接口只收 prepared integer 输入，尚不报告正式 conversion/cold/steady。
+当前内部 `_benchmark_mixed` 已接入四模式：输入为编码后的源格式，预先分配
+整数 payload、有效 scale 和输出；conversion_only 仅测源格式→定点，
+compute_only 提前完成两侧转换，cold 两侧均转换，steady_state 缓存 W。
+Python 源格式量化参考在上述区间外，不伪装成 CUDA 转换性能。
+尚不发布正式 conversion/cold/steady 数字，待完整运行验收。
+
+### 格式的物理存储与整数接口
+
+令 R 为矩阵行数、G=K/128。以下是参考和 CUDA 转换共同使用的布局：
+
+| 源格式 | Payload | Scale / 附加信息 |
+|---|---|---|
+| NVFP4-G128 | uint8[R,K/2]，偶数 K 位于低 nibble | E4M3 uint8[R,G]，FP32 tensor scale[1] |
+| MXFP8-E4M3-G128 | uint8[R,K] | UE8M0 uint8[R,G] |
+| HiF4-like-G128 | S1P2 uint8[R,K/2] | E6M2 uint8[R,G]；微指数 bit-pack 为 uint8[R,G,2] 和 [R,G,4] |
+| NV-style FP6-E2M3-G128 | uint8[R,K]，低 6 位编码、高 2 位零 | E4M3 uint8[R,G]，FP32 tensor scale[1] |
+
+FP6 此处采用 byte-padded 存储，不是压紧到每 4 元素 3 字节。转换后的 Q6
+先符号扩展，再与 Q8 一样输出 A_split[2R,K/2]；不能把原始 FP6 的高位
+补零与有符号 Q6 的符号扩展混淆。字节吞吐应按实际布局统计，不能套用 6/8。
+所有源格式最后归约到 W_q4、A_split 和双侧 FP32 G128 scale。
+
+### 独立验证层
+
+`test_mixed_formats.py` 校验标量编码、全有限值/中点、HiF4 微指数及补码；
+`validate_a100_mixed_formats.py` 校验 CUDA 打包/scale 逐位一致，再对独立
+CPU 整数点积参考检查 GEMM，并核对四模式阶段、重复次数与缓存元数据。
+其中 MSE vs O0 来自明确标注的合成 FP16，不替代 24 个真实样本。
 
 ## Optimization：围绕有效数据复用，而不是只比较位宽
 

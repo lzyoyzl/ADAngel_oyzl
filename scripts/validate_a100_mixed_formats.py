@@ -77,6 +77,10 @@ def main():
                 source["scale"] = torch.tensor([[0, 1], [64, 126]], dtype=torch.uint8)
                 source["tensor_scale"] = torch.tensor([.0317], dtype=torch.float32)
             convert(source, f"all_payloads_micro_{pattern}")
+        for rows in (1, 3):
+            # Partial conversion CTA: guard threads beyond the final 64 pairs.
+            x = torch.linspace(-8, 8, rows * 128).reshape(rows, 128)
+            convert(mf.quantize_source(x, fmt), f"tail_rows_{rows}")
 
     gemm_checks = []
     timing_checks = []
@@ -160,6 +164,15 @@ def main():
                 rejected.append(f"{fmt}/{case}")
             else:
                 raise AssertionError(f"accepted invalid input: {fmt}/{case}")
+    overflow = move(mf.quantize_source(torch.ones(2, 256), "mxfp8_e4m3_g128"))
+    overflow["scale"].fill_(253)
+    try:
+        native._convert_mixed_source(overflow)
+    except RuntimeError as exc:
+        assert "scale overflow" in str(exc)
+        rejected.append("mxfp8/fixed_scale_overflow")
+    else:
+        raise AssertionError("accepted fixed-scale overflow")
     report = {"passed": True, "scope": "synthetic_formats_conversion_and_integer_gemm",
               "formal_o5_o6_complete": False, "performance_acceptance": False,
               "data_source": "deterministic_synthetic_fp16_not_real_trace",
