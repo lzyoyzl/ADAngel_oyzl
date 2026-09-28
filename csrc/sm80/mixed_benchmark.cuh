@@ -45,32 +45,50 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   const bool weight=mode=="cold" || mode=="conversion_only";
   const bool activation=mode!="compute_only", compute=mode!="conversion_only";
   auto whole=[&]() {if(weight) cvw(); if(activation) cva(); if(compute) gemm();};
+  // Create ALL events/storage before warmup, including isolated conversion
+  // batches. Do not insert event-allocation gaps after the GPU is warmed up.
+  struct Pair {Event start,end;};
+  std::vector<Pair> weight_marks(weight?repeats:0),activation_marks(activation?repeats:0);
+  std::vector<Mark> marks(compute?repeats:0);
+  std::vector<float> wt(weight?repeats:0),at(activation?repeats:0);
+  std::vector<float> gt(compute?repeats:0),totals(repeats);
+  auto measure_conversion=[&](auto& fn,auto& events,auto& values) {
+    for(auto& e:events) {
+      check(cudaEventRecord(e.start.e,stream));
+      for(int j=0;j<inner;++j) fn();
+      check(cudaEventRecord(e.end.e,stream));
+    }
+    check(cudaEventSynchronize(events.back().end.e));
+    for(int j=0;j<repeats;++j) values[j]=elapsed(events[j].start,events[j].end)/inner;
+  };
   for(int i=0;i<warmup;++i) whole();
-  // Dual-track measurement: conversion-only samples are amortized. GPU end-to-end
-  // samples below always execute the actual sequence ONCE, never sum medians.
-  auto wt=weight ? batch(cvw,repeats,inner,stream) : std::vector<float>{};
-  auto at=activation ? batch(cva,repeats,inner,stream) : std::vector<float>{};
-  std::vector<float> gt,totals;
-  if(!compute) {
-    totals=batch(whole,repeats,inner,stream);
-  } else if(mode=="compute_only") {
-    gt=batch(gemm,repeats,1,stream);totals=gt;
-  } else {
-    // Event creation and vector allocation are outside all measured intervals.
-    std::vector<Mark> marks(repeats);
+  check(cudaStreamSynchronize(stream));
+  // Like the earlier dual-track experiments: main path FIRST, isolated batched
+  // conversions AFTERWARDS. End-to-end always executes the sequence ONCE.
+  if(compute) {
     for(auto& e:marks) {
       check(cudaEventRecord(e.start.e,stream));
       if(weight) cvw();
-      cva();
-      check(cudaEventRecord(e.a.e,stream));
+      if(activation) {
+        cva();
+        check(cudaEventRecord(e.a.e,stream));
+      }
       gemm();
       check(cudaEventRecord(e.end.e,stream));
     }
     check(cudaEventSynchronize(marks.back().end.e));
-    for(auto& e:marks) {
-      gt.push_back(elapsed(e.a,e.end));totals.push_back(elapsed(e.start,e.end));
+    for(int j=0;j<repeats;++j) {
+      auto& e=marks[j];
+      gt[j]=elapsed(activation?e.a:e.start,e.end);
+      totals[j]=elapsed(e.start,e.end);
     }
   }
+  if(weight) measure_conversion(cvw,weight_marks,wt);
+  if(activation) measure_conversion(cva,activation_marks,at);
+  // Match historical A100 O3 (also SM120 O3/O4): sum corresponding isolated
+  // samples, THEN compute median/mean. This is not a joint-event measurement,
+  // not a sum of medians, and is never used for cold/steady-state total.
+  if(!compute) for(int j=0;j<repeats;++j) totals[j]=wt[j]+at[j];
   py::dict timings,counts;
   if(weight) {timings["weight_conversion"]=wt;counts["weight_conversion"]=inner;}
   if(activation) {timings["activation_conversion"]=at;counts["activation_conversion"]=inner;}
@@ -96,6 +114,9 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   result["stage_timing_inner_repeats"]=counts;
   result["weight_cached"]=!weight;result["activation_prepared"]=!activation;
   result["conversion_scope"]="source_format_to_fixed_only";
-  result["total_timing"]=compute?"single_execution_cuda_event":"batched_amortized_cuda_event";
+  result["total_timing"]=compute?"single_execution_cuda_event":"sum_of_batched_stage_samples";
+  result["timing_contract_version"]=2;
+  result["timing_strategy"]="conversion_amortized_end_to_end_direct";
+  result["measurement_order"]="direct_path_then_isolated_conversions";
   return result;
 }

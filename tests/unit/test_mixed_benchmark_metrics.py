@@ -11,6 +11,40 @@ spec.loader.exec_module(module)
 
 
 class TestMixedBenchmarkMetrics(unittest.TestCase):
+    def test_conversion_total_aligned_without_mutating_native(self):
+        payload = {"timings_ms": {"weight_conversion": [1., 100., 101.],
+                                 "activation_conversion": [100., 1., 101.],
+                                 "total": [99., 99., 199.]}}
+        raw, native_total, method = module.aligned_timings(payload, "conversion_only")
+        self.assertEqual(raw["total"], [101., 101., 202.])
+        self.assertEqual(module.statistics.median(raw["total"]), 101.)
+        self.assertNotEqual(module.statistics.median(raw["total"]),
+                            sum(module.statistics.median(raw[s]) for s in ("weight_conversion", "activation_conversion")))
+        self.assertEqual(native_total, [99., 99., 199.])
+        self.assertEqual(payload["timings_ms"]["total"], native_total)
+        self.assertEqual(method, "sum_of_batched_stage_samples")
+        with self.assertRaises(ValueError):
+            module.aligned_timings({"timings_ms": {"total": [1.]}}, "conversion_only")
+
+    def test_direct_total_is_not_reconstructed(self):
+        for mode in ("compute_only", "cold", "steady_state"):
+            payload = {"timings_ms": {"gemm": [10.], "total": [12.]}}
+            if mode != "compute_only":
+                payload["timings_ms"]["activation_conversion"] = [1.]
+            raw, saved, method = module.aligned_timings(payload, mode)
+            self.assertEqual(raw["total"], [12.])
+            self.assertEqual(raw, payload["timings_ms"])
+            self.assertEqual(saved, [12.])
+            self.assertEqual(method, "single_execution_cuda_event")
+
+    def test_native_event_setup_precedes_warmup(self):
+        code = (ROOT / "csrc/sm80/mixed_benchmark.cuh").read_text()
+        warmup = code.index("for(int i=0;i<warmup;++i)")
+        self.assertLess(code.index("std::vector<Pair> weight_marks"), warmup)
+        self.assertLess(code.index("std::vector<Mark> marks"), warmup)
+        self.assertGreater(code.index("if(weight) measure_conversion"), code.index("cudaEventSynchronize(marks.back()"))
+        self.assertNotIn("batch(", code)
+
     def test_actual_format_bytes(self):
         # R=1, K128: 64-byte W or 128-byte A, group metadata and output scale.
         self.assertEqual(module.conversion_bytes("o5/x", "weight_conversion", 1, 1, 128), 64 + 1 + 4 + 64 + 4)
@@ -35,6 +69,17 @@ class TestMixedBenchmarkMetrics(unittest.TestCase):
         self.assertEqual(result["median_ms"], 4.)
         with self.assertRaises(ValueError):
             module.summarize_records(records + records[:1])
+
+    def test_conversion_speedup_requires_matching_methods(self):
+        records = []
+        for case, method, ms in (("o0", "sum_of_batched_stage_samples", 2.),
+                                  ("o3", "sum_of_batched_stage_samples", 1.)):
+            records.append({"sample_id": "s", "round": 0, "mode": "conversion_only", "case": case,
+                            "summary": {"total": {"median_ms": ms, "mean_ms": ms, "cv_percent": 1.}},
+                            "timing_stable_cv3": True, "mse_vs_o0": 0., "total_timing": method})
+        self.assertEqual(module.summarize_records(records)[1]["paired_speedup_vs_o0_median"], 2.)
+        records[0]["total_timing"] = "batched_amortized_cuda_event"
+        self.assertIsNone(module.summarize_records(records)[1]["paired_speedup_vs_o0_median"])
 
 
 if __name__ == "__main__":

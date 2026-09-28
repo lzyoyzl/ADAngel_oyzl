@@ -60,13 +60,41 @@ repeats, conversion_inner_repeats, tile)` 在全部检查/分配后复用缓冲�
 
 | 模式 | 已计时的转换 | GEMM | total |
 |---|---|---|---|
-| conversion_only | W 和 A，各批量摊销 | 区间外生成正确性输出 | W+A 联合批量摊销，不是相加两个中位数 |
+| conversion_only | W 和 A，各批量摊销 | 区间外生成正确性输出 | 每次 W/A 摊销样本相加，再统计 median/mean；对齐 A100 O3 |
 | compute_only | 两侧提前转换 | 直接计时 | 与 GEMM 同一区间 |
 | cold | W、A 单列为批量摊销结果 | 直接流程中的 GEMM 区间 | 单次 W+A+GEMM |
 | steady_state | 缓存 W；A 单列为批量摊销结果 | 直接流程中的 GEMM 区间 | 单次 A+GEMM |
 
 上述为 GPU CUDA Event 延迟，不包含 Python 格式校验、公共初始量化、
 文件 I/O 或内存分配。转换微基准和端到端总时间不应强行相加对齐。
+
+### 与前面实验对齐的计时规则（v2）
+
+固定 warmup=50、repeats=200、conversion_inner_repeats=100、单 CUDA stream。
+转换样本为同一 Event 区间连续执行 100 次后除以 100；GEMM 和 cold/steady
+路径每个样本只执行一次。Event、缓冲区均在预热前创建；先测直接路径，再测
+独立转换，避免长批量转换改变直接路径的初始缓存/频率状态。
+这里的 cold 表示“未缓存静态权重转换”，不是清空 L2、冷启动进程或首次编译。
+
+源格式公共准备（量化为 NVFP4/MXFP8/HiF4/FP6）、数据传输、分配、校验和 MSE
+计算均在四种计时之外，与前面实验排除公共初始量化的原则一致。**不能排除**
+源格式→定点、有效 scale 生成、激活拆分/packing 的在线开销：O5 的 Q8 转换、
+O6 的 Q6 转换与符号扩展都属于 activation_conversion；W→Q4 和有效 W scale
+生成属于 weight_conversion。steady-state 仅缓存 W 的这些结果。
+
+历史实现有一项差别：O0/O2 的 conversion total 是联合批量 Event，A100 O3
+和 SM120 O3/O4 是独立转换样本之和。为让**新 A100 O0/O3/O5/O6 对照表**可比，
+`benchmark_a100_mixed.py` 统一用 `total[i]=W[i]+A[i]`（FP32 求和），然后对
+这些 total 样本计算 median/mean；不是 `median(W)+median(A)`，也不代表实际
+串联延迟。O0 原生联合 Event 结果另存 `native_total_timings_ms`，旧后端和旧
+结果文件不改写。cold/steady 的 total 从不重构，一律保留单次直接 Event。
+
+每条新记录携带 `timing_contract_version=2`、`total_timing`、
+`native_total_timing`、`native_total_timings_ms` 和阶段 inner repeats。
+版本 1 的 O5/O6 conversion total 不能直接混入版本 2 对照表；需重测。
+MSE 仍为 FP32 输出相对同源 O0 的差值，用 FP64 reduction，完全排除在计时外。
+保留原始 200 次数据、median/mean/P5/P95/IQR/CV；共享 GPU 下 CV≥3% 标注为
+诊断异常，不删离群、不为凑阈值单方面重跑。NCU 耗时不混入 Event 性能。
 
 ## 共用整数计算契约
 

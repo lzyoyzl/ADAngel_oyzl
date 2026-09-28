@@ -615,6 +615,13 @@ python scripts/validate_a100_mixed_formats.py --output runs/mixed_formats_valida
 双 INT4 GEMM 的独立整数参考，以及明确标为合成数据的 MSE vs O0。
 数据处理口径见 [格式与数据核对记录](docs/o5_o6_format_review.md)。
 
+O5/O6 的计时与旧实验统一为“转换批量摊销 + 端到端单次直接计时”：
+默认预热 50 次、测量 200 次、转换 inner=100，排除公共初始格式准备。
+新的 A100 对照表将 conversion total 统一为逐次 W/A 摊销样本之和（旧 O3
+口径），原生 total 另存备查；cold/steady total 始终直接实测，不由分阶段
+耗时拼接。详见 [四模式边界与兼容说明](docs/o5_o6_a100_protocol.md)。
+计时契约 v2 修改了 SM80 计时封装，需要重新编译；不修改 O0–O4/SM120 后端。
+
 ```bash
 python -m adangel doctor
 python -m adangel show-config --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml

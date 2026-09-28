@@ -29,6 +29,10 @@ compute-only 的前处理必须提前完成；缓存静态 W 不等于免除在�
 整数 payload、有效 scale 和输出；conversion_only 仅测源格式→定点，
 compute_only 提前完成两侧转换，cold 两侧均转换，steady_state 缓存 W。
 Python 源格式量化参考在上述区间外，不伪装成 CUDA 转换性能。
+新 A100 对照采用计时契约 v2：转换 total 对齐旧 O3，逐次相加 W/A 的独立
+摊销样本后统计；cold/steady total 仍为单次直接 Event，不相加分阶段结果。
+O0 原生联合转换 total 单独保存，不改旧后端/旧结果。所有 Event 在预热前
+创建，直接路径先于转换微基准；详见 [计时规则](o5_o6_a100_protocol.md)。
 尚不发布正式 conversion/cold/steady 数字，待完整运行验收。
 
 ### 格式的物理存储与整数接口

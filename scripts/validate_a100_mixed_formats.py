@@ -142,12 +142,24 @@ def main():
                             assert sample["stage_timing_inner_repeats"][stage] == inner
                         assert sample["weight_cached"] == (mode in ("compute_only", "steady_state"))
                         assert sample["activation_prepared"] == (mode == "compute_only")
+                        assert sample["timing_contract_version"] == 2
+                        assert sample["timing_strategy"] == "conversion_amortized_end_to_end_direct"
+                        assert sample["measurement_order"] == "direct_path_then_isolated_conversions"
+                        expected_method = "sum_of_batched_stage_samples" if mode == "conversion_only" else "single_execution_cuda_event"
+                        assert sample["total_timing"] == expected_method
+                        if mode == "conversion_only":
+                            times = sample["timings_ms"]
+                            # Native FP32 sum, not median(W)+median(A).
+                            summed = torch.tensor(times["weight_conversion"]) + torch.tensor(times["activation_conversion"])
+                            assert torch.equal(torch.tensor(times["total"]), summed)
                         if mode == "compute_only":
                             assert sample["timings_ms"]["total"] == sample["timings_ms"]["gemm"]
                         timing_checks.append({"variant": variant, "mode": mode, "shape": [m, n, k],
                                               "timings_ms": dict(sample["timings_ms"]),
                                               "stage_timing_inner_repeats": dict(sample["stage_timing_inner_repeats"]),
                                               "total_timing": sample["total_timing"],
+                                              "timing_contract_version": sample["timing_contract_version"],
+                                              "measurement_order": sample["measurement_order"],
                                               "weight_cached": sample["weight_cached"],
                                               "activation_prepared": sample["activation_prepared"]})
 

@@ -69,6 +69,12 @@ O2-A在每个外层样本中连续执行
 `timing.conversion_inner_repeats=100` 次，单次延迟取批量耗时除以100。
 `conversion_only/total` 对该variant的完整转换序列采用相同批量摊销方法。
 
+历史口径例外与新 A100 扩展：上述联合转换 Event 适用于 O0/O1/O2；旧 O3/O4
+及 A100 O3 的 conversion total 实际为独立摊销的 W/A 样本逐次求和。
+新 A100 O0/O3/O5/O6 对照表统一采用后一口径，并另存各原生 total，不改写
+旧结果。两种 conversion total 不直接混比；cold/steady 始终单次直接测量。
+具体边界和记录字段见 [O5/O6 计时契约 v2](o5_o6_a100_protocol.md)。
+
 `compute_only/total`、`cold/total`、`steady_state/total` 保持单次直接路径计时：
 cold只执行一次在线权重/激活转换，steady-state继续缓存静态权重转换。转换组件的
 批量区间不进入端到端区间。分阶段批量均值与直接total独立测量，因此二者不要求精确

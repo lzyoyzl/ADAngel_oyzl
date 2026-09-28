@@ -11,12 +11,36 @@ import json
 import math
 from pathlib import Path
 import statistics
+import struct
 import time
 
 from benchmark_a100_o1 import command, stats
 
 TILES = ("64x64x128", "64x128x256")
 MODES = ("conversion_only", "compute_only", "cold", "steady_state")
+TIMING_CONTRACT_VERSION = 2
+
+
+def aligned_timings(measured, mode):
+    """New A100 comparison tables use the historical O3 conversion convention.
+
+    Keep the native total separately: O0's conversion total is a joint event;
+    older O3 and new O5/O6 sum isolated samples. Never rewrite old result files
+    or add independently measured conversion stages to a direct end-to-end time.
+    """
+    raw = {stage: list(values) for stage, values in measured["timings_ms"].items()}
+    native_total = list(raw["total"])
+    if mode == "conversion_only":
+        stages = [raw[s] for s in ("weight_conversion", "activation_conversion") if s in raw]
+        if not stages or any(len(s) != len(native_total) for s in stages):
+            raise ValueError("conversion stages missing or sample counts inconsistent")
+        # CUDA native O3 sums float samples; preserve the same FP32 rounding.
+        raw["total"] = [struct.unpack("f", struct.pack("f", sum(values)))[0]
+                        for values in zip(*stages)]
+        method = "sum_of_batched_stage_samples"
+    else:
+        method = "single_execution_cuda_event"
+    return raw, native_total, method
 
 
 def conversion_bytes(case, stage, m, n, k):
@@ -71,9 +95,10 @@ def summarize_records(records):
         for r in selected:
             o0 = index[(r["sample_id"], r["round"], mode, "o0")]
             ratios.append(o0["summary"][stage]["median_ms"] / r["summary"][stage]["median_ms"])
-        # O3 historically sums separately amortized conversion samples. Do not
-        # label its conversion total as a joint-event speedup over O0.
-        comparable = not (case == "o3" and mode == "conversion_only")
+        # Fail closed for old/unmatched timing contracts, rather than presenting
+        # a joint event and a sum of isolated stages as the same measurement.
+        comparable = all(r["total_timing"] == index[(r["sample_id"], r["round"], mode, "o0")]["total_timing"]
+                         for r in selected)
         summary.append({"case": case, "mode": mode, "records": len(selected),
                         "stage": stage, "median_ms": statistics.median(r["summary"][stage]["median_ms"] for r in selected),
                         "mean_ms": statistics.fmean(r["summary"][stage]["mean_ms"] for r in selected),
@@ -138,6 +163,7 @@ def main():
               "csrc/sm80/mixed_conversion.cuh", "csrc/sm80/mixed_benchmark.cuh")},
          "args": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
          "scope": "synthetic_source_formats_not_real_trace", "formal_o5_o6_complete": False,
+         "timing_contract_version": TIMING_CONTRACT_VERSION,
          "policy": "No filtering/retry-until-pass; same-process cyclic/reversed order; unlocked/shared GPU; conversion amortized, end-to-end direct"})
     gen = torch.Generator().manual_seed(args.seed)
     acpu = (torch.randn((args.size, args.size), generator=gen) * .5).half()
@@ -202,7 +228,7 @@ def main():
                 assert torch.isfinite(y).all() and y.dtype == torch.float32
                 # Every timing mode must execute exactly the same mathematics.
                 assert torch.equal(y.view(torch.int32), baselines[case].view(torch.int32)), (case, mode)
-                raw = {stage: list(values) for stage, values in measured["timings_ms"].items()}
+                raw, native_total, total_method = aligned_timings(measured, mode)
                 assert all(len(v) == args.repeats and all(math.isfinite(t) and t > 0 for t in v) for v in raw.values())
                 summ = {stage: stats(values) for stage, values in raw.items()}
                 for stage, st in summ.items():
@@ -212,16 +238,20 @@ def main():
                     st["logical_bytes"] = count
                     st["logical_gbps"] = count / st["median_ms"] / 1e6 if count else None
                 if case.startswith(("o5/", "o6/")):
-                    total_method = measured["total_timing"]
+                    if measured.get("timing_contract_version") != TIMING_CONTRACT_VERSION:
+                        raise RuntimeError("rebuild SM80 extension: O5/O6 timing contract mismatch")
+                    native_method = measured["total_timing"]
                     inner = dict(measured["stage_timing_inner_repeats"])
                 else:
-                    total_method = ("sum_of_batched_stage_samples" if case == "o3" else "batched_amortized_cuda_event") if mode == "conversion_only" else "single_execution_cuda_event"
+                    native_method = ("sum_of_batched_stage_samples" if case == "o3" else "batched_amortized_cuda_event") if mode == "conversion_only" else "single_execution_cuda_event"
                     inner = {stage: args.inner if "conversion" in stage or mode == "conversion_only" else 1 for stage in raw}
                 record = {"sample_id": f"synthetic_{args.seed}", "case": case, "mode": mode,
                           "round": round_id, "order": order, "timings_ms": raw, "summary": summ,
                           "mse_vs_o0": mse[case], "bitwise_equal_validation": True,
                           "timing_stable_cv3": all(st["cv_percent"] < 3 for st in summ.values()),
                           "stage_timing_inner_repeats": inner, "total_timing": total_method,
+                          "timing_contract_version": TIMING_CONTRACT_VERSION,
+                          "native_total_timing": native_method, "native_total_timings_ms": native_total,
                           "kernel": dict(measured["kernel"]), "formal_o5_o6_complete": False}
                 if "gemm" in summ:
                     record["equivalent_tflops"] = 2 * args.size ** 3 / summ["gemm"]["median_ms"] / 1e9
