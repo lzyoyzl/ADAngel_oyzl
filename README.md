@@ -597,6 +597,11 @@ reduction；报告逐样本值以及 24 样本的 median、IQR、最大值和 bo
 
 ## 常用诊断
 
+O5/O6 的 A100 扩展工作见 [实现契约与验证入口](docs/o5_o6_a100_protocol.md)
+及 [理论峰值与性能分析（阶段稿）](docs/o3_o5_o6_performance_analysis.md)。
+目前仅新增双侧 G128 scale 的 prepared-integer 验证接口，尚未启用正式
+O5/O6；不能把合成整数输入的性能当作真实格式的实验结论。O0–O4 默认入口不变。
+
 ```bash
 python -m adangel doctor
 python -m adangel show-config --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml
