@@ -319,9 +319,11 @@ def to_fixed_reference(source: dict):
 
 def prepare_integer_reference(weight: dict, activation: dict):
     from .arbitrary_bits import split_int8_to_packed_int4
+    if (weight.get("format"), activation.get("format")) not in VARIANTS.values():
+        raise ValueError("requires the approved O5 or O6 source-format pair")
     wq, ws = to_fixed_reference(weight)
     aq, asc = to_fixed_reference(activation)
-    if FORMATS[weight["format"]][1] != 4:
-        raise ValueError("weight requires Q4")
+    if wq.shape[1] != aq.shape[1] or wq.device != aq.device:
+        raise ValueError("weight and activation must have the same K and device")
     return {"A_split": split_int8_to_packed_int4(aq), "A_scale": asc,
             "W_q4": _pack_nibbles(wq.to(_torch().uint8) & 15), "W_scale": ws}

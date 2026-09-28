@@ -236,6 +236,15 @@ class TestMixedTorch(unittest.TestCase):
             with self.assertRaises(ValueError):
                 mf.quantize_source(x, "nvfp4_g128")
 
+    def test_mixed_pair_contract(self):
+        w = mf.quantize_source(torch.ones(2, 128), "nvfp4_g128")
+        a = mf.quantize_source(torch.ones(3, 128), "mxfp8_e4m3_g128")
+        mf.prepare_integer_reference(w, a)
+        for bad in (w, mf.quantize_source(torch.ones(3, 128), "nvstyle_fp6_e2m3_g128"),
+                    mf.quantize_source(torch.ones(3, 256), "mxfp8_e4m3_g128")):
+            with self.assertRaises(ValueError):
+                mf.prepare_integer_reference(w, bad)
+
 
 if __name__ == "__main__":
     unittest.main()

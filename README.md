@@ -599,8 +599,21 @@ reduction；报告逐样本值以及 24 样本的 median、IQR、最大值和 bo
 
 O5/O6 的 A100 扩展工作见 [实现契约与验证入口](docs/o5_o6_a100_protocol.md)
 及 [理论峰值与性能分析（阶段稿）](docs/o3_o5_o6_performance_analysis.md)。
-目前仅新增双侧 G128 scale 的 prepared-integer 验证接口，尚未启用正式
-O5/O6；不能把合成整数输入的性能当作真实格式的实验结论。O0–O4 默认入口不变。
+目前新增双侧 G128 scale 的 prepared-integer 接口、格式参考和 CUDA 转定点
+验证入口，尚未启用正式 O5/O6。不能把合成数据验证当作 24 样本正式精度或
+性能结论。O0–O4 默认入口不变；新 CUDA 代码只编译入 SM80，不改 SM120。
+
+在 A100 按上述契约重新编译后，可独立验证格式与整数接口（不会读取或改写
+已有 trace，也不会生成新的正式数据）：
+
+```bash
+python -m unittest discover -s tests/unit -p test_mixed_formats.py -v
+python scripts/validate_a100_mixed_formats.py --output runs/mixed_formats_validation
+```
+
+第二条命令要求使用新输出目录，覆盖 CUDA/参考打包与 scale 逐位比较、
+双 INT4 GEMM 的独立整数参考，以及明确标为合成数据的 MSE vs O0。
+数据处理口径见 [格式与数据核对记录](docs/o5_o6_format_review.md)。
 
 ```bash
 python -m adangel doctor

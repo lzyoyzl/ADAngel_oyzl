@@ -43,6 +43,13 @@ q=clamp(RNE(v×2^F), −L, L)，L=2^(Q−1)−1。F 固定为格式级参数，�
 Python 参考与标量测试在 `mixed_formats.py` / `test_mixed_formats.py`；
 它们不是计时后端，不会自动启用 O5/O6 production。
 
+原生转换入口 `_sm80._convert_mixed_source(source)` 位于
+`csrc/sm80/mixed_conversion.cuh`：融合 decode、RNE、补码 packing 和 scale
+补偿。Q4 输出 `[R,K/2]`，Q8/Q6 输出 `[2R,K/2]` 的 low-U4/high-S4 分面。
+INT6 先转为有符号整数，再按 INT8 补码分面。所有合法源编码的局部数值范围
+均不会触发对称整数饱和；非法/NaN 编码和有效 scale 溢出在 launch 前拒绝。
+该入口用于验证，分配和检查不是转换性能；后续四模式计时须预分配复用。
+
 ## 共用整数计算契约
 
 已打包整数输入：
@@ -84,6 +91,8 @@ A100 沿用 cp.async；不假称存在 TMA。
     python scripts/validate_a100_split_grouped.py --output runs/split_grouped_validation
     python scripts/validate_a100_split_grouped.py --large --output runs/split_grouped_4096
     python scripts/audit_a100_o1.py --variant split_grouped --allow-spills --output reports/audit_split_grouped
+    python -m unittest discover -s tests/unit -p test_mixed_formats.py -v
+    python scripts/validate_a100_mixed_formats.py --output runs/mixed_formats_validation
 
 输出须写入新目录。CUDA Event 区间只测已准备输入的 GEMM；量化、packing、
 校验、分配均在区间外。合成数据结果明确标为 prepared_integer_core_only。
@@ -91,6 +100,11 @@ A100 沿用 cp.async；不假称存在 TMA。
 非默认 stream、非法输入和旧 O3 语义的逐位回归。
 审计要求同一函数具有 cp.async/LDGSTS 以及原生 U4×S4、S4×S4 IMMA，
 不得用 S8 或 probe 代替；spill 如实记录，不因允许 spill 放宽 ISA 条件。
+
+格式验证脚本不读取真实 trace，使用确定性的合成 FP16 输入。其
+`mse_vs_fixed_reference` 检查计算实现；`mse_vs_synthetic_o0` 展示源格式和
+转定点引入的差异，不是正式 24 样本精度结果。合成测试无需确认正式数据
+的存储方式，因此可以在数据口径澄清前独立完成。
 
 后续正式验收仍需完整格式编解码、已确定来源的 24 个样本、MSE vs 同源 O0、
 转换开销、四种计时模式、同进程 O0 配对性能和内存安全测试。
