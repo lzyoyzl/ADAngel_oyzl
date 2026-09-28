@@ -77,6 +77,19 @@ K256 pipeline 是一次搬两个 G128，不是把两个 group 合成一个整数
 保持数值语义的前提下，以配对性能、原始计时分布、ISA 和内存安全联合选择。
 对具有非二次幂 scale 的新场景，旧 O3 的指数位加法技巧不能直接复用。
 
+### Scale 布局候选：转换器与 GEMM 协同设计
+
+现有自然布局为 `scale[row,group]`。GEMM 同时加载某 group 的多行 scale，
+自然布局会使相邻 lane 跨行读取；K4096 时跨距为 128 字节。
+新 `group_major` 候选在转换 kernel 中直接写入物理 `[group,row]`，GEMM
+按相同顺序读取。公开张量仍为 `[row,group]` 的 view，stride 为 `[1,rows]`；
+调用者不能假设它 contiguous，验证逻辑值时须显式按逻辑顺序比较。
+
+payload 的 packing、scale 的 FP32 数值、两路 INT4 和逐 G128 FMA 均不变。
+没有新增独立重排 kernel 或额外 scale buffer，布局写入成本包含在原转换
+计时内。自然布局与候选使用不同 kernel symbol，防止审计或结果混淆。
+默认仍为自然布局，待配对性能和内存安全验证后再决定是否采用。
+
 ## 交付验证顺序
 
 1. 固定格式契约和独立 CPU 参考，明确 MSE 主参考 O0。

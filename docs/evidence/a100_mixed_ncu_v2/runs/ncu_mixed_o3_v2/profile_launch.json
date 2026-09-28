@@ -1,0 +1,51 @@
+{
+  "case": "o3",
+  "ncu": {
+    "kernel_filter": "regex:adangel_sm80_o3_swizzled_bound2",
+    "launch_skip": 50,
+    "launch_count": 1,
+    "initial_correctness_launches": 0
+  },
+  "kernel": {
+    "architecture": "sm80",
+    "variant": "o3",
+    "cta_tile": [
+      64,
+      128,
+      256
+    ],
+    "implementation": "o3_swizzle_64x128_k256_exp_static_stream_bound2_store2",
+    "requested_implementation": "production",
+    "production_shape_fallback": false,
+    "spill_policy": "report_and_validate_correctness_and_performance",
+    "exponent_scale_fast_path": true,
+    "paired_mma_issue": false,
+    "stream_atom_partial": true,
+    "operand_register_double_buffer": true,
+    "integer_conversion": "i2f",
+    "integer_partial_reconstruction": "separate_low_high_then_imad",
+    "copy_loop": "compile_time",
+    "pipeline_phase_pair": false,
+    "minimum_blocks_launch_bound": "2",
+    "group_loop": "unrolled",
+    "output_store_bits": 64,
+    "scale_load_bits": 8,
+    "weight_register_slice_n": 32,
+    "warp_operand_boundary": false,
+    "scale_storage": "shared_per_cta_column_group",
+    "smem_swizzle": true,
+    "whole_scale_panel_cached": false,
+    "pipeline_stages": 2,
+    "threads": 256,
+    "data_movement": "cp.async",
+    "scheduling": "warp_cooperative",
+    "partial_storage": "register",
+    "output_dtype": "fp32",
+    "group_size": 128,
+    "kernel_symbol": "adangel_sm80_o3_swizzled_bound2",
+    "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4"
+  },
+  "finite_fp32": true,
+  "scope": "synthetic_profile_only_not_performance_or_accuracy_acceptance",
+  "timings_excluded": "NCU replay timings must not enter ordinary benchmark tables"
+}

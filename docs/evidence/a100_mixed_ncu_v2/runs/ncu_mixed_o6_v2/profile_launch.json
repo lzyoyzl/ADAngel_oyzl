@@ -1,0 +1,34 @@
+{
+  "case": "o6/64x128x256",
+  "ncu": {
+    "kernel_filter": "regex:adangel_sm80_split_grouped",
+    "launch_skip": 51,
+    "launch_count": 1,
+    "initial_correctness_launches": 1
+  },
+  "kernel": {
+    "status": "source_format_path_pending_formal_data_acceptance",
+    "implementation": "dual_g128_split_stream_64x128x256",
+    "kernel_symbol": "adangel_sm80_split_grouped",
+    "cta_tile": [
+      64,
+      128,
+      256
+    ],
+    "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+    "group_size": 128,
+    "partial_storage": "register",
+    "data_movement": "cp.async",
+    "pipeline_stages": 2,
+    "scale_formula": "round_fp32(A_fixed_scale[m,g]*W_fixed_scale[n,g])",
+    "group_accumulation": "ascending G128, fp32 fma",
+    "shared_memory_bytes": 68608,
+    "threads": 256,
+    "output_dtype": "fp32",
+    "weight_source_format": "hif4_g128",
+    "activation_source_format": "nvstyle_fp6_e2m3_g128"
+  },
+  "finite_fp32": true,
+  "scope": "synthetic_profile_only_not_performance_or_accuracy_acceptance",
+  "timings_excluded": "NCU replay timings must not enter ordinary benchmark tables"
+}
