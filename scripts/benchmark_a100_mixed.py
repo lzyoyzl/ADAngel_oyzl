@@ -80,6 +80,8 @@ def conversion_bytes(case, stage, m, n, k):
     variant = case.split("/")[0]
     if variant == "o0":
         w, a = n * k // 2 + n * k // 32 + 2 * n * k, 3 * m * k + 4 * m
+    elif variant == "o1":
+        w, a = n * k // 2 + n * k, 0
     elif variant == "o3":
         w, a = n * k, 2 * m * k
     elif variant == "o5":

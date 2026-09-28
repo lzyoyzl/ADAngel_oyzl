@@ -20,6 +20,70 @@ compute-only 验证代替格式量化、真实 trace 的 MSE 或端到端验收�
 GEMM 有约 5% 的初筛收益，但转换变慢，且共享 GPU 下有 CV 失败记录；
 自然布局仍为默认，不能据此宣布 24 样本正式验收完成。
 
+### 24 样本入口（数据口径确认前不执行量化）
+
+`scripts/benchmark_a100_mixed_trace.py` 已实现一个**显式二次量化入口**，
+不是把 prepared 文件冒充 raw FP16。它需要 `--allow-secondary-quantization`
+才能执行，当前仍等待用户确认该路径。默认不自动生成或保存任何源格式数据。
+不使用该授权标志时，只可运行以下只读校验：
+
+```bash
+python scripts/benchmark_a100_mixed_trace.py \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --validate-input-only
+```
+
+校验包含 24 样本 manifest 契约、实际 `.pt` 文件集合、路径与每个文件的
+SHA-256；此命令不加载模型、不量化、不编译，也不写数据。张量内容验证在
+真正运行时由 `load_prepared`、原生参数检查及逐位/参考输出检查完成。
+
+若用户确认二次量化，运行路径将固定为：
+
+```text
+已有 A_int8 + A_scale / W_mxfp4(K32) + W_scale
+  → O0 原生反量化的 FP16 操作数（并与独立软件解码逐位核对）
+  → 在内存中生成 O5/O6 源格式（计时外，不保存新 .pt）
+  → 源格式转定点、scale、packing（计时内）
+  → 双 INT4 GEMM、FP32 输出
+```
+
+这不能恢复原始 FP16 已损失的信息。O0/O1 使用原有 K32 prepared，O3 使用
+原有 G128 prepared，不被重生成或改写；O5/O6 起点是 O0 实际操作数。
+因此该数据口径的结论不能写成“原始 FP16 直接量化为 NVFP4/HiF4”的精度结果。
+
+确认后才使用以下命令（没有在真实数据上执行）：
+
+```bash
+python scripts/benchmark_a100_mixed_trace.py \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --output runs/mixed_trace_secondary_v1 \
+  --allow-secondary-quantization \
+  --samples 24 --rounds 3 --warmup 50 --repeats 200 --inner 100 \
+  --scale-layouts row_major group_major
+```
+
+默认只选择 row-major；这里显式选择两种布局用于配对验收。O0/O1/O3、
+两种 O5 与两种 O6，共 7 个 case×24 样本×4 模式×3 轮=2016 条记录。
+当前自然布局不是因这条命令而被替换。共享 GPU、未锁频，CV 超限只标记，
+不过滤、不自动重跑到通过。Compute-only 对比 `gemm` 区间；旧 O1/O3 的
+native total 包括原有额外 Event 标记，原始值保持不变。
+
+输出文件：`config.json`、`environment.json`、`data_manifest.json`、
+`source_provenance.jsonl`、`source_formats.jsonl`、`validation.jsonl`、
+`results.jsonl`、`gpu_snapshots.jsonl`、`summary.json`。
+source 文件只记录编码张量的 shape/dtype/hash 与误差指标，不保存编码张量。
+每个样本先对独立有序 G128 定点参考验算，再运行四模式；模式间输出要求
+逐位一致。跨布局也要求逐位一致，不仅要求 MSE 接近。
+
+W/A 分别报告 source vs bridge、fixed vs source、fixed vs bridge 的 MSE；
+这些误差不可相加。主输出 MSE 仍比较 O0。汇总先折叠同一样本的重复轮次，
+再统计 24 样本的 median/mean；速度比按同样本同轮配对。Bootstrap 重采样
+单位为样本，不把 200 次 Event 或 3 轮视为独立样本；同一 trace 中的样本
+存在相关性，置信区间只作描述，不代表独立模型/语料的泛化结论。
+
+`scripts/validate_a100_mixed_trace_runner.py` 仅用合成 prepared 输入验证以上
+运行引擎。它不读取真实数据目录，也不能取代正式 24 样本结果。
+
 2026-09-28 已完成精度项目/O3 转换语义、A100 数据目录和外部格式资料的核对，
 见 [格式与数据核对记录](o5_o6_format_review.md)。仍需澄清是否只不另存中间
 格式，还是完全跳过源格式量化。前者属于 prepared 二次量化实验，后者只能
