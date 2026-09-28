@@ -12,6 +12,7 @@ from benchmark_a100_mixed_trace import run_sample, summarize_trace
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--large", action="store_true", help="also test a synthetic 4096^3 bridge")
     args = p.parse_args()
     if args.output.exists():
         p.error("use a fresh output directory")
@@ -36,7 +37,10 @@ def main():
     setup = SimpleNamespace(warmup=2, repeats=3, inner=10, rounds=1,
                             scale_layouts=["row_major", "group_major"])
     records = []
-    for i, (size, pattern) in enumerate(((256, "random"), (512, "zero"))):
+    fixtures = [(256, "random"), (512, "zero")]
+    if args.large:
+        fixtures.append((4096, "random_large"))
+    for i, (size, pattern) in enumerate(fixtures):
         torch.manual_seed(5600+size)
         a, w = torch.randn(size, size, device="cuda").half(), torch.randn(size, size, device="cuda").half()
         if pattern == "zero":
@@ -46,9 +50,9 @@ def main():
         w128, s128 = quantize_mxfp4(w, group_size=128)
         x = PreparedInputs(f"synthetic_fixture_{pattern}", ai, asc, w32, s32, w128, s128, mxfp4_to_q4_packed(w128))
         records.extend(run_sample(x, i, setup, native, append, "synthetic_fixture_not_real_trace"))
-    assert len(records) == 56
-    assert len(rows["source_provenance.jsonl"]) == 2
-    assert len(rows["source_formats.jsonl"]) == 4
+    assert len(records) == 28*len(fixtures)
+    assert len(rows["source_provenance.jsonl"]) == len(fixtures)
+    assert len(rows["source_formats.jsonl"]) == 2*len(fixtures)
     assert all(r["input_policy"] == "prepared_o0_fp16_bridge_secondary_quantization" for r in records)
     assert all(r["bitwise_equal_validation"] and r["timing_contract_version"] == 2 for r in records)
     assert {r["mode"] for r in records} == {"conversion_only", "compute_only", "cold", "steady_state"}
@@ -58,7 +62,8 @@ def main():
             base = validation["mse_vs_o0"][f"{variant}/64x128x256"]
             assert base == validation["mse_vs_o0"][f"{variant}/64x128x256/group_major"]
     report = {"passed": True, "scope": "synthetic_trace_runner_fixture", "real_data_read": False,
-              "samples": 2, "records": len(records), "formal_experiment_complete": False,
+              "samples": len(fixtures), "shapes": [size for size, _ in fixtures],
+              "records": len(records), "formal_experiment_complete": False,
               "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
               "binary_sha256": sha256_file(Path(native.__file__)), "torch": torch.__version__,
               "cuda": torch.version.cuda, "gpu": torch.cuda.get_device_name(),
