@@ -1,0 +1,37 @@
+{
+  "git_commit": "776089413fb66570bde092be3119758c457dd1a6",
+  "binary_sha256": "45f70a504a68295ff462d8bf79b989d68a6b1161ca0c53d4dabf8146d737a8e8",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "cuda_sources_sha256": {
+    "csrc/sm80/o1_o3.cu": "8c55a170ab29865b0b2d2de525c436edd39c8f69ceb9ccdf2dc2f3bae80cfcf8",
+    "csrc/sm80/o3_optimized.cuh": "6cb4191fc7b7a33624d34540584131558afec41e40d039a19d1b4e4729a5c338",
+    "csrc/sm80/split_grouped.cuh": "911dad3e81fc42726c352948643b3834c53f5af9cd91fb5fab3c25f774c51146",
+    "csrc/sm80/mixed_conversion.cuh": "1976763d50a8cb30c5742dbed309a1873f616adc117da5a1e9da1e1b56b394da",
+    "csrc/sm80/mixed_benchmark.cuh": "e9bfb6cb98d18c288bc1478491c0dd365921311013a4cdc38690dcfc654459f7"
+  },
+  "args": {
+    "synthetic": true,
+    "output": "runs/mixed_synthetic_timing_v2",
+    "size": 4096,
+    "seed": 20260929,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100,
+    "rounds": 1,
+    "modes": [
+      "conversion_only",
+      "compute_only",
+      "cold",
+      "steady_state"
+    ],
+    "tiles": [
+      "64x128x256"
+    ]
+  },
+  "scope": "synthetic_source_formats_not_real_trace",
+  "formal_o5_o6_complete": false,
+  "timing_contract_version": 2,
+  "policy": "No filtering/retry-until-pass; same-process cyclic/reversed order; unlocked/shared GPU; conversion amortized, end-to-end direct"
+}
