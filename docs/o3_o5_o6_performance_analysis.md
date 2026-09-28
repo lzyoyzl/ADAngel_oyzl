@@ -126,3 +126,11 @@ GEMM 内连续读取；不增独立重排、不改两路 INT4 和 G128 累加顺
 Python 逻辑 shape 仍为 `[row,group]`，stride 为 `[1,rows]`。
 候选必须同时检查转换开销、四模式端到端、MSE、指令与内存安全；
 仅凭 sector 减少不能宣布性能达标或替换旧默认。
+
+候选已得到初步验证：[源码、四模式、MSE、审计与内存检查](evidence/a100_mixed_group_major_v1/README.md)。
+同二进制 O5 profile 中额外理论 sectors 确实降至 0，MIO 等待指标从
+2.087 降至 0.970；但静态 LDL/STL 从 2/2 增至 7/7，线程栈 8→32 字节。
+三轮普通 Event 配对 GEMM 速度比约为 O5 1.049×、O6 1.054×，转换却变慢，
+cold/steady 收益仅约 2–3%。输出和 MSE 不变，memcheck/racecheck 均无错误。
+测试期间存在其他 GPU 进程和明显时钟波动，所有 72 条记录中 27 条有阶段
+CV≥3%；因此这只是有机制证据的改进方向，不是正式 24 样本性能结论。

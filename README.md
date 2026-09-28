@@ -622,6 +622,13 @@ O5/O6 的计时与旧实验统一为“转换批量摊销 + 端到端单次直�
 耗时拼接。详见 [四模式边界与兼容说明](docs/o5_o6_a100_protocol.md)。
 计时契约 v2 修改了 SM80 计时封装，需要重新编译；不修改 O0–O4/SM120 后端。
 
+已补充 [NCU 诊断](docs/evidence/a100_mixed_ncu_v2/README.md) 与
+[group-major scale 候选对照](docs/evidence/a100_mixed_group_major_v1/README.md)。
+候选保持数值、两路 INT4 和计时契约不变，已通过转换/GEMM/内存安全检查；
+合成数据的 GEMM 有约 5% 初筛收益，但转换略慢，且存在共享 GPU 干扰。
+自然布局仍是默认，O0–O4 的默认实现与 5090 后端保持不变。
+这些证据不替代 24 个真实样本的 O5/O6 正式验收。
+
 ```bash
 python -m adangel doctor
 python -m adangel show-config --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml

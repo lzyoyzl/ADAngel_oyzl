@@ -1,0 +1,106 @@
+Using pip 25.0 from /home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/pip (python 3.10)
+Obtaining file:///home/zlouyang/ADAngel_oyzl
+  Checking if build backend supports build_editable: started
+  Running command Checking if build backend supports build_editable
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Running command Preparing editable metadata (pyproject.toml)
+  running dist_info
+  creating /home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120.egg-info
+  writing /home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120.egg-info/PKG-INFO
+  writing dependency_links to /home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120.egg-info/dependency_links.txt
+  writing entry points to /home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120.egg-info/entry_points.txt
+  writing requirements to /home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120.egg-info/requires.txt
+  writing top-level names to /home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120.egg-info/top_level.txt
+  writing manifest file '/home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120.egg-info/SOURCES.txt'
+  reading manifest file '/home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120.egg-info/SOURCES.txt'
+  writing manifest file '/home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120.egg-info/SOURCES.txt'
+  creating '/home/zlouyang/tmp/pip-modern-metadata-b97tiwy_/adangel_sm120-0.1.0.dist-info'
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: adangel-sm120
+  Building editable for adangel-sm120 (pyproject.toml): started
+  Running command Building editable for adangel-sm120 (pyproject.toml)
+  running editable_wheel
+  creating /home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120.egg-info
+  writing /home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120.egg-info/PKG-INFO
+  writing dependency_links to /home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120.egg-info/dependency_links.txt
+  writing entry points to /home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120.egg-info/entry_points.txt
+  writing requirements to /home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120.egg-info/requires.txt
+  writing top-level names to /home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120.egg-info/top_level.txt
+  writing manifest file '/home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120.egg-info/SOURCES.txt'
+  reading manifest file '/home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120.egg-info/SOURCES.txt'
+  writing manifest file '/home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120.egg-info/SOURCES.txt'
+  creating '/home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120-0.1.0.dist-info'
+  creating /home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120-0.1.0.dist-info/WHEEL
+  running build_py
+  running build_ext
+  /home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/utils/cpp_extension.py:490: UserWarning: There are no g++ version bounds defined for CUDA version 12.8
+    warnings.warn(f'There are no {compiler_name} version bounds defined for CUDA version {cuda_str_version}')
+  building 'adangel._sm80' extension
+  creating /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/common
+  creating /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm120
+  creating /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm80
+  Emitting ninja build file /home/zlouyang/tmp/tmppjs04ryj.build-temp/build.ninja...
+  Compiling objects...
+  Using envvar MAX_JOBS (4) as the number of workers...
+  [1/4] /usr/local/cuda-12.8/bin/nvcc --generate-dependencies-with-compile --dependency-output /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm120/conversion.o.d -I/home/zlouyang/ADAngel_oyzl/include -I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include -I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/tools/util/include -I/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/include -I/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -I/usr/local/cuda-12.8/include -I/home/zlouyang/miniconda3/envs/adangel-a100/include/python3.10 -c -c /home/zlouyang/ADAngel_oyzl/csrc/sm120/conversion.cu -o /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm120/conversion.o -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr --compiler-options ''"'"'-fPIC'"'"'' -O3 -std=c++17 --expt-relaxed-constexpr -lineinfo '-gencode=arch=compute_80,code=[sm_80,compute_80]' -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=_sm80 -D_GLIBCXX_USE_CXX11_ABI=1
+  [2/4] /usr/local/cuda-12.8/bin/nvcc --generate-dependencies-with-compile --dependency-output /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/common/validation.o.d -I/home/zlouyang/ADAngel_oyzl/include -I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include -I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/tools/util/include -I/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/include -I/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -I/usr/local/cuda-12.8/include -I/home/zlouyang/miniconda3/envs/adangel-a100/include/python3.10 -c -c /home/zlouyang/ADAngel_oyzl/csrc/common/validation.cu -o /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/common/validation.o -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr --compiler-options ''"'"'-fPIC'"'"'' -O3 -std=c++17 --expt-relaxed-constexpr -lineinfo '-gencode=arch=compute_80,code=[sm_80,compute_80]' -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=_sm80 -D_GLIBCXX_USE_CXX11_ABI=1
+  [3/4] /usr/local/cuda-12.8/bin/nvcc --generate-dependencies-with-compile --dependency-output /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm120/o0_gemm.o.d -I/home/zlouyang/ADAngel_oyzl/include -I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include -I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/tools/util/include -I/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/include -I/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -I/usr/local/cuda-12.8/include -I/home/zlouyang/miniconda3/envs/adangel-a100/include/python3.10 -c -c /home/zlouyang/ADAngel_oyzl/csrc/sm120/o0_gemm.cu -o /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm120/o0_gemm.o -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr --compiler-options ''"'"'-fPIC'"'"'' -O3 -std=c++17 --expt-relaxed-constexpr -lineinfo '-gencode=arch=compute_80,code=[sm_80,compute_80]' -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=_sm80 -D_GLIBCXX_USE_CXX11_ABI=1
+  /home/zlouyang/ADAngel_oyzl/csrc/sm120/o0_gemm.cu(54): warning #177-D: function "<unnamed>::CudaEvent::operator=(<unnamed>::CudaEvent &&) noexcept" was declared but never referenced
+      CudaEvent& operator=(CudaEvent&& other) noexcept {
+                 ^
+
+  Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+  [4/4] /usr/local/cuda-12.8/bin/nvcc --generate-dependencies-with-compile --dependency-output /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm80/o1_o3.o.d -I/home/zlouyang/ADAngel_oyzl/include -I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include -I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/tools/util/include -I/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/include -I/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -I/usr/local/cuda-12.8/include -I/home/zlouyang/miniconda3/envs/adangel-a100/include/python3.10 -c -c /home/zlouyang/ADAngel_oyzl/csrc/sm80/o1_o3.cu -o /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm80/o1_o3.o -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr --compiler-options ''"'"'-fPIC'"'"'' -O3 -std=c++17 --expt-relaxed-constexpr -lineinfo '-gencode=arch=compute_80,code=[sm_80,compute_80]' -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=_sm80 -D_GLIBCXX_USE_CXX11_ABI=1
+  /home/zlouyang/ADAngel_oyzl/csrc/sm80/o1_o3.cu(26): warning #177-D: member "<unnamed>::Config<Split>::RowBytes [with Split=false]" was declared but never referenced
+      static constexpr int RowBytes = 64;
+                           ^
+
+  Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+  /home/zlouyang/ADAngel_oyzl/csrc/sm80/o1_o3.cu(26): warning #177-D: member "<unnamed>::Config<Split>::RowBytes [with Split=true]" was declared but never referenced
+      static constexpr int RowBytes = 64;
+                           ^
+
+  creating /home/zlouyang/tmp/tmp8snkxm5r.build-lib/adangel
+  g++ -pthread -B /home/zlouyang/miniconda3/envs/adangel-a100/compiler_compat -Wno-unused-result -Wsign-compare -DNDEBUG -fwrapv -O2 -Wall -fPIC -O2 -isystem /home/zlouyang/miniconda3/envs/adangel-a100/include -fPIC -O2 -isystem /home/zlouyang/miniconda3/envs/adangel-a100/include -pthread -B /home/zlouyang/miniconda3/envs/adangel-a100/compiler_compat -shared /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/common/validation.o /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm120/conversion.o /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm120/o0_gemm.o /home/zlouyang/tmp/tmppjs04ryj.build-temp/csrc/sm80/o1_o3.o -L/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/torch/lib -L/usr/local/cuda-12.8/lib64 -lcublasLt -lcuda -lc10 -ltorch -ltorch_cpu -ltorch_python -lcudart -lc10_cuda -ltorch_cuda -o /home/zlouyang/tmp/tmp8snkxm5r.build-lib/adangel/_sm80.cpython-310-x86_64-linux-gnu.so
+  copying /home/zlouyang/tmp/tmp8snkxm5r.build-lib/adangel/_sm80.cpython-310-x86_64-linux-gnu.so -> python/adangel
+  running egg_info
+  creating /home/zlouyang/tmp/tmppjs04ryj.build-temp/adangel_sm120.egg-info
+  writing /home/zlouyang/tmp/tmppjs04ryj.build-temp/adangel_sm120.egg-info/PKG-INFO
+  writing dependency_links to /home/zlouyang/tmp/tmppjs04ryj.build-temp/adangel_sm120.egg-info/dependency_links.txt
+  writing entry points to /home/zlouyang/tmp/tmppjs04ryj.build-temp/adangel_sm120.egg-info/entry_points.txt
+  writing requirements to /home/zlouyang/tmp/tmppjs04ryj.build-temp/adangel_sm120.egg-info/requires.txt
+  writing top-level names to /home/zlouyang/tmp/tmppjs04ryj.build-temp/adangel_sm120.egg-info/top_level.txt
+  writing manifest file '/home/zlouyang/tmp/tmppjs04ryj.build-temp/adangel_sm120.egg-info/SOURCES.txt'
+  reading manifest file '/home/zlouyang/tmp/tmppjs04ryj.build-temp/adangel_sm120.egg-info/SOURCES.txt'
+  writing manifest file '/home/zlouyang/tmp/tmppjs04ryj.build-temp/adangel_sm120.egg-info/SOURCES.txt'
+
+          Editable install will be performed using .pth file to extend `sys.path` with:
+          ['python']
+
+  Options like `package-data`, `include/exclude-package-data` or
+  `packages.find.exclude/include` may have no effect.
+
+  adding '__editable__.adangel_sm120-0.1.0.pth'
+  creating '/home/zlouyang/tmp/pip-wheel-746qzmss/.tmp-4040xvcs/adangel_sm120-0.1.0-0.editable-cp310-cp310-linux_x86_64.whl' and adding '/home/zlouyang/tmp/tmpqox62d76adangel_sm120-0.1.0-0.editable-cp310-cp310-linux_x86_64.whl' to it
+  adding 'adangel_sm120-0.1.0.dist-info/METADATA'
+  adding 'adangel_sm120-0.1.0.dist-info/WHEEL'
+  adding 'adangel_sm120-0.1.0.dist-info/entry_points.txt'
+  adding 'adangel_sm120-0.1.0.dist-info/top_level.txt'
+  adding 'adangel_sm120-0.1.0.dist-info/RECORD'
+  Building editable for adangel-sm120 (pyproject.toml): finished with status 'done'
+  Created wheel for adangel-sm120: filename=adangel_sm120-0.1.0-0.editable-cp310-cp310-linux_x86_64.whl size=16854 sha256=8f83bcbbac0f457faba03f50080ce0a96038a2ad6f7a7c1bb3de1c158a6856d0
+  Stored in directory: /home/zlouyang/tmp/pip-ephem-wheel-cache-caha5mk6/wheels/84/45/67/029fb9a510d1c81bb60c0d7e919dced69bcd97e7add204c2b7
+Successfully built adangel-sm120
+Installing collected packages: adangel-sm120
+  Attempting uninstall: adangel-sm120
+    Found existing installation: adangel-sm120 0.1.0
+    Uninstalling adangel-sm120-0.1.0:
+      Removing file or directory /home/zlouyang/miniconda3/envs/adangel-a100/bin/adangel
+      Removing file or directory /home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/__editable__.adangel_sm120-0.1.0.pth
+      Removing file or directory /home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/site-packages/adangel_sm120-0.1.0.dist-info/
+      Successfully uninstalled adangel-sm120-0.1.0
+  changing mode of /home/zlouyang/miniconda3/envs/adangel-a100/bin/adangel to 775
+Successfully installed adangel-sm120-0.1.0

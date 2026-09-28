@@ -1,0 +1,39 @@
+{
+  "git_commit": "50465072cc87ffeb33a200aa157b7eb6e34317e5",
+  "binary_sha256": "f326244218ff8eefdfc27c63519e0e222fcdd110a64541afddeb70fb51fdbea8",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "cuda_sources_sha256": {
+    "csrc/sm80/o1_o3.cu": "38c2757bebb2c7804ab4e9ccf36eecfd81db5d36ce33d18fc30c6f2f7e220504",
+    "csrc/sm80/o3_optimized.cuh": "e5e1dc11942e54af15502bca00aad70750ea301631828a2607507687252db471",
+    "csrc/sm80/split_grouped.cuh": "cd6c722b98b8f021b00b64d2d420005642ecc8bbe0eef39353c8d2cf65072b42",
+    "csrc/sm80/mixed_conversion.cuh": "01aa6569c373aef73aaf479bf8866c4210ceb284c265ae9391aee6f146bf98c8",
+    "csrc/sm80/mixed_benchmark.cuh": "0e45e2dfe28d6813e09735e78a6b712da0f06e5972c29400abd43c41a3ecc60d"
+  },
+  "args": {
+    "synthetic": true,
+    "output": "runs/ncu_mixed_layout_major_v1",
+    "size": 4096,
+    "seed": 20260929,
+    "warmup": 50,
+    "repeats": 1,
+    "inner": 100,
+    "rounds": 1,
+    "modes": [
+      "compute_only"
+    ],
+    "tiles": [
+      "64x64x128",
+      "64x128x256"
+    ],
+    "scale_layouts": [
+      "row_major"
+    ],
+    "profile_case": "o5/64x128x256/group_major"
+  },
+  "scope": "synthetic_source_formats_not_real_trace",
+  "formal_o5_o6_complete": false,
+  "timing_contract_version": 2,
+  "policy": "No filtering/retry-until-pass; same-process cyclic/reversed order; unlocked/shared GPU; conversion amortized, end-to-end direct"
+}

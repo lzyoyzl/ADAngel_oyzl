@@ -1,0 +1,1762 @@
+{
+  "passed": true,
+  "correctness_passed": true,
+  "timing_stable_cv3": null,
+  "scope": "prepared_integer_core_only",
+  "formal_o5_o6_complete": false,
+  "git_commit": "50465072cc87ffeb33a200aa157b7eb6e34317e5",
+  "binary_sha256": "f326244218ff8eefdfc27c63519e0e222fcdd110a64541afddeb70fb51fdbea8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "checks": [
+    {
+      "shape": [
+        64,
+        64,
+        128
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        64,
+        128
+      ],
+      "pattern": "zero_a",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        64,
+        128
+      ],
+      "pattern": "zero_w",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        64,
+        128
+      ],
+      "pattern": "extrema",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        64,
+        128
+      ],
+      "pattern": "q6",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        64,
+        128
+      ],
+      "pattern": "zero_scale",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_a",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_a",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_w",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_w",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "extrema",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "extrema",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "q6",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "q6",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_scale",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_scale",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "zero_a",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "zero_a",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "zero_w",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "zero_w",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "extrema",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "extrema",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "q6",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "q6",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "zero_scale",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        512
+      ],
+      "pattern": "zero_scale",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "zero_a",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "zero_a",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "zero_w",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "zero_w",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "extrema",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "extrema",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "q6",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "q6",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "zero_scale",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        768
+      ],
+      "pattern": "zero_scale",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "zero_a",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "zero_a",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "zero_w",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "zero_w",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "extrema",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "extrema",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "q6",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "q6",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "zero_scale",
+      "tile": "64x64x128",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "shape": [
+        128,
+        128,
+        4096
+      ],
+      "pattern": "zero_scale",
+      "tile": "64x128x256",
+      "max_abs_error": 0.0,
+      "mse_vs_integer_reference": 0.0,
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "pattern": "old_o3_bitwise_regression",
+      "tile": "64x64x128",
+      "bitwise_equal": true
+    },
+    {
+      "pattern": "old_o3_bitwise_regression",
+      "tile": "64x128x256",
+      "bitwise_equal": true
+    }
+  ],
+  "rejected": [
+    "negative",
+    "nan",
+    "inf",
+    "shape",
+    "noncontiguous",
+    "dtype",
+    "overflow"
+  ],
+  "synthetic_large": []
+}

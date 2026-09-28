@@ -1,0 +1,4582 @@
+{
+  "passed": true,
+  "scope": "synthetic_formats_conversion_and_integer_gemm",
+  "formal_o5_o6_complete": false,
+  "performance_acceptance": false,
+  "data_source": "deterministic_synthetic_fp16_not_real_trace",
+  "git_commit": "50465072cc87ffeb33a200aa157b7eb6e34317e5",
+  "binary_sha256": "f326244218ff8eefdfc27c63519e0e222fcdd110a64541afddeb70fb51fdbea8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "codec_tests": 15,
+  "conversion_checks": [
+    {
+      "case": "all_payloads_micro_0",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_0",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_1",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        1,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_1",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        1,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_3",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        3,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_3",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        3,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_0",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_0",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_1",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        1,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_1",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        1,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_3",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        3,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_3",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        3,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_0",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_0",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_1",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_1",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_2",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_2",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_3",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_3",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_1",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        1,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_1",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        1,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_3",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        3,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_3",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        3,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_0",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "all_payloads_micro_0",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        2,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_1",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        1,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_1",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        1,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_3",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        3,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "tail_rows_3",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        3,
+        128
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_256",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_256",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_256",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_256",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_256",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_256",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_256",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_256",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_256",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_256",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_256",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_256",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_256",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_256",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_256",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_256",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_256",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_256",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_256",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_256",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_256",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_256",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_256",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_256",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        64,
+        256
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_512",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_512",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_512",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_512",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_512",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_512",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_512",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_512",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_512",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_512",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_512",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_512",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_512",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_512",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_512",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_512",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_512",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_512",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_512",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_512",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_512",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_512",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_512",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_512",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        128,
+        512
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_4096",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_4096",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_4096",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_4096",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_4096",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_w_4096",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_4096",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "random_a_4096",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_4096",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_4096",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_4096",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_4096",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_4096",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_w_4096",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_4096",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "zero_a_4096",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_4096",
+      "format": "nvfp4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_4096",
+      "format": "nvfp4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_4096",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_4096",
+      "format": "mxfp8_e4m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_4096",
+      "format": "hif4_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_w_4096",
+      "format": "hif4_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_4096",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "row_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    },
+    {
+      "case": "alternating_a_4096",
+      "format": "nvstyle_fp6_e2m3_g128",
+      "scale_layout": "group_major",
+      "shape": [
+        512,
+        4096
+      ],
+      "packed_bitwise_equal": true,
+      "scale_bitwise_equal": true
+    }
+  ],
+  "gemm_checks": [
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.043665434103819394,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.043665434103819394,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.03344781547624349,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.03344781547624349,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 3686403.7500009537,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 3686403.7500009537,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 3686400.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 3686400.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.08606737577352533,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.08606737577352533,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.06785551303252155,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.06785551303252155,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 14745615.000003815,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 14745615.000003815,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 14745600.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 14745600.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 21,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.6855559061732759,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.6855559061732759,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.5401075560105285,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.5401075560105285,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 0.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 943719360.0002441,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 943719360.0002441,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 943718400.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x64x128",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          64,
+          128
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 25600,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "max_abs_error_vs_fixed_reference": 0.0,
+      "mse_vs_fixed_reference": 0.0,
+      "mse_vs_synthetic_o0": 943718400.0,
+      "o0_kernel": {
+        "library": "cublasLt",
+        "algorithm_id": 31,
+        "workspace_bytes": 0,
+        "numerical_impl_flags": 66050,
+        "tensor_core": true,
+        "split_k": 1,
+        "compute_type": "CUBLAS_COMPUTE_32F",
+        "input_dtype": "fp16",
+        "output_dtype": "fp32"
+      },
+      "kernel": {
+        "status": "prepared_integer_core_only_not_o5_o6_format_validation",
+        "implementation": "dual_g128_split_stream_64x128x256",
+        "kernel_symbol": "adangel_sm80_split_grouped",
+        "cta_tile": [
+          64,
+          128,
+          256
+        ],
+        "scale_shape": "A[M,K/128], W[N,K/128]",
+        "scale_dtype": "fp32",
+        "scale_formula": "round_fp32(A_scale[m,g]*W_scale[n,g])",
+        "group_accumulation": "ascending G128, fp32 fma",
+        "mma": "m16n8k64.u4.s4 + m16n8k64.s4.s4",
+        "partial_storage": "register",
+        "data_movement": "cp.async",
+        "pipeline_stages": 2,
+        "shared_memory_bytes": 68608,
+        "threads": 256,
+        "output_dtype": "fp32"
+      }
+    }
+  ],
+  "timing_contract_checks": [
+    {
+      "variant": "o5",
+      "mode": "conversion_only",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          0.4921343922615051,
+          0.4754432141780853,
+          0.4801536202430725
+        ],
+        "activation_conversion": [
+          0.32645121216773987,
+          0.31293439865112305,
+          0.31447041034698486
+        ],
+        "total": [
+          0.8185856342315674,
+          0.7883776426315308,
+          0.7946240305900574
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "total": 10
+      },
+      "total_timing": "sum_of_batched_stage_samples",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o5",
+      "mode": "compute_only",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "timings_ms": {
+        "gemm": [
+          27.061248779296875,
+          28.286975860595703,
+          28.37811279296875
+        ],
+        "total": [
+          27.061248779296875,
+          28.286975860595703,
+          28.37811279296875
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": true
+    },
+    {
+      "variant": "o5",
+      "mode": "cold",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          1.8315263986587524,
+          0.49039357900619507,
+          0.5084159970283508
+        ],
+        "activation_conversion": [
+          0.3199999928474426,
+          0.3141632080078125,
+          0.30904319882392883
+        ],
+        "gemm": [
+          25.786367416381836,
+          29.524991989135742,
+          28.5982723236084
+        ],
+        "total": [
+          26.796031951904297,
+          30.43328094482422,
+          29.498367309570312
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o5",
+      "mode": "steady_state",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "timings_ms": {
+        "activation_conversion": [
+          0.35317760705947876,
+          0.3338239789009094,
+          0.3197951912879944
+        ],
+        "gemm": [
+          28.214271545410156,
+          28.72934341430664,
+          28.048383712768555
+        ],
+        "total": [
+          28.631040573120117,
+          29.069311141967773,
+          28.408832550048828
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o6",
+      "mode": "conversion_only",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          0.4968448281288147,
+          0.464896023273468,
+          0.46448642015457153
+        ],
+        "activation_conversion": [
+          0.3269632160663605,
+          0.3231744170188904,
+          0.320307195186615
+        ],
+        "total": [
+          0.8238080739974976,
+          0.7880704402923584,
+          0.7847936153411865
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "total": 10
+      },
+      "total_timing": "sum_of_batched_stage_samples",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o6",
+      "mode": "compute_only",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "timings_ms": {
+        "gemm": [
+          23.67692756652832,
+          23.821311950683594,
+          23.789567947387695
+        ],
+        "total": [
+          23.67692756652832,
+          23.821311950683594,
+          23.789567947387695
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": true
+    },
+    {
+      "variant": "o6",
+      "mode": "cold",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          0.515174388885498,
+          0.47882241010665894,
+          0.4705279767513275
+        ],
+        "activation_conversion": [
+          0.3269632160663605,
+          0.3240959942340851,
+          0.31539198756217957
+        ],
+        "gemm": [
+          22.64678382873535,
+          23.0963191986084,
+          22.88128089904785
+        ],
+        "total": [
+          23.598079681396484,
+          23.93497657775879,
+          23.810047149658203
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o6",
+      "mode": "steady_state",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "timings_ms": {
+        "activation_conversion": [
+          0.35358721017837524,
+          0.3227648138999939,
+          0.3243007957935333
+        ],
+        "gemm": [
+          23.08403205871582,
+          23.46086311340332,
+          23.450624465942383
+        ],
+        "total": [
+          23.5284481048584,
+          23.839744567871094,
+          23.824384689331055
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o5",
+      "mode": "conversion_only",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          0.7429119944572449,
+          0.7229440212249756,
+          0.6930431723594666
+        ],
+        "activation_conversion": [
+          0.7345151901245117,
+          0.6880255937576294,
+          0.6747136116027832
+        ],
+        "total": [
+          1.4774272441864014,
+          1.410969614982605,
+          1.3677568435668945
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "total": 10
+      },
+      "total_timing": "sum_of_batched_stage_samples",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o5",
+      "mode": "compute_only",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "timings_ms": {
+        "gemm": [
+          45.643775939941406,
+          45.870079040527344,
+          45.90284729003906
+        ],
+        "total": [
+          45.643775939941406,
+          45.870079040527344,
+          45.90284729003906
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": true
+    },
+    {
+      "variant": "o5",
+      "mode": "cold",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          0.8443903923034668,
+          0.6898688077926636,
+          0.6969344019889832
+        ],
+        "activation_conversion": [
+          0.7113727927207947,
+          0.6937600374221802,
+          0.6792191863059998
+        ],
+        "gemm": [
+          43.683841705322266,
+          44.279808044433594,
+          44.12006378173828
+        ],
+        "total": [
+          45.55161666870117,
+          46.13324737548828,
+          45.9417610168457
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o5",
+      "mode": "steady_state",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "timings_ms": {
+        "activation_conversion": [
+          0.795852780342102,
+          0.6792191863059998,
+          0.6978560090065002
+        ],
+        "gemm": [
+          44.847103118896484,
+          45.0959358215332,
+          45.17478561401367
+        ],
+        "total": [
+          45.92230224609375,
+          45.94278335571289,
+          46.0134391784668
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o6",
+      "mode": "conversion_only",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          0.7246848344802856,
+          0.6781951785087585,
+          0.6906880140304565
+        ],
+        "activation_conversion": [
+          0.6987775564193726,
+          0.6600704193115234,
+          0.6887423992156982
+        ],
+        "total": [
+          1.4234623908996582,
+          1.3382656574249268,
+          1.3794304132461548
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "total": 10
+      },
+      "total_timing": "sum_of_batched_stage_samples",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o6",
+      "mode": "compute_only",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "timings_ms": {
+        "gemm": [
+          45.663230895996094,
+          45.98783874511719,
+          45.93868637084961
+        ],
+        "total": [
+          45.663230895996094,
+          45.98783874511719,
+          45.93868637084961
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": true
+    },
+    {
+      "variant": "o6",
+      "mode": "cold",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          0.7910400032997131,
+          0.739635169506073,
+          0.700825572013855
+        ],
+        "activation_conversion": [
+          0.7240704298019409,
+          0.7269375920295715,
+          0.6876159906387329
+        ],
+        "gemm": [
+          45.400062561035156,
+          45.08467102050781,
+          45.8076171875
+        ],
+        "total": [
+          47.19615936279297,
+          46.80294418334961,
+          47.56889724731445
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o6",
+      "mode": "steady_state",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "timings_ms": {
+        "activation_conversion": [
+          0.7720960378646851,
+          0.7053312063217163,
+          0.6855679750442505
+        ],
+        "gemm": [
+          45.21062469482422,
+          45.225982666015625,
+          45.14918518066406
+        ],
+        "total": [
+          46.12607955932617,
+          46.03392028808594,
+          46.025726318359375
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o5",
+      "mode": "conversion_only",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          14.382899284362793,
+          14.462567329406738,
+          14.263090133666992
+        ],
+        "activation_conversion": [
+          14.213529586791992,
+          14.260223388671875,
+          14.14338493347168
+        ],
+        "total": [
+          28.59642791748047,
+          28.722789764404297,
+          28.406475067138672
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "total": 10
+      },
+      "total_timing": "sum_of_batched_stage_samples",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o5",
+      "mode": "compute_only",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "timings_ms": {
+        "gemm": [
+          455.0758361816406,
+          453.1640319824219,
+          446.750732421875
+        ],
+        "total": [
+          455.0758361816406,
+          453.1640319824219,
+          446.750732421875
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": true
+    },
+    {
+      "variant": "o5",
+      "mode": "cold",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          14.482637405395508,
+          14.180761337280273,
+          14.180557250976562
+        ],
+        "activation_conversion": [
+          14.194585800170898,
+          14.050201416015625,
+          14.124441146850586
+        ],
+        "gemm": [
+          440.047607421875,
+          436.48614501953125,
+          407.73529052734375
+        ],
+        "total": [
+          470.6949157714844,
+          465.9978332519531,
+          437.4538269042969
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o5",
+      "mode": "steady_state",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "timings_ms": {
+        "activation_conversion": [
+          14.278451919555664,
+          14.048357963562012,
+          14.032076835632324
+        ],
+        "gemm": [
+          453.528564453125,
+          423.3656311035156,
+          414.803955078125
+        ],
+        "total": [
+          469.9402160644531,
+          438.898681640625,
+          430.53466796875
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o6",
+      "mode": "conversion_only",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          14.259302139282227,
+          14.230527877807617,
+          14.097509384155273
+        ],
+        "activation_conversion": [
+          14.2708740234375,
+          14.178303718566895,
+          14.2060546875
+        ],
+        "total": [
+          28.530176162719727,
+          28.408832550048828,
+          28.303564071655273
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "total": 10
+      },
+      "total_timing": "sum_of_batched_stage_samples",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o6",
+      "mode": "compute_only",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "timings_ms": {
+        "gemm": [
+          445.16351318359375,
+          445.4696960449219,
+          447.172607421875
+        ],
+        "total": [
+          445.16351318359375,
+          445.4696960449219,
+          447.172607421875
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": true
+    },
+    {
+      "variant": "o6",
+      "mode": "cold",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "timings_ms": {
+        "weight_conversion": [
+          14.386381149291992,
+          14.2775297164917,
+          14.206361770629883
+        ],
+        "activation_conversion": [
+          14.273536682128906,
+          14.220186233520508,
+          14.22632884979248
+        ],
+        "gemm": [
+          460.0862731933594,
+          440.5462951660156,
+          410.6833801269531
+        ],
+        "total": [
+          490.43353271484375,
+          470.3139953613281,
+          440.34149169921875
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "weight_conversion": 10,
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": false,
+      "activation_prepared": false
+    },
+    {
+      "variant": "o6",
+      "mode": "steady_state",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "timings_ms": {
+        "activation_conversion": [
+          14.396313667297363,
+          14.142667770385742,
+          14.10938835144043
+        ],
+        "gemm": [
+          429.10003662109375,
+          445.6417236328125,
+          415.07122802734375
+        ],
+        "total": [
+          445.6960144042969,
+          461.1328125,
+          430.41790771484375
+        ]
+      },
+      "stage_timing_inner_repeats": {
+        "activation_conversion": 10,
+        "gemm": 1,
+        "total": 1
+      },
+      "total_timing": "single_execution_cuda_event",
+      "timing_contract_version": 2,
+      "measurement_order": "direct_path_then_isolated_conversions",
+      "weight_cached": true,
+      "activation_prepared": false
+    }
+  ],
+  "group_major_layout_checks": [
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.043665434103819394
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.043665434103819394
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.043665434103819394
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.043665434103819394
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.043665434103819394
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.043665434103819394
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.043665434103819394
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.043665434103819394
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.03344781547624349
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.03344781547624349
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.03344781547624349
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.03344781547624349
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.03344781547624349
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.03344781547624349
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.03344781547624349
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.03344781547624349
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 3686403.7500009537
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 3686403.7500009537
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 3686400.0
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 3686400.0
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.08606737577352533
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.08606737577352533
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.08606737577352533
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.08606737577352533
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.08606737577352533
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.08606737577352533
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.08606737577352533
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.08606737577352533
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.06785551303252155
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.06785551303252155
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.06785551303252155
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.06785551303252155
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.06785551303252155
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.06785551303252155
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.06785551303252155
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.06785551303252155
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 14745615.000003815
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 14745615.000003815
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 14745600.0
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        128,
+        128,
+        512
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 14745600.0
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.6855559061732759
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.6855559061732759
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.6855559061732759
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.6855559061732759
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.6855559061732759
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.6855559061732759
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.6855559061732759
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.6855559061732759
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.5401075560105285
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.5401075560105285
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.5401075560105285
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x64x128",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.5401075560105285
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "conversion_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.5401075560105285
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.5401075560105285
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "cold",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.5401075560105285
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "random",
+      "tile": "64x128x256",
+      "mode": "steady_state",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.5401075560105285
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "zero",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "zero",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 0.0
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 943719360.0002441
+    },
+    {
+      "variant": "o5",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 943719360.0002441
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "alternating",
+      "tile": "64x64x128",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 943718400.0
+    },
+    {
+      "variant": "o6",
+      "shape": [
+        512,
+        512,
+        4096
+      ],
+      "pattern": "alternating",
+      "tile": "64x128x256",
+      "mode": "compute_only",
+      "bitwise_equal_row_major": true,
+      "mse_vs_synthetic_o0": 943718400.0
+    }
+  ],
+  "rejected": [
+    "nvfp4_g128/cpu",
+    "nvfp4_g128/nan_scale",
+    "nvfp4_g128/bad_shape",
+    "nvfp4_g128/wrong_dtype",
+    "mxfp8_e4m3_g128/cpu",
+    "mxfp8_e4m3_g128/nan_scale",
+    "mxfp8_e4m3_g128/bad_shape",
+    "mxfp8_e4m3_g128/wrong_dtype",
+    "hif4_g128/cpu",
+    "hif4_g128/nan_scale",
+    "hif4_g128/bad_shape",
+    "hif4_g128/wrong_dtype",
+    "nvstyle_fp6_e2m3_g128/cpu",
+    "nvstyle_fp6_e2m3_g128/nan_scale",
+    "nvstyle_fp6_e2m3_g128/bad_shape",
+    "nvstyle_fp6_e2m3_g128/wrong_dtype",
+    "mxfp8/fixed_scale_overflow"
+  ]
+}

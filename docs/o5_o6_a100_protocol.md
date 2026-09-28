@@ -13,6 +13,13 @@ compute-only 验证代替格式量化、真实 trace 的 MSE 或端到端验收�
 见 [原始证据及范围说明](evidence/a100_mixed_formats_v3/README.md)。
 这仍不是正式性能验收；不宣称达到快于 O0 的目标。
 
+`5046507` 的 group-major scale 候选已编译并完成合成检查：102 项转换、
+72 项新旧布局逐位对照、36 项 GEMM、24 项计时契约，以及 memcheck/racecheck。
+4096³ 三轮交错四模式结果和 NCU 结构对照见
+[候选验收记录](evidence/a100_mixed_group_major_v1/README.md)。
+GEMM 有约 5% 的初筛收益，但转换变慢，且共享 GPU 下有 CV 失败记录；
+自然布局仍为默认，不能据此宣布 24 样本正式验收完成。
+
 2026-09-28 已完成精度项目/O3 转换语义、A100 数据目录和外部格式资料的核对，
 见 [格式与数据核对记录](o5_o6_format_review.md)。仍需澄清是否只不另存中间
 格式，还是完全跳过源格式量化。前者属于 prepared 二次量化实验，后者只能
