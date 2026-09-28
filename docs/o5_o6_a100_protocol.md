@@ -8,6 +8,11 @@ compute-only 验证代替格式量化、真实 trace 的 MSE 或端到端验收�
 较大 tile 的合成 GEMM median 为 0.631808 ms、CV 为 3.935%，仅作初筛。
 格式与 F 选择已确认；用户指定改用 A100 现有 prepared 数据，不再要求 raw 传输。
 
+2026-09-29 格式→CUDA 转定点→整数 GEMM 的合成验证已通过，包括 51 项
+转换逐位对照、36 项 GEMM、24 项四模式接口及 memcheck/racecheck。
+见 [原始证据及范围说明](evidence/a100_mixed_formats_v3/README.md)。
+这仍不是正式性能验收；不宣称达到快于 O0 的目标。
+
 2026-09-28 已完成精度项目/O3 转换语义、A100 数据目录和外部格式资料的核对，
 见 [格式与数据核对记录](o5_o6_format_review.md)。仍需澄清是否只不另存中间
 格式，还是完全跳过源格式量化。前者属于 prepared 二次量化实验，后者只能
@@ -48,7 +53,20 @@ Python 参考与标量测试在 `mixed_formats.py` / `test_mixed_formats.py`；
 补偿。Q4 输出 `[R,K/2]`，Q8/Q6 输出 `[2R,K/2]` 的 low-U4/high-S4 分面。
 INT6 先转为有符号整数，再按 INT8 补码分面。所有合法源编码的局部数值范围
 均不会触发对称整数饱和；非法/NaN 编码和有效 scale 溢出在 launch 前拒绝。
-该入口用于验证，分配和检查不是转换性能；后续四模式计时须预分配复用。
+该入口用于验证，分配和检查不是转换性能。
+`_sm80._benchmark_mixed(variant, mode, weight_source, activation_source, warmup,
+repeats, conversion_inner_repeats, tile)` 在全部检查/分配后复用缓冲区执行
+转换与 GEMM。四模式计时契约已接入，仍不等于正式数据性能验收。
+
+| 模式 | 已计时的转换 | GEMM | total |
+|---|---|---|---|
+| conversion_only | W 和 A，各批量摊销 | 区间外生成正确性输出 | W+A 联合批量摊销，不是相加两个中位数 |
+| compute_only | 两侧提前转换 | 直接计时 | 与 GEMM 同一区间 |
+| cold | W、A 单列为批量摊销结果 | 直接流程中的 GEMM 区间 | 单次 W+A+GEMM |
+| steady_state | 缓存 W；A 单列为批量摊销结果 | 直接流程中的 GEMM 区间 | 单次 A+GEMM |
+
+上述为 GPU CUDA Event 延迟，不包含 Python 格式校验、公共初始量化、
+文件 I/O 或内存分配。转换微基准和端到端总时间不应强行相加对齐。
 
 ## 共用整数计算契约
 
