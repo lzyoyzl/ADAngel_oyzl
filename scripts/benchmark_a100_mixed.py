@@ -17,8 +17,23 @@ import time
 from benchmark_a100_o1 import command, stats
 
 TILES = ("64x64x128", "64x128x256")
+SCALE_LAYOUTS = ("row_major", "group_major")
 MODES = ("conversion_only", "compute_only", "cold", "steady_state")
 TIMING_CONTRACT_VERSION = 2
+
+
+def mixed_case(variant, tile, layout):
+    return f"{variant}/{tile}" + ("/group_major" if layout == "group_major" else "")
+
+
+def parse_mixed_case(case):
+    parts = case.split("/")
+    if len(parts) not in (2, 3) or parts[0] not in ("o5", "o6") or parts[1] not in TILES:
+        raise ValueError("invalid mixed case")
+    layout = parts[2] if len(parts) == 3 else "row_major"
+    if layout not in SCALE_LAYOUTS:
+        raise ValueError("invalid scale layout")
+    return parts[0], parts[1], layout
 
 
 def profile_spec(case, warmup):
@@ -27,10 +42,9 @@ def profile_spec(case, warmup):
         raise ValueError("negative warmup")
     if case == "o3":
         symbol, initial = "adangel_sm80_o3_swizzled_bound2", 0
-    elif case in {f"{v}/{t}" for v in ("o5", "o6") for t in TILES}:
-        symbol, initial = "adangel_sm80_split_grouped", 1
     else:
-        raise ValueError("unsupported profile case")
+        _, _, layout = parse_mixed_case(case)
+        symbol, initial = "adangel_sm80_split_grouped" + ("_major" if layout == "group_major" else ""), 1
     return {"kernel_filter": "regex:" + symbol, "launch_skip": warmup + initial,
             "launch_count": 1, "initial_correctness_launches": initial}
 
@@ -138,7 +152,9 @@ def main():
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--modes", nargs="+", choices=MODES, default=list(MODES))
     parser.add_argument("--tiles", nargs="+", choices=TILES, default=list(TILES))
-    parser.add_argument("--profile-case", choices=["o3"] + [f"{v}/{t}" for v in ("o5", "o6") for t in TILES],
+    parser.add_argument("--scale-layouts", nargs="+", choices=SCALE_LAYOUTS, default=["row_major"],
+                        help="internal scale-layout A/B; row_major baseline remains default")
+    parser.add_argument("--profile-case", choices=["o3"] + [mixed_case(v, t, l) for v in ("o5", "o6") for t in TILES for l in SCALE_LAYOUTS],
                         help="NCU single target, no reference GEMMs/tables; requires repeats=1, rounds=1, modes=compute_only")
     args = parser.parse_args()
     if args.output.exists():
@@ -147,8 +163,8 @@ def main():
         parser.error("size must be >=512 and divisible by256; invalid repetition count")
     if args.profile_case and (args.repeats != 1 or args.rounds != 1 or args.modes != ["compute_only"]):
         parser.error("profile mode requires --repeats 1 --rounds 1 --modes compute_only")
-    if len(set(args.modes)) != len(args.modes) or len(set(args.tiles)) != len(args.tiles):
-        parser.error("duplicate mode/tile")
+    if any(len(set(v)) != len(v) for v in (args.modes, args.tiles, args.scale_layouts)):
+        parser.error("duplicate mode/tile/layout")
     import torch
     from adangel import _sm80 as native
     from adangel.quantization import mixed_formats as mf
@@ -198,15 +214,16 @@ def main():
     wm128, ws128 = quantize_mxfp4(w, group_size=128)
     sources = {variant: (mf.quantize_source(w, wf), mf.quantize_source(a, af))
                for variant, (wf, af) in mf.VARIANTS.items()}
-    cases = ["o0", "o3"] + [f"{v}/{tile}" for v in mf.VARIANTS for tile in args.tiles]
+    mixed_configs = [(tile, layout) for tile in args.tiles for layout in args.scale_layouts]
+    cases = ["o0", "o3"] + [mixed_case(v, tile, layout) for v in mf.VARIANTS for tile, layout in mixed_configs]
 
     def call(case, mode, warmup, repeats):
         if case == "o0":
             return native.benchmark_o0(ai, asc, wm32, ws32, mode, warmup, repeats, args.inner)
         if case == "o3":
             return native.benchmark("o3", mode, ai, asc, wm128, ws128, warmup, repeats, args.inner, "production")
-        variant, tile = case.split("/")
-        return native._benchmark_mixed(variant, mode, *sources[variant], warmup, repeats, args.inner, tile)
+        variant, tile, layout = parse_mixed_case(case)
+        return native._benchmark_mixed(variant, mode, *sources[variant], warmup, repeats, args.inner, tile, layout)
 
     if args.profile_case:
         spec = profile_spec(args.profile_case, args.warmup)
@@ -230,8 +247,8 @@ def main():
         wq, wscale = mf.to_fixed_reference(wsrc)
         aq, ascale = mf.to_fixed_reference(asrc)
         reference = integer_reference(aq, ascale, wq, wscale)
-        for tile in args.tiles:
-            case = f"{variant}/{tile}"
+        for tile, layout in mixed_configs:
+            case = mixed_case(variant, tile, layout)
             out = call(case, "compute_only", 0, 1)["output"]
             torch.testing.assert_close(out, reference, rtol=1e-3, atol=1e-3)
             assert out.dtype == torch.float32 and torch.isfinite(out).all()

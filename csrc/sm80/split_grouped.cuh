@@ -11,6 +11,16 @@ __global__ __launch_bounds__(256,2) void adangel_sm80_split_grouped(
       a,w,as,reinterpret_cast<const uint8_t*>(ws),y,m,n,k);
 }
 
+// Same arithmetic and CTA as the row-major baseline; only FP32 scale addressing
+// changes. The converter writes this physical layout directly (no hidden repack).
+template<int N,int K>
+__global__ __launch_bounds__(256,2) void adangel_sm80_split_grouped_major(
+    const uint8_t* a,const uint8_t* w,const float* as,const float* ws,
+    float* y,int m,int n,int k) {
+  o3_body<64,N,K,false,false,false,2,false,true,false,true,true,true,false,true,true>(
+      a,w,as,reinterpret_cast<const uint8_t*>(ws),y,m,n,k);
+}
+
 py::dict benchmark_split_grouped(at::Tensor a,at::Tensor as,
     at::Tensor w,at::Tensor ws,int warmup,int repeats,std::string tile) {
   TORCH_CHECK(warmup>=0 && repeats>0,"invalid repetitions");

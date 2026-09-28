@@ -10,11 +10,11 @@ __host__ __device__ float mixed_e4m3(uint8_t code) {
   return code&128 ? -value : value;
 }
 
-template<MixedKind Kind>
+template<MixedKind Kind,bool GroupMajor=false>
 __global__ void adangel_sm80_mixed_to_fixed(
     const uint8_t* payload,const uint8_t* scale,const float* tensor_scale,
     const uint8_t* micro8,const uint8_t* micro4,uint8_t* packed,float* effective,
-    int pairs) {
+    int pairs,int rows,int groups_per_row) {
   const int pair=int(blockIdx.x)*blockDim.x+threadIdx.x;
   if(pair>=pairs) return;
   const int group=pair/64, in_group=pair%64;
@@ -57,16 +57,17 @@ __global__ void adangel_sm80_mixed_to_fixed(
     packed[pairs+pair]=uint8_t((a>>4)|((b>>4)<<4));
   }
   if(in_group==0) {
+    const int destination=GroupMajor ? (group%groups_per_row)*rows+group/groups_per_row : group;
     if constexpr(Kind==MixedKind::Hif4) {
       const int code=scale[group];
-      effective[group]=ldexpf(float(4+(code&3)),(code>>2)-50);
+      effective[destination]=ldexpf(float(4+(code&3)),(code>>2)-50);
     } else if constexpr(Kind==MixedKind::Mx8) {
       // Decode first, multiply second: matches the reference even at exponent -127.
-      effective[group]=__fmul_rn(ldexpf(1.f,int(scale[group])-127),4.f);
+      effective[destination]=__fmul_rn(ldexpf(1.f,int(scale[group])-127),4.f);
     } else {
       float value=__fmul_rn(mixed_e4m3(scale[group]),tensor_scale[0]);
       if constexpr(Kind==MixedKind::Nv6) value=__fmul_rn(value,.25f);
-      effective[group]=value;
+      effective[destination]=value;
     }
   }
 }
@@ -103,9 +104,13 @@ struct MixedSource {
 
 struct MixedConverted {
   at::Tensor packed,scale;
-  explicit MixedConverted(const MixedSource& src) {
+  bool group_major;
+  explicit MixedConverted(const MixedSource& src,bool gm=false):group_major(gm) {
     packed=at::empty({src.weight ? src.rows : 2*src.rows,src.k/2},src.payload.options());
-    scale=at::empty({src.rows,src.k/128},src.payload.options().dtype(at::kFloat));
+    auto opt=src.payload.options().dtype(at::kFloat);
+    // Public logical shape stays [rows,G]; group-major has stride [1,rows].
+    scale=gm ? at::empty({src.k/128,src.rows},opt).transpose(0,1)
+             : at::empty({src.rows,src.k/128},opt);
   }
 };
 
@@ -114,12 +119,15 @@ void launch_mixed_conversion(const MixedSource& s,MixedConverted& d,cudaStream_t
   const dim3 grid((pairs+255)/256);
   auto launch=[&](auto tag) {
     constexpr MixedKind kind=decltype(tag)::value;
-    adangel_sm80_mixed_to_fixed<kind><<<grid,256,0,stream>>>(
+    auto layout=[&](auto order) {
+    adangel_sm80_mixed_to_fixed<kind,decltype(order)::value><<<grid,256,0,stream>>>(
         s.payload.data_ptr<uint8_t>(),s.scale.data_ptr<uint8_t>(),
         s.tensor_scale.defined()?s.tensor_scale.data_ptr<float>():nullptr,
         s.micro8.defined()?s.micro8.data_ptr<uint8_t>():nullptr,
         s.micro4.defined()?s.micro4.data_ptr<uint8_t>():nullptr,
-        d.packed.data_ptr<uint8_t>(),d.scale.data_ptr<float>(),pairs);
+        d.packed.data_ptr<uint8_t>(),d.scale.data_ptr<float>(),pairs,s.rows,s.k/128);
+    };
+    if(d.group_major) layout(std::true_type{}); else layout(std::false_type{});
   };
   switch(s.kind) {
     case MixedKind::Nv4: launch(std::integral_constant<MixedKind,MixedKind::Nv4>{}); break;
@@ -130,14 +138,16 @@ void launch_mixed_conversion(const MixedSource& s,MixedConverted& d,cudaStream_t
   C10_CUDA_KERNEL_LAUNCH_CHECK();
 }
 
-py::dict convert_mixed_source(const py::dict& source) {
+py::dict convert_mixed_source(const py::dict& source,std::string scale_layout) {
+  TORCH_CHECK(scale_layout=="row_major" || scale_layout=="group_major","invalid scale layout");
   const MixedSource s(source);
   c10::cuda::CUDAGuard guard(s.payload.device());
   cudaDeviceProp prop;check(cudaGetDeviceProperties(&prop,s.payload.get_device()));
   TORCH_CHECK(prop.major==8 && prop.minor==0,"mixed conversion currently validated for SM80 only");
-  MixedConverted d(s);
+  MixedConverted d(s,scale_layout=="group_major");
   launch_mixed_conversion(s,d,c10::cuda::getCurrentCUDAStream(s.payload.get_device()).stream());
   py::dict result; result["packed"]=d.packed; result["scale"]=d.scale;
+  result["scale_layout"]=scale_layout;
   result["status"]="conversion_only_not_formal_o5_o6_acceptance";
   return result;
 }

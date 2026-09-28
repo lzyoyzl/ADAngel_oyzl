@@ -4,12 +4,14 @@
 
 py::dict benchmark_mixed(std::string variant,std::string mode,
     const py::dict& weight_source,const py::dict& activation_source,
-    int warmup,int repeats,int inner,std::string tile) {
+    int warmup,int repeats,int inner,std::string tile,std::string scale_layout) {
   TORCH_CHECK(variant=="o5" || variant=="o6","expected o5 or o6");
   TORCH_CHECK(mode=="conversion_only" || mode=="compute_only" ||
       mode=="cold" || mode=="steady_state","invalid mode");
   TORCH_CHECK(warmup>=0 && repeats>0 && inner>1,"invalid repetition count (conversion inner must exceed one)");
   TORCH_CHECK(tile=="64x64x128" || tile=="64x128x256","unsupported tile");
+  TORCH_CHECK(scale_layout=="row_major" || scale_layout=="group_major","invalid scale layout");
+  const bool gm=scale_layout=="group_major";
   const MixedSource w(weight_source),a(activation_source);
   TORCH_CHECK((variant=="o5" && w.kind==MixedKind::Nv4 && a.kind==MixedKind::Mx8) ||
       (variant=="o6" && w.kind==MixedKind::Hif4 && a.kind==MixedKind::Nv6),
@@ -23,12 +25,13 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   TORCH_CHECK(int64_t(m)*n<=2147483647LL && m/64<=65535 && n/tn<=65535,
       "output/grid outside supported range");
   // All allocations, Python source checks, scale guards and setup precede timing.
-  MixedConverted cw(w),ca(a);
+  MixedConverted cw(w,gm),ca(a,gm);
   auto y=at::empty({m,n},a.payload.options().dtype(at::kFloat));
   const auto stream=c10::cuda::getCurrentCUDAStream(a.payload.get_device()).stream();
   const size_t smem=tn==64 ? sizeof(O3AmpereConfig<64,64,128,false,2,true>::Storage)
                           : sizeof(O3AmpereConfig<64,128,256,false,2,true>::Storage);
   auto kernel=tn==64 ? adangel_sm80_split_grouped<64,128> : adangel_sm80_split_grouped<128,256>;
+  if(gm) kernel=tn==64 ? adangel_sm80_split_grouped_major<64,128> : adangel_sm80_split_grouped_major<128,256>;
   check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
   auto cvw=[&]() {launch_mixed_conversion(w,cw,stream);};
   auto cva=[&]() {launch_mixed_conversion(a,ca,stream);};
@@ -97,7 +100,9 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   py::dict meta;
   meta["status"]="source_format_path_pending_formal_data_acceptance";
   meta["implementation"]="dual_g128_split_stream_"+tile;
-  meta["kernel_symbol"]="adangel_sm80_split_grouped";
+  meta["kernel_symbol"]=gm?"adangel_sm80_split_grouped_major":"adangel_sm80_split_grouped";
+  meta["scale_layout"]=scale_layout;
+  meta["scale_layout_conversion"]="fused_output_indexing_no_extra_buffer_or_kernel";
   meta["cta_tile"]=std::vector<int>{64,tn,tk};
   meta["mma"]="m16n8k64.u4.s4 + m16n8k64.s4.s4";
   meta["group_size"]=128;meta["partial_storage"]="register";

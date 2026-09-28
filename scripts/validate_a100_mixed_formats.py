@@ -45,18 +45,22 @@ def main():
         q, scale = mf.to_fixed_reference(source)
         weight = mf.FORMATS[source["format"]][1] == 4
         packed = mf._pack_nibbles(q.to(torch.uint8) & 15) if weight else split_int8_to_packed_int4(q)
-        # Transfer, conversion and consumers are ordered on the same non-default stream.
-        stream = torch.cuda.Stream()
-        with torch.cuda.stream(stream):
-            device_source = move(source)
-            converted = native._convert_mixed_source(device_source)
-        stream.synchronize()
-        torch.testing.assert_close(converted["packed"].cpu(), packed, rtol=0, atol=0)
-        assert torch.equal(converted["scale"].cpu().view(torch.int32), scale.view(torch.int32))
-        conversion_checks.append({"case": label, "format": source["format"],
-                                  "shape": source["shape"], "packed_bitwise_equal": True,
-                                  "scale_bitwise_equal": True})
-        return converted, q, scale
+        for layout in ("row_major", "group_major"):
+            # Transfer, conversion and consumers use one non-default stream.
+            stream = torch.cuda.Stream()
+            with torch.cuda.stream(stream):
+                converted = native._convert_mixed_source(move(source), layout)
+            stream.synchronize()
+            torch.testing.assert_close(converted["packed"].cpu(), packed, rtol=0, atol=0)
+            assert torch.equal(converted["scale"].cpu().contiguous().view(torch.int32), scale.view(torch.int32))
+            expected_stride = (scale.shape[1], 1) if layout == "row_major" else (1, scale.shape[0])
+            assert converted["scale"].stride() == expected_stride
+            conversion_checks.append({"case": label, "format": source["format"], "scale_layout": layout,
+                                      "shape": source["shape"], "packed_bitwise_equal": True,
+                                      "scale_bitwise_equal": True})
+            if layout == "row_major":
+                row_converted = converted
+        return row_converted, q, scale
 
     # Exhaust every finite payload code, including negative zero. For HiF4 cross
     # every payload with all four micro8/micro4 combinations, plus mixed layouts.
@@ -84,6 +88,7 @@ def main():
 
     gemm_checks = []
     timing_checks = []
+    layout_checks = []
     # O0's strict no-SIMT fallback policy has no eligible HMMA heuristic for
     # small M/N at K4096 on this A100; 512x512 preserves the large-K test and O0.
     for m, n, k in ((64, 128, 256), (128, 128, 512), (512, 512, 4096)):
@@ -120,6 +125,20 @@ def main():
                                         "mse_vs_synthetic_o0": (y.double() - o0.double()).square().mean().item(),
                                         "o0_kernel": dict(o0_run["kernel"]),
                                         "kernel": dict(output["kernel"])})
+                    # New physical scale layout must preserve each output bit.
+                    layout_modes = ("conversion_only", "compute_only", "cold", "steady_state") if pattern == "random" else ("compute_only",)
+                    for layout_mode in layout_modes:
+                        major = native._benchmark_mixed(variant, layout_mode, move(wsrc), move(asrc),
+                                                        0, 2, 10, tile, "group_major")
+                        assert torch.equal(major["output"].cpu().view(torch.int32), y.view(torch.int32))
+                        assert major["kernel"]["scale_layout"] == "group_major"
+                        assert major["weight_cached"] == (layout_mode in ("compute_only", "steady_state"))
+                        for key, ref in (("converted_weight", ws), ("converted_activation", asc)):
+                            _, effective = major[key]
+                            assert torch.equal(effective.cpu().contiguous().view(torch.int32), ref.view(torch.int32))
+                        layout_checks.append({"variant": variant, "shape": [m, n, k], "pattern": pattern,
+                                              "tile": tile, "mode": layout_mode, "bitwise_equal_row_major": True,
+                                              "mse_vs_synthetic_o0": (y.double() - o0.double()).square().mean().item()})
                 if pattern == "random":
                     for mode in ("conversion_only", "compute_only", "cold", "steady_state"):
                         sample = native._benchmark_mixed(variant, mode, move(wsrc), move(asrc),
@@ -198,11 +217,13 @@ def main():
               "cuda": torch.version.cuda, "codec_tests": result.testsRun,
               "conversion_checks": conversion_checks, "gemm_checks": gemm_checks,
               "timing_contract_checks": timing_checks,
+              "group_major_layout_checks": layout_checks,
               "rejected": rejected}
     (args.output / "validation.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"passed": True, "scope": report["scope"],
                       "codec_tests": result.testsRun, "conversion_checks": len(conversion_checks),
                       "gemm_checks": len(gemm_checks), "timing_checks": len(timing_checks), "rejected": len(rejected),
+                      "group_major_layout_checks": len(layout_checks),
                       "max_abs_error_vs_fixed_reference": max(x["max_abs_error_vs_fixed_reference"] for x in gemm_checks)}, indent=2))
 
 

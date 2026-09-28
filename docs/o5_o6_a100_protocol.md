@@ -134,6 +134,26 @@ A100 沿用 cp.async；不假称存在 TMA。
 初始候选为 64×64×128、64×128×256。旧 O0–O4 的默认入口和选型不变。
 此阶段不使用 magic bias 或指数位 scale 优化；它们不是格式正确性的前提。
 
+新增内部候选 `scale_layout="group_major"`：有效 FP32 scale 在物理上按
+`[G,rows]` 存放，Python 返回逻辑 `[rows,G]`、stride `[1,rows]` 的视图。
+转换 kernel 直接写目标地址，不增加额外 buffer 或重排 kernel，相关寻址和
+store 开销计入转换时间。GEMM 每个 warp 连续读取同组的行/列 scale。
+该候选来自 NCU 对 scale 非合并加载的定位；默认仍为 `row_major`，收益和
+数值/内存安全待 A/B 验收，不能提前视为已采用的 production 优化。
+
+合成对照入口（需重新编译；输出目录必须不存在）：
+
+```bash
+python scripts/benchmark_a100_mixed.py --synthetic \
+  --output runs/mixed_layout_ab --tiles 64x128x256 \
+  --scale-layouts row_major group_major
+```
+
+NCU 专用 `--profile-case o5/64x128x256` 或
+`o5/64x128x256/group_major` 只运行该目标，不运行参考 GEMM；须同时指定
+`--modes compute_only --rounds 1 --repeats 1`。warmup50 时 O5/O6 的匹配 kernel
+skip=51（含区间外初始化 GEMM），O3 skip=50。NCU 结果只用于瓶颈分析。
+
 ## 编译、验证与审计
 
 在 A100 仓库和已配置环境中：

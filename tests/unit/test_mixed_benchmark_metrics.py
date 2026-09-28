@@ -19,10 +19,22 @@ class TestMixedBenchmarkMetrics(unittest.TestCase):
                 self.assertEqual(spec["launch_skip"], 51)
                 self.assertEqual(spec["launch_count"], 1)
                 self.assertIn("adangel_sm80_split_grouped", spec["kernel_filter"])
+                major = module.profile_spec(f"{variant}/{tile}/group_major", 50)
+                self.assertEqual(major["launch_skip"], 51)
+                self.assertEqual(major["kernel_filter"], "regex:adangel_sm80_split_grouped_major")
         with self.assertRaises(ValueError):
             module.profile_spec("o0", 50)
         with self.assertRaises(ValueError):
             module.profile_spec("o3", -1)
+
+    def test_scale_layout_case_roundtrip_and_byte_count(self):
+        for layout in module.SCALE_LAYOUTS:
+            case = module.mixed_case("o5", module.TILES[1], layout)
+            self.assertEqual(module.parse_mixed_case(case), ("o5", module.TILES[1], layout))
+            self.assertEqual(module.conversion_bytes(case, "total", 64, 128, 256),
+                             module.conversion_bytes("o5/64x128x256", "total", 64, 128, 256))
+        with self.assertRaises(ValueError):
+            module.parse_mixed_case("o6/64x128x256/bad")
 
     def test_conversion_total_aligned_without_mutating_native(self):
         payload = {"timings_ms": {"weight_conversion": [1., 100., 101.],
