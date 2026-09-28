@@ -3,6 +3,11 @@
 当前状态：正在实现；正式 O5/O6 尚未启用。不能用整数合成输入的
 compute-only 验证代替格式量化、真实 trace 的 MSE 或端到端验收。
 
+共用整数 core 已在 A100 编译并通过首轮数值、原生 INT4 指令、memcheck
+和 racecheck 验证，见 [原始证据及范围说明](evidence/a100_split_grouped_v1/README.md)。
+较大 tile 的合成 GEMM median 为 0.631808 ms、CV 为 3.935%，仅作初筛。
+格式契约仍待确认；原始 FP16 trace 位于 5090，复制到 A100 待用户授权。
+
 ## 已确认的实验目标
 
 | 项目 | O5 | O6 |

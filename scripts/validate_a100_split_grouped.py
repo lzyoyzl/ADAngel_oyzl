@@ -175,12 +175,16 @@ def main():
             assert torch.isfinite(y).all()
             torch.testing.assert_close(y, expected, rtol=1e-3, atol=1e-3)
             times = list(result["timings_ms"]["gemm"])
-            large.append({"tile": tile, "summary": summary(times), "raw_ms": times,
+            stats = summary(times)
+            large.append({"tile": tile, "summary": stats, "raw_ms": times,
+                          "timing_stable_cv3": stats["cv_percent"] < 3.0,
                           "max_abs_error": (y - expected).abs().max().item(),
                           "mse_vs_integer_reference": (y.double() - expected.double()).square().mean().item(),
                           "kernel": dict(result["kernel"])})
 
-    report = {"passed": True, "scope": "prepared_integer_core_only",
+    report = {"passed": True, "correctness_passed": True,
+              "timing_stable_cv3": all(r["timing_stable_cv3"] for r in large) if large else None,
+              "scope": "prepared_integer_core_only",
               "formal_o5_o6_complete": False,
               "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
               "binary_sha256": hashlib.sha256(Path(native.__file__).read_bytes()).hexdigest(),
