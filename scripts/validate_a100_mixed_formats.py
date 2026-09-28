@@ -79,6 +79,7 @@ def main():
             convert(source, f"all_payloads_micro_{pattern}")
 
     gemm_checks = []
+    timing_checks = []
     for m, n, k in ((64, 128, 256), (128, 128, 512), (64, 128, 4096)):
         for pattern in ("random", "zero", "alternating"):
             gen = torch.Generator().manual_seed(5600 + k)
@@ -93,10 +94,11 @@ def main():
             ai, asc = quantize_int8_per_row(a)
             wm, wms = quantize_mxfp4(w)
             o0 = native.benchmark_o0(ai.cuda(), asc.cuda(), wm.cuda(), wms.cuda(),
-                                     "compute_only", 0, 1, 1)["output"].cpu()
+                                     "compute_only", 0, 1, 100)["output"].cpu()
             for variant, (wfmt, afmt) in mf.VARIANTS.items():
-                cw, wq, ws = convert(mf.quantize_source(w, wfmt), f"{pattern}_w_{k}")
-                ca, aq, asc = convert(mf.quantize_source(a, afmt), f"{pattern}_a_{k}")
+                wsrc, asrc = mf.quantize_source(w, wfmt), mf.quantize_source(a, afmt)
+                cw, wq, ws = convert(wsrc, f"{pattern}_w_{k}")
+                ca, aq, asc = convert(asrc, f"{pattern}_a_{k}")
                 expected = reference(aq, asc, wq, ws)
                 for tile in ("64x64x128", "64x128x256"):
                     output = native._benchmark_split_grouped(
@@ -110,6 +112,36 @@ def main():
                                         "mse_vs_fixed_reference": (y.double() - expected.double()).square().mean().item(),
                                         "mse_vs_synthetic_o0": (y.double() - o0.double()).square().mean().item(),
                                         "kernel": dict(output["kernel"])})
+                if pattern == "random":
+                    for mode in ("conversion_only", "compute_only", "cold", "steady_state"):
+                        sample = native._benchmark_mixed(variant, mode, move(wsrc), move(asrc),
+                                                          2, 3, 10, "64x128x256")
+                        torch.testing.assert_close(sample["output"].cpu(), expected, rtol=1e-3, atol=1e-3)
+                        for key, reference_pair in (("converted_weight", cw), ("converted_activation", ca)):
+                            packed, scale = sample[key]
+                            assert torch.equal(packed, reference_pair["packed"])
+                            assert torch.equal(scale.view(torch.int32), reference_pair["scale"].view(torch.int32))
+                        expected_stages = {
+                            "conversion_only": {"weight_conversion", "activation_conversion", "total"},
+                            "compute_only": {"gemm", "total"},
+                            "cold": {"weight_conversion", "activation_conversion", "gemm", "total"},
+                            "steady_state": {"activation_conversion", "gemm", "total"},
+                        }[mode]
+                        assert set(sample["timings_ms"]) == expected_stages
+                        for stage, times in sample["timings_ms"].items():
+                            assert len(times) == 3 and all(t > 0 for t in times)
+                            inner = 10 if "conversion" in stage or (stage == "total" and mode == "conversion_only") else 1
+                            assert sample["stage_timing_inner_repeats"][stage] == inner
+                        assert sample["weight_cached"] == (mode in ("compute_only", "steady_state"))
+                        assert sample["activation_prepared"] == (mode == "compute_only")
+                        if mode == "compute_only":
+                            assert sample["timings_ms"]["total"] == sample["timings_ms"]["gemm"]
+                        timing_checks.append({"variant": variant, "mode": mode, "shape": [m, n, k],
+                                              "timings_ms": dict(sample["timings_ms"]),
+                                              "stage_timing_inner_repeats": dict(sample["stage_timing_inner_repeats"]),
+                                              "total_timing": sample["total_timing"],
+                                              "weight_cached": sample["weight_cached"],
+                                              "activation_prepared": sample["activation_prepared"]})
 
     rejected = []
     for fmt in mf.FORMATS:
@@ -136,11 +168,12 @@ def main():
               "gpu": torch.cuda.get_device_name(), "torch": torch.__version__,
               "cuda": torch.version.cuda, "codec_tests": result.testsRun,
               "conversion_checks": conversion_checks, "gemm_checks": gemm_checks,
+              "timing_contract_checks": timing_checks,
               "rejected": rejected}
     (args.output / "validation.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"passed": True, "scope": report["scope"],
                       "codec_tests": result.testsRun, "conversion_checks": len(conversion_checks),
-                      "gemm_checks": len(gemm_checks), "rejected": len(rejected),
+                      "gemm_checks": len(gemm_checks), "timing_checks": len(timing_checks), "rejected": len(rejected),
                       "max_abs_error_vs_fixed_reference": max(x["max_abs_error_vs_fixed_reference"] for x in gemm_checks)}, indent=2))
 
 
