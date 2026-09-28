@@ -84,7 +84,9 @@ def main():
 
     gemm_checks = []
     timing_checks = []
-    for m, n, k in ((64, 128, 256), (128, 128, 512), (64, 128, 4096)):
+    # O0's strict no-SIMT fallback policy has no eligible HMMA heuristic for
+    # small M/N at K4096 on this A100; 512x512 preserves the large-K test and O0.
+    for m, n, k in ((64, 128, 256), (128, 128, 512), (512, 512, 4096)):
         for pattern in ("random", "zero", "alternating"):
             gen = torch.Generator().manual_seed(5600 + k)
             a = (torch.randn((m, k), generator=gen) * .5).half()
@@ -97,8 +99,9 @@ def main():
             # Synthetic O0 from the SAME FP16 tensors, not from any real trace.
             ai, asc = quantize_int8_per_row(a)
             wm, wms = quantize_mxfp4(w)
-            o0 = native.benchmark_o0(ai.cuda(), asc.cuda(), wm.cuda(), wms.cuda(),
-                                     "compute_only", 0, 1, 100)["output"].cpu()
+            o0_run = native.benchmark_o0(ai.cuda(), asc.cuda(), wm.cuda(), wms.cuda(),
+                                         "compute_only", 0, 1, 100)
+            o0 = o0_run["output"].cpu()
             for variant, (wfmt, afmt) in mf.VARIANTS.items():
                 wsrc, asrc = mf.quantize_source(w, wfmt), mf.quantize_source(a, afmt)
                 cw, wq, ws = convert(wsrc, f"{pattern}_w_{k}")
@@ -115,6 +118,7 @@ def main():
                                         "max_abs_error_vs_fixed_reference": (y - expected).abs().max().item(),
                                         "mse_vs_fixed_reference": (y.double() - expected.double()).square().mean().item(),
                                         "mse_vs_synthetic_o0": (y.double() - o0.double()).square().mean().item(),
+                                        "o0_kernel": dict(o0_run["kernel"]),
                                         "kernel": dict(output["kernel"])})
                 if pattern == "random":
                     for mode in ("conversion_only", "compute_only", "cold", "steady_state"):
