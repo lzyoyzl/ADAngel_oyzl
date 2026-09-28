@@ -101,3 +101,24 @@ payload 的 packing、scale 的 FP32 数值、两路 INT4 和逐 G128 FMA 均不
 7. 发布格式、代码/二进制 hash、MSE、四模式结果和异常说明。
 
 这个顺序中任一未完成项必须标为未验收，不能因某个合成 GEMM 很快就跳过。
+
+### 真实 trace 运行入口与误差账本
+
+`benchmark_a100_mixed_trace.py` 提供需显式确认的数据桥接入口，目前等待
+用户确认后再对真实 trace 执行。已有文件的 INT8/MXFP4 经 O0 原生反量化
+得到 FP16 操作数；这只是已有量化值的展开，不是恢复原始模型 FP16。
+新源格式仅在内存中生成，不保存中间 `.pt`，并排除在四种计时之外。
+只读 manifest/hash 校验不需要开启二次量化，也不生成源格式。
+
+每个样本保留三层证据：
+
+1. Provenance：原 prepared manifest 与文件 hash，O0 展开操作数的 hash，
+   以及新源格式各 payload/scale 的 hash、shape、dtype。
+2. 输入误差：W/A 各自的 source vs bridge、fixed vs source、fixed vs bridge。
+   误差不是逐层可直接相加的数值；它们分别回答不同转换环节的问题。
+3. 输出误差：O5/O6 对独立有序 G128 定点参考，以及各后端相对同源 O0 的 MSE。
+   各计时模式、各 scale 布局的输出另作逐位比较。
+
+统计先折叠同一样本的重复轮次，再汇总样本；每次 Event 不是独立实验样本。
+详见 [入口、数据限制和命令](o5_o6_a100_protocol.md)。只有完整数据运行结束
+且检查覆盖了该路径，才能把结果提升为对应数据口径的正式结论。

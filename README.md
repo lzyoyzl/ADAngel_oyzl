@@ -629,6 +629,13 @@ O5/O6 的计时与旧实验统一为“转换批量摊销 + 端到端单次直�
 自然布局仍是默认，O0–O4 的默认实现与 5090 后端保持不变。
 这些证据不替代 24 个真实样本的 O5/O6 正式验收。
 
+正式 trace 入口为 `scripts/benchmark_a100_mixed_trace.py`：已有 prepared
+数据的二次量化需要显式 `--allow-secondary-quantization`，当前仍待数据口径
+确认；`--validate-input-only` 只读验证 24 个文件及 SHA-256。
+运行引擎已通过包含 4096³ 的合成验收，见
+[入口验证记录](docs/evidence/a100_mixed_trace_runner_v2/README.md)。
+本次仅增加 Python 运行/验证入口，无需为此重新编译 CUDA。
+
 ```bash
 python -m adangel doctor
 python -m adangel show-config --config configs/experiment/o0_o1_o2_o3_o4_4096.yaml

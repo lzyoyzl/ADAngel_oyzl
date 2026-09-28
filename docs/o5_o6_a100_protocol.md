@@ -83,6 +83,9 @@ W/A 分别报告 source vs bridge、fixed vs source、fixed vs bridge 的 MSE；
 
 `scripts/validate_a100_mixed_trace_runner.py` 仅用合成 prepared 输入验证以上
 运行引擎。它不读取真实数据目录，也不能取代正式 24 样本结果。
+该入口已在 A100 通过 256³/512³/4096³ 合成检查，共 84 条四模式记录；
+另有 30 项相关单测通过，真实 prepared 的 24 文件 hash 只读校验通过。
+详见 [入口验收证据](evidence/a100_mixed_trace_runner_v2/README.md)。
 
 2026-09-28 已完成精度项目/O3 转换语义、A100 数据目录和外部格式资料的核对，
 见 [格式与数据核对记录](o5_o6_format_review.md)。仍需澄清是否只不另存中间
