@@ -21,11 +21,11 @@ def audit_policy(checks, allow_spills=False):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
-    p.add_argument('--variant',choices=['o1','o3'],default='o1')
+    p.add_argument('--variant',choices=['o1','o3','split_grouped'],default='o1')
     p.add_argument('--allow-spills',action='store_true',
-                   help='O3 only: report spill checks as warnings, never waive ISA checks or missing resource data')
+                   help='INT4 paths: report spill checks as warnings, never waive ISA checks or missing resource data')
     args=p.parse_args()
-    if args.allow_spills and args.variant!='o3': p.error('--allow-spills is only supported for O3')
+    if args.allow_spills and args.variant=='o1': p.error('--allow-spills is only supported for INT4 paths')
     if args.output.exists(): raise SystemExit('Use a fresh output directory')
     import torch  # load libc10 before the extension
     from adangel import _sm80 as native
@@ -40,7 +40,8 @@ def main():
     for block in re.split(r'(?=Function\s*:\s*)',outputs['extension.sass']):
         if not block.startswith('Function'): continue
         symbol=block.splitlines()[0].split(':',1)[1].strip()
-        if f'adangel_sm80_{args.variant}_swizzled' not in symbol: continue
+        prefix='adangel_sm80_split_grouped' if args.variant=='split_grouped' else f'adangel_sm80_{args.variant}_swizzled'
+        if prefix not in symbol: continue
         rm=re.search(r'Function\s+(?:\:\s*)?'+re.escape(symbol)+r'\s*:\s*([^\n]+)',outputs['resources.txt'])
         resource=rm[0] if rm else ''
         local=re.search(r'LOCAL:(\d+)',resource)
@@ -61,7 +62,7 @@ def main():
             resource_no_stack=bool(stack and int(stack[1])==0),
             ptx_async='cp.async' in ptx,
             ptx_int8=bool(re.search(r'mma\.sync[^;]*\.s32\.s8\.s8\.s32',ptx)))
-        if args.variant=='o3':
+        if args.variant in ('o3','split_grouped'):
             del checks['sass_int8'];del checks['ptx_int8']
             checks.update(sass_u4s4=bool(re.search(r'IMMA\.\w+\.U4\.S4',block)),
                 sass_s4s4=bool(re.search(r'IMMA\.\w+\.S4\.S4',block)),

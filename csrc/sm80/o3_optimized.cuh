@@ -2,7 +2,12 @@
 #pragma once
 template<int N,bool Cached> struct O3ScaleCodeScratch {};
 template<int N> struct O3ScaleCodeScratch<N,true> { uint8_t scale_codes[N*32]; };
-template<int M,int N,int K,bool Cached=false,int WN=2>
+template<int M,int Groups,bool Enabled> struct SplitActivationScales {};
+template<int M,int Groups> struct SplitActivationScales<M,Groups,true> {
+  float activation_scales[2*Groups*M];
+};
+
+template<int M,int N,int K,bool Cached=false,int WN=2,bool DualScale=false>
 struct O3AmpereConfig {
   static_assert(K==128||K==256);
   static constexpr int WM=M==32?2:4;
@@ -22,16 +27,19 @@ struct O3AmpereConfig {
   template<int Rows> using NibbleLayout=decltype(cute::composition(
       cute::Swizzle<K==256?3:2,5,3>{},cute::Layout<cute::Shape<cute::Int<Rows>,cute::Int<K>>,
       cute::Stride<cute::Int<K>,cute::_1>>{}));
-  struct alignas(128) Storage : O3ScaleCodeScratch<N,Cached> {
+  struct alignas(128) Storage : O3ScaleCodeScratch<N,Cached>,
+      SplitActivationScales<M,Groups,DualScale> {
     alignas(128) uint8_t low[2][M*Bytes], high[2][M*Bytes], weight[2][N*Bytes];
     float scales[(Cached?32:2*Groups)*N];
   };
 };
 
-template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false>
-__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage& s,
-    int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k) {
-  using C=O3AmpereConfig<M,N,K,Cached,WN>;
+template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false,bool DualScale=false>
+__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN,DualScale>::Storage& s,
+    int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k,
+    const float* grouped_as=nullptr) {
+  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
+  static_assert(!DualScale || (!Fast && !Cached && !VectorScale));
   typename C::template ByteLayout<M> la;
   typename C::template ByteLayout<N> lb;
   auto copy_a=[&](unsigned off) {
@@ -62,7 +70,19 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
     for(unsigned off=threadIdx.x*16;off<M*C::Bytes;off+=C::Threads*16) copy_a(off);
     for(unsigned off=threadIdx.x*16;off<N*C::Bytes;off+=C::Threads*16) copy_b(off);
   }
-  if(!Cached && threadIdx.x<N) {
+  if constexpr(DualScale) {
+    // Both sides vary across G128; do not use a power-of-two shortcut.
+    const auto* grouped_ws=reinterpret_cast<const float*>(ws);
+    o1_static_for<0,C::Groups>([&](auto group) {
+      int g=stage*C::Groups+group;
+      if(threadIdx.x<M)
+        s.activation_scales[(slot*C::Groups+group)*M+threadIdx.x]=
+            grouped_as[(blockIdx.y*M+threadIdx.x)*(k/128)+g];
+      if(threadIdx.x<N)
+        s.scales[(slot*C::Groups+group)*N+threadIdx.x]=
+            grouped_ws[(blockIdx.x*N+threadIdx.x)*(k/128)+g];
+    });
+  } else if(!Cached && threadIdx.x<N) {
     uint32_t packed_codes=0;
     if constexpr(VectorScale) {
       static_assert(K==256 && !Cached);
@@ -82,10 +102,11 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
-  using C=O3AmpereConfig<M,N,K,Cached,WN>;
+  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
+  static_assert(!DualScale || (!Fast && !Cached && !Magic && Stream));
   extern __shared__ __align__(128) uint8_t buf[];
   auto& s=*reinterpret_cast<typename C::Storage*>(buf);
   if constexpr(Cached) {
@@ -130,7 +151,7 @@ __device__ __forceinline__ void o3_body(
   auto acc=cute::make_fragment_like<float>(low), rows=cute::make_fragment_like<float>(low);
   cute::clear(acc);
   o1_static_for<0,decltype(cute::size(rows))::value>([&](auto i) {
-    rows(i)=as[blockIdx.y*M+cute::get<0>(coords(i))];
+    if constexpr(!DualScale) rows(i)=as[blockIdx.y*M+cute::get<0>(coords(i))];
   });
   auto make_low=[&](int slot) { return cute::make_tensor(cute::make_smem_ptr<cutlass::uint4b_t>(
       static_cast<void*>(s.low[slot])),typename C::template NibbleLayout<M>{}); };
@@ -153,11 +174,11 @@ __device__ __forceinline__ void o3_body(
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
   auto bd1=bc.retile_D(rb1);
   auto ld1=lc.retile_D(ra1);auto hd1=hc.retile_D(rh1);
-  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale>(s,0,0,a,w,ws,m,k);
+  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale>(s,0,0,a,w,ws,m,k,as);
   auto process_stage=[&](int stage,auto slot) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
-    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale>(s,1-slot,stage+1,a,w,ws,m,k);
+    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale>(s,1-slot,stage+1,a,w,ws,m,k,as);
     auto process_group=[&](auto group) {
       if constexpr(Stream) {
         // Preload both K64 A sets, but retain only a narrow N slice of B.
@@ -214,7 +235,9 @@ __device__ __forceinline__ void o3_body(
               int scale_group=(Cached?stage:slot)*C::Groups+group;
               float column=s.scales[scale_group*N+cute::get<1>(coord)];
               float scale;
-              if constexpr(Fast) scale=__uint_as_float(__float_as_uint(rows(vi,mi,full_ni))+__float_as_uint(column));
+              if constexpr(DualScale)
+                scale=__fmul_rn(s.activation_scales[scale_group*M+cute::get<0>(coord)],column);
+              else if constexpr(Fast) scale=__uint_as_float(__float_as_uint(rows(vi,mi,full_ni))+__float_as_uint(column));
               else scale=__fmul_rn(rows(vi,mi,full_ni),column);
               float value;
               if constexpr(Magic) value=__fadd_rn(__int_as_float(0x4b400000+partial),-12582912.0f);

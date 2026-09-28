@@ -13,6 +13,7 @@
 #include <torch/extension.h>
 #include <vector>
 #include <cstring>
+#include <limits>
 #include "adangel/kernel_api.h"
 #include "adangel/data_types.cuh"
 
@@ -178,6 +179,8 @@ template<class F> std::vector<float> batch(F f,int repeats,int inner,cudaStream_
   std::vector<float> r; for(auto& e:marks) r.push_back(elapsed(e.start,e.end)/inner);
   return r;
 }
+
+#include "split_grouped.cuh"
 
 py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor as,
     at::Tensor w,at::Tensor ws,int warmup,int repeats,int inner,std::string implementation) {
@@ -591,6 +594,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
 }
 } // namespace
 PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
+  m.def("_benchmark_split_grouped",&benchmark_split_grouped,py::arg("a_split"),py::arg("a_scale"),py::arg("w_q4"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("tile")="64x128x256");
   m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100,py::arg("implementation")="production");
   m.def("benchmark_o0",&adangel_benchmark_o0);
 }
