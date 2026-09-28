@@ -21,6 +21,20 @@ MODES = ("conversion_only", "compute_only", "cold", "steady_state")
 TIMING_CONTRACT_VERSION = 2
 
 
+def profile_spec(case, warmup):
+    """Count ONLY matching GEMM launches, not format preparation kernels."""
+    if warmup < 0:
+        raise ValueError("negative warmup")
+    if case == "o3":
+        symbol, initial = "adangel_sm80_o3_swizzled_bound2", 0
+    elif case in {f"{v}/{t}" for v in ("o5", "o6") for t in TILES}:
+        symbol, initial = "adangel_sm80_split_grouped", 1
+    else:
+        raise ValueError("unsupported profile case")
+    return {"kernel_filter": "regex:" + symbol, "launch_skip": warmup + initial,
+            "launch_count": 1, "initial_correctness_launches": initial}
+
+
 def aligned_timings(measured, mode):
     """New A100 comparison tables use the historical O3 conversion convention.
 
@@ -124,11 +138,15 @@ def main():
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--modes", nargs="+", choices=MODES, default=list(MODES))
     parser.add_argument("--tiles", nargs="+", choices=TILES, default=list(TILES))
+    parser.add_argument("--profile-case", choices=["o3"] + [f"{v}/{t}" for v in ("o5", "o6") for t in TILES],
+                        help="NCU single target, no reference GEMMs/tables; requires repeats=1, rounds=1, modes=compute_only")
     args = parser.parse_args()
     if args.output.exists():
         parser.error("use a fresh output directory")
-    if args.size < 512 or args.size % 256 or args.warmup < 0 or args.repeats < 2 or args.inner < 2 or args.rounds < 1:
+    if args.size < 512 or args.size % 256 or args.warmup < 0 or args.repeats < (1 if args.profile_case else 2) or args.inner < 2 or args.rounds < 1:
         parser.error("size must be >=512 and divisible by256; invalid repetition count")
+    if args.profile_case and (args.repeats != 1 or args.rounds != 1 or args.modes != ["compute_only"]):
+        parser.error("profile mode requires --repeats 1 --rounds 1 --modes compute_only")
     if len(set(args.modes)) != len(args.modes) or len(set(args.tiles)) != len(args.tiles):
         parser.error("duplicate mode/tile")
     import torch
@@ -189,6 +207,20 @@ def main():
             return native.benchmark("o3", mode, ai, asc, wm128, ws128, warmup, repeats, args.inner, "production")
         variant, tile = case.split("/")
         return native._benchmark_mixed(variant, mode, *sources[variant], warmup, repeats, args.inner, tile)
+
+    if args.profile_case:
+        spec = profile_spec(args.profile_case, args.warmup)
+        append("gpu_snapshots.jsonl", {"phase": "before_profile_call", **snapshot()})
+        measured = call(args.profile_case, "compute_only", args.warmup, 1)
+        y = measured["output"]
+        assert torch.isfinite(y).all() and y.dtype == torch.float32
+        assert spec["kernel_filter"].removeprefix("regex:") == measured["kernel"]["kernel_symbol"]
+        save("profile_launch.json", {"case": args.profile_case, "ncu": spec,
+             "kernel": dict(measured["kernel"]), "finite_fp32": True,
+             "scope": "synthetic_profile_only_not_performance_or_accuracy_acceptance",
+             "timings_excluded": "NCU replay timings must not enter ordinary benchmark tables"})
+        print(json.dumps(spec), flush=True)
+        return
 
     # Independent full-size correctness before accepting any performance records.
     reference_o0 = call("o0", "compute_only", 0, 1)["output"]

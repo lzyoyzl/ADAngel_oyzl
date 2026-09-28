@@ -11,6 +11,19 @@ spec.loader.exec_module(module)
 
 
 class TestMixedBenchmarkMetrics(unittest.TestCase):
+    def test_profile_skips_initial_mixed_gemm_but_not_o3(self):
+        self.assertEqual(module.profile_spec("o3", 50)["launch_skip"], 50)
+        for variant in ("o5", "o6"):
+            for tile in module.TILES:
+                spec = module.profile_spec(f"{variant}/{tile}", 50)
+                self.assertEqual(spec["launch_skip"], 51)
+                self.assertEqual(spec["launch_count"], 1)
+                self.assertIn("adangel_sm80_split_grouped", spec["kernel_filter"])
+        with self.assertRaises(ValueError):
+            module.profile_spec("o0", 50)
+        with self.assertRaises(ValueError):
+            module.profile_spec("o3", -1)
+
     def test_conversion_total_aligned_without_mutating_native(self):
         payload = {"timings_ms": {"weight_conversion": [1., 100., 101.],
                                  "activation_conversion": [100., 1., 101.],
