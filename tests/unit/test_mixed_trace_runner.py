@@ -7,6 +7,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
+from types import ModuleType
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -66,6 +68,44 @@ class MixedTraceRunnerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("requires explicit --allow-secondary-quantization", result.stderr)
 
+    def test_original_and_secondary_flags_are_exclusive(self):
+        result = subprocess.run([sys.executable, str(ROOT/"scripts/benchmark_a100_mixed_trace.py"),
+            "--data", "nonexistent", "--raw-data", "nonexistent",
+            "--allow-secondary-quantization"], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("not allowed with argument", result.stderr)
+
+    def test_raw_manifest_link_and_deep_validation_boundary(self):
+        # Isolate the hash/link/path boundary; this is not a fake tensor-deep test.
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            manifest = {"samples": [{"sample_id": "s", "file": "s.pt"}]}
+            path = directory/"trace_manifest.json"
+            path.write_text(json.dumps(manifest))
+            (directory/"s.pt").write_bytes(b"hash-only fixture")
+            prepared = {"source_trace": {"manifest_sha256": hashlib.sha256(path.read_bytes()).hexdigest()},
+                        "samples": [{"sample_id": "s"}]}
+            fake = ModuleType("adangel.trace.raw")
+            fake.RAW_MANIFEST_NAME = "trace_manifest.json"
+            fake.validate_raw_trace = mock.Mock(return_value=manifest)
+            with mock.patch.dict(sys.modules, {"adangel.trace.raw": fake}):
+                checked, digest = module.inspect_raw_inputs(directory, prepared, "config")
+                self.assertEqual(checked, manifest)
+                self.assertEqual(digest, prepared["source_trace"]["manifest_sha256"])
+                fake.validate_raw_trace.assert_called_once_with(directory.resolve(), "config", deep=True)
+                wrong = copy.deepcopy(prepared)
+                wrong["source_trace"]["manifest_sha256"] = "0"*64
+                with self.assertRaisesRegex(ValueError, "SHA-256"):
+                    module.inspect_raw_inputs(directory, wrong, "config")
+                wrong = copy.deepcopy(prepared)
+                wrong["samples"][0]["sample_id"] = "another"
+                with self.assertRaisesRegex(ValueError, "identities"):
+                    module.inspect_raw_inputs(directory, wrong, "config")
+                (directory/"s.pt").unlink()
+                (directory/"s.pt").symlink_to(path.parent.parent)
+                with self.assertRaisesRegex(ValueError, "escapes"):
+                    module.inspect_raw_inputs(directory, prepared, "config")
+
     def records(self):
         result = []
         for sid, a, b, error in (("a", [10, 100], [5, 100], 7.), ("b", [20, 40], [10, 20], 9.)):
@@ -97,6 +137,14 @@ class MixedTraceRunnerTests(unittest.TestCase):
         mismatched[1]["mse_vs_o0"] = 99
         with self.assertRaisesRegex(ValueError, "MSE changed"):
             module.summarize_trace(mismatched)
+
+    def test_different_input_policies_are_not_aggregated(self):
+        records = self.records()
+        for record in records:
+            record["input_policy"] = module.RAW_INPUT_POLICY
+        records[1]["input_policy"] = module.INPUT_POLICY
+        with self.assertRaisesRegex(ValueError, "input policies"):
+            module.summarize_trace(records)
 
 
 if __name__ == "__main__":

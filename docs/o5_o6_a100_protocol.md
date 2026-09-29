@@ -6,7 +6,8 @@ compute-only 验证代替格式量化、真实 trace 的 MSE 或端到端验收�
 共用整数 core 已在 A100 编译并通过首轮数值、原生 INT4 指令、memcheck
 和 racecheck 验证，见 [原始证据及范围说明](evidence/a100_split_grouped_v1/README.md)。
 较大 tile 的合成 GEMM median 为 0.631808 ms、CV 为 3.935%，仅作初筛。
-格式与 F 选择已确认；用户指定改用 A100 现有 prepared 数据，不再要求 raw 传输。
+格式与 F 选择已确认。A100 现有数据是 prepared，不是原始 FP16；用户要求先
+核对与旧实验的对齐方式，目前原始 trace 的提供/传输与二次量化取舍均未确认。
 
 2026-09-29 格式→CUDA 转定点→整数 GEMM 的合成验证已通过，包括 51 项
 转换逐位对照、36 项 GEMM、24 项四模式接口及 memcheck/racecheck。
@@ -20,9 +21,44 @@ compute-only 验证代替格式量化、真实 trace 的 MSE 或端到端验收�
 GEMM 有约 5% 的初筛收益，但转换变慢，且共享 GPU 下有 CV 失败记录；
 自然布局仍为默认，不能据此宣布 24 样本正式验收完成。
 
-### 24 样本入口（数据口径确认前不执行量化）
+### 与旧实验完全对齐：原始 FP16 直接量化入口
 
-`scripts/benchmark_a100_mixed_trace.py` 已实现一个**显式二次量化入口**，
+旧 `prepare_trace.py` 从同一份 raw FP16 分别生成 INT8 A、MXFP4-G32 W、
+MXFP4-G128 W；G128 并不是从 G32 反量化再量化而来。要对齐该起点，O5/O6
+必须从原始 FP16 分别生成已批准的源格式，不能把 O0 展开的 FP16 称作原始值。
+
+`benchmark_a100_mixed_trace.py --raw-data ...` 已加入此路径。它保留现有
+prepared 的 O0/O1/O3 输入及 O0 参考，O5/O6 则使用 raw activation/weight。
+源格式仅在内存生成，不落盘，公共量化在计时外；后续源格式→定点、scale、
+packing 与 GEMM 仍沿用下面的四模式计时。没有修改旧后端或 prepared 文件。
+
+运行前要求：raw manifest SHA-256 与 prepared 的 `source_trace` 完全一致；
+raw 深度验证通过；逐样本在 CPU 重放旧准备步骤，所有 A/W 编码、scale、Q4
+均与已有 prepared 逐位一致。张量必须原本是 contiguous finite FP16，禁止
+先强制类型转换来掩盖错误。输出 MSE 仍相对旧 O0，不换成 raw FP16 GEMM。
+
+数据到位且来源确认后使用（**尚未在真实 raw 上执行**）：
+
+```bash
+python scripts/benchmark_a100_mixed_trace.py \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --raw-data data/raw/llama2_7b_prefill --validate-input-only
+
+python scripts/benchmark_a100_mixed_trace.py \
+  --data data/prepared/llama2_7b_prefill_o0_o4 \
+  --raw-data data/raw/llama2_7b_prefill \
+  --output runs/mixed_trace_original_v1 \
+  --samples 24 --rounds 3 --warmup 50 --repeats 200 --inner 100 \
+  --scale-layouts row_major group_major
+```
+
+该路径记录 `input_policy=original_fp16_direct_source_quantization` 和原始
+manifest、原始操作数 hash；输入误差相对 raw 计算。不能与二次量化记录混合
+汇总。A100 目前没有该 raw 目录中的张量；未自动传输数据或擅自改选实验口径。
+
+### 备选：prepared 二次量化入口（仍需明确确认）
+
+`scripts/benchmark_a100_mixed_trace.py` 同时保留一个**显式二次量化入口**，
 不是把 prepared 文件冒充 raw FP16。它需要 `--allow-secondary-quantization`
 才能执行，当前仍等待用户确认该路径。默认不自动生成或保存任何源格式数据。
 不使用该授权标志时，只可运行以下只读校验：

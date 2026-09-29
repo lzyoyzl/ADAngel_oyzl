@@ -6,13 +6,16 @@ from pathlib import Path
 from types import SimpleNamespace
 import subprocess
 
-from benchmark_a100_mixed_trace import run_sample, summarize_trace
+from benchmark_a100_mixed_trace import (
+    INPUT_POLICY, RAW_INPUT_POLICY, run_sample, summarize_trace, tensor_identity, verify_raw_prepared,
+)
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--large", action="store_true", help="also test a synthetic 4096^3 bridge")
+    p.add_argument("--original-fp16", action="store_true", help="test direct original-FP16 source selection")
     args = p.parse_args()
     if args.output.exists():
         p.error("use a fresh output directory")
@@ -45,15 +48,34 @@ def main():
         a, w = torch.randn(size, size, device="cuda").half(), torch.randn(size, size, device="cuda").half()
         if pattern == "zero":
             a.zero_(); w.zero_()
-        ai, asc = quantize_int8_per_row(a)
-        w32, s32 = quantize_mxfp4(w)
-        w128, s128 = quantize_mxfp4(w, group_size=128)
-        x = PreparedInputs(f"synthetic_fixture_{pattern}", ai, asc, w32, s32, w128, s128, mxfp4_to_q4_packed(w128))
-        records.extend(run_sample(x, i, setup, native, append, "synthetic_fixture_not_real_trace"))
+        qa, qw = (a.cpu(), w.cpu()) if args.original_fp16 else (a, w)
+        ai, asc = quantize_int8_per_row(qa)
+        w32, s32 = quantize_mxfp4(qw)
+        w128, s128 = quantize_mxfp4(qw, group_size=128)
+        x = PreparedInputs(f"synthetic_fixture_{pattern}", *[
+            t.cuda() for t in (ai, asc, w32, s32, w128, s128, mxfp4_to_q4_packed(w128))])
+        original = (qa, qw) if args.original_fp16 else None
+        if args.original_fp16 and size == 256:
+            for bad in ((qa.float(), qw), (qa[:, :-1], qw), (qa+1, qw)):
+                try:
+                    verify_raw_prepared(x, bad)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError("invalid/mismatched raw operands were accepted")
+        records.extend(run_sample(x, i, setup, native, append, "synthetic_fixture_not_real_trace", original))
+        if args.original_fp16:
+            provenance = rows["source_provenance.jsonl"][-1]
+            assert provenance["raw_prepared_replay_bitwise"]
+            assert provenance["activation_source_input"] == tensor_identity(qa)
+            assert provenance["weight_source_input"] == tensor_identity(qw)
+            if pattern != "zero":
+                assert provenance["weight_source_input"] != provenance["weight_bridge"]
     assert len(records) == 28*len(fixtures)
     assert len(rows["source_provenance.jsonl"]) == len(fixtures)
     assert len(rows["source_formats.jsonl"]) == 2*len(fixtures)
-    assert all(r["input_policy"] == "prepared_o0_fp16_bridge_secondary_quantization" for r in records)
+    expected_policy = RAW_INPUT_POLICY if args.original_fp16 else INPUT_POLICY
+    assert all(r["input_policy"] == expected_policy for r in records)
     assert all(r["bitwise_equal_validation"] and r["timing_contract_version"] == 2 for r in records)
     assert {r["mode"] for r in records} == {"conversion_only", "compute_only", "cold", "steady_state"}
     assert not list(args.output.glob("*.pt"))
@@ -62,6 +84,7 @@ def main():
             base = validation["mse_vs_o0"][f"{variant}/64x128x256"]
             assert base == validation["mse_vs_o0"][f"{variant}/64x128x256/group_major"]
     report = {"passed": True, "scope": "synthetic_trace_runner_fixture", "real_data_read": False,
+              "input_policy_tested": expected_policy,
               "samples": len(fixtures), "shapes": [size for size, _ in fixtures],
               "records": len(records), "formal_experiment_complete": False,
               "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
