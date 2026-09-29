@@ -1,6 +1,6 @@
 # A100 O5–O10 分组实验
 
-状态：实现候选，等待 A100 编译、数值、指令、内存安全和真实 trace 性能验收。不得将既有 O5/O6 历史结果直接作为本轮结果。
+状态：六条路径已在 A100 编译运行，格式/数值、指令和小规模内存安全检查通过；24 样本四模式结果见 [分组报告](o5_o10_a100_results.md)。部分阶段 CV≥3%，全部原始值保留，不宣称严格稳定性全通过。不得将既有 O5/O6 历史结果直接作为本轮结果。
 
 ## 实验定义（命名版本 3）
 
@@ -33,6 +33,8 @@ O7/O8 保留既有双 INT4 G128 优化。O9/O10 使用 `m16n8k128.b1.b1.and.popc
 
 计时保持双轨版本 2：转换阶段在 Event 内重复 100 次后摊销；compute/cold/steady 的 total 直接测一次执行，不以各阶段 median 相加。
 
+这里的 Cold 指“不缓存本次权重转换”，不表示清空 GPU cache，也不包含文件读取、初始源量化、编译或显存申请。Steady-state 在每个测量计划的计时区间外准备权重，在重复执行期间复用它。
+
 | 模式 | 内容 |
 |---|---|
 | conversion-only | 分别测 W、A 转换；total 为逐次摊销样本之和 |
@@ -47,10 +49,27 @@ O7/O8 保留既有双 INT4 G128 优化。O9/O10 使用 `m16n8k128.b1.b1.and.popc
 本地提交后经 GitHub 同步 A100，再按原 SM80 环境重新编译。基础验证：
 
 ```bash
+# 在 A100 项目目录和已有 adangel-a100 环境中执行；不安装/更换系统环境。
+ADANGEL_BUILD_CUDA=1 ADANGEL_CUDA_TARGET=sm80 MAX_JOBS=4 \
+  python -m pip install -v -e . --no-build-isolation --no-deps
+
 python scripts/validate_a100_mixed_formats.py --output reports/mixed_formats_naming_v3
 python scripts/validate_a100_mixed_trace_runner.py --original-fp16 --large \
   --output reports/mixed_trace_fixture_naming_v3
+python scripts/audit_a100_o1.py --variant split_grouped --allow-spills \
+  --output reports/mixed_int4_audit
+python scripts/audit_a100_o1.py --variant mixed_binary --allow-spills \
+  --output reports/mixed_binary_audit
+compute-sanitizer --tool memcheck --error-exitcode 9 \
+  python scripts/validate_a100_binary_safety.py --tiles 64x128x256 \
+  --output reports/mixed_binary_memcheck.json
+compute-sanitizer --tool racecheck --error-exitcode 9 \
+  python scripts/validate_a100_binary_safety.py --tiles 64x128x256 \
+  --output reports/mixed_binary_racecheck.json
 ```
+
+`--allow-spills` 只把已批准的小量 local/stack 资源作为警告保留，不跳过原生 ISA 检查。
+新的输出目录/文件须不存在；重新测试时改名，保留原始结果。
 
 正式运行（目录须不存在；先用 `--samples 1 --rounds 1 --warmup 5 --repeats 20` 冒烟）：
 
@@ -59,8 +78,17 @@ python scripts/benchmark_a100_mixed_trace.py \
   --data data/prepared/llama2_7b_prefill_o0_o4 \
   --raw-data data/raw/llama2_7b_prefill \
   --output runs/a100_o5_o10_v3 \
-  --scale-layouts group_major --binary-tile 64x128x256 \
-  --rounds 3 --warmup 50 --repeats 200 --inner 100
+  --scale-layouts group_major --binary-scale-layouts row_major \
+  --binary-tile 64x128x256 \
+  --samples 24 --rounds 1 --warmup 50 --repeats 200 --inner 100
+
+python scripts/report_a100_o5_o10.py \
+  --input runs/a100_o5_o10_v3 --output reports/o5_o10_grouped_results.md
 ```
 
 候选 tile 不代表已胜出；正式选择应根据同输入配对性能、MSE、SASS 和 sanitizer 验收。报告须分别列出两组的四种计时、组内加速比和输出 MSE，不承诺 Binary 必然胜过 FP16。
+
+`--modes compute_only` 可用于单独的多轮复测，默认仍运行四种模式。复测必须使用新目录、记录轮数并单独展示，不能静默覆盖首次记录或混成同一轮结果。报告脚本会拒绝把这种仅计算的复测误标为四模式结果。
+
+格式/指令/内存安全证据见 [v3 preflight](evidence/a100_o5_o10_preflight_v3/README.md)；
+实现细节见 [kernel 工作流](mixed_precision_kernel_workflow.md)。保留完整 stage、原始 Event 样本和环境数据，主文表格按组列 median/mean、配对加速比与 MSE。

@@ -3,7 +3,7 @@
 此目录是原始 A100 输出的归档，不是 24 样本最终结果。没有过滤异常计时。
 
 - CUDA 源码：`4507c6e`；运行脚本：`3a97ce2`。
-- v3 二进制 SHA256：`3186f84b7c35c1933389a7ccafc092324d82a162aaf2eb5a9ddd20b8e42d0e3a0`。
+- v3 二进制 SHA256：`3186f84b7c35c1933389a7ccafc092324d82a162af2eb5a9ddd20b8e42d0e3a0`。
 - `reports/o5_o10_formats_v3/validation.json`：15 codec tests、120 定点转换、102 FP16、120 bitplane、408 Binary GEMM 等检查通过。
 - `reports/o5_o10_memcheck_v3.*` / `racecheck_v3.*`：六种 Binary 配置、两种格式和两种 scale 布局，共 24 项；零错误/竞争。
 - `reports/o5_o10_binary_audit_v3/audit.json`：同函数 BMMA+LDGSTS，无 INT8 代算；选定的自然 scale、64×128×256、256-thread 配置没有 LDL/STL 或栈 spill。

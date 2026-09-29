@@ -1,0 +1,22 @@
+{
+  "data": "data/prepared/llama2_7b_prefill_o0_o4",
+  "output": "runs/a100_o5_o10_final_v3",
+  "validate_input_only": false,
+  "allow_secondary_quantization": false,
+  "raw_data": "data/raw/llama2_7b_prefill",
+  "trace_config": "/home/zlouyang/ADAngel_oyzl/configs/trace/llama2_7b_prefill.yaml",
+  "samples": 24,
+  "rounds": 1,
+  "warmup": 50,
+  "repeats": 200,
+  "inner": 100,
+  "scale_layouts": [
+    "group_major"
+  ],
+  "binary_tile": "64x128x256",
+  "o9_tile": null,
+  "o10_tile": null,
+  "binary_scale_layouts": [
+    "row_major"
+  ]
+}

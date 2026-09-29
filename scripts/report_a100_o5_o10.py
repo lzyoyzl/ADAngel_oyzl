@@ -75,6 +75,7 @@ def render(directory):
         r=next(r for r in selected if r['case']==case)
         lines.append(f"| {variant.upper()} | `{case}`；`{r['kernel']['implementation']}` |")
     lines += ["", "没有删除离群值；CV 超过 3% 的记录如实列出。NCU 重放结果不混入 Event 性能表。",
+              "CV 超阈记录指任一测量阶段的 CV≥3%，不表示该记录的 total 也一定超阈；原始分阶段 CV 见 JSON。",
               "Cold 包含 W/A 在线转换与 GEMM；steady-state 只缓存权重转换。各阶段独立实测，不能用 GEMM-only 加转换 median 推导端到端。", ""]
     return "\n".join(lines)
 

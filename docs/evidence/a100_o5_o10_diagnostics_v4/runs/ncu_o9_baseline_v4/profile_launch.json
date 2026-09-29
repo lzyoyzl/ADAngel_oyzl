@@ -1,0 +1,52 @@
+{
+  "case": "o9/64x128x256",
+  "ncu": {
+    "kernel_filter": "regex:adangel_sm80_mixed_binary",
+    "launch_skip": 51,
+    "launch_count": 1,
+    "initial_correctness_launches": 1
+  },
+  "kernel": {
+    "status": "source_format_path_pending_formal_data_acceptance",
+    "implementation": "binary_g128_cached_fragments_two_chains_64x128x256",
+    "kernel_symbol": "adangel_sm80_mixed_binary",
+    "scale_layout": "row_major",
+    "scale_layout_conversion": "fused_output_indexing_no_extra_buffer_or_kernel",
+    "cta_tile": [
+      64,
+      128,
+      256
+    ],
+    "mma": "m16n8k128.b1.b1.and.popc",
+    "group_size": 128,
+    "partial_storage": "register",
+    "data_movement": "cp.async",
+    "pipeline_stages": 2,
+    "scale_formula": "round_fp32(A_fixed_scale[m,g]*W_fixed_scale[n,g])",
+    "group_accumulation": "ascending G128, fp32 fma",
+    "shared_memory_bytes": 68608,
+    "threads": 256,
+    "output_dtype": "fp32",
+    "activation_planes": 8,
+    "weight_planes": 4,
+    "plane_pairs_per_g128_atom": 32,
+    "plane_sign": "two_complement_msb_negative",
+    "cached_weight_fragments": true,
+    "integer_accumulator_chains": 2,
+    "shared_layout": "row_major_words",
+    "integer_reconstruction": "weighted_two_chains",
+    "warp_layout": [
+      4,
+      2
+    ],
+    "conversion": "fused_source_decode_fixed_rne_ballot_pack_and_scale",
+    "variant": "o9",
+    "experiment_naming_version": 3,
+    "paired_fp16_baseline": "o5",
+    "weight_source_format": "nvfp4_g128",
+    "activation_source_format": "mxfp8_e4m3_g128"
+  },
+  "finite_fp32": true,
+  "scope": "synthetic_profile_only_not_performance_or_accuracy_acceptance",
+  "timings_excluded": "NCU replay timings must not enter ordinary benchmark tables"
+}

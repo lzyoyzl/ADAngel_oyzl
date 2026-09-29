@@ -1,0 +1,26 @@
+{
+  "commit": "3a97ce219ac75be9a4f7cb9d81c6117611cbfb3f",
+  "binary_sha256": "3186f84b7c35c1933389a7ccafc092324d82a162af2eb5a9ddd20b8e42d0e3a0",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "input_policy": "original_fp16_direct_source_quantization",
+  "scope": "real_trace_original_fp16_direct_quantization",
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+  "timing_contract_version": 2,
+  "manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "experiment_naming_version": 3,
+  "policy": "unlocked shared GPU, no filtering or retry-until-pass; same-sample/round pairing",
+  "source_files_sha256": {
+    "csrc/sm80/o1_o3.cu": "88725ba8bca6041055a8f56e4f5196ff2618d38a5a26d03df13ae3845d222ff1",
+    "csrc/sm80/o3_optimized.cuh": "e5e1dc11942e54af15502bca00aad70750ea301631828a2607507687252db471",
+    "csrc/sm80/mixed_conversion.cuh": "be24ef4c69afa08da38a973988d82fedf434f23fd57cfbfad0b87413eefd057b",
+    "csrc/sm80/mixed_benchmark.cuh": "52f19a56f0fe93cb7064a64ed6b6af8192d6fc7fc0bd81ffcfee97c30a0be204",
+    "csrc/sm80/split_grouped.cuh": "cd6c722b98b8f021b00b64d2d420005642ecc8bbe0eef39353c8d2cf65072b42",
+    "csrc/sm80/mixed_bitplane.cuh": "9c392500638a8aba306955be86a91d0160ba7c6e4c9fdccfff76cb5729216b32",
+    "csrc/sm120/o0_gemm.cu": "168fd1c544cec5c96cab5d31a902e953224491b4435a63482836c8f0c48354f1",
+    "include/adangel/fp16_runner.h": "f1e39e64484708987959f3f5de3e0ce13ec2ca1a08805a460ddf6f8efdf04bcc",
+    "python/adangel/quantization/mixed_formats.py": "c130f8436e828eb38976ebde1f58dfe2a41f50966a718184c5dee989a071d788",
+    "scripts/benchmark_a100_mixed_trace.py": "fb3475a94a99f3f04fc0b5cdf463243bbf0854fa8aeb9aa6814df0c53893bec7"
+  }
+}
