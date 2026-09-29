@@ -112,6 +112,21 @@ def main():
                 source["scale"] = torch.tensor([[0, 1], [64, 126]], dtype=torch.uint8)
                 source["tensor_scale"] = torch.tensor([.0317], dtype=torch.float32)
             convert(source, f"all_payloads_micro_{pattern}")
+            # The extreme-scale fixture may correctly reject FP16 overflow;
+            # ALSO decode every payload at a finite scale, so an overflow in
+            # one element cannot hide the remaining FP16 payload tests.
+            finite = dict(source)
+            if fmt == "hif4_g128":
+                finite["scale"] = torch.full_like(source["scale"],192)
+                convert(finite, f"all_finite_payloads_micro_{pattern}")
+            elif fmt == "mxfp8_e4m3_g128":
+                finite["scale"] = torch.full_like(source["scale"],127)
+                convert(finite, "all_finite_payloads")
+        count = 253 if fmt == "mxfp8_e4m3_g128" else (255 if fmt == "hif4_g128" else 127)
+        scales = mf.quantize_source(torch.ones(count,128),fmt)
+        scales["scale"] = torch.arange(count,dtype=torch.uint8).reshape(count,1)
+        scales["payload"].fill_(0x11 if kind in ("e2m1","s1p2") else 1)
+        convert(scales,"all_finite_scale_codes")
         for rows in (1, 3):
             # Partial conversion CTA: guard threads beyond the final 64 pairs.
             x = torch.linspace(-8, 8, rows * 128).reshape(rows, 128)

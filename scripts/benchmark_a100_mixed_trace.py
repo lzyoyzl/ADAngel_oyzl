@@ -180,9 +180,10 @@ def run_sample(x, sample_index, args, native, append, scope, raw_operands=None):
     m, n, k = x.shape
     if m % 64 or n % 128 or k % 256:
         raise ValueError("trace runner requires the selected 64x128x256 tile alignment")
-    binary_tile = getattr(args, "binary_tile", TILE)
-    cases = ["o0", "o1", "o3", "o5", "o6"] + [mixed_case(v, binary_tile if v in ("o9", "o10") else TILE, l)
-        for v in ("o7", "o8", "o9", "o10") for l in args.scale_layouts]
+    binary_tiles = {v: getattr(args, v+"_tile", None) or getattr(args, "binary_tile", TILE) for v in ("o9", "o10")}
+    binary_layouts = getattr(args,"binary_scale_layouts",None) or args.scale_layouts
+    cases = ["o0", "o1", "o3", "o5", "o6"] + [mixed_case(v,TILE,l) for v in ("o7","o8") for l in args.scale_layouts]
+    cases += [mixed_case(v,binary_tiles[v],l) for v in ("o9","o10") for l in binary_layouts]
     sources = {}
 
     def call(case, mode, warmup, repeats):
@@ -265,14 +266,14 @@ def run_sample(x, sample_index, args, native, append, scope, raw_operands=None):
             baselines[case] = out.clone()
         from benchmark_a100_mixed import validate_bitplanes
         binary_variant = "o9" if variant == "o7" else "o10"
-        for layout in args.scale_layouts:
-            case = mixed_case(binary_variant, binary_tile, layout)
+        for layout in binary_layouts:
+            case = mixed_case(binary_variant, binary_tiles[binary_variant], layout)
             run = call(case, "compute_only", 0, 1)
             checks[case] = validate_bitplanes(run, wq, ws, aq, asc, 8 if variant == "o7" else 6)
             out = run["output"]
             assert out.dtype == torch.float32 and torch.isfinite(out).all()
             torch.testing.assert_close(out, yref, rtol=1e-3, atol=1e-3)
-            dual = baselines[mixed_case(variant, TILE, layout)]
+            dual = baselines[mixed_case(variant, TILE, args.scale_layouts[0])]
             assert torch.equal(out.view(torch.int32), dual.view(torch.int32)), (case, "binary/INT4 discrepancy")
             checks[case].update(binary_equals_dual_int4_bitwise=True, mse_vs_fixed_reference=mse(out, yref))
             baselines[case] = out.clone()
@@ -351,6 +352,10 @@ def main():
     p.add_argument("--scale-layouts", nargs="+", choices=SCALE_LAYOUTS, default=["row_major"])
     from benchmark_a100_mixed import BINARY_TILES
     p.add_argument("--binary-tile", choices=BINARY_TILES, default=TILE)
+    p.add_argument("--o9-tile",choices=BINARY_TILES)
+    p.add_argument("--o10-tile",choices=BINARY_TILES)
+    p.add_argument("--binary-scale-layouts",nargs="+",choices=SCALE_LAYOUTS,
+                   help="default inherits --scale-layouts; selected binary layout may differ from INT4")
     args = p.parse_args()
     if not args.validate_input_only and not (args.raw_data or args.allow_secondary_quantization):
         p.error("requires --raw-data for original FP16, or requires explicit --allow-secondary-quantization")
@@ -358,6 +363,8 @@ def main():
         p.error("invalid sample/repetition count")
     if len(set(args.scale_layouts)) != len(args.scale_layouts):
         p.error("duplicate layouts")
+    if args.binary_scale_layouts and len(set(args.binary_scale_layouts)) != len(args.binary_scale_layouts):
+        p.error("duplicate binary layouts")
     if not args.validate_input_only and (args.output is None or args.output.exists()):
         p.error("requires a fresh --output directory")
     manifest, manifest_hash = inspect_inputs(args.data)
@@ -423,7 +430,7 @@ def main():
             raw = _load_and_validate_raw(raw_path, raw_entry["layer"], raw_entry["projection"])
             raw_operands = (raw["activation_fp16"], raw["weight_fp16"])
         records.extend(run_sample(x, i, args, native, append, scope, raw_operands))
-    expected_count = args.samples * (5+4*len(args.scale_layouts)) * len(MODES) * args.rounds
+    expected_count = args.samples * (5+2*len(args.scale_layouts)+2*len(args.binary_scale_layouts or args.scale_layouts)) * len(MODES) * args.rounds
     if len(records) != expected_count:
         raise RuntimeError("incomplete sample/case/mode/round coverage")
     save("summary.json", {"scope": scope, "all_24_samples_completed": args.samples == 24,
