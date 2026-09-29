@@ -56,6 +56,11 @@ python scripts/benchmark_a100_mixed_trace.py \
 manifest、原始操作数 hash；输入误差相对 raw 计算。不能与二次量化记录混合
 汇总。A100 目前没有该 raw 目录中的张量；未自动传输数据或擅自改选实验口径。
 
+原始路径已在 A100 通过 33 项单测及含 4096³ 的 84 条合成四模式记录，
+旧二次量化入口另有 56 条回归记录；见
+[原始 FP16 入口合成验收](evidence/a100_mixed_trace_original_v1/README.md)。
+仍不替代真实 raw 的完整 CLI 与 24 样本正式性能验收。
+
 ### 备选：prepared 二次量化入口（仍需明确确认）
 
 `scripts/benchmark_a100_mixed_trace.py` 同时保留一个**显式二次量化入口**，

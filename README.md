@@ -637,6 +637,8 @@ O5/O6 的计时与旧实验统一为“转换批量摊销 + 端到端单次直�
 运行引擎已通过包含 4096³ 的合成验收，见
 [入口验证记录](docs/evidence/a100_mixed_trace_runner_v2/README.md)。
 原始路径的命令与验证条件见 [实验协议](docs/o5_o6_a100_protocol.md)。
+原始路径含 4096³ 的合成验证与旧路径回归见
+[原始 FP16 入口验收](docs/evidence/a100_mixed_trace_original_v1/README.md)。
 这些改动仅涉及 Python 运行/验证入口，无需为此重新编译 CUDA。
 
 ```bash
