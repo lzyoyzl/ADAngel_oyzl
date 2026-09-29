@@ -69,6 +69,10 @@ def profile_spec(case, warmup):
         raise ValueError("negative warmup")
     if case == "o3":
         symbol, initial = "adangel_sm80_o3_swizzled_bound2", 0
+    elif case in ("o5", "o6"):
+        # The actual cuBLASLt kernel name and HMMA SASS must be saved by NCU.
+        # No source quantization or conversion kernel has this name.
+        symbol, initial = "ampere_.*gemm", 1
     else:
         variant, _, layout = parse_mixed_case(case)
         symbol = "adangel_sm80_mixed_binary" if variant in ("o9", "o10") else "adangel_sm80_split_grouped" + ("_major" if layout == "group_major" else "")
@@ -219,7 +223,7 @@ def main():
     parser.add_argument("--binary-tiles", nargs="+", choices=BINARY_TILES, default=list(BINARY_TILES))
     parser.add_argument("--scale-layouts", nargs="+", choices=SCALE_LAYOUTS, default=["row_major"],
                         help="internal scale-layout A/B; row_major baseline remains default")
-    parser.add_argument("--profile-case", choices=["o3"] + [mixed_case(v, t, l) for v in ("o7", "o8", "o9", "o10") for t in (BINARY_TILES if v in ("o9", "o10") else TILES) for l in SCALE_LAYOUTS],
+    parser.add_argument("--profile-case", choices=["o3", "o5", "o6"] + [mixed_case(v, t, l) for v in ("o7", "o8", "o9", "o10") for t in (BINARY_TILES if v in ("o9", "o10") else TILES) for l in SCALE_LAYOUTS],
                         help="NCU single target, no reference GEMMs/tables; requires repeats=1, rounds=1, modes=compute_only")
     args = parser.parse_args()
     if args.output.exists():
@@ -304,7 +308,8 @@ def main():
         measured = call(args.profile_case, "compute_only", args.warmup, 1)
         y = measured["output"]
         assert torch.isfinite(y).all() and y.dtype == torch.float32
-        assert spec["kernel_filter"].removeprefix("regex:") == measured["kernel"]["kernel_symbol"]
+        if args.profile_case not in ("o5", "o6"):
+            assert spec["kernel_filter"].removeprefix("regex:") == measured["kernel"]["kernel_symbol"]
         save("profile_launch.json", {"case": args.profile_case, "ncu": spec,
              "kernel": dict(measured["kernel"]), "finite_fp32": True,
              "scope": "synthetic_profile_only_not_performance_or_accuracy_acceptance",
