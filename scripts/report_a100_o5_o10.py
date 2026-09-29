@@ -14,6 +14,16 @@ def render(directory):
     if not summary["correctness_passed"] or not summary["raw_fp16_experiment"]:
         raise ValueError("requires completed original-FP16 trace run")
     selected = [r for r in records if r["case"].split("/")[0] in {"o5","o6","o7","o8","o9","o10"}]
+    modes = {"conversion_only", "compute_only", "cold", "steady_state"}
+    if {r["mode"] for r in selected} != modes:
+        raise ValueError("four-mode report requires all four modes; do not relabel a compute-only replication")
+    if len(selected) != config["samples"] * config["rounds"] * 6 * 4:
+        raise ValueError("incomplete or multiple-implementation coverage")
+    identities = {(r["sample_id"], r["case"], r["mode"], r["round"]) for r in selected}
+    if len(identities) != len(selected) or len({r["sample_id"] for r in selected}) != config["samples"]:
+        raise ValueError("duplicate or missing sample coverage")
+    if any(not r["bitwise_equal_validation"] or r["input_policy"] != "original_fp16_direct_source_quantization" for r in selected):
+        raise ValueError("requires verified original-FP16 records")
     if any(r["experiment_naming_version"] != 3 or r["timing_contract_version"] != 2 for r in selected):
         raise ValueError("mixed naming/timing versions")
     rows = {r["case"]: r for r in summary["records"] if r["mode"] == "compute_only"}
@@ -21,6 +31,10 @@ def render(directory):
     if any(len(v)!=1 for v in cases.values()):
         raise ValueError("select exactly one implementation per variant; cannot silently choose winners")
     cases = {v: c[0] for v,c in cases.items()}
+    expected = {(sid,case,mode,round_id) for sid in {r["sample_id"] for r in selected}
+                for case in cases.values() for mode in modes for round_id in range(config["rounds"])}
+    if identities != expected:
+        raise ValueError("missing case/mode/round coverage")
     lines = ["# A100 O5–O10 分组实验结果", "",
         f"来源：`{directory.as_posix()}`；{config['samples']} 个真实样本，{config['rounds']} 轮，"
         f"warmup={config['warmup']}，repeats={config['repeats']}，转换 inner={config['inner']}。",

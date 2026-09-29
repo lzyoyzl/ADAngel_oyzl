@@ -100,7 +100,15 @@ py::dict convert_mixed_bitplanes(const py::dict& source,std::string scale_layout
   return result;
 }
 
-template<int AP,int N,int TK,bool Major,int Threads=256>
+// For K256, each row is eight words. XOR bit 2 of the word index with row
+// bit 2 maps a warp's eight rows x four words onto all 32 banks. It preserves
+// each aligned 16-byte cp.async chunk; global layout and G128 order are unchanged.
+template<bool Swizzle>
+__device__ __forceinline__ int mixed_binary_shared_word(int row,int word) {
+  return Swizzle?(word^(row&4)):word;
+}
+
+template<int AP,int N,int TK,bool Major,int Threads=256,bool Swizzle=false>
 __device__ void mixed_binary_prefetch(typename MixedBinaryConfig<AP,N,TK>::Storage& s,
     int slot,int step,const uint32_t* a,const uint32_t* w,const float* as,const float* ws,
     int m,int n,int k) {
@@ -108,11 +116,13 @@ __device__ void mixed_binary_prefetch(typename MixedBinaryConfig<AP,N,TK>::Stora
   const int t=threadIdx.x,words=k/32,groups=k/128;
   for(int x=t*4;x<C::AW;x+=Threads*4) {
     int plane=x/(64*C::PW),row=(x/C::PW)%64,word=x%C::PW;
-    copy16(&s.a[slot][x],a+(plane*m+blockIdx.y*64+row)*words+step*C::PW+word);
+    copy16(&s.a[slot][(plane*64+row)*C::PW+mixed_binary_shared_word<Swizzle>(row,word)],
+        a+(plane*m+blockIdx.y*64+row)*words+step*C::PW+word);
   }
   for(int x=t*4;x<C::BW;x+=Threads*4) {
     int plane=x/(N*C::PW),row=(x/C::PW)%N,word=x%C::PW;
-    copy16(&s.b[slot][x],w+(plane*n+blockIdx.x*N+row)*words+step*C::PW+word);
+    copy16(&s.b[slot][(plane*N+row)*C::PW+mixed_binary_shared_word<Swizzle>(row,word)],
+        w+(plane*n+blockIdx.x*N+row)*words+step*C::PW+word);
   }
   for(int x=t;x<C::G*64;x+=Threads) {
     int g=step*C::G+x/64,row=blockIdx.y*64+x%64;
@@ -125,10 +135,11 @@ __device__ void mixed_binary_prefetch(typename MixedBinaryConfig<AP,N,TK>::Stora
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int AP,int N,int TK,bool Major,bool Horner=false,int Threads=256>
+template<int AP,int N,int TK,bool Major,bool Horner=false,int Threads=256,bool Swizzle=false>
 __global__ __launch_bounds__(Threads) void adangel_sm80_mixed_binary(
     const uint32_t* a,const uint32_t* w,const float* as,const float* ws,float* y,int m,int n,int k) {
   using C=MixedBinaryConfig<AP,N,TK>;
+  static_assert(!Swizzle || TK==256,"bank-swizzle candidate is only validated for K256");
   using Op=cute::SM80_16x8x128_S32U1U1S32_TN_ANDPOPC;
   extern __shared__ __align__(128) unsigned char bytes[];
   auto& s=*reinterpret_cast<typename C::Storage*>(bytes);
@@ -136,12 +147,12 @@ __global__ __launch_bounds__(Threads) void adangel_sm80_mixed_binary(
   const int lane=threadIdx.x&31,warp=threadIdx.x/32,i=lane&3,j=lane/4;
   const int row0=(warp%4)*16+j,row1=row0+8,wn=warp/4;
   float acc[R][4]={};
-  mixed_binary_prefetch<AP,N,TK,Major,Threads>(s,0,0,a,w,as,ws,m,n,k);
+  mixed_binary_prefetch<AP,N,TK,Major,Threads,Swizzle>(s,0,0,a,w,as,ws,m,n,k);
   for(int step=0;step<k/TK;++step) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
     const int slot=step&1;
-    if(step+1<k/TK) mixed_binary_prefetch<AP,N,TK,Major,Threads>(s,slot^1,step+1,a,w,as,ws,m,n,k);
+    if(step+1<k/TK) mixed_binary_prefetch<AP,N,TK,Major,Threads,Swizzle>(s,slot^1,step+1,a,w,as,ws,m,n,k);
     #pragma unroll
     for(int g=0;g<C::G;++g) {
       int32_t sum[2][R][4]={};
@@ -149,7 +160,10 @@ __global__ __launch_bounds__(Threads) void adangel_sm80_mixed_binary(
       #pragma unroll
       for(int wb=0;wb<4;++wb) {
         #pragma unroll
-        for(int r=0;r<R;++r) b[wb][r]=s.b[slot][(wb*N+(wn*R+r)*8+j)*C::PW+4*g+i];
+        for(int r=0;r<R;++r) {
+          const int row=(wn*R+r)*8+j;
+          b[wb][r]=s.b[slot][(wb*N+row)*C::PW+mixed_binary_shared_word<Swizzle>(row,4*g+i)];
+        }
       }
       if constexpr(Horner) {
         // Two's-complement Horner reconstruction. B's negative MSB starts
@@ -158,8 +172,8 @@ __global__ __launch_bounds__(Threads) void adangel_sm80_mixed_binary(
         // bounded by G128 * 128 * 8, so no overflow/rounding is introduced.
         #pragma unroll
         for(int ab=AP-1;ab>=0;--ab) {
-          const uint32_t a0=s.a[slot][(ab*64+row0)*C::PW+4*g+i];
-          const uint32_t a1=s.a[slot][(ab*64+row1)*C::PW+4*g+i];
+          const uint32_t a0=s.a[slot][(ab*64+row0)*C::PW+mixed_binary_shared_word<Swizzle>(row0,4*g+i)];
+          const uint32_t a1=s.a[slot][(ab*64+row1)*C::PW+mixed_binary_shared_word<Swizzle>(row1,4*g+i)];
           #pragma unroll
           for(int r=0;r<R;++r) {
             uint32_t d0,d1,d2,d3;
@@ -179,8 +193,8 @@ __global__ __launch_bounds__(Threads) void adangel_sm80_mixed_binary(
       } else {
       #pragma unroll
       for(int ab=0;ab<AP;++ab) {
-        const uint32_t a0=s.a[slot][(ab*64+row0)*C::PW+4*g+i];
-        const uint32_t a1=s.a[slot][(ab*64+row1)*C::PW+4*g+i];
+        const uint32_t a0=s.a[slot][(ab*64+row0)*C::PW+mixed_binary_shared_word<Swizzle>(row0,4*g+i)];
+        const uint32_t a1=s.a[slot][(ab*64+row1)*C::PW+mixed_binary_shared_word<Swizzle>(row1,4*g+i)];
         #pragma unroll
         for(int wb=0;wb<4;++wb) {
           constexpr int WSign=3;
@@ -217,26 +231,27 @@ __global__ __launch_bounds__(Threads) void adangel_sm80_mixed_binary(
 }
 
 void launch_mixed_binary(const MixedBitplanes& a,const MixedBitplanes& w,at::Tensor& y,
-    int m,int n,int k,int tn,int tk,cudaStream_t stream,bool configure=false,bool horner=false,bool wide=false) {
-  auto planes=[&](auto ap) {auto layout=[&](auto gm) {auto tile=[&](auto nc,auto kc,auto hor,auto threads) {
+    int m,int n,int k,int tn,int tk,cudaStream_t stream,bool configure=false,bool horner=false,bool wide=false,bool swizzle=false) {
+  auto planes=[&](auto ap) {auto layout=[&](auto gm) {auto tile=[&](auto nc,auto kc,auto hor,auto threads,auto swiz) {
     constexpr int A=decltype(ap)::value,N=decltype(nc)::value,K=decltype(kc)::value;
     constexpr bool G=decltype(gm)::value;
     constexpr size_t S=sizeof(typename MixedBinaryConfig<A,N,K>::Storage);
     constexpr int T=decltype(threads)::value;
-    auto kernel=adangel_sm80_mixed_binary<A,N,K,G,decltype(hor)::value,T>;
+    auto kernel=adangel_sm80_mixed_binary<A,N,K,G,decltype(hor)::value,T,decltype(swiz)::value>;
     if(configure) {check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(S)));return;}
     kernel<<<dim3(n/N,m/64),T,S,stream>>>(
         reinterpret_cast<const uint32_t*>(a.packed.data_ptr<int32_t>()),
         reinterpret_cast<const uint32_t*>(w.packed.data_ptr<int32_t>()),
         a.scale.data_ptr<float>(),w.scale.data_ptr<float>(),y.data_ptr<float>(),m,n,k);
   };
-    if(wide) {
-      if(horner) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::true_type{},std::integral_constant<int,512>{});
-      else tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::false_type{},std::integral_constant<int,512>{});
-    } else if(horner) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::true_type{},std::integral_constant<int,256>{});
-    else if(tn==128) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::false_type{},std::integral_constant<int,256>{});
-    else if(tk==512) tile(std::integral_constant<int,64>{},std::integral_constant<int,512>{},std::false_type{},std::integral_constant<int,256>{});
-    else tile(std::integral_constant<int,64>{},std::integral_constant<int,128>{},std::false_type{},std::integral_constant<int,256>{});
+    if(swizzle) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::false_type{},std::integral_constant<int,256>{},std::true_type{});
+    else if(wide) {
+      if(horner) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::true_type{},std::integral_constant<int,512>{},std::false_type{});
+      else tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::false_type{},std::integral_constant<int,512>{},std::false_type{});
+    } else if(horner) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::true_type{},std::integral_constant<int,256>{},std::false_type{});
+    else if(tn==128) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::false_type{},std::integral_constant<int,256>{},std::false_type{});
+    else if(tk==512) tile(std::integral_constant<int,64>{},std::integral_constant<int,512>{},std::false_type{},std::integral_constant<int,256>{},std::false_type{});
+    else tile(std::integral_constant<int,64>{},std::integral_constant<int,128>{},std::false_type{},std::integral_constant<int,256>{},std::false_type{});
   };if(a.major) layout(std::true_type{});else layout(std::false_type{});
   };if(a.planes==8) planes(std::integral_constant<int,8>{});else planes(std::integral_constant<int,6>{});
   C10_CUDA_KERNEL_LAUNCH_CHECK();

@@ -1,132 +1,118 @@
-# 混合低精度 kernel 的分层工作流（阶段稿）
+# A100 O5–O10：实现与验证流程
 
-> 本文旧 O5/O6 是现在的 O7/O8。已扩展为 [O5–O10 分组实验](o5_o10_a100_protocol.md)，
-> 原始数据来源已经确定并完成复制校验；下面的“待澄清”是历史阶段状态。
+本文使用当前命名：O5/O6 是 FP16 基线，O7/O8 是双 INT4，O9/O10 是 Binary。
+实验定义和运行命令见 [分组协议](o5_o10_a100_protocol.md)。O0–O4 的原有入口保留。
 
-范围：总结现有 O3 与正在开发的 O5/O6 共用计算路径。
-O5/O6 格式与定点 F 已确认，正式数据处理口径仍待澄清。
-本文不是最终实验验收报告。
+## 1. 共用输入，分开计算路径
 
-## Conversion：先证明数值，再组织数据
+每个样本从原始 FP16 trace 生成两套源数据，随后组内三个后端共用同一份编码张量。
+源量化只做一次，不计入在线转换时间；不从旧 INT8/MXFP4 二次量化作为正式输入。
 
-    浮点 A/W（必须记录原始 FP16 或 prepared 反量化来源）
-      → 指定浮点格式及 G128 scale/内部指数
-      → 解码局部数值并对齐
-      → RNE + clamp 得到 Q4 / Q8 / Q6
-      → Q6 符号扩展至 INT8（仅 O6）
-      → A 的 low-U4/high-S4 打包，W 的 S4 打包
-      → 有效 FP32 A/W group scale
+| 组 | 共用权重 / 激活 | FP16 基线 | 双 INT4 | Binary |
+|---|---|---|---|---|
+| A | NVFP4-G128 / MXFP8 E4M3-G128 | O5 | O7 | O9 |
+| B | HiF4-G128 / 实验 NV-style FP6 E2M3-G128 | O6 | O8 | O10 |
 
-必须把三类行为分开：量化改变数值；对齐/转定点可能舍入或饱和；
-纯 packing、补码拆分与符号扩展不应再改变数值。
-共享 scale、内部 micro-exponent、定点二进制小数位应最终对应到
-明确的“整数单位所代表的实数”。不允许只保留 payload 而丢弃元数据。
+G128 是沿 K 每 128 个元素共用尺度。这些 G128 扩展和带两级 scale 的 FP6
+都按已确认的实验定义实现，不作为 NVIDIA 标准格式宣称。
 
-转换单测先覆盖所有有限编码、零、tie、边界、异常 scale，再看随机和真实输入。
-MSE 至少区分原始 FP16→格式的损失、格式→定点的新增损失，以及
-实际 CUDA 输出对定点语义参考的实现误差。三者不可用一个 MSE 混淆。
+## 2. 转换器输出什么
 
-转换阶段采用批量摊销，端到端直接计时。
-compute-only 的前处理必须提前完成；缓存静态 W 不等于免除在线 A 转换。
-当前内部 `_benchmark_mixed` 已接入四模式：输入为编码后的源格式，预先分配
-整数 payload、有效 scale 和输出；conversion_only 仅测源格式→定点，
-compute_only 提前完成两侧转换，cold 两侧均转换，steady_state 缓存 W。
-Python 源格式量化参考在上述区间外，不伪装成 CUDA 转换性能。
-新 A100 对照采用计时契约 v2：转换 total 对齐旧 O3，逐次相加 W/A 的独立
-摊销样本后统计；cold/steady total 仍为单次直接 Event，不相加分阶段结果。
-O0 原生联合转换 total 单独保存，不改旧后端/旧结果。所有 Event 在预热前
-创建，直接路径先于转换微基准；详见 [计时规则](o5_o6_a100_protocol.md)。
-尚不发布正式 conversion/cold/steady 数字，待完整运行验收。
+令源值为 `v × s`，定点转换为 `q = clamp(RNE(v × 2^F))`，有效尺度为 `s × 2^(-F)`。
+HiF4 的内部微指数先并入 v。舍入改变数值；后续补码拆分和 packing 不再改变 q。
 
-### 格式的物理存储与整数接口
+| 来源 | 整数 | F | 有效尺度 |
+|---|---|---:|---|
+| NVFP4 E2M1 权重 | Q4 | 0 | E4M3 block scale × FP32 tensor scale |
+| MXFP8 E4M3 激活 | Q8 | −2 | UE8M0 scale × 4 |
+| HiF4 合并微指数后的权重 | Q4 | 0 | E6M2 scale |
+| FP6 E2M3 激活 | Q6 | 2 | E4M3 block scale × FP32 tensor scale ÷ 4 |
 
-令 R 为矩阵行数、G=K/128。以下是参考和 CUDA 转换共同使用的布局：
+O5/O6 直接解码源值并 RNE 到 FP16，**不经过上述定点舍入**。
+O7/O8 将源解码、定点转换、双 nibble packing 和有效 scale 输出融合。
+O9/O10 将源解码、定点转换、warp ballot 和 scale 输出融合，不先生成完整 INT8 中间矩阵。
+源解码用精确指数位重编码替代通用 `ldexp`；合法编码均另与独立参考核对。
 
-| 源格式 | Payload | Scale / 附加信息 |
-|---|---|---|
-| NVFP4-G128 | uint8[R,K/2]，偶数 K 位于低 nibble | E4M3 uint8[R,G]，FP32 tensor scale[1] |
-| MXFP8-E4M3-G128 | uint8[R,K] | UE8M0 uint8[R,G] |
-| HiF4-like-G128 | S1P2 uint8[R,K/2] | E6M2 uint8[R,G]；微指数 bit-pack 为 uint8[R,G,2] 和 [R,G,4] |
-| NV-style FP6-E2M3-G128 | uint8[R,K]，低 6 位编码、高 2 位零 | E4M3 uint8[R,G]，FP32 tensor scale[1] |
+### 物理存储
 
-FP6 此处采用 byte-padded 存储，不是压紧到每 4 元素 3 字节。转换后的 Q6
-先符号扩展，再与 Q8 一样输出 A_split[2R,K/2]；不能把原始 FP6 的高位
-补零与有符号 Q6 的符号扩展混淆。字节吞吐应按实际布局统计，不能套用 6/8。
-所有源格式最后归约到 W_q4、A_split 和双侧 FP32 G128 scale。
+R 表示矩阵行数，G=K/128。
 
-### 独立验证层
+| 张量 | 实际布局 |
+|---|---|
+| NVFP4 源 payload | uint8[R,K/2]；偶数 K 在低 nibble |
+| MXFP8 源 payload | uint8[R,K] |
+| HiF4 源 payload / 微指数 | uint8[R,K/2]；micro8[R,G,2]、micro4[R,G,4] 按 bit packing |
+| FP6 源 payload | uint8[R,K]，仅低 6 位有效；不是紧凑 6-bit 存储 |
+| O7/O8 权重 | S4 packed uint8[N,K/2] |
+| O7/O8 激活 | uint8[2M,K/2]，前 M 行 low U4、后 M 行 high S4 |
+| O9 权重 / 激活 | int32[4,N,K/32] / int32[8,M,K/32] |
+| O10 权重 / 激活 | int32[4,N,K/32] / int32[6,M,K/32] |
 
-`test_mixed_formats.py` 校验标量编码、全有限值/中点、HiF4 微指数及补码；
-`validate_a100_mixed_formats.py` 校验 CUDA 打包/scale 逐位一致，再对独立
-CPU 整数点积参考检查 GEMM，并核对四模式阶段、重复次数与缓存元数据。
-其中 MSE vs O0 来自明确标注的合成 FP16，不替代 24 个真实样本。
+Binary 每个 32-bit word 装同一行、同一平面的 32 个连续 K 元素；第 k 个 lane
+对应 word 的第 k 个 bit。int32 是存储容器，计算操作数是 B1，不是 INT32 GEMM。
+O10 真正使用六个激活平面，没有补到八平面计算。
 
-## Optimization：围绕有效数据复用，而不是只比较位宽
+有效 FP32 scale 的逻辑 shape 为 [R,G]。INT4 选定配置直接输出物理 [G,R]，
+以 stride=[1,R] 的 view 保留逻辑 shape；Binary 选定配置采用自然 [R,G]。
+布局选择包含在转换计时中，没有未计时的额外重排。
 
-| 层级 | 共用实现 | 应观察的成本/约束 |
-|---|---|---|
-| 全局输入 | A_split[2M,K/2]、W_q4[N,K/2]、双侧 G128 scale | 读取合并、额外 scale 流量、格式变换是否计时 |
-| Global→shared | cp.async 两级 pipeline，字节/半字节一致的 swizzle | 预取重叠、stage 重用安全、shared 容量 |
-| Shared→register | CuTe LDSM layout；从真实 fragment 坐标定位输出 | bank conflict、fragment 重复装载 |
-| Tensor Core | low U4×S4 和 high S4×S4；权重片段供两路复用 | 发射带宽、IMMA 依赖链、寄存器存活 |
-| G128 后处理 | low+16×high；INT32→FP32；乘双侧 scale，FMA 累加 | 通用 ALU 指令、scale 广播、不得跨组后缩放 |
-| 最终输出 | FP32 accumulator 留寄存器，最后向量写回一次 | 寄存器/spill 与并发 CTA 的取舍 |
+## 3. Tile 内如何计算
 
-K256 pipeline 是一次搬两个 G128，不是把两个 group 合成一个整数点积。
-窄 N-slice fragment 降低中间 INT32 存活量；扩大整体 CTA 并不要求
-同时把整个 CTA 的所有 partial 保存在寄存器。
+O5/O6 复用 O0 的 cuBLASLt FP16 Tensor Core 选择策略，FP32 累加/输出，不启用 split-K。
+算法查询、workspace、输出分配都在计时前。
 
-不要将“越少指令”“零 spill”“更大 tile”各自作为绝对目标。
-保持数值语义的前提下，以配对性能、原始计时分布、ISA 和内存安全联合选择。
-对具有非二次幂 scale 的新场景，旧 O3 的指数位加法技巧不能直接复用。
+O7/O8 与 O9/O10 的选定 CTA 均为 **64×128×256**，256 threads，两个 shared-memory stage，
+用 `cp.async` 重叠搬运与计算。A100 不使用 TMA。一次 K256 搬运包含两个 G128，
+它们必须分别缩放，不能把两个整数 partial 相加后只乘一个 scale。
 
-### Scale 布局候选：转换器与 GEMM 协同设计
+```text
+每个 CTA 持有一个 64×128 的 FP32 输出 tile
+for 每个 K256 stage:
+    等待当前 shared stage，预取下一 stage
+    for 其中两个 G128，按 K 升序:
+        在寄存器内计算该 G128 的整数点积
+        scale = round_fp32(A_scale[row,g] × W_scale[col,g])
+        accumulator = fma(float(integer_dot), scale, accumulator)
+最后每个输出元素写回一次
+```
 
-现有自然布局为 `scale[row,group]`。GEMM 同时加载某 group 的多行 scale，
-自然布局会使相邻 lane 跨行读取；K4096 时跨距为 128 字节。
-新 `group_major` 候选在转换 kernel 中直接写入物理 `[group,row]`，GEMM
-按相同顺序读取。公开张量仍为 `[row,group]` 的 view，stride 为 `[1,rows]`；
-调用者不能假设它 contiguous，验证逻辑值时须显式按逻辑顺序比较。
+**双 INT4：** `a = low_u4 + 16 × high_s4`，先得到两路点积，再在 INT32 寄存器内重构。
+Q6 激活先符号扩展为 INT8，所以 O8 仍是两路 INT4，不会自动减少为 O7 的 6/8 工作量。
+同一正式函数中必须出现 U4×S4 和 S4×S4 IMMA。沿用 O3 的窄 N-slice fragment
+复用、寄存器 partial 和最终向量写回；不把逐组完整输出写入显存。
 
-payload 的 packing、scale 的 FP32 数值、两路 INT4 和逐 G128 FMA 均不变。
-没有新增独立重排 kernel 或额外 scale buffer，布局写入成本包含在原转换
-计时内。自然布局与候选使用不同 kernel symbol，防止审计或结果混淆。
-默认仍为自然布局，待配对性能和内存安全验证后再决定是否采用。
+**Binary：** 权重补码位权为 [1,2,4,−8]；激活为 Q8 的 [1,…,64,−128] 或 Q6 的
+[1,…,16,−32]。`m16n8k128.and.popc` 产生各平面对的非负 popcount，按两侧位权乘积
+重构有符号整数点积。O9 每个 atom/G128 有 32 个平面对，O10 有 24 个。
+权重 fragments 缓存在寄存器并跨激活平面复用，使用两条整数累加链；partial 不落全局内存。
+保留相同 G128 顺序和 FP32 FMA 顺序，因此应分别与 O7/O8 输出逐位相同。
 
-## 交付验证顺序
+## 4. 计时边界
 
-1. 固定格式契约和独立 CPU 参考，明确 MSE 主参考 O0。
-2. 小形状 GPU 正确性、padding/sign、逐组 scale 和旧路径回归。
-3. 审计同一正式函数的 U4/S4 IMMA、cp.async、资源/spill。
-4. Compute Sanitizer 检查边界、stage 生命周期与读写同步。
-5. 固定真实 24 样本，同进程交错顺序对照 O0；保留所有原始计时。
-6. 仅在瓶颈仍不明确时做针对性 NCU；profile 时间不混入普通 Event 性能。
-7. 发布格式、代码/二进制 hash、MSE、四模式结果和异常说明。
+| 模式 | 计时内容 |
+|---|---|
+| conversion-only | 分别测 W/A 源格式→执行格式；每个 Event 重复 inner 次后除以 inner |
+| compute-only | W/A 已转换，仅测一次 GEMM |
+| cold | 一次 W 转换 + A 转换 + GEMM 的直接 Event 区间 |
+| steady-state | 已缓存 W 转换，一次 A 转换 + GEMM 的直接 Event 区间 |
 
-这个顺序中任一未完成项必须标为未验收，不能因某个合成 GEMM 很快就跳过。
+转换 total 是逐次 W/A 摊销样本之和，再计算统计量；不是联合 Event。
+端到端 total 独立实测，不使用各阶段 median 相加。所有 Event、buffer 和计划均预先分配。
+源量化、数据 I/O、正确性检查和 MSE reduction 均不计入以上区间。
 
-### 真实 trace 运行入口与误差账本
+## 5. 验证与证据
 
-`benchmark_a100_mixed_trace.py` 区分两种互斥数据来源。`--raw-data` 从原始
-FP16 直接生成源格式，原始 manifest 必须与 prepared 来源一致，并在计时外
-逐位重放核对公共准备。这与旧 O0–O4 的公共量化起点一致；O0 参考不改变。
-备选 `--allow-secondary-quantization` 将已有 INT8/MXFP4 经 O0 原生反量化
-得到 FP16 操作数；这只是已有量化值的展开，不是恢复原始模型 FP16。
-两类结果的 input_policy 不同，禁止混合汇总。原始数据尚未提供，二次量化
-尚未明确确认；两条入口的合成验证均不能替代真实 24 样本实验。
-新源格式仅在内存中生成，不保存中间 `.pt`，并排除在四种计时之外。
-只读 manifest/hash 校验不需要开启二次量化，也不生成源格式。
+1. 标量参考和 CUDA 转换对照：有限编码、tie、正负零、scale 边界、非法 code。
+2. 解包实际 GPU bitplane，与定点 q 逐元素比较；FP16 baseline 与源解码后的 half 比较。
+3. 整数 GEMM 与独立逐 G128 参考比较，Binary 与双 INT4 输出逐位比较。
+4. 对同一实际函数审计 PTX/SASS：INT4 IMMA 或 Binary BMMA，加 cp.async/LDGSTS；不由 probe 代替。
+5. memcheck/racecheck 检查边界与 stage 生命周期。cuBLAS kernel 单独由 NCU 确认 HMMA。
+6. 24 个原始 FP16 样本做四模式同输入配对；保留原始计时、CV、GPU 状态和代码/二进制 hash。
 
-每个样本保留三层证据：
+主 MSE 是 O7/O9 对 O5、O8/O10 对 O6 的 FP32 输出误差，用 FP64 reduction。
+相对旧 O0 的 MSE 仅为辅助列；不是模型下游任务精度。
+原始源量化损失、转定点新增损失、kernel 实现误差分别记录，不能相加当作总误差。
 
-1. Provenance：原 prepared manifest 与文件 hash，原始或 O0 展开操作数的 hash，
-   以及新源格式各 payload/scale 的 hash、shape、dtype。
-2. 输入误差：W/A 各自的 source vs input、fixed vs source、fixed vs input；
-   input 是原始 FP16 或 O0 bridge，由明确记录的 input_policy 决定。
-   误差不是逐层可直接相加的数值；它们分别回答不同转换环节的问题。
-3. 输出误差：O5/O6 对独立有序 G128 定点参考，以及各后端相对同源 O0 的 MSE。
-   各计时模式、各 scale 布局的输出另作逐位比较。
-
-统计先折叠同一样本的重复轮次，再汇总样本；每次 Event 不是独立实验样本。
-详见 [入口、数据限制和命令](o5_o6_a100_protocol.md)。只有完整数据运行结束
-且检查覆盖了该路径，才能把结果提升为对应数据口径的正式结论。
+实现入口：`csrc/sm80/mixed_conversion.cuh`、`mixed_bitplane.cuh`、`mixed_benchmark.cuh`；
+真实实验入口：`scripts/benchmark_a100_mixed_trace.py`。新实验通过专用入口运行，
+不把历史 O5/O6 日志静默解释为当前 FP16 基线，也不改变 SM120 的默认后端。

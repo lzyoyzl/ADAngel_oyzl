@@ -12,6 +12,29 @@ def horner(a, w, bits):
 
 
 class BinaryReconstructionTests(unittest.TestCase):
+    def test_k256_shared_swizzle_preserves_cpasync_chunks_and_fragment_words(self):
+        # Address model only; CUDA correctness/sanitizer/NCU remain required.
+        for rows in (64, 128):
+            physical = {}
+            for row in range(rows):
+                addresses = [row*8+(word^(row&4)) for word in range(8)]
+                self.assertEqual(set(addresses), set(range(row*8, row*8+8)))
+                for chunk in (0, 4):
+                    start = row*8+(chunk^(row&4))
+                    self.assertEqual(start % 4, 0)
+                    self.assertEqual(addresses[chunk:chunk+4], list(range(start,start+4)))
+                for word, address in enumerate(addresses):
+                    physical[address] = (row,word)
+            for base in range(0,rows,8):
+                for g in (0,1):
+                    banks = []
+                    for lane in range(32):
+                        row, word = base+lane//4, g*4+lane%4
+                        address = row*8+(word^(row&4))
+                        self.assertEqual(physical[address], (row,word))
+                        banks.append(address % 32)
+                    self.assertEqual(len(set(banks)),32)
+
     def test_all_q8_q4_and_q6_q4_values(self):
         # Includes -128/-32/-8 beyond current source formats' normal maxima.
         for bits in (6, 8):

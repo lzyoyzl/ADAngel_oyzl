@@ -17,7 +17,7 @@ import time
 from benchmark_a100_o1 import command, stats
 
 TILES = ("64x64x128", "64x128x256")
-BINARY_TILES = (*TILES, "64x64x512", "64x128x256_horner", "64x128x256_w16", "64x128x256_horner_w16")
+BINARY_TILES = (*TILES, "64x64x512", "64x128x256_horner", "64x128x256_w16", "64x128x256_horner_w16", "64x128x256_swizzle")
 SCALE_LAYOUTS = ("row_major", "group_major")
 MODES = ("conversion_only", "compute_only", "cold", "steady_state")
 TIMING_CONTRACT_VERSION = 2

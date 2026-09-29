@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare O0/O1/O3/O7/O8 with an explicit, recorded source-data policy.
+"""Compare O5/O7/O9 and O6/O8/O10, with O0/O1/O3 as auxiliary references.
 
 --raw-data uses original FP16, linked to the existing prepared trace by hashes
 and an exact replay of public preparation. The alternative O0 FP16 bridge needs
@@ -25,6 +25,13 @@ from benchmark_a100_o1 import command, stats
 INPUT_POLICY = "prepared_o0_fp16_bridge_secondary_quantization"
 RAW_INPUT_POLICY = "original_fp16_direct_source_quantization"
 TILE = "64x128x256"
+
+
+def selected_modes(args):
+    modes = tuple(getattr(args, "modes", MODES))
+    if not modes or len(set(modes)) != len(modes) or any(m not in MODES for m in modes):
+        raise ValueError("timing modes must be nonempty, supported, and unique")
+    return modes
 
 
 def inspect_inputs(directory):
@@ -289,7 +296,8 @@ def run_sample(x, sample_index, args, native, append, scope, raw_operands=None):
         "reference": "fixed: ordered_G128_FP64_integer_dot_FP32_accumulation_emulation; fp16: FP32_GEMM_of_decoded_operands",
         "tolerance": {"rtol": 1e-3, "atol": 1e-3}})
     records = []
-    for mode_id, mode in enumerate(MODES):
+    for mode in selected_modes(args):
+        mode_id = MODES.index(mode)
         for r in range(args.rounds):
             offset = (sample_index + mode_id + r) % len(cases)
             order = cases[offset:] + cases[:offset]
@@ -349,6 +357,8 @@ def main():
     p.add_argument("--warmup", type=int, default=50)
     p.add_argument("--repeats", type=int, default=200)
     p.add_argument("--inner", type=int, default=100)
+    p.add_argument("--modes", nargs="+", choices=MODES, default=list(MODES),
+                   help="default all four; use compute_only for separately reported replication, never silently merge runs")
     p.add_argument("--scale-layouts", nargs="+", choices=SCALE_LAYOUTS, default=["row_major"])
     from benchmark_a100_mixed import BINARY_TILES
     p.add_argument("--binary-tile", choices=BINARY_TILES, default=TILE)
@@ -357,6 +367,10 @@ def main():
     p.add_argument("--binary-scale-layouts",nargs="+",choices=SCALE_LAYOUTS,
                    help="default inherits --scale-layouts; selected binary layout may differ from INT4")
     args = p.parse_args()
+    try:
+        selected_modes(args)
+    except ValueError as error:
+        p.error(str(error))
     if not args.validate_input_only and not (args.raw_data or args.allow_secondary_quantization):
         p.error("requires --raw-data for original FP16, or requires explicit --allow-secondary-quantization")
     if not (1 <= args.samples <= 24) or args.rounds < 1 or args.warmup < 0 or args.repeats < 2 or args.inner < 2:
@@ -430,10 +444,12 @@ def main():
             raw = _load_and_validate_raw(raw_path, raw_entry["layer"], raw_entry["projection"])
             raw_operands = (raw["activation_fp16"], raw["weight_fp16"])
         records.extend(run_sample(x, i, args, native, append, scope, raw_operands))
-    expected_count = args.samples * (5+2*len(args.scale_layouts)+2*len(args.binary_scale_layouts or args.scale_layouts)) * len(MODES) * args.rounds
+    expected_count = args.samples * (5+2*len(args.scale_layouts)+2*len(args.binary_scale_layouts or args.scale_layouts)) * len(selected_modes(args)) * args.rounds
     if len(records) != expected_count:
         raise RuntimeError("incomplete sample/case/mode/round coverage")
     save("summary.json", {"scope": scope, "all_24_samples_completed": args.samples == 24,
+        "modes_completed": list(selected_modes(args)),
+        "all_four_modes_completed": set(selected_modes(args)) == set(MODES),
         "raw_fp16_experiment": args.raw_data is not None, "correctness_passed": True, "no_filtering": True,
         "bootstrap_unit": "sample (rounds collapsed); descriptive CI, samples share a trace and are correlated",
         "records": summarize_trace(records)})

@@ -1,0 +1,32 @@
+{
+  "case": "o5",
+  "ncu": {
+    "kernel_filter": "regex:ampere_.*gemm",
+    "launch_skip": 51,
+    "launch_count": 1,
+    "initial_correctness_launches": 1
+  },
+  "kernel": {
+    "library": "cublasLt",
+    "algorithm_id": 6,
+    "workspace_bytes": 0,
+    "numerical_impl_flags": 66050,
+    "tensor_core": true,
+    "split_k": 1,
+    "compute_type": "CUBLAS_COMPUTE_32F",
+    "input_dtype": "fp16",
+    "output_dtype": "fp32",
+    "implementation": "source_dequant_fp16_cublasLt",
+    "scale_layout": "not_applicable",
+    "mma": "FP16 HMMA with FP32 accumulation",
+    "dequantization": "decode_source_fp32_then_fp16_rne_no_fixed_rounding",
+    "variant": "o5",
+    "experiment_naming_version": 3,
+    "paired_fp16_baseline": "o5",
+    "weight_source_format": "nvfp4_g128",
+    "activation_source_format": "mxfp8_e4m3_g128"
+  },
+  "finite_fp32": true,
+  "scope": "synthetic_profile_only_not_performance_or_accuracy_acceptance",
+  "timings_excluded": "NCU replay timings must not enter ordinary benchmark tables"
+}

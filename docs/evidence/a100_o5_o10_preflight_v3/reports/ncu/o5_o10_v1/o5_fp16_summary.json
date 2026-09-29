@@ -1,0 +1,132 @@
+{
+  "scope": "NCU_diagnostic_not_Event_benchmark",
+  "notes": [
+    "Values retain NCU's exported units; duration may be us, not ms.",
+    "Stall ratios are cycles per issued instruction, not runtime fractions.",
+    "Theoretical excessive sectors are not measured DRAM bytes."
+  ],
+  "kernels": [
+    {
+      "source": "reports/ncu/o5_o10_v1/o5_fp16_raw.csv",
+      "kernel": "ampere_s16816gemm_fp16_128x128_ldg8_stages_32x5_tn",
+      "metrics": {
+        "gpu__time_duration.sum": {
+          "value": 607.008,
+          "unit": "us"
+        },
+        "gpc__cycles_elapsed.avg.per_second": {
+          "value": 1.214801,
+          "unit": "Ghz"
+        },
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "value": 84.282259,
+          "unit": "%"
+        },
+        "gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed": {
+          "value": 32.573432,
+          "unit": "%"
+        },
+        "l1tex__throughput.avg.pct_of_peak_sustained_elapsed": {
+          "value": 46.654007,
+          "unit": "%"
+        },
+        "smsp__warps_eligible.avg.per_cycle_active": {
+          "value": 0.319327,
+          "unit": "warp"
+        },
+        "smsp__issue_active.avg.pct_of_peak_sustained_active": {
+          "value": 22.636015,
+          "unit": "%"
+        },
+        "sm__warps_active.avg.pct_of_peak_sustained_active": {
+          "value": 11.82511,
+          "unit": "%"
+        },
+        "smsp__inst_executed.sum": {
+          "value": 67911680.0,
+          "unit": "inst"
+        },
+        "derived__memory_l1_wavefronts_shared_excessive": {
+          "value": 16777216.0,
+          "unit": ""
+        },
+        "derived__memory_l2_theoretical_sectors_global_excessive": {
+          "value": 0.0,
+          "unit": "byte"
+        },
+        "smsp__average_warps_issue_stalled_barrier_per_issue_active.ratio": {
+          "value": 0.161164,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_branch_resolving_per_issue_active.ratio": {
+          "value": 0.054368,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_dispatch_stall_per_issue_active.ratio": {
+          "value": 0.048676,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_drain_per_issue_active.ratio": {
+          "value": 0.01105,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_imc_miss_per_issue_active.ratio": {
+          "value": 0.01463,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_lg_throttle_per_issue_active.ratio": {
+          "value": 0.051193,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio": {
+          "value": 0.050516,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_math_pipe_throttle_per_issue_active.ratio": {
+          "value": 2.869397,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_membar_per_issue_active.ratio": {
+          "value": 0.0,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_mio_throttle_per_issue_active.ratio": {
+          "value": 0.347438,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_misc_per_issue_active.ratio": {
+          "value": 4e-05,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_no_instruction_per_issue_active.ratio": {
+          "value": 0.031394,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_not_selected_per_issue_active.ratio": {
+          "value": 0.4109,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_selected_per_issue_active.ratio": {
+          "value": 1.0,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_short_scoreboard_per_issue_active.ratio": {
+          "value": 0.040869,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_sleeping_per_issue_active.ratio": {
+          "value": 0.0,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_tex_throttle_per_issue_active.ratio": {
+          "value": 0.0,
+          "unit": "inst"
+        },
+        "smsp__average_warps_issue_stalled_wait_per_issue_active.ratio": {
+          "value": 3.289953,
+          "unit": "inst"
+        }
+      }
+    }
+  ]
+}

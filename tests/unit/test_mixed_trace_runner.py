@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest import mock
 from types import ModuleType
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -21,6 +22,13 @@ spec.loader.exec_module(module)
 
 
 class MixedTraceRunnerTests(unittest.TestCase):
+    def test_explicit_mode_subset_preserves_default_and_rejects_duplicates(self):
+        self.assertEqual(module.selected_modes(SimpleNamespace()), tuple(module.MODES))
+        self.assertEqual(module.selected_modes(SimpleNamespace(modes=["compute_only"])), ("compute_only",))
+        for modes in ([], ["compute_only", "compute_only"], ["invalid"]):
+            with self.assertRaises(ValueError):
+                module.selected_modes(SimpleNamespace(modes=modes))
+
     def make_fixture(self, directory):
         manifest = extended_formal_manifest()
         for entry in manifest["samples"]:
