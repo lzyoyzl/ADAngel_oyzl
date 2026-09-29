@@ -349,7 +349,8 @@ def main():
     p.add_argument("--repeats", type=int, default=200)
     p.add_argument("--inner", type=int, default=100)
     p.add_argument("--scale-layouts", nargs="+", choices=SCALE_LAYOUTS, default=["row_major"])
-    p.add_argument("--binary-tile", choices=("64x64x128", "64x128x256", "64x64x512", "64x128x256_horner"), default=TILE)
+    from benchmark_a100_mixed import BINARY_TILES
+    p.add_argument("--binary-tile", choices=BINARY_TILES, default=TILE)
     args = p.parse_args()
     if not args.validate_input_only and not (args.raw_data or args.allow_secondary_quantization):
         p.error("requires --raw-data for original FP16, or requires explicit --allow-secondary-quantization")
