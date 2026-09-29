@@ -158,7 +158,7 @@ def main():
                 cw, wq, ws = convert(wsrc, f"{pattern}_w_{k}")
                 ca, aq, asc = convert(asrc, f"{pattern}_a_{k}")
                 expected = reference(aq, asc, wq, ws)
-                for btile in ("64x64x128", "64x128x256", "64x64x512"):
+                for btile in ("64x64x128", "64x128x256", "64x64x512", "64x128x256_horner"):
                     if btile.endswith("512") and k%512:
                         continue
                     for layout in ("row_major", "group_major"):

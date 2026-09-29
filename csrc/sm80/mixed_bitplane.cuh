@@ -125,7 +125,7 @@ __device__ void mixed_binary_prefetch(typename MixedBinaryConfig<AP,N,TK>::Stora
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int AP,int N,int TK,bool Major>
+template<int AP,int N,int TK,bool Major,bool Horner=false>
 __global__ __launch_bounds__(256) void adangel_sm80_mixed_binary(
     const uint32_t* a,const uint32_t* w,const float* as,const float* ws,float* y,int m,int n,int k) {
   using C=MixedBinaryConfig<AP,N,TK>;
@@ -151,6 +151,32 @@ __global__ __launch_bounds__(256) void adangel_sm80_mixed_binary(
         #pragma unroll
         for(int r=0;r<R;++r) b[wb][r]=s.b[slot][(wb*N+(wn*R+r)*8+j)*C::PW+4*g+i];
       }
+      if constexpr(Horner) {
+        // Two's-complement Horner reconstruction. B's negative MSB starts
+        // -popcount; following planes use the BMMA C addend (2*partial).
+        // A planes are then folded identically. All intermediate integers are
+        // bounded by G128 * 128 * 8, so no overflow/rounding is introduced.
+        #pragma unroll
+        for(int ab=AP-1;ab>=0;--ab) {
+          const uint32_t a0=s.a[slot][(ab*64+row0)*C::PW+4*g+i];
+          const uint32_t a1=s.a[slot][(ab*64+row1)*C::PW+4*g+i];
+          #pragma unroll
+          for(int r=0;r<R;++r) {
+            uint32_t d0,d1,d2,d3;
+            Op::fma(d0,d1,d2,d3,a0,a1,b[3][r],0u,0u,0u,0u);
+            d0=uint32_t(-int(d0));d1=uint32_t(-int(d1));d2=uint32_t(-int(d2));d3=uint32_t(-int(d3));
+            #pragma unroll
+            for(int wb=2;wb>=0;--wb)
+              Op::fma(d0,d1,d2,d3,a0,a1,b[wb][r],d0<<1,d1<<1,d2<<1,d3<<1);
+            if(ab==AP-1) {
+              sum[0][r][0]=-int(d0);sum[0][r][1]=-int(d1);sum[0][r][2]=-int(d2);sum[0][r][3]=-int(d3);
+            } else {
+              sum[0][r][0]=2*sum[0][r][0]+int(d0);sum[0][r][1]=2*sum[0][r][1]+int(d1);
+              sum[0][r][2]=2*sum[0][r][2]+int(d2);sum[0][r][3]=2*sum[0][r][3]+int(d3);
+            }
+          }
+        }
+      } else {
       #pragma unroll
       for(int ab=0;ab<AP;++ab) {
         const uint32_t a0=s.a[slot][(ab*64+row0)*C::PW+4*g+i];
@@ -167,6 +193,7 @@ __global__ __launch_bounds__(256) void adangel_sm80_mixed_binary(
             sum[ab%2][r][2]+=coeff*int(d2);sum[ab%2][r][3]+=coeff*int(d3);
           }
         }
+      }
       }
       #pragma unroll
       for(int r=0;r<R;++r) {
@@ -190,21 +217,22 @@ __global__ __launch_bounds__(256) void adangel_sm80_mixed_binary(
 }
 
 void launch_mixed_binary(const MixedBitplanes& a,const MixedBitplanes& w,at::Tensor& y,
-    int m,int n,int k,int tn,int tk,cudaStream_t stream,bool configure=false) {
-  auto planes=[&](auto ap) {auto layout=[&](auto gm) {auto tile=[&](auto nc,auto kc) {
+    int m,int n,int k,int tn,int tk,cudaStream_t stream,bool configure=false,bool horner=false) {
+  auto planes=[&](auto ap) {auto layout=[&](auto gm) {auto tile=[&](auto nc,auto kc,auto hor) {
     constexpr int A=decltype(ap)::value,N=decltype(nc)::value,K=decltype(kc)::value;
     constexpr bool G=decltype(gm)::value;
     constexpr size_t S=sizeof(typename MixedBinaryConfig<A,N,K>::Storage);
-    auto kernel=adangel_sm80_mixed_binary<A,N,K,G>;
+    auto kernel=adangel_sm80_mixed_binary<A,N,K,G,decltype(hor)::value>;
     if(configure) {check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(S)));return;}
     kernel<<<dim3(n/N,m/64),256,S,stream>>>(
         reinterpret_cast<const uint32_t*>(a.packed.data_ptr<int32_t>()),
         reinterpret_cast<const uint32_t*>(w.packed.data_ptr<int32_t>()),
         a.scale.data_ptr<float>(),w.scale.data_ptr<float>(),y.data_ptr<float>(),m,n,k);
   };
-    if(tn==128) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{});
-    else if(tk==512) tile(std::integral_constant<int,64>{},std::integral_constant<int,512>{});
-    else tile(std::integral_constant<int,64>{},std::integral_constant<int,128>{});
+    if(horner) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::true_type{});
+    else if(tn==128) tile(std::integral_constant<int,128>{},std::integral_constant<int,256>{},std::false_type{});
+    else if(tk==512) tile(std::integral_constant<int,64>{},std::integral_constant<int,512>{},std::false_type{});
+    else tile(std::integral_constant<int,64>{},std::integral_constant<int,128>{},std::false_type{});
   };if(a.major) layout(std::true_type{});else layout(std::false_type{});
   };if(a.planes==8) planes(std::integral_constant<int,8>{});else planes(std::integral_constant<int,6>{});
   C10_CUDA_KERNEL_LAUNCH_CHECK();

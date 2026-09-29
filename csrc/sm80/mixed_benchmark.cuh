@@ -9,11 +9,12 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   TORCH_CHECK(variant=="o5" || variant=="o6" || variant=="o7" || variant=="o8" || variant=="o9" || variant=="o10","expected o5 through o10");
   const bool fp16=variant=="o5" || variant=="o6";
   const bool binary=variant=="o9" || variant=="o10";
+  const bool horner=binary && tile=="64x128x256_horner";
   const bool nv=variant=="o5" || variant=="o7" || variant=="o9";
   TORCH_CHECK(mode=="conversion_only" || mode=="compute_only" ||
       mode=="cold" || mode=="steady_state","invalid mode");
   TORCH_CHECK(warmup>=0 && repeats>0 && inner>1,"invalid repetition count (conversion inner must exceed one)");
-  TORCH_CHECK(tile=="64x64x128" || tile=="64x128x256" || (binary && tile=="64x64x512"),"unsupported tile");
+  TORCH_CHECK(tile=="64x64x128" || tile=="64x128x256" || (binary && tile=="64x64x512") || horner,"unsupported tile");
   TORCH_CHECK(scale_layout=="row_major" || scale_layout=="group_major","invalid scale layout");
   TORCH_CHECK(!fp16 || scale_layout=="row_major","FP16 baseline has no fixed scale-layout variant");
   const bool gm=scale_layout=="group_major";
@@ -25,7 +26,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   c10::cuda::CUDAGuard guard(a.payload.device());
   cudaDeviceProp prop;check(cudaGetDeviceProperties(&prop,a.payload.get_device()));
   TORCH_CHECK(prop.major==8 && prop.minor==0,"requires A100 SM80");
-  const int m=a.rows,n=w.rows,k=a.k,tn=tile=="64x128x256"?128:64;
+  const int m=a.rows,n=w.rows,k=a.k,tn=(tile=="64x128x256" || horner)?128:64;
   const int tk=tile=="64x64x512"?512:(tn==64?128:256);
   TORCH_CHECK(m%64==0 && n%tn==0 && k%tk==0,"shape must be tile aligned");
   TORCH_CHECK(int64_t(m)*n<=2147483647LL && m/64<=65535 && n/tn<=65535,
@@ -47,13 +48,13 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
                           : sizeof(O3AmpereConfig<64,128,256,false,2,true>::Storage);
   auto kernel=tn==64 ? adangel_sm80_split_grouped<64,128> : adangel_sm80_split_grouped<128,256>;
   if(gm) kernel=tn==64 ? adangel_sm80_split_grouped_major<64,128> : adangel_sm80_split_grouped_major<128,256>;
-  if(binary) launch_mixed_binary(*ba,*bw,y,m,n,k,tn,tk,stream,true);
+  if(binary) launch_mixed_binary(*ba,*bw,y,m,n,k,tn,tk,stream,true,horner);
   else if(!fp16) check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
   auto cvw=[&]() {if(fp16) launch_mixed_fp16(w,wh,stream);else if(binary) launch_mixed_bitplanes(w,*bw,stream);else launch_mixed_conversion(w,*cw,stream);};
   auto cva=[&]() {if(fp16) launch_mixed_fp16(a,ah,stream);else if(binary) launch_mixed_bitplanes(a,*ba,stream);else launch_mixed_conversion(a,*ca,stream);};
   auto gemm=[&]() {
     if(fp16) {fp16_plan->run(stream);return;}
-    if(binary) {launch_mixed_binary(*ba,*bw,y,m,n,k,tn,tk,stream);return;}
+    if(binary) {launch_mixed_binary(*ba,*bw,y,m,n,k,tn,tk,stream,false,horner);return;}
     kernel<<<dim3(n/tn,m/64),256,smem,stream>>>(
         ca->packed.data_ptr<uint8_t>(),cw->packed.data_ptr<uint8_t>(),
         ca->scale.data_ptr<float>(),cw->scale.data_ptr<float>(),y.data_ptr<float>(),m,n,k);
@@ -142,13 +143,14 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   meta["group_accumulation"]="ascending G128, fp32 fma";
   meta["shared_memory_bytes"]=smem;meta["threads"]=256;meta["output_dtype"]="fp32";
   if(binary) {
-    meta["implementation"]="binary_g128_cached_fragments_two_chains_"+tile;
+    meta["implementation"]=std::string("binary_g128_cached_fragments_")+(horner?"horner_":"two_chains_")+tile;
     meta["kernel_symbol"]="adangel_sm80_mixed_binary";
     meta["mma"]="m16n8k128.b1.b1.and.popc";
     meta["activation_planes"]=ba->planes;meta["weight_planes"]=4;
     meta["plane_pairs_per_g128_atom"]=ba->planes*4;
     meta["plane_sign"]="two_complement_msb_negative";
-    meta["cached_weight_fragments"]=true;meta["integer_accumulator_chains"]=2;
+    meta["cached_weight_fragments"]=true;meta["integer_accumulator_chains"]=horner?1:2;
+    meta["integer_reconstruction"]=horner?"two_complement_horner_using_bmma_c":"weighted_two_chains";
     meta["conversion"]="fused_source_decode_fixed_rne_ballot_pack_and_scale";
     // Storage arrays are all 128-byte multiples except scale arrays; these too
     // are multiples of 128 for the supported M/N, so this equals sizeof(Storage).
