@@ -71,7 +71,7 @@ def main():
             assert provenance["weight_source_input"] == tensor_identity(qw)
             if pattern != "zero":
                 assert provenance["weight_source_input"] != provenance["weight_bridge"]
-    assert len(records) == 28*len(fixtures)
+    assert len(records) == 52*len(fixtures)
     assert len(rows["source_provenance.jsonl"]) == len(fixtures)
     assert len(rows["source_formats.jsonl"]) == 2*len(fixtures)
     expected_policy = RAW_INPUT_POLICY if args.original_fp16 else INPUT_POLICY
@@ -80,7 +80,7 @@ def main():
     assert {r["mode"] for r in records} == {"conversion_only", "compute_only", "cold", "steady_state"}
     assert not list(args.output.glob("*.pt"))
     for validation in rows["validation.jsonl"]:
-        for variant in ("o5", "o6"):
+        for variant in ("o7", "o8", "o9", "o10"):
             base = validation["mse_vs_o0"][f"{variant}/64x128x256"]
             assert base == validation["mse_vs_o0"][f"{variant}/64x128x256/group_major"]
     report = {"passed": True, "scope": "synthetic_trace_runner_fixture", "real_data_read": False,

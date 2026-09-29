@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Synthetic codec -> native fixed conversion -> dual-INT4 correctness acceptance.
 
-Does not read/rewrite the user's prepared trace, publish formal O5/O6 MSE, or
+Does not read/rewrite the user's prepared trace, publish formal O7/O8 MSE, or
 time Python quantization as a native conversion. All output uses a fresh folder.
 """
 import argparse
@@ -20,11 +20,14 @@ def main():
         parser.error("use a fresh output directory")
     import torch
     from adangel import _sm80 as native
+    if getattr(native, "mixed_experiment_naming_version", None) != 3:
+        raise RuntimeError("rebuild SM80 extension for renamed O7/O8 and FP16 O5/O6")
     from adangel.quantization import mixed_formats as mf
     from adangel.quantization.arbitrary_bits import split_int8_to_packed_int4
     from adangel.quantization.int8 import quantize_int8_per_row
     from adangel.quantization.mxfp4 import quantize_mxfp4
     from validate_a100_split_grouped import reference
+    from benchmark_a100_mixed import validate_fp16_result
     if torch.cuda.get_device_capability() != (8, 0):
         raise RuntimeError("requires A100 SM80")
     torch.set_num_threads(4)
@@ -36,12 +39,29 @@ def main():
     if not result.wasSuccessful() or result.skipped:
         raise AssertionError("codec tests failed or skipped; inspect codec_tests.txt")
     conversion_checks = []
+    fp16_checks = []
 
     def move(source):
         return {key: value.cuda() if isinstance(value, torch.Tensor) else value
                 for key, value in source.items()}
 
     def convert(source, label):
+        decoded = mf.dequantize_source(source).half()
+        if torch.isfinite(decoded).all():
+            stream = torch.cuda.Stream()
+            with torch.cuda.stream(stream):
+                half = native._dequantize_mixed_source(move(source))
+            stream.synchronize()
+            assert torch.equal(half.cpu().view(torch.int16), decoded.view(torch.int16)), (label, source["format"])
+            fp16_checks.append({"case": label, "format": source["format"], "fp16_bitwise": True})
+        else:
+            try:
+                native._dequantize_mixed_source(move(source))
+            except RuntimeError as exc:
+                assert "overflows FP16" in str(exc)
+            else:
+                raise AssertionError("nonfinite FP16 source silently accepted")
+            fp16_checks.append({"case": label, "format": source["format"], "overflow_rejected": True})
         q, scale = mf.to_fixed_reference(source)
         weight = mf.FORMATS[source["format"]][1] == 4
         packed = mf._pack_nibbles(q.to(torch.uint8) & 15) if weight else split_int8_to_packed_int4(q)
@@ -109,6 +129,20 @@ def main():
             o0 = o0_run["output"].cpu()
             for variant, (wfmt, afmt) in mf.VARIANTS.items():
                 wsrc, asrc = mf.quantize_source(w, wfmt), mf.quantize_source(a, afmt)
+                fp16_case = mf.PAIRED_BASELINE[variant]
+                gpu_w, gpu_a = move(wsrc), move(asrc)
+                fp16_run = native._benchmark_mixed(fp16_case, "compute_only", gpu_w, gpu_a, 0, 2, 10)
+                fp16_checks.append({"case": fp16_case, "shape": [m,n,k], "pattern": pattern,
+                                    **validate_fp16_result(fp16_run, gpu_w, gpu_a), "kernel": dict(fp16_run["kernel"])})
+                fp16_output = fp16_run["output"].cpu()
+                if pattern == "random":
+                    for mode in ("conversion_only", "compute_only", "cold", "steady_state"):
+                        measured = native._benchmark_mixed(fp16_case, mode, gpu_w, gpu_a, 0, 2, 10)
+                        assert torch.equal(measured["output"].cpu().view(torch.int32), fp16_output.view(torch.int32))
+                        assert measured["weight_cached"] == (mode in ("compute_only", "steady_state"))
+                        assert measured["conversion_scope"] == "source_format_to_fp16"
+                        fp16_checks.append({"case": fp16_case, "mode": mode, "timing_contract_version": measured["timing_contract_version"],
+                                            "output_bitwise_equal": True})
                 cw, wq, ws = convert(wsrc, f"{pattern}_w_{k}")
                 ca, aq, asc = convert(asrc, f"{pattern}_a_{k}")
                 expected = reference(aq, asc, wq, ws)
@@ -123,6 +157,8 @@ def main():
                                         "max_abs_error_vs_fixed_reference": (y - expected).abs().max().item(),
                                         "mse_vs_fixed_reference": (y.double() - expected.double()).square().mean().item(),
                                         "mse_vs_synthetic_o0": (y.double() - o0.double()).square().mean().item(),
+                                        "paired_baseline": fp16_case,
+                                        "mse_vs_paired_baseline": (y.double() - fp16_output.double()).square().mean().item(),
                                         "o0_kernel": dict(o0_run["kernel"]),
                                         "kernel": dict(output["kernel"])})
                     # New physical scale layout must preserve each output bit.
@@ -209,19 +245,21 @@ def main():
     else:
         raise AssertionError("accepted fixed-scale overflow")
     report = {"passed": True, "scope": "synthetic_formats_conversion_and_integer_gemm",
-              "formal_o5_o6_complete": False, "performance_acceptance": False,
+              "formal_o7_o8_complete": False, "performance_acceptance": False,
               "data_source": "deterministic_synthetic_fp16_not_real_trace",
               "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
               "binary_sha256": hashlib.sha256(Path(native.__file__).read_bytes()).hexdigest(),
               "gpu": torch.cuda.get_device_name(), "torch": torch.__version__,
               "cuda": torch.version.cuda, "codec_tests": result.testsRun,
               "conversion_checks": conversion_checks, "gemm_checks": gemm_checks,
+              "fp16_checks": fp16_checks,
               "timing_contract_checks": timing_checks,
               "group_major_layout_checks": layout_checks,
               "rejected": rejected}
     (args.output / "validation.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"passed": True, "scope": report["scope"],
                       "codec_tests": result.testsRun, "conversion_checks": len(conversion_checks),
+                      "fp16_checks": len(fp16_checks),
                       "gemm_checks": len(gemm_checks), "timing_checks": len(timing_checks), "rejected": len(rejected),
                       "group_major_layout_checks": len(layout_checks),
                       "max_abs_error_vs_fixed_reference": max(x["max_abs_error_vs_fixed_reference"] for x in gemm_checks)}, indent=2))

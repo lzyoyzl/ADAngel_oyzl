@@ -1,4 +1,4 @@
-"""Codec contracts, independent of the provenance chosen for formal O5/O6 data."""
+"""Codec contracts, independent of the provenance chosen for formal O7/O8 data."""
 import copy
 import math
 import random

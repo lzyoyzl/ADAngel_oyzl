@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "adangel/kernel_api.h"
+#include "adangel/fp16_runner.h"
 
 namespace py = pybind11;
 
@@ -345,6 +346,33 @@ py::dict timing_metadata(const std::string& mode, int conversion_inner_repeats) 
 }
 
 }  // namespace
+
+namespace {
+class SharedFp16Runner final : public AdangelFp16Runner {
+ public:
+  SharedFp16Runner(const at::Tensor& a, const at::Tensor& w, const at::Tensor& y)
+      : a_(a), w_(w), y_(y),
+        workspace_(at::empty({int64_t(kMaxWorkspaceBytes)}, a.options().dtype(at::kByte))),
+        plan_(a.size(0), w.size(0), a.size(1), kMaxWorkspaceBytes) {}
+  void run(cudaStream_t stream) override { plan_.run(a_, w_, y_, workspace_, stream); }
+  py::dict metadata() const override { return plan_.metadata(); }
+ private:
+  at::Tensor a_, w_, y_, workspace_;
+  O0LtPlan plan_;
+};
+}
+
+std::unique_ptr<AdangelFp16Runner> adangel_make_fp16_runner(
+    const at::Tensor& a, const at::Tensor& w, const at::Tensor& y) {
+  TORCH_CHECK(a.is_cuda() && w.is_cuda() && y.is_cuda() &&
+      a.device()==w.device() && a.device()==y.device(), "FP16 runner device mismatch");
+  TORCH_CHECK(a.dim()==2 && w.dim()==2 && y.dim()==2 &&
+      a.scalar_type()==at::kHalf && w.scalar_type()==at::kHalf && y.scalar_type()==at::kFloat &&
+      a.is_contiguous() && w.is_contiguous() && y.is_contiguous(), "FP16 runner tensor contract");
+  TORCH_CHECK(a.size(1)==w.size(1) && y.size(0)==a.size(0) && y.size(1)==w.size(0),
+      "FP16 runner shape mismatch");
+  return std::make_unique<SharedFp16Runner>(a,w,y);
+}
 
 bool adangel_o0_is_implemented() { return true; }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Paired SYNTHETIC O0/O3/O5/O6 benchmark; never a real-trace acceptance run.
+"""Paired SYNTHETIC O0/O3/O7/O8 benchmark; never a real-trace acceptance run.
 
 Source-format preparation is outside timing. This entry deliberately has no
 implicit data directory: pending provenance choices cannot silently change a
@@ -17,9 +17,34 @@ import time
 from benchmark_a100_o1 import command, stats
 
 TILES = ("64x64x128", "64x128x256")
+BINARY_TILES = (*TILES, "64x64x512")
 SCALE_LAYOUTS = ("row_major", "group_major")
 MODES = ("conversion_only", "compute_only", "cold", "steady_state")
 TIMING_CONTRACT_VERSION = 2
+EXPERIMENT_NAMING_VERSION = 3
+
+
+def paired_baseline(case):
+    variant = case.split("/")[0]
+    return {"o7": "o5", "o8": "o6", "o9": "o5", "o10": "o6", "o5": "o5", "o6": "o6"}.get(variant, "o0")
+
+
+def validate_fp16_result(result, weight_source, activation_source):
+    import torch
+    from adangel.quantization import mixed_formats as mf
+    w = mf.dequantize_source(weight_source).half()
+    a = mf.dequantize_source(activation_source).half()
+    for native, ref in ((result["converted_weight"], w), (result["converted_activation"], a)):
+        if not torch.isfinite(native).all() or not torch.equal(native.view(torch.int16), ref.view(torch.int16)):
+            raise AssertionError("native FP16 dequantization differs from source reference")
+    ref = a.float() @ w.float().T
+    out = result["output"]
+    torch.testing.assert_close(out, ref, rtol=1e-3, atol=1e-3)
+    meta = result["kernel"]
+    if not meta["tensor_core"] or meta["compute_type"] != "CUBLAS_COMPUTE_32F" or meta["split_k"] > 1:
+        raise AssertionError("FP16 baseline is not the required HMMA/FP32 path")
+    return {"max_abs_error_vs_fp32_reference": (out-ref).abs().max().item(),
+            "dequantized_operands_bitwise": True}
 
 
 def mixed_case(variant, tile, layout):
@@ -28,7 +53,9 @@ def mixed_case(variant, tile, layout):
 
 def parse_mixed_case(case):
     parts = case.split("/")
-    if len(parts) not in (2, 3) or parts[0] not in ("o5", "o6") or parts[1] not in TILES:
+    if len(parts) not in (2, 3) or parts[0] not in ("o7", "o8", "o9", "o10"):
+        raise ValueError("invalid mixed case")
+    if parts[1] not in (BINARY_TILES if parts[0] in ("o9", "o10") else TILES):
         raise ValueError("invalid mixed case")
     layout = parts[2] if len(parts) == 3 else "row_major"
     if layout not in SCALE_LAYOUTS:
@@ -43,8 +70,9 @@ def profile_spec(case, warmup):
     if case == "o3":
         symbol, initial = "adangel_sm80_o3_swizzled_bound2", 0
     else:
-        _, _, layout = parse_mixed_case(case)
-        symbol, initial = "adangel_sm80_split_grouped" + ("_major" if layout == "group_major" else ""), 1
+        variant, _, layout = parse_mixed_case(case)
+        symbol = "adangel_sm80_mixed_binary" if variant in ("o9", "o10") else "adangel_sm80_split_grouped" + ("_major" if layout == "group_major" else "")
+        initial = 1
     return {"kernel_filter": "regex:" + symbol, "launch_skip": warmup + initial,
             "launch_count": 1, "initial_correctness_launches": initial}
 
@@ -53,7 +81,7 @@ def aligned_timings(measured, mode):
     """New A100 comparison tables use the historical O3 conversion convention.
 
     Keep the native total separately: O0's conversion total is a joint event;
-    older O3 and new O5/O6 sum isolated samples. Never rewrite old result files
+    older O3 and new O7/O8 sum isolated samples. Never rewrite old result files
     or add independently measured conversion stages to a direct end-to-end time.
     """
     raw = {stage: list(values) for stage, values in measured["timings_ms"].items()}
@@ -85,12 +113,20 @@ def conversion_bytes(case, stage, m, n, k):
     elif variant == "o3":
         w, a = n * k, 2 * m * k
     elif variant == "o5":
+        w = n*k//2 + n*(k//128) + 4 + 2*n*k
+        a = m*k + m*(k//128) + 2*m*k
+    elif variant == "o6":
+        w = n*k//2 + 7*n*(k//128) + 2*n*k
+        a = m*k + m*(k//128) + 4 + 2*m*k
+    elif variant in ("o7", "o9"):
         w = n * k + 5 * n * (k // 128) + 4
         a = 2 * m * k + 5 * m * (k // 128)
-    elif variant == "o6":
+    elif variant in ("o8", "o10"):
         # HiF4: scale + 2-byte micro8 + 4-byte micro4; output scale is FP32.
         w = n * k + 11 * n * (k // 128)
         a = 2 * m * k + 5 * m * (k // 128) + 4
+        if variant == "o10":
+            a -= m*k//4  # six packed bitplanes, not eight; fused conversion
     else:
         raise ValueError("unknown variant")
     return {"weight_conversion": w, "activation_conversion": a, "total": w + a}.get(stage, 0)
@@ -112,6 +148,22 @@ def integer_reference(a, asc, w, wsc):
     return y
 
 
+def validate_bitplanes(result, wq, ws, aq, asc, activation_planes):
+    """Decode actual GPU packed words; verify signed values and compensated scales."""
+    import torch
+    for name, q, scale, bits in (("weight", wq, ws, 4), ("activation", aq, asc, activation_planes)):
+        packed, actual_scale = result["converted_"+name]
+        assert packed.dtype == torch.int32 and list(packed.shape) == [bits, q.shape[0], q.shape[1]//32]
+        decoded = torch.zeros_like(q, dtype=torch.int32)
+        offsets = torch.arange(32, device=q.device)
+        for b in range(bits):
+            values = ((packed[b].to(torch.int64)[..., None] >> offsets) & 1).reshape(q.shape)
+            decoded += values.to(torch.int32) * (-(1 << b) if b == bits-1 else (1 << b))
+        assert torch.equal(decoded, q.int()), name
+        assert torch.equal(actual_scale.view(torch.int32), scale.view(torch.int32)), name
+    return {"fixed_values_bitwise": True, "scales_bitwise": True, "activation_planes": activation_planes}
+
+
 def summarize_records(records):
     """Pair by sample/round/mode, never treat event repeats as new samples."""
     summary = []
@@ -122,9 +174,17 @@ def summarize_records(records):
         selected = [r for r in records if r["case"] == case and r["mode"] == mode]
         stage = "gemm" if mode == "compute_only" else "total"
         ratios = []
+        matched = []
         for r in selected:
             o0 = index[(r["sample_id"], r["round"], mode, "o0")]
             ratios.append(o0["summary"][stage]["median_ms"] / r["summary"][stage]["median_ms"])
+            ref = index.get((r["sample_id"], r["round"], mode, paired_baseline(case)))
+            if ref is not None:
+                if ref["total_timing"] != r["total_timing"]:
+                    if paired_baseline(case) != "o0":
+                        raise ValueError("paired-baseline timing mismatch")
+                    continue
+                matched.append(ref["summary"][stage]["median_ms"] / r["summary"][stage]["median_ms"])
         # Fail closed for old/unmatched timing contracts, rather than presenting
         # a joint event and a sum of isolated stages as the same measurement.
         comparable = all(r["total_timing"] == index[(r["sample_id"], r["round"], mode, "o0")]["total_timing"]
@@ -133,6 +193,8 @@ def summarize_records(records):
                         "stage": stage, "median_ms": statistics.median(r["summary"][stage]["median_ms"] for r in selected),
                         "mean_ms": statistics.fmean(r["summary"][stage]["mean_ms"] for r in selected),
                         "paired_speedup_vs_o0_median": statistics.median(ratios) if comparable else None,
+                        "paired_baseline": paired_baseline(case),
+                        "paired_speedup_median": statistics.median(matched) if len(matched)==len(selected) else None,
                         "pairing_scope": "synthetic_input_round_not_real_samples",
                         "median_mse_vs_o0": statistics.median(r["mse_vs_o0"] for r in selected),
                         "max_stage_cv_percent": max(s["cv_percent"] for r in selected for s in r["summary"].values()),
@@ -156,7 +218,7 @@ def main():
     parser.add_argument("--tiles", nargs="+", choices=TILES, default=list(TILES))
     parser.add_argument("--scale-layouts", nargs="+", choices=SCALE_LAYOUTS, default=["row_major"],
                         help="internal scale-layout A/B; row_major baseline remains default")
-    parser.add_argument("--profile-case", choices=["o3"] + [mixed_case(v, t, l) for v in ("o5", "o6") for t in TILES for l in SCALE_LAYOUTS],
+    parser.add_argument("--profile-case", choices=["o3"] + [mixed_case(v, t, l) for v in ("o7", "o8") for t in TILES for l in SCALE_LAYOUTS],
                         help="NCU single target, no reference GEMMs/tables; requires repeats=1, rounds=1, modes=compute_only")
     args = parser.parse_args()
     if args.output.exists():
@@ -169,6 +231,8 @@ def main():
         parser.error("duplicate mode/tile/layout")
     import torch
     from adangel import _sm80 as native
+    if getattr(native, "mixed_experiment_naming_version", None) != EXPERIMENT_NAMING_VERSION:
+        raise RuntimeError("rebuild SM80 for O5/O6 FP16 and O7/O8 dual-INT4 naming")
     from adangel.quantization import mixed_formats as mf
     from adangel.quantization.int8 import quantize_int8_per_row
     from adangel.quantization.mxfp4 import quantize_mxfp4
@@ -198,7 +262,7 @@ def main():
              ("csrc/sm80/o1_o3.cu", "csrc/sm80/o3_optimized.cuh", "csrc/sm80/split_grouped.cuh",
               "csrc/sm80/mixed_conversion.cuh", "csrc/sm80/mixed_benchmark.cuh")},
          "args": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
-         "scope": "synthetic_source_formats_not_real_trace", "formal_o5_o6_complete": False,
+         "scope": "synthetic_source_formats_not_real_trace", "formal_o7_o8_complete": False,
          "timing_contract_version": TIMING_CONTRACT_VERSION,
          "policy": "No filtering/retry-until-pass; same-process cyclic/reversed order; unlocked/shared GPU; conversion amortized, end-to-end direct"})
     gen = torch.Generator().manual_seed(args.seed)
@@ -217,13 +281,16 @@ def main():
     sources = {variant: (mf.quantize_source(w, wf), mf.quantize_source(a, af))
                for variant, (wf, af) in mf.VARIANTS.items()}
     mixed_configs = [(tile, layout) for tile in args.tiles for layout in args.scale_layouts]
-    cases = ["o0", "o3"] + [mixed_case(v, tile, layout) for v in mf.VARIANTS for tile, layout in mixed_configs]
+    cases = ["o0", "o3", "o5", "o6"] + [mixed_case(v, tile, layout) for v in mf.VARIANTS for tile, layout in mixed_configs]
 
     def call(case, mode, warmup, repeats):
         if case == "o0":
             return native.benchmark_o0(ai, asc, wm32, ws32, mode, warmup, repeats, args.inner)
         if case == "o3":
             return native.benchmark("o3", mode, ai, asc, wm128, ws128, warmup, repeats, args.inner, "production")
+        if case in ("o5", "o6"):
+            return native._benchmark_mixed(case, mode, *sources["o7" if case=="o5" else "o8"],
+                                           warmup, repeats, args.inner, "64x128x256", "row_major")
         variant, tile, layout = parse_mixed_case(case)
         return native._benchmark_mixed(variant, mode, *sources[variant], warmup, repeats, args.inner, tile, layout)
 
@@ -246,6 +313,10 @@ def main():
     assert torch.isfinite(reference_o0).all() and reference_o0.dtype == torch.float32
     checks, baselines = {}, {"o0": reference_o0.clone()}
     for variant, (wsrc, asrc) in sources.items():
+        baseline_case = mf.PAIRED_BASELINE[variant]
+        baseline_run = call(baseline_case, "compute_only", 0, 1)
+        checks[baseline_case] = validate_fp16_result(baseline_run, wsrc, asrc)
+        baselines[baseline_case] = baseline_run["output"].clone()
         wq, wscale = mf.to_fixed_reference(wsrc)
         aq, ascale = mf.to_fixed_reference(asrc)
         reference = integer_reference(aq, ascale, wq, wscale)
@@ -262,6 +333,8 @@ def main():
     assert torch.isfinite(baselines["o3"]).all()
     mse = {case: (y.double() - reference_o0.double()).square().mean().item()
            for case, y in baselines.items()}
+    pair_mse = {case: (y.double() - baselines[paired_baseline(case)].double()).square().mean().item()
+                for case, y in baselines.items()}
     save("validation.json", {"passed": True, "scope": "synthetic_full_size", "checks": checks,
                               "mse_vs_o0": mse, "not_real_trace": True})
     print("Full-size fixed-reference correctness passed", flush=True)
@@ -288,9 +361,9 @@ def main():
                         count = 0
                     st["logical_bytes"] = count
                     st["logical_gbps"] = count / st["median_ms"] / 1e6 if count else None
-                if case.startswith(("o5/", "o6/")):
+                if case in ("o5", "o6") or case.startswith(("o7/", "o8/")):
                     if measured.get("timing_contract_version") != TIMING_CONTRACT_VERSION:
-                        raise RuntimeError("rebuild SM80 extension: O5/O6 timing contract mismatch")
+                        raise RuntimeError("rebuild SM80 extension: O7/O8 timing contract mismatch")
                     native_method = measured["total_timing"]
                     inner = dict(measured["stage_timing_inner_repeats"])
                 else:
@@ -299,11 +372,13 @@ def main():
                 record = {"sample_id": f"synthetic_{args.seed}", "case": case, "mode": mode,
                           "round": round_id, "order": order, "timings_ms": raw, "summary": summ,
                           "mse_vs_o0": mse[case], "bitwise_equal_validation": True,
+                          "experiment_naming_version": EXPERIMENT_NAMING_VERSION,
+                          "paired_baseline": paired_baseline(case), "mse_vs_paired_baseline": pair_mse[case],
                           "timing_stable_cv3": all(st["cv_percent"] < 3 for st in summ.values()),
                           "stage_timing_inner_repeats": inner, "total_timing": total_method,
                           "timing_contract_version": TIMING_CONTRACT_VERSION,
                           "native_total_timing": native_method, "native_total_timings_ms": native_total,
-                          "kernel": dict(measured["kernel"]), "formal_o5_o6_complete": False}
+                          "kernel": dict(measured["kernel"]), "formal_o7_o8_complete": False}
                 if "gemm" in summ:
                     record["equivalent_tflops"] = 2 * args.size ** 3 / summ["gemm"]["median_ms"] / 1e9
                 records.append(record)
@@ -311,7 +386,7 @@ def main():
                 print(case, mode, round_id, "total_ms", summ["total"]["median_ms"],
                       "stable", record["timing_stable_cv3"], flush=True)
     summaries = summarize_records(records)
-    save("summary.json", {"scope": "synthetic_only", "formal_o5_o6_complete": False,
+    save("summary.json", {"scope": "synthetic_only", "formal_o7_o8_complete": False,
                            "correctness_passed": True, "no_filtering": True, "records": summaries})
     for row in summaries:
         print(json.dumps(row, allow_nan=False), flush=True)

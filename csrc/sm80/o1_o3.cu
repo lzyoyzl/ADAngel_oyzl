@@ -16,6 +16,8 @@
 #include <limits>
 #include "adangel/kernel_api.h"
 #include "adangel/data_types.cuh"
+#include "adangel/fp16_runner.h"
+#include <cuda_fp16.h>
 
 namespace py = pybind11;
 namespace {
@@ -182,6 +184,7 @@ template<class F> std::vector<float> batch(F f,int repeats,int inner,cudaStream_
 
 #include "split_grouped.cuh"
 #include "mixed_conversion.cuh"
+#include "mixed_bitplane.cuh"
 #include "mixed_benchmark.cuh"
 
 py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor as,
@@ -596,6 +599,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
 }
 } // namespace
 PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
+  m.attr("mixed_experiment_naming_version")=3;
+  m.def("_dequantize_mixed_source",&dequantize_mixed_source,py::arg("source"));
   m.def("_convert_mixed_source",&convert_mixed_source,py::arg("source"),
       py::arg("scale_layout")="row_major");
   m.def("_benchmark_mixed",&benchmark_mixed,py::arg("variant"),py::arg("mode"),

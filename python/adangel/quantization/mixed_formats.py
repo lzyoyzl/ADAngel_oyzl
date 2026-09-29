@@ -1,4 +1,4 @@
-"""O5/O6 G128 experimental source formats and fixed-point reference.
+"""O7/O8 G128 experimental source formats and fixed-point reference.
 
 FP16 -> source format is common preparation, NOT the timed conversion.
 Source format -> fixed integer + compensated scale is the online conversion.
@@ -19,9 +19,13 @@ FORMATS = {
     "nvstyle_fp6_e2m3_g128": ("e2m3", 6, 2),
 }
 VARIANTS = {
-    "o5": ("nvfp4_g128", "mxfp8_e4m3_g128"),
-    "o6": ("hif4_g128", "nvstyle_fp6_e2m3_g128"),
+    "o7": ("nvfp4_g128", "mxfp8_e4m3_g128"),
+    "o8": ("hif4_g128", "nvstyle_fp6_e2m3_g128"),
 }
+FP16_BASELINES = {"o5": VARIANTS["o7"], "o6": VARIANTS["o8"]}
+PAIRED_BASELINE = {"o7": "o5", "o8": "o6"}
+BINARY_VARIANTS = {"o9": "o7", "o10": "o8"}
+EXPERIMENT_NAMING_VERSION = 3
 
 
 def positive_codebook(kind: str) -> tuple[float, ...]:
@@ -320,7 +324,7 @@ def to_fixed_reference(source: dict):
 def prepare_integer_reference(weight: dict, activation: dict):
     from .arbitrary_bits import split_int8_to_packed_int4
     if (weight.get("format"), activation.get("format")) not in VARIANTS.values():
-        raise ValueError("requires the approved O5 or O6 source-format pair")
+        raise ValueError("requires the approved O7 or O8 source-format pair")
     wq, ws = to_fixed_reference(weight)
     aq, asc = to_fixed_reference(activation)
     if wq.shape[1] != aq.shape[1] or wq.device != aq.device:

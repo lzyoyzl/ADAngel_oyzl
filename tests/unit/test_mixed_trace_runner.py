@@ -110,14 +110,14 @@ class MixedTraceRunnerTests(unittest.TestCase):
         result = []
         for sid, a, b, error in (("a", [10, 100], [5, 100], 7.), ("b", [20, 40], [10, 20], 9.)):
             for r in range(2):
-                for case, latency, mse in (("o0", a[r], 0.), ("o5", b[r], error)):
+                for case, latency, mse in (("o0", a[r], 0.), ("o5", a[r]*2, 0.), ("o7", b[r], error)):
                     result.append({"sample_id": sid, "round": r, "case": case, "mode": "compute_only",
                         "summary": {"gemm": {"median_ms": latency, "mean_ms": latency*1.1}},
                         "mse_vs_o0": mse, "timing_stable_cv3": True, "total_timing": "single_execution_cuda_event"})
         return result
 
     def test_rounds_are_collapsed_before_sample_summary(self):
-        result = next(r for r in module.summarize_trace(self.records()) if r["case"] == "o5")
+        result = next(r for r in module.summarize_trace(self.records()) if r["case"] == "o7")
         self.assertEqual(result["samples"], 2)
         self.assertEqual(result["records"], 4)
         self.assertEqual(result["paired_speedup_vs_o0_median"], 1.75)

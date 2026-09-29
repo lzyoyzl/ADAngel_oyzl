@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare O0/O1/O3/O5/O6 with an explicit, recorded source-data policy.
+"""Compare O0/O1/O3/O7/O8 with an explicit, recorded source-data policy.
 
 --raw-data uses original FP16, linked to the existing prepared trace by hashes
 and an exact replay of public preparation. The alternative O0 FP16 bridge needs
@@ -18,6 +18,7 @@ import time
 from benchmark_a100_mixed import (
     MODES, SCALE_LAYOUTS, TIMING_CONTRACT_VERSION, aligned_timings,
     conversion_bytes, integer_reference, mixed_case, parse_mixed_case,
+    paired_baseline, validate_fp16_result, EXPERIMENT_NAMING_VERSION,
 )
 from benchmark_a100_o1 import command, stats
 
@@ -100,28 +101,42 @@ def summarize_trace(records):
         raise ValueError("duplicate sample/round/mode/case")
     result = []
     for case, mode in sorted({(r["case"], r["mode"]) for r in records}):
+        reference_case = paired_baseline(case)
         stage = "gemm" if mode == "compute_only" else "total"
         selected = [r for r in records if r["case"] == case and r["mode"] == mode]
         sample_stats = []
         for sid in sorted({r["sample_id"] for r in selected}):
             rows = [r for r in selected if r["sample_id"] == sid]
             paired = []
+            matched = []
             for r in rows:
                 o0 = index[(sid, r["round"], mode, "o0")]
                 if r["total_timing"] != o0["total_timing"]:
                     raise ValueError("unmatched timing methods")
                 paired.append(o0["summary"][stage]["median_ms"] / r["summary"][stage]["median_ms"])
+                ref = index[(sid, r["round"], mode, reference_case)]
+                if ref["total_timing"] != r["total_timing"]:
+                    raise ValueError("unmatched paired-baseline timing methods")
+                matched.append(ref["summary"][stage]["median_ms"] / r["summary"][stage]["median_ms"])
             if len({r["mse_vs_o0"] for r in rows}) != 1:
                 raise ValueError("output MSE changed between rounds")
             sample_stats.append({"sample_id": sid,
                 "median_ms": statistics.median(r["summary"][stage]["median_ms"] for r in rows),
                 "mean_ms": statistics.fmean(r["summary"][stage]["mean_ms"] for r in rows),
+                "paired_speedup": statistics.median(matched),
+                "mse_vs_paired_baseline": rows[0].get("mse_vs_paired_baseline"),
                 "paired_speedup_vs_o0": statistics.median(paired), "mse_vs_o0": rows[0]["mse_vs_o0"]})
         ratios = [r["paired_speedup_vs_o0"] for r in sample_stats]
+        pair_ratios = [r["paired_speedup"] for r in sample_stats]
         result.append({"case": case, "mode": mode, "samples": len(sample_stats),
             "records": len(selected), "stage": stage,
             "median_ms": statistics.median(r["median_ms"] for r in sample_stats),
             "mean_ms": statistics.fmean(r["mean_ms"] for r in sample_stats),
+            "paired_baseline": reference_case,
+            "paired_speedup_median": statistics.median(pair_ratios),
+            "paired_speedup_ci95": list(bootstrap_median_ci(pair_ratios, 10000, .95, 20260929)) if len(pair_ratios)>1 else None,
+            "median_mse_vs_paired_baseline": statistics.median(r["mse_vs_paired_baseline"] for r in sample_stats) if all(r["mse_vs_paired_baseline"] is not None for r in sample_stats) else None,
+            "mean_mse_vs_paired_baseline": statistics.fmean(r["mse_vs_paired_baseline"] for r in sample_stats) if all(r["mse_vs_paired_baseline"] is not None for r in sample_stats) else None,
             "paired_speedup_vs_o0_median": statistics.median(ratios),
             "paired_speedup_median_ci95": list(bootstrap_median_ci(ratios, 10000, .95, 20260929)) if len(ratios) > 1 else None,
             "median_mse_vs_o0": statistics.median(r["mse_vs_o0"] for r in sample_stats),
@@ -158,10 +173,14 @@ def run_sample(x, sample_index, args, native, append, scope, raw_operands=None):
     from adangel.quantization.mxfp4 import dequantize_mxfp4
     from adangel.trace.schema import validate_prepared
     validate_prepared(x, require_arbitrary_bits=True)
+    if getattr(native, "mixed_experiment_naming_version", None) != EXPERIMENT_NAMING_VERSION:
+        raise RuntimeError("rebuild SM80: old O5/O6 INT4 names are now O7/O8; O5/O6 must be FP16")
     m, n, k = x.shape
     if m % 64 or n % 128 or k % 256:
         raise ValueError("trace runner requires the selected 64x128x256 tile alignment")
-    cases = ["o0", "o1", "o3"] + [mixed_case(v, TILE, l) for v in ("o5", "o6") for l in args.scale_layouts]
+    binary_tile = getattr(args, "binary_tile", TILE)
+    cases = ["o0", "o1", "o3", "o5", "o6"] + [mixed_case(v, binary_tile if v in ("o9", "o10") else TILE, l)
+        for v in ("o7", "o8", "o9", "o10") for l in args.scale_layouts]
     sources = {}
 
     def call(case, mode, warmup, repeats):
@@ -172,8 +191,13 @@ def run_sample(x, sample_index, args, native, append, scope, raw_operands=None):
             w, ws = (x.W_mxfp4_g128, x.W_scale_g128) if case == "o3" else (x.W_mxfp4, x.W_scale)
             return native.benchmark(case, mode, x.A_int8, x.A_scale, w, ws,
                                     warmup, repeats, args.inner, "production")
+        if case in ("o5", "o6"):
+            variant = "o7" if case == "o5" else "o8"
+            return native._benchmark_mixed(case, mode, *sources[variant], warmup, repeats,
+                                           args.inner, TILE, "row_major")
         variant, tile, layout = parse_mixed_case(case)
-        return native._benchmark_mixed(variant, mode, *sources[variant], warmup, repeats,
+        family = mf.BINARY_VARIANTS.get(variant, variant)
+        return native._benchmark_mixed(variant, mode, *sources[family], warmup, repeats,
                                        args.inner, tile, layout)
 
     # The bridge is exactly O0's operands, not an inferred recovery of raw FP16.
@@ -204,6 +228,10 @@ def run_sample(x, sample_index, args, native, append, scope, raw_operands=None):
     for variant, (wf, af) in mf.VARIANTS.items():
         wsrc, asrc = mf.quantize_source(source_w, wf), mf.quantize_source(source_a, af)
         sources[variant] = (wsrc, asrc)
+        reference_case = mf.PAIRED_BASELINE[variant]
+        baseline_run = call(reference_case, "compute_only", 0, 1)
+        checks[reference_case] = validate_fp16_result(baseline_run, wsrc, asrc)
+        baselines[reference_case] = baseline_run["output"].clone()
         wq, ws = mf.to_fixed_reference(wsrc)
         aq, asc = mf.to_fixed_reference(asrc)
         yref = integer_reference(aq, asc, wq, ws)
@@ -233,14 +261,29 @@ def run_sample(x, sample_index, args, native, append, scope, raw_operands=None):
             checks[case] = {"max_abs_error_vs_fixed_reference": (out-yref).abs().max().item(),
                             "mse_vs_fixed_reference": mse(out, yref), "mse_vs_o0": mse(out, y0)}
             baselines[case] = out.clone()
+        from benchmark_a100_mixed import validate_bitplanes
+        binary_variant = "o9" if variant == "o7" else "o10"
+        for layout in args.scale_layouts:
+            case = mixed_case(binary_variant, binary_tile, layout)
+            run = call(case, "compute_only", 0, 1)
+            checks[case] = validate_bitplanes(run, wq, ws, aq, asc, 8 if variant == "o7" else 6)
+            out = run["output"]
+            assert out.dtype == torch.float32 and torch.isfinite(out).all()
+            torch.testing.assert_close(out, yref, rtol=1e-3, atol=1e-3)
+            dual = baselines[mixed_case(variant, TILE, layout)]
+            assert torch.equal(out.view(torch.int32), dual.view(torch.int32)), (case, "binary/INT4 discrepancy")
+            checks[case].update(binary_equals_dual_int4_bitwise=True, mse_vs_fixed_reference=mse(out, yref))
+            baselines[case] = out.clone()
     for case in ("o1", "o3"):
         out = call(case, "compute_only", 0, 1)["output"]
         if out.dtype != torch.float32 or not torch.isfinite(out).all():
             raise ValueError(f"invalid {case} output")
         baselines[case] = out.clone()
     errors = {case: mse(y, y0) for case, y in baselines.items()}
+    paired_errors = {case: mse(y, baselines[paired_baseline(case)]) for case, y in baselines.items()}
     append("validation.jsonl", {"sample_id": x.sample_id, "passed": True, "scope": scope,
-        "checks": checks, "mse_vs_o0": errors, "reference": "ordered_G128_FP64_integer_dot_FP32_accumulation_emulation",
+        "checks": checks, "mse_vs_o0": errors, "mse_vs_paired_baseline": paired_errors,
+        "reference": "fixed: ordered_G128_FP64_integer_dot_FP32_accumulation_emulation; fp16: FP32_GEMM_of_decoded_operands",
         "tolerance": {"rtol": 1e-3, "atol": 1e-3}})
     records = []
     for mode_id, mode in enumerate(MODES):
@@ -264,7 +307,7 @@ def run_sample(x, sample_index, args, native, append, scope, raw_operands=None):
                     count = conversion_bytes(case, stage, m, n, k) if "conversion" in stage or mode == "conversion_only" else 0
                     st["logical_bytes"] = count
                     st["logical_gbps"] = count/st["median_ms"]/1e6 if count else None
-                mixed = case.startswith(("o5/", "o6/"))
+                mixed = case in ("o5", "o6") or case.startswith(("o7/", "o8/", "o9/", "o10/"))
                 if mixed and result.get("timing_contract_version") != TIMING_CONTRACT_VERSION:
                     raise RuntimeError("rebuild SM80: mixed timing contract mismatch")
                 counts = dict(result["stage_timing_inner_repeats"]) if mixed else {
@@ -273,6 +316,8 @@ def run_sample(x, sample_index, args, native, append, scope, raw_operands=None):
                     "batched_amortized_cuda_event" if mode == "conversion_only" and case == "o0" else method)
                 row = {"sample_id": x.sample_id, "case": case, "mode": mode, "round": r, "order": order,
                     "scope": scope, "input_policy": input_policy, "shape": [m, n, k],
+                    "experiment_naming_version": EXPERIMENT_NAMING_VERSION,
+                    "paired_baseline": paired_baseline(case), "mse_vs_paired_baseline": paired_errors[case],
                     "timings_ms": raw, "summary": summary, "mse_vs_o0": errors[case],
                     "bitwise_equal_validation": True, "timing_stable_cv3": all(s["cv_percent"] < 3 for s in summary.values()),
                     "timing_contract_version": TIMING_CONTRACT_VERSION, "total_timing": method,
@@ -302,6 +347,7 @@ def main():
     p.add_argument("--repeats", type=int, default=200)
     p.add_argument("--inner", type=int, default=100)
     p.add_argument("--scale-layouts", nargs="+", choices=SCALE_LAYOUTS, default=["row_major"])
+    p.add_argument("--binary-tile", choices=("64x64x128", "64x128x256", "64x64x512"), default=TILE)
     args = p.parse_args()
     if not args.validate_input_only and not (args.raw_data or args.allow_secondary_quantization):
         p.error("requires --raw-data for original FP16, or requires explicit --allow-secondary-quantization")
@@ -345,10 +391,12 @@ def main():
         "gpu": torch.cuda.get_device_name(), "input_policy": input_policy, "scope": scope,
         "raw_manifest_sha256": raw_manifest_hash,
         "timing_contract_version": TIMING_CONTRACT_VERSION, "manifest_sha256": manifest_hash,
+        "experiment_naming_version": EXPERIMENT_NAMING_VERSION,
         "policy": "unlocked shared GPU, no filtering or retry-until-pass; same-sample/round pairing",
         "source_files_sha256": {name: sha256_file(root/name) for name in (
             "csrc/sm80/o1_o3.cu", "csrc/sm80/o3_optimized.cuh", "csrc/sm80/mixed_conversion.cuh",
             "csrc/sm80/mixed_benchmark.cuh", "csrc/sm80/split_grouped.cuh",
+            "csrc/sm80/mixed_bitplane.cuh", "csrc/sm120/o0_gemm.cu", "include/adangel/fp16_runner.h",
             "python/adangel/quantization/mixed_formats.py", "scripts/benchmark_a100_mixed_trace.py")}})
     save("data_manifest.json", manifest)
     if raw_manifest is not None:
@@ -372,7 +420,7 @@ def main():
             raw = _load_and_validate_raw(raw_path, raw_entry["layer"], raw_entry["projection"])
             raw_operands = (raw["activation_fp16"], raw["weight_fp16"])
         records.extend(run_sample(x, i, args, native, append, scope, raw_operands))
-    expected_count = args.samples * (3+2*len(args.scale_layouts)) * len(MODES) * args.rounds
+    expected_count = args.samples * (5+4*len(args.scale_layouts)) * len(MODES) * args.rounds
     if len(records) != expected_count:
         raise RuntimeError("incomplete sample/case/mode/round coverage")
     save("summary.json", {"scope": scope, "all_24_samples_completed": args.samples == 24,
