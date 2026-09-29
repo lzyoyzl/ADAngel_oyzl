@@ -1,0 +1,48 @@
+{
+  "git_commit": "133f7c7febb11faa989cb53c601727110d5de38a",
+  "binary_sha256": "920984b8a248c2c23a2e1fa23505bc478533a8ef2f1df1a84f89a3eb7267cd45",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "cuda_sources_sha256": {
+    "csrc/sm80/o1_o3.cu": "88725ba8bca6041055a8f56e4f5196ff2618d38a5a26d03df13ae3845d222ff1",
+    "csrc/sm80/o3_optimized.cuh": "e5e1dc11942e54af15502bca00aad70750ea301631828a2607507687252db471",
+    "csrc/sm80/split_grouped.cuh": "cd6c722b98b8f021b00b64d2d420005642ecc8bbe0eef39353c8d2cf65072b42",
+    "csrc/sm80/mixed_conversion.cuh": "1beee8b3188fad1211e8f34b3a46d27836061d1f28f6b7ea9d6672704bc2b01d",
+    "csrc/sm80/mixed_benchmark.cuh": "7bc844cff030a3a0971ebda2bb95cba20893e768996dfc3d437cfc4ba3483655",
+    "csrc/sm80/mixed_bitplane.cuh": "11bf64f721201c2e4d523d168d0bbff644917fbc43c96b7b5c2b712968642557",
+    "csrc/sm120/o0_gemm.cu": "168fd1c544cec5c96cab5d31a902e953224491b4435a63482836c8f0c48354f1",
+    "include/adangel/fp16_runner.h": "f1e39e64484708987959f3f5de3e0ce13ec2ca1a08805a460ddf6f8efdf04bcc"
+  },
+  "args": {
+    "synthetic": true,
+    "output": "runs/o5_o10_cta_screen_v1",
+    "size": 4096,
+    "seed": 20260929,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100,
+    "rounds": 3,
+    "modes": [
+      "compute_only"
+    ],
+    "tiles": [
+      "64x64x128",
+      "64x128x256"
+    ],
+    "binary_tiles": [
+      "64x64x128",
+      "64x128x256",
+      "64x64x512"
+    ],
+    "scale_layouts": [
+      "row_major",
+      "group_major"
+    ],
+    "profile_case": null
+  },
+  "scope": "synthetic_source_formats_not_real_trace",
+  "formal_o7_o8_complete": false,
+  "timing_contract_version": 2,
+  "policy": "No filtering/retry-until-pass; same-process cyclic/reversed order; unlocked/shared GPU; conversion amortized, end-to-end direct"
+}
