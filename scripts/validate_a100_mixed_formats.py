@@ -31,6 +31,7 @@ def main():
     if torch.cuda.get_device_capability() != (8, 0):
         raise RuntimeError("requires A100 SM80")
     torch.set_num_threads(4)
+    torch.backends.cuda.matmul.allow_tf32 = False
     args.output.mkdir(parents=True)
     repo = Path(__file__).resolve().parents[1]
     suite = unittest.defaultTestLoader.discover(str(repo / "tests/unit"), "test_mixed_formats.py")
@@ -119,6 +120,7 @@ def main():
     gemm_checks = []
     timing_checks = []
     layout_checks = []
+    binary_checks = []
     # O0's strict no-SIMT fallback policy has no eligible HMMA heuristic for
     # small M/N at K4096 on this A100; 512x512 preserves the large-K test and O0.
     for m, n, k in ((64, 128, 256), (128, 128, 512), (512, 512, 4096)):
@@ -156,6 +158,25 @@ def main():
                 cw, wq, ws = convert(wsrc, f"{pattern}_w_{k}")
                 ca, aq, asc = convert(asrc, f"{pattern}_a_{k}")
                 expected = reference(aq, asc, wq, ws)
+                for btile in ("64x64x128", "64x128x256", "64x64x512"):
+                    if btile.endswith("512") and k%512:
+                        continue
+                    for layout in ("row_major", "group_major"):
+                        bv = "o9" if variant == "o7" else "o10"
+                        modes = ("conversion_only", "compute_only", "cold", "steady_state") if pattern == "random" else ("compute_only",)
+                        for mode in modes:
+                            br = native._benchmark_mixed(bv, mode, move(wsrc), move(asrc), 0, 2, 10, btile, layout)
+                            by = br["output"].cpu()
+                            assert by.dtype == torch.float32 and torch.isfinite(by).all()
+                            torch.testing.assert_close(by, expected, rtol=1e-3, atol=1e-3)
+                            assert torch.equal(by.view(torch.int32), expected.view(torch.int32))
+                            assert br["kernel"]["activation_planes"] == (8 if bv == "o9" else 6)
+                            assert br["weight_cached"] == (mode in ("compute_only", "steady_state"))
+                            assert br["total_timing"] == ("sum_of_batched_stage_samples" if mode == "conversion_only" else "single_execution_cuda_event")
+                            binary_checks.append({"variant": bv, "tile": btile, "shape": [m,n,k], "pattern": pattern,
+                                                  "layout": layout, "mode": mode, "reference_bitwise": True,
+                                                  "mse_vs_paired_baseline": (by.double()-fp16_output.double()).square().mean().item(),
+                                                  "kernel": dict(br["kernel"])})
                 for tile in ("64x64x128", "64x128x256"):
                     output = native._benchmark_split_grouped(
                         ca["packed"], ca["scale"], cw["packed"], cw["scale"], 0, 1, tile)
@@ -264,6 +285,7 @@ def main():
               "conversion_checks": conversion_checks, "gemm_checks": gemm_checks,
               "fp16_checks": fp16_checks,
               "bitplane_checks": bitplane_checks,
+              "binary_gemm_checks": binary_checks,
               "timing_contract_checks": timing_checks,
               "group_major_layout_checks": layout_checks,
               "rejected": rejected}
@@ -272,6 +294,7 @@ def main():
                       "codec_tests": result.testsRun, "conversion_checks": len(conversion_checks),
                       "fp16_checks": len(fp16_checks),
                       "bitplane_checks": len(bitplane_checks),
+                      "binary_gemm_checks": len(binary_checks),
                       "gemm_checks": len(gemm_checks), "timing_checks": len(timing_checks), "rejected": len(rejected),
                       "group_major_layout_checks": len(layout_checks),
                       "max_abs_error_vs_fixed_reference": max(x["max_abs_error_vs_fixed_reference"] for x in gemm_checks)}, indent=2))

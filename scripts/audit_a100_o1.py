@@ -21,7 +21,7 @@ def audit_policy(checks, allow_spills=False):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
-    p.add_argument('--variant',choices=['o1','o3','split_grouped'],default='o1')
+    p.add_argument('--variant',choices=['o1','o3','split_grouped','mixed_binary'],default='o1')
     p.add_argument('--allow-spills',action='store_true',
                    help='INT4 paths: report spill checks as warnings, never waive ISA checks or missing resource data')
     args=p.parse_args()
@@ -40,7 +40,7 @@ def main():
     for block in re.split(r'(?=Function\s*:\s*)',outputs['extension.sass']):
         if not block.startswith('Function'): continue
         symbol=block.splitlines()[0].split(':',1)[1].strip()
-        prefix='adangel_sm80_split_grouped' if args.variant=='split_grouped' else f'adangel_sm80_{args.variant}_swizzled'
+        prefix=('adangel_sm80_'+args.variant) if args.variant in ('split_grouped','mixed_binary') else f'adangel_sm80_{args.variant}_swizzled'
         if prefix not in symbol: continue
         rm=re.search(r'Function\s+(?:\:\s*)?'+re.escape(symbol)+r'\s*:\s*([^\n]+)',outputs['resources.txt'])
         resource=rm[0] if rm else ''
@@ -69,6 +69,11 @@ def main():
                 sass_no_int8=not bool(re.search(r'IMMA[^;]*\.[SU]8',block)),
                 ptx_u4s4=bool(re.search(r'mma\.sync[^;]*\.s32\.u4\.s4\.s32',ptx)),
                 ptx_s4s4=bool(re.search(r'mma\.sync[^;]*\.s32\.s4\.s4\.s32',ptx)))
+        if args.variant=='mixed_binary':
+            del checks['sass_int8'];del checks['ptx_int8']
+            checks.update(sass_binary=bool(re.search(r'\bBMMA\.[^;]*\.AND',block)),
+                sass_no_integer_mma=not bool(re.search(r'\bIMMA\.',block)),
+                ptx_binary=bool(re.search(r'mma\.sync[^;]*\.m16n8k128[^;]*\.s32\.b1\.b1\.s32\.and\.popc',ptx)))
         # Itanium template arguments: ExponentScale=true, PairMma=false,
         # MagicCast=true. Match both streaming and non-streaming instances.
         magic='Lb1ELb0ELb1E' in symbol
@@ -79,7 +84,7 @@ def main():
             if not args_match: raise RuntimeError(f'Unknown O3 template signature: {symbol}')
             magic=args_match[3]=='1'
         instruction_counts={op:len(re.findall(r'\b'+op+r'(?:\.|\s)',block))
-                            for op in ('I2F','FADD','FFMA','IMMA','LDSM','LDGSTS','LDL','STL')}
+                            for op in ('I2F','FADD','FFMA','IMMA','BMMA','LDSM','LDGSTS','LDL','STL')}
         instruction_counts['STG64']=len(re.findall(r'\bSTG(?:\.[A-Z]+)*\.64\b',block))
         instruction_counts['LDG_U16']=len(re.findall(r'\bLDG(?:\.[A-Z]+)*\.U16\b',block))
         if magic:

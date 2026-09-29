@@ -120,6 +120,8 @@ def summarize_trace(records):
                 matched.append(ref["summary"][stage]["median_ms"] / r["summary"][stage]["median_ms"])
             if len({r["mse_vs_o0"] for r in rows}) != 1:
                 raise ValueError("output MSE changed between rounds")
+            if len({r.get("mse_vs_paired_baseline") for r in rows}) != 1:
+                raise ValueError("paired output MSE changed between rounds")
             sample_stats.append({"sample_id": sid,
                 "median_ms": statistics.median(r["summary"][stage]["median_ms"] for r in rows),
                 "mean_ms": statistics.fmean(r["summary"][stage]["mean_ms"] for r in rows),
