@@ -216,9 +216,10 @@ def main():
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--modes", nargs="+", choices=MODES, default=list(MODES))
     parser.add_argument("--tiles", nargs="+", choices=TILES, default=list(TILES))
+    parser.add_argument("--binary-tiles", nargs="+", choices=BINARY_TILES, default=list(BINARY_TILES))
     parser.add_argument("--scale-layouts", nargs="+", choices=SCALE_LAYOUTS, default=["row_major"],
                         help="internal scale-layout A/B; row_major baseline remains default")
-    parser.add_argument("--profile-case", choices=["o3"] + [mixed_case(v, t, l) for v in ("o7", "o8") for t in TILES for l in SCALE_LAYOUTS],
+    parser.add_argument("--profile-case", choices=["o3"] + [mixed_case(v, t, l) for v in ("o7", "o8", "o9", "o10") for t in (BINARY_TILES if v in ("o9", "o10") else TILES) for l in SCALE_LAYOUTS],
                         help="NCU single target, no reference GEMMs/tables; requires repeats=1, rounds=1, modes=compute_only")
     args = parser.parse_args()
     if args.output.exists():
@@ -227,7 +228,7 @@ def main():
         parser.error("size must be >=512 and divisible by256; invalid repetition count")
     if args.profile_case and (args.repeats != 1 or args.rounds != 1 or args.modes != ["compute_only"]):
         parser.error("profile mode requires --repeats 1 --rounds 1 --modes compute_only")
-    if any(len(set(v)) != len(v) for v in (args.modes, args.tiles, args.scale_layouts)):
+    if any(len(set(v)) != len(v) for v in (args.modes, args.tiles, args.binary_tiles, args.scale_layouts)):
         parser.error("duplicate mode/tile/layout")
     import torch
     from adangel import _sm80 as native
@@ -260,7 +261,8 @@ def main():
          "cuda": torch.version.cuda, "gpu": torch.cuda.get_device_name(),
          "cuda_sources_sha256": {name: sha256_file(root / name) for name in
              ("csrc/sm80/o1_o3.cu", "csrc/sm80/o3_optimized.cuh", "csrc/sm80/split_grouped.cuh",
-              "csrc/sm80/mixed_conversion.cuh", "csrc/sm80/mixed_benchmark.cuh")},
+              "csrc/sm80/mixed_conversion.cuh", "csrc/sm80/mixed_benchmark.cuh", "csrc/sm80/mixed_bitplane.cuh",
+              "csrc/sm120/o0_gemm.cu", "include/adangel/fp16_runner.h")},
          "args": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
          "scope": "synthetic_source_formats_not_real_trace", "formal_o7_o8_complete": False,
          "timing_contract_version": TIMING_CONTRACT_VERSION,
@@ -281,7 +283,9 @@ def main():
     sources = {variant: (mf.quantize_source(w, wf), mf.quantize_source(a, af))
                for variant, (wf, af) in mf.VARIANTS.items()}
     mixed_configs = [(tile, layout) for tile in args.tiles for layout in args.scale_layouts]
+    binary_configs = [(tile, layout) for tile in args.binary_tiles for layout in args.scale_layouts]
     cases = ["o0", "o3", "o5", "o6"] + [mixed_case(v, tile, layout) for v in mf.VARIANTS for tile, layout in mixed_configs]
+    cases += [mixed_case(v, tile, layout) for v in mf.BINARY_VARIANTS for tile, layout in binary_configs]
 
     def call(case, mode, warmup, repeats):
         if case == "o0":
@@ -292,7 +296,7 @@ def main():
             return native._benchmark_mixed(case, mode, *sources["o7" if case=="o5" else "o8"],
                                            warmup, repeats, args.inner, "64x128x256", "row_major")
         variant, tile, layout = parse_mixed_case(case)
-        return native._benchmark_mixed(variant, mode, *sources[variant], warmup, repeats, args.inner, tile, layout)
+        return native._benchmark_mixed(variant, mode, *sources[mf.BINARY_VARIANTS.get(variant, variant)], warmup, repeats, args.inner, tile, layout)
 
     if args.profile_case:
         spec = profile_spec(args.profile_case, args.warmup)
@@ -329,6 +333,18 @@ def main():
                             "mse_vs_fixed_reference": (out.double() - reference.double()).square().mean().item(),
                             "mse_vs_o0": (out.double() - reference_o0.double()).square().mean().item()}
             baselines[case] = out.clone()
+        binary_variant = "o9" if variant == "o7" else "o10"
+        for tile, layout in binary_configs:
+            case = mixed_case(binary_variant, tile, layout)
+            run = call(case, "compute_only", 0, 1)
+            checks[case] = validate_bitplanes(run, wq, wscale, aq, ascale, 8 if variant == "o7" else 6)
+            out = run["output"]
+            torch.testing.assert_close(out, reference, rtol=1e-3, atol=1e-3)
+            assert torch.isfinite(out).all() and out.dtype == torch.float32
+            dual = baselines[mixed_case(variant, *mixed_configs[0])]
+            assert torch.equal(out.view(torch.int32), dual.view(torch.int32)), case
+            checks[case].update(binary_equals_dual_int4_bitwise=True)
+            baselines[case] = out.clone()
     baselines["o3"] = call("o3", "compute_only", 0, 1)["output"].clone()
     assert torch.isfinite(baselines["o3"]).all()
     mse = {case: (y.double() - reference_o0.double()).square().mean().item()
@@ -361,7 +377,7 @@ def main():
                         count = 0
                     st["logical_bytes"] = count
                     st["logical_gbps"] = count / st["median_ms"] / 1e6 if count else None
-                if case in ("o5", "o6") or case.startswith(("o7/", "o8/")):
+                if case in ("o5", "o6") or case.startswith(("o7/", "o8/", "o9/", "o10/")):
                     if measured.get("timing_contract_version") != TIMING_CONTRACT_VERSION:
                         raise RuntimeError("rebuild SM80 extension: O7/O8 timing contract mismatch")
                     native_method = measured["total_timing"]

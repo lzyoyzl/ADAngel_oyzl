@@ -601,6 +601,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
   m.attr("mixed_experiment_naming_version")=3;
   m.def("_dequantize_mixed_source",&dequantize_mixed_source,py::arg("source"));
+  m.def("_convert_mixed_bitplanes",&convert_mixed_bitplanes,py::arg("source"),py::arg("scale_layout")="row_major");
   m.def("_convert_mixed_source",&convert_mixed_source,py::arg("source"),
       py::arg("scale_layout")="row_major");
   m.def("_benchmark_mixed",&benchmark_mixed,py::arg("variant"),py::arg("mode"),

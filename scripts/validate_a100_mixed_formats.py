@@ -40,6 +40,7 @@ def main():
         raise AssertionError("codec tests failed or skipped; inspect codec_tests.txt")
     conversion_checks = []
     fp16_checks = []
+    bitplane_checks = []
 
     def move(source):
         return {key: value.cuda() if isinstance(value, torch.Tensor) else value
@@ -70,11 +71,20 @@ def main():
             stream = torch.cuda.Stream()
             with torch.cuda.stream(stream):
                 converted = native._convert_mixed_source(move(source), layout)
+                planes = native._convert_mixed_bitplanes(move(source), layout)
             stream.synchronize()
             torch.testing.assert_close(converted["packed"].cpu(), packed, rtol=0, atol=0)
             assert torch.equal(converted["scale"].cpu().contiguous().view(torch.int32), scale.view(torch.int32))
             expected_stride = (scale.shape[1], 1) if layout == "row_major" else (1, scale.shape[0])
             assert converted["scale"].stride() == expected_stride
+            bits = 4 if weight else (8 if source["format"] == "mxfp8_e4m3_g128" else 6)
+            expected_planes = torch.stack([((((q.int().reshape(q.shape[0], -1, 32) >> b)&1).long()
+                    << torch.arange(32)).sum(-1)).int() for b in range(bits)])
+            assert planes["planes"] == bits
+            assert torch.equal(planes["packed"].cpu(), expected_planes), (label, source["format"])
+            assert torch.equal(planes["scale"].cpu().contiguous().view(torch.int32), scale.view(torch.int32))
+            bitplane_checks.append({"case": label, "format": source["format"], "scale_layout": layout,
+                                   "packed_bitwise": True, "scale_bitwise": True, "planes": bits})
             conversion_checks.append({"case": label, "format": source["format"], "scale_layout": layout,
                                       "shape": source["shape"], "packed_bitwise_equal": True,
                                       "scale_bitwise_equal": True})
@@ -253,6 +263,7 @@ def main():
               "cuda": torch.version.cuda, "codec_tests": result.testsRun,
               "conversion_checks": conversion_checks, "gemm_checks": gemm_checks,
               "fp16_checks": fp16_checks,
+              "bitplane_checks": bitplane_checks,
               "timing_contract_checks": timing_checks,
               "group_major_layout_checks": layout_checks,
               "rejected": rejected}
@@ -260,6 +271,7 @@ def main():
     print(json.dumps({"passed": True, "scope": report["scope"],
                       "codec_tests": result.testsRun, "conversion_checks": len(conversion_checks),
                       "fp16_checks": len(fp16_checks),
+                      "bitplane_checks": len(bitplane_checks),
                       "gemm_checks": len(gemm_checks), "timing_checks": len(timing_checks), "rejected": len(rejected),
                       "group_major_layout_checks": len(layout_checks),
                       "max_abs_error_vs_fixed_reference": max(x["max_abs_error_vs_fixed_reference"] for x in gemm_checks)}, indent=2))

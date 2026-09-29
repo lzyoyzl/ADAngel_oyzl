@@ -89,6 +89,17 @@ template<int AP,int N,int TK> struct MixedBinaryConfig {
   };
 };
 
+py::dict convert_mixed_bitplanes(const py::dict& source,std::string scale_layout) {
+  TORCH_CHECK(scale_layout=="row_major" || scale_layout=="group_major","invalid scale layout");
+  const MixedSource s(source);c10::cuda::CUDAGuard guard(s.payload.device());
+  cudaDeviceProp prop;check(cudaGetDeviceProperties(&prop,s.payload.get_device()));
+  TORCH_CHECK(prop.major==8 && prop.minor==0,"requires A100 SM80");
+  MixedBitplanes d(s,scale_layout=="group_major");
+  launch_mixed_bitplanes(s,d,c10::cuda::getCurrentCUDAStream(s.payload.get_device()).stream());
+  py::dict result;result["packed"]=d.packed;result["scale"]=d.scale;result["planes"]=d.planes;
+  return result;
+}
+
 template<int AP,int N,int TK,bool Major>
 __device__ void mixed_binary_prefetch(typename MixedBinaryConfig<AP,N,TK>::Storage& s,
     int slot,int step,const uint32_t* a,const uint32_t* w,const float* as,const float* ws,
