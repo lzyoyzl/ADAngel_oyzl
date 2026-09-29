@@ -6,8 +6,23 @@ enum class MixedKind { Nv4, Mx8, Hif4, Nv6 };
 
 __host__ __device__ float mixed_e4m3(uint8_t code) {
   const int mag=code&127, exp=mag>>3, mant=mag&7;
+#if defined(__CUDA_ARCH__)
+  // Normal E4M3 has exactly the same leading 1 / mantissa as FP32. This is
+  // exact exponent rebiasing, not an approximate exp2 or a new quantizer.
+  if(exp) return __uint_as_float((uint32_t(code&128)<<24) | (uint32_t(exp+120)<<23) | (uint32_t(mant)<<20));
+  const float value=float(mant)*.001953125f;
+#else
   const float value=exp ? ldexpf(float(8+mant),exp-10) : ldexpf(float(mant),-9);
+#endif
   return code&128 ? -value : value;
+}
+
+__device__ float mixed_ue8m0(uint8_t code) {
+  // Code 0 is 2^-127 (FP32 subnormal), NOT zero. Code 255 is rejected on host.
+  return __uint_as_float(code?uint32_t(code)<<23:0x00400000u);
+}
+__device__ float mixed_hif_scale(uint8_t code) {
+  return __uint_as_float((uint32_t((code>>2)+79)<<23) | (uint32_t(code&3)<<21));
 }
 
 template<MixedKind Kind,bool GroupMajor=false>
@@ -31,7 +46,7 @@ __global__ void adangel_sm80_mixed_to_fixed(
     #pragma unroll
     for(int j=0;j<2;++j) {
       const int code=(byte>>(4*j))&15;
-      const float mag=ldexpf(float(code&7),e8+e4-2);
+      const float mag=float((code&7)<<(e8+e4))*.25f;
       q[j]=__float2int_rn(code&8 ? -mag : mag);
     }
   } else {
@@ -43,7 +58,7 @@ __global__ void adangel_sm80_mixed_to_fixed(
       } else {
         // E2M3 -> signed Q6 (F=2); integer q is sign-extended, not zero-padded.
         const int exp=(code&31)>>3, mant=code&7;
-        const float mag=exp ? ldexpf(float(8+mant),exp-2) : float(mant)*.5f;
+        const float mag=exp ? float((8+mant)<<exp)*.25f : float(mant)*.5f;
         q[j]=__float2int_rn(code&32 ? -mag : mag);
       }
     }
@@ -60,10 +75,10 @@ __global__ void adangel_sm80_mixed_to_fixed(
     const int destination=GroupMajor ? (group%groups_per_row)*rows+group/groups_per_row : group;
     if constexpr(Kind==MixedKind::Hif4) {
       const int code=scale[group];
-      effective[destination]=ldexpf(float(4+(code&3)),(code>>2)-50);
+      effective[destination]=mixed_hif_scale(uint8_t(code));
     } else if constexpr(Kind==MixedKind::Mx8) {
       // Decode first, multiply second: matches the reference even at exponent -127.
-      effective[destination]=__fmul_rn(ldexpf(1.f,int(scale[group])-127),4.f);
+      effective[destination]=__fmul_rn(mixed_ue8m0(scale[group]),4.f);
     } else {
       float value=__fmul_rn(mixed_e4m3(scale[group]),tensor_scale[0]);
       if constexpr(Kind==MixedKind::Nv6) value=__fmul_rn(value,.25f);
@@ -131,20 +146,20 @@ __global__ void adangel_sm80_mixed_to_fp16(
     const int i8=offset/8,i4=offset/4;
     const int e8=(micro8[group*2+i8/8]>>(i8%8))&1;
     const int e4=(micro4[group*4+i4/8]>>(i4%8))&1;
-    local=ldexpf(float(code&7),e8+e4-2);
+    local=float((code&7)<<(e8+e4))*.25f;
     if(code&8) local=-local;
   } else if constexpr(Kind==MixedKind::Mx8) {
     local=mixed_e4m3(payload[i]);
   } else {
     const int code=payload[i],exp=(code&31)>>3,mant=code&7;
-    local=exp?ldexpf(float(8+mant),exp-4):float(mant)*.125f;
+    local=exp?float((8+mant)<<exp)*.0625f:float(mant)*.125f;
     if(code&32) local=-local;
   }
   if constexpr(Kind==MixedKind::Hif4) {
     const int code=scale[group];
-    effective=ldexpf(float(4+(code&3)),(code>>2)-50);
+    effective=mixed_hif_scale(uint8_t(code));
   } else if constexpr(Kind==MixedKind::Mx8) {
-    effective=ldexpf(1.f,int(scale[group])-127);
+    effective=mixed_ue8m0(scale[group]);
   } else {
     effective=__fmul_rn(mixed_e4m3(scale[group]),tensor_scale[0]);
   }

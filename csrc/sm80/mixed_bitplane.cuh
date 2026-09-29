@@ -10,12 +10,12 @@ __device__ int mixed_fixed_element(const uint8_t* p,const uint8_t* m8,
     const int g=i/128,o=i%128,j8=o/8,j4=o/4;
     const int e8=(m8[g*2+j8/8]>>(j8%8))&1,e4=(m4[g*4+j4/8]>>(j4%8))&1;
     const int code=(p[i/2]>>(4*(i&1)))&15;
-    const float v=ldexpf(float(code&7),e8+e4-2);
+    const float v=float((code&7)<<(e8+e4))*.25f;
     return __float2int_rn(code&8?-v:v);
   } else if constexpr(Kind==MixedKind::Mx8) return __float2int_rn(__fmul_rn(mixed_e4m3(p[i]),.25f));
   else {
     const int code=p[i],e=(code&31)>>3,m=code&7;
-    const float v=e?ldexpf(float(8+m),e-2):float(m)*.5f;
+    const float v=e?float((8+m)<<e)*.25f:float(m)*.5f;
     return __float2int_rn(code&32?-v:v);
   }
 }
@@ -37,8 +37,8 @@ __global__ void adangel_sm80_mixed_to_bitplanes(const uint8_t* p,const uint8_t* 
   if(i%128==0) {
     const int group=i/128,groups=k/128;
     const int dst=Major?(group%groups)*rows+group/groups:group;
-    if constexpr(Kind==MixedKind::Hif4) eff[dst]=ldexpf(float(4+(s[group]&3)),(s[group]>>2)-50);
-    else if constexpr(Kind==MixedKind::Mx8) eff[dst]=__fmul_rn(ldexpf(1.f,int(s[group])-127),4.f);
+    if constexpr(Kind==MixedKind::Hif4) eff[dst]=mixed_hif_scale(s[group]);
+    else if constexpr(Kind==MixedKind::Mx8) eff[dst]=__fmul_rn(mixed_ue8m0(s[group]),4.f);
     else {
       float v=__fmul_rn(mixed_e4m3(s[group]),ts[0]);
       if constexpr(Kind==MixedKind::Nv6) v=__fmul_rn(v,.25f);
