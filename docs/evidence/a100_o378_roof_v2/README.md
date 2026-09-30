@@ -7,6 +7,7 @@
 
 - `runs/o378_roof_v2_screen`：192 个小矩阵/边界逐位检查，随后 4096³ 三轮合成输入性能筛选。
 - `runs/o378_roof_v2_four_smoke`：1 个原始 FP16 trace，3 路径×3实现×4模式，共36条，非正式24样本性能验收。
+- `runs/o378_roof_v2_four24_r1`：24 样本×3路径×2实现×4模式，共576条，50次预热/200次测量/转换inner=100。全部逐位正确，MSE不变；采用修复前顺序，只作四模式正确性与诊断证据，不作平衡配对性能验收。各阶段波动和原始样本全部保留。
 - `reports/o378_roof_v2/audit`：18 个 candidate 实例均为两路原生 INT4＋cp.async；允许少量 spill，但不豁免 ISA 检查。
 - `*_memcheck`、`*_synccheck`：各96个正确性检查，Compute Sanitizer 报告0错误。未进行 racecheck，不能据此宣称排除所有数据竞争。
 - `reports/o378_roof_v2/ncu_*`：同一二进制各正式函数和 tune6 的 NCU 原始指标、SASS 与日志；没有丢弃慢记录。
