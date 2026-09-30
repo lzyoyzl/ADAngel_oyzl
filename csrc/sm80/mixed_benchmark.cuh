@@ -33,6 +33,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   cudaDeviceProp prop;check(cudaGetDeviceProperties(&prop,a.payload.get_device()));
   TORCH_CHECK(prop.major==8 && prop.minor==0,"requires A100 SM80");
   const int m=a.rows,n=w.rows,k=a.k,tn=(tile=="64x128x256" || horner || wide || swizzle)?128:64;
+  check_roof_fixed_shape(roof_tune,m,n,k);
   const int tk=tile=="64x64x512"?512:(tn==64?128:256);
   TORCH_CHECK(m%64==0 && n%tn==0 && k%tk==0,"shape must be tile aligned");
   TORCH_CHECK(int64_t(m)*n<=2147483647LL && m/64<=65535 && n/tn<=65535,
@@ -192,13 +193,14 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;meta["shared_memory_bytes"]=roof_cfg.smem;
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=31))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=33))?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
     meta["fp32_reassociated"]=roof_tune>=24 && roof_tune<=27;
     meta["paired_g128_copy"]=roof_tune==29;
     meta["interleaved_mma_finish"]=roof_tune==30 || roof_tune==31;
+    meta["compile_time_shape"]=(roof_tune==32 || roof_tune==33) ? std::vector<int>{4096,4096,4096} : std::vector<int>{};
     meta["physical_stage_payload_padding_bytes"]=roof_tune==29?128:0;
     meta["group_accumulation"]=(roof_tune>=24 && roof_tune<=27) ? "interleaved_chains_then_balanced_tree" : "ascending_g128_fma";
     meta["activation_power2_fast_path"]=activation_power2;

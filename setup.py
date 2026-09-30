@@ -74,6 +74,7 @@ def extensions():
             "csrc/sm80/roof_reuse_budget.cu",
             "csrc/sm80/roof_paired_pipeline.cu",
             "csrc/sm80/roof_finish_pipeline.cu",
+            "csrc/sm80/roof_fixed_shape.cu",
             "csrc/sm80/roof_reduction.cu",
             "csrc/sm80/roof_reduction_budget.cu",
             "csrc/common/validation.cu",

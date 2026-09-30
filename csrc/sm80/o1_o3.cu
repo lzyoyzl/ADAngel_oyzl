@@ -250,6 +250,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   TORCH_CHECK(a.scalar_type()==at::kChar&&as.scalar_type()==at::kFloat&&w.scalar_type()==at::kByte&&ws.scalar_type()==at::kByte,"invalid dtypes");
   TORCH_CHECK(a.is_contiguous()&&as.is_contiguous()&&w.is_contiguous()&&ws.is_contiguous(),"contiguous required");
   int m=a.size(0),k=a.size(1),n=w.size(0),g=split?128:32;
+  check_roof_fixed_shape(roof_tune,m,n,k);
   TORCH_CHECK(m>0&&n>0&&k>0&&m%TM==0&&n%TN==0&&k%(split?128:64)==0,"aligned M/N64 and K64(O1)/K128(O3) required");
   TORCH_CHECK(as.size(0)==m&&w.size(1)==k/2&&ws.size(0)==n&&ws.size(1)==k/g,"shape mismatch");
   int tile_m=TM,tile_n=TN,tile_k=split?128:64;
@@ -617,13 +618,14 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(roof_tune>=0) {
     meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=31))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=33))?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
     meta["fp32_reassociated"]=roof_tune>=24 && roof_tune<=27;
     meta["paired_g128_copy"]=roof_tune==29;
     meta["interleaved_mma_finish"]=roof_tune==30 || roof_tune==31;
+    meta["compile_time_shape"]=(roof_tune==32 || roof_tune==33) ? std::vector<int>{4096,4096,4096} : std::vector<int>{};
     meta["physical_stage_payload_padding_bytes"]=roof_tune==29?128:0;
     meta["group_accumulation"]=(roof_tune>=24 && roof_tune<=27) ? "interleaved_chains_then_balanced_tree" : "ascending_g128_fma";
     meta["kernel_symbol"]="adangel_sm80_roof_candidate";meta["roof_tune"]=roof_tune;

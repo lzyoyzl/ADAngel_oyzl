@@ -43,8 +43,10 @@ def main():
     p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
+    if any(t in (32,33) for t in args.tunes) and args.size!=4096:
+        p.error('fixed4096 candidates32/33 require --size 4096')
     if any(t in (24,25,26,27) for t in args.tunes) and not args.allow_reassociation:
         p.error('candidates24-27 require explicit --allow-reassociation')
     if 13 in args.tunes and args.variants != ['o3']:
@@ -126,10 +128,13 @@ def main():
 
     if args.validate:
         checks = []
+        rejected_shapes = []
         for variant in args.variants:
             shapes=[(64, 128, 256), (128, 256, 512), (64, 128, 768), (128, 128, 4096)]
             if any(t in (16,17,18,19,22,23,28,29,30,31) for t in args.tunes):
                 shapes += [(64,128,128),(64,128,384),(64,128,640)]
+            if any(t in (32,33) for t in args.tunes):
+                shapes += [(4096,4096,4096)]
             for m, n, k in shapes:
                 for pattern in ("random", "zero", "extrema", "zero_scale", "power2_a", "power2_underflow"):
                     values, expected, _ = inputs(variant, m, n, k, pattern)
@@ -138,6 +143,17 @@ def main():
                     stream.wait_stream(torch.cuda.current_stream())
                     with torch.cuda.stream(stream):
                         for tune in args.tunes:
+                            if tune in (32,33) and (m,n,k)!=(4096,4096,4096):
+                                if pattern=='random':
+                                    try:
+                                        native._benchmark_roof_candidate(variant,tune,*values,0,1)
+                                    except RuntimeError as error:
+                                        if 'fixed4096 candidate32/33 requires' not in str(error):
+                                            raise
+                                    else:
+                                        raise AssertionError('fixed shape candidate accepted unsupported shape')
+                                    rejected_shapes.append(dict(variant=variant,tune=tune,shape=[m,n,k]))
+                                continue
                             if k%256 and tune not in (16,17,18,19,22,23,28,29,30,31):
                                 continue  # Only these kernels support odd G128 counts.
                             result = native._benchmark_roof_candidate(variant, tune, *values, 0, 1)
@@ -149,8 +165,8 @@ def main():
                                 assert result['kernel']['pipeline_stages']==3
                                 assert result['kernel']['cta_tile']==[64,128,128]
                                 assert result['kernel']['launch_bounds_min_blocks']==(3 if tune in (16,17) else 2)
-                            if tune in (20,21,22,23,28,29,30,31):
-                                assert result['kernel']['pipeline_stages']==(3 if tune in (23,29,31) else 2)
+                            if tune in (20,21,22,23,28,29,30,31,32,33):
+                                assert result['kernel']['pipeline_stages']==(3 if tune in (23,29,31,33) else 2)
                                 assert result['kernel']['cta_tile']==[64,128,128 if tune>=22 else 256]
                                 assert result['kernel']['launch_bounds_min_blocks']==(4 if tune==28 else (3 if tune>=22 else 2))
                                 assert result['kernel']['threads']==128
@@ -161,6 +177,8 @@ def main():
                                 assert result['kernel']['group_accumulation']=='ascending_g128_fma'
                                 if tune in (30,31):
                                     assert result['kernel']['interleaved_mma_finish']
+                                if tune in (32,33):
+                                    assert result['kernel']['compile_time_shape']==[4096,4096,4096]
                                 if tune==29:
                                     assert result['kernel']['paired_g128_copy']
                                     assert result['kernel']['physical_stage_payload_padding_bytes']==128
@@ -187,7 +205,7 @@ def main():
                                 assert bool(result["kernel"]["activation_scale_prebias"])==(tune==12 and expected_fast)
                             checks.append(dict(variant=variant, tune=tune, shape=[m,n,k], pattern=pattern,
                                                **numeric,kernel=dict(result["kernel"])))
-        save("validation.json", {"passed": True, "checks": checks})
+        save("validation.json", {"passed": True, "checks": checks, "rejected_shapes": rejected_shapes})
         print("synthetic numerical checks:" if args.allow_reassociation else "synthetic bitwise checks:", len(checks), flush=True)
 
     records = []
