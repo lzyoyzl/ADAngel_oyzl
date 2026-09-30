@@ -56,7 +56,11 @@ NCU 中，O3 发射活跃比例由43.95%变为45.60%，O7/O8由约44.7%变为47.
 
 已通过72项合成逐位验证、原生INT4审计、memcheck及有限K768 racecheck。24样本3轮compute对照：旧实现/候选6/13分别为`0.558080/0.531968/0.527616ms`；候选13比6的配对加速仅`1.00724×`，CI`[1.00192,1.01167]`，MSE不变。NCU额外global sectors由8,126,464降为0，long-scoreboard下降，但shared fragment及IMMA/I2F/FFMA工作量没有减少。四模式目前仅完成单样本烟测，重排增加转换时间，尚不切换默认。详见[候选13证据](evidence/a100_o378_roof_v6/README.md)。
 
-候选14针对O7/O8：既有group-major FP32 scale panel改用16字节cp.async直接写入shared，与A/W payload共用commit/wait和CTA barrier，避免同步global load→寄存器→shared store。保持原FMUL、I2F、G128 FMA顺序、tile和双缓冲，不再使用无收益的power2替换。已本地实现、通过CPU契约检查、推送GitHub并由A100 fetch/merge；当前正在编译，尚未GPU验收，不能声称性能提升。
+候选14针对O7/O8：既有group-major FP32 scale panel改用16字节cp.async直接写入shared，与A/W payload共用commit/wait和CTA barrier，避免同步global load→寄存器→shared store。保持原FMUL、I2F、G128 FMA顺序、tile和双缓冲，不再使用无收益的power2替换。
+
+已通过144项合成逐位检查、38个实例ISA审计、memcheck/synccheck（各48项）、有限K768 racecheck。24样本3轮共432条compute记录全部逐位相同：O7旧实现/候选6/14为`0.596992/0.556544/0.553984ms`，O8为`0.600064/0.560128/0.557056ms`。新增收益仍小，四模式只完成单样本烟测。NCU显示long-scoreboard下降，但共享供数及后处理仍限制性能；不宣称达到上界。
+
+候选15进一步将每个K256 stage的两个scale panel展平分配给完整warp拷贝，针对候选14半warp A-scale copy产生的额外理论sector/wavefront计数做对照。这里只合并搬运，不合并两个G128的scale或累加。已完成本地实现与CPU索引/契约检查；GPU编译、审计及验收待执行。
 
 代码先本地提交推送，再同步A100；直接HTTPS fetch断流时，使用校验Git bundle导入同一已推送提交。默认仍是旧实现，不修改5090。改动工作量后重算资源上界，不把旧约0.28ms下界当性能承诺。
 

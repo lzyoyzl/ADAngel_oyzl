@@ -1,0 +1,138 @@
+{
+  "scope": "same_binary_NCU_diagnostic_not_Event_acceptance",
+  "sources": [
+    {
+      "file": "reports/o378_roof_v7/ncu_o7_t6_raw.csv",
+      "sha256": "2e07e01cdfcca8f6bc8a85a0572d2587295869439ab75452192fc2ee0dc1c184"
+    },
+    {
+      "file": "reports/o378_roof_v7/ncu_o7_t6_source_sass.csv",
+      "sha256": "a1e8c949c70efc14c3b1ed2d018dc865c6e8fd88deb5fc512df2ebb571a675f6"
+    },
+    {
+      "file": "reports/o378_roof_v7/ncu_o7_t14_raw.csv",
+      "sha256": "39badf4165da830eb604c11ea0e96c2c91935bfdb12b96026d53af815d5aa2cc"
+    },
+    {
+      "file": "reports/o378_roof_v7/ncu_o7_t14_source_sass.csv",
+      "sha256": "cda08e4c8330da32c12c46b0193edb22822b9d508103b7ca831f7496808b6cf4"
+    }
+  ],
+  "rows": [
+    {
+      "variant": "o7",
+      "tune": 6,
+      "kernel": "void <unnamed>::adangel_sm80_roof_candidate<(bool)1, (bool)0, (int)6>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, float *, int, int, int)",
+      "dynamic_instructions": 127238144,
+      "opcodes": {
+        "IMAD": 13451264,
+        "S2R": 32768,
+        "S2UR": 32768,
+        "ULDC": 65536,
+        "IADD3": 7700480,
+        "ISETP": 294912,
+        "USHF": 2129920,
+        "MOV": 1327104,
+        "LDG": 1048576,
+        "SHF": 819200,
+        "ULEA": 32768,
+        "LOP3": 1933312,
+        "LEA": 8978432,
+        "UIMAD": 16384,
+        "UISETP": 540672,
+        "LDGSTS": 2097152,
+        "PLOP3": 540672,
+        "STL": 81920,
+        "CS2R": 262144,
+        "STS": 1048576,
+        "LDGDEPBAR": 262144,
+        "BRA": 524288,
+        "UMOV": 278528,
+        "UIADD3": 262144,
+        "DEPBAR": 262144,
+        "BAR": 262144,
+        "ULOP3": 1261568,
+        "LDL": 1228800,
+        "LDS": 5980160,
+        "LDSM": 6291456,
+        "IMMA": 16777216,
+        "FMUL": 16777216,
+        "I2F": 16777216,
+        "FFMA": 16777216,
+        "CALL": 262144,
+        "STG": 786432,
+        "EXIT": 32768,
+        "NOP": 0
+      },
+      "source_memory_work": {
+        "L1 Wavefronts Shared Excessive": 0,
+        "L1 Wavefronts Shared": 43384832,
+        "L2 Theoretical Sectors Global Excessive": 0,
+        "L2 Theoretical Sectors Local": 10485760
+      },
+      "source_memory_work_note": "theoretical sectors/wavefront work; not actual HBM bytes",
+      "ncu_duration_ms": 0.489536,
+      "eligible_warps": 0.8906,
+      "issue_active_percent": 47.229259,
+      "l1_service_ms_at_1410": 0.2880969574372253,
+      "l1_bound_note": "profile-conditioned capacity requirement only, not attainable kernel time",
+      "long_scoreboard_stall_per_issue": 0.702981,
+      "math_pipe_stall_per_issue": 1.37714,
+      "mio_stall_per_issue": 1.243665
+    },
+    {
+      "variant": "o7",
+      "tune": 14,
+      "kernel": "void <unnamed>::adangel_sm80_roof_candidate<(bool)1, (bool)0, (int)14>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, float *, int, int, int)",
+      "dynamic_instructions": 128270336,
+      "opcodes": {
+        "IMAD": 16138240,
+        "S2R": 81920,
+        "ULDC": 16384,
+        "IADD3": 7503872,
+        "CS2R": 262144,
+        "ISETP": 835584,
+        "SHF": 1146880,
+        "LOP3": 2408448,
+        "LEA": 9748480,
+        "MOV": 311296,
+        "STL": 81920,
+        "LDGSTS": 3145728,
+        "LDGDEPBAR": 262144,
+        "BRA": 524288,
+        "UMOV": 278528,
+        "UIADD3": 262144,
+        "DEPBAR": 262144,
+        "USHF": 2031616,
+        "BAR": 262144,
+        "ULOP3": 1015808,
+        "LDL": 1228800,
+        "LDS": 5980160,
+        "LDSM": 6291456,
+        "IMMA": 16777216,
+        "I2F": 16777216,
+        "FMUL": 16777216,
+        "FFMA": 16777216,
+        "CALL": 262144,
+        "STG": 786432,
+        "EXIT": 32768,
+        "NOP": 0
+      },
+      "source_memory_work": {
+        "L1 Wavefronts Shared Excessive": 860159,
+        "L1 Wavefronts Shared": 44855295,
+        "L2 Theoretical Sectors Global Excessive": 491520,
+        "L2 Theoretical Sectors Local": 10485760
+      },
+      "source_memory_work_note": "theoretical sectors/wavefront work; not actual HBM bytes",
+      "ncu_duration_ms": 0.487456,
+      "eligible_warps": 0.915828,
+      "issue_active_percent": 47.632781,
+      "l1_service_ms_at_1410": 0.2771925019508937,
+      "l1_bound_note": "profile-conditioned capacity requirement only, not attainable kernel time",
+      "long_scoreboard_stall_per_issue": 0.498332,
+      "math_pipe_stall_per_issue": 1.475315,
+      "mio_stall_per_issue": 1.09317
+    }
+  ]
+}

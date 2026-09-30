@@ -10,7 +10,7 @@ import re
 
 
 def analyze(raw_payload, sass_payload, tune, variant='o7'):
-    allowed={'o3':(6,13),'o7':(6,11,12,14),'o8':(6,14)}
+    allowed={'o3':(6,13),'o7':(6,11,12,14,15),'o8':(6,14,15)}
     if variant not in allowed or tune not in allowed[variant]:
         raise ValueError('unsupported variant/tune profiling pair')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))

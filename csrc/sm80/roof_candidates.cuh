@@ -22,11 +22,11 @@ void adangel_sm80_roof_candidate(
   using R=RoofShape<Tune>;
   o3_body<64,R::N,R::K,Fast && !DualScale,false,false,R::WN,false,true,false,true,true,true,false,
           DualScale,DualScale || Tune==13,R::CoreTune,DualScale && Fast && (Tune==11 || Tune==12),
-          DualScale && Fast && Tune==12,Tune==14>(a,w,as,ws,y,m,n,k);
+          DualScale && Fast && Tune==12,Tune==14 || Tune==15,Tune==15>(a,w,as,ws,y,m,n,k);
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=14);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=15);
 }
 
 // Natural U8 [N,G] -> group-major [G,N]. Called inside O3 W conversion for
@@ -73,6 +73,7 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 12:return roof_config_for<12>(dual);
     case 13:return roof_config_for<13>(dual);
     case 14:return roof_config_for<14>(dual);
+    case 15:return roof_config_for<15>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -85,6 +86,10 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
   auto kernel=adangel_sm80_roof_candidate<false,false,0>;
+  if(tune==15) {
+    TORCH_CHECK(dual,"combined asynchronous scale panels require O7/O8");
+    return adangel_sm80_roof_candidate<true,false,15>;
+  }
   if(tune==14) {
     TORCH_CHECK(dual,"asynchronous FP32 scale candidate requires O7/O8");
     return adangel_sm80_roof_candidate<true,false,14>;
@@ -112,7 +117,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   const bool dual=variant=="o7" || variant=="o8";
   TORCH_CHECK(dual || variant=="o3","expected o3/o7/o8");
   TORCH_CHECK(tune!=13 || !dual,"group-major UE8M0 candidate is O3 only");
-  TORCH_CHECK(tune!=14 || dual,"asynchronous FP32 scale candidate requires O7/O8");
+  TORCH_CHECK((tune!=14 && tune!=15) || dual,"asynchronous FP32 scale candidate requires O7/O8");
   TORCH_CHECK(valid_roof_tune(tune) && warmup>=0 && repeats>0,"invalid candidate/repetitions");
   for(const auto& t : {a,as,w,ws})
     TORCH_CHECK(t.is_cuda() && t.device()==a.device(),"CUDA device mismatch");
@@ -195,8 +200,9 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["activation_power2_fast_path"]=dual && (tune==11 || tune==12) && fast;
   meta["activation_power2_guard_fallback"]=dual && (tune==11 || tune==12) && !fast;
   meta["activation_scale_prebias"]=dual && tune==12 && fast;
-  meta["scale_copy_async"]=tune==14;
-  meta["scale_copy_transaction_bytes"]=tune==14 ? 16 : 0;
+  meta["scale_copy_async"]=tune==14 || tune==15;
+  meta["scale_copy_transaction_bytes"]=(tune==14 || tune==15) ? 16 : 0;
+  meta["scale_copy_combined_panels"]=tune==15;
   meta["weight_scale_layout"]=dual || tune==13 ? "group_major" : "row_major";
   meta["weight_scale_reorder_bytes"]=tune==13 ? int64_t(2)*n*g : 0;
   meta["scale_hoist"]=tune>=0 && bool(cfg.core_tune&1);meta["interleaved_n_atoms"]=tune>=0 && bool(cfg.core_tune&2);

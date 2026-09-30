@@ -194,8 +194,9 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["activation_power2_fast_path"]=activation_power2;
     meta["activation_power2_guard_fallback"]=(roof_tune==11 || roof_tune==12) && !activation_power2;
     meta["activation_scale_prebias"]=roof_tune==12 && activation_power2;
-    meta["scale_copy_async"]=roof_tune==14;
-    meta["scale_copy_transaction_bytes"]=roof_tune==14 ? 16 : 0;
+    meta["scale_copy_async"]=roof_tune==14 || roof_tune==15;
+    meta["scale_copy_transaction_bytes"]=(roof_tune==14 || roof_tune==15) ? 16 : 0;
+    meta["scale_copy_combined_panels"]=roof_tune==15;
     if(activation_power2) meta["scale_formula"]="guarded_exact_exponent_adjustment_of_W_by_power2_A";
   }
   meta["experiment_naming_version"]=3;

@@ -41,5 +41,14 @@ class RoofScaleNcuTests(unittest.TestCase):
             self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Global Excessive'],sectors)
             self.assertEqual(result['source_memory_work']['L1 Wavefronts Shared Excessive'],0)
 
+    def test_archived_async_scale_counters(self):
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v7/reports/o378_roof_v7'
+        result=ANALYZE((evidence/'ncu_o7_t14_raw.csv').read_text(),
+                       (evidence/'ncu_o7_t14_source_sass.csv').read_text(),14,'o7')
+        self.assertEqual(result['dynamic_instructions'],128270336)
+        self.assertEqual(result['opcodes']['FMUL'],16777216)
+        self.assertEqual(result['source_memory_work']['L1 Wavefronts Shared Excessive'],860159)
+        self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Global Excessive'],491520)
+
 
 if __name__=='__main__': unittest.main()
