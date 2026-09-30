@@ -1,4 +1,4 @@
-"""Preflight/synthetic/NCU scope only; do not imply completed24 acceptance."""
+"""Reconcile preflight, full24 compute and NCU; full24 four-mode is separate."""
 import collections
 import json
 from pathlib import Path
@@ -10,9 +10,63 @@ ROOT=Path(__file__).resolve().parents[2]
 E=ROOT/'docs/evidence/a100_o378_roof_v17'
 P=E/'reports/o378_roof_v17'
 ANALYZE=runpy.run_path(str(ROOT/'scripts/analyze_roof_scale_ncu.py'))['analyze']
+COMPARE=runpy.run_path(str(ROOT/'scripts/compare_roof_trace_candidates.py'))['compare']
 
 
 class ReductionBudgetEvidence(unittest.TestCase):
+    def test_complete_trace_is_balanced_and_all_mse_are_recomputed(self):
+        d=E/'runs/o378_roof_v17_trace24'
+        env=json.loads((d/'environment.json').read_text())
+        summary=json.loads((d/'summary.json').read_text())
+        self.assertEqual(env['binary_sha256'],json.loads((P/'audit/audit.json').read_text())['binary_sha256'])
+        self.assertTrue(summary['all_24_samples'] and summary['correctness_passed'])
+        self.assertFalse(summary['all_four_modes_completed'])
+        rows=[json.loads(x) for x in (d/'results.jsonl').read_text().splitlines()]
+        self.assertEqual(len(rows),3528)
+        for v in ('o3','o7','o8'):
+            for t in (-1,6,21,22,23,26,27):
+                rs=[r for r in rows if r['variant']==v and r['tune']==t]
+                self.assertEqual(collections.Counter(r['order_position'] for r in rs),dict.fromkeys(range(7),24))
+        for r in rows:
+            self.assertEqual(len(r['raw_ms']),200)
+            self.assertTrue(r['semantic_tolerance_passed'] and r['mse_regression_passed'])
+            for key,value in r['baseline_mse'].items():
+                self.assertLessEqual(abs(r[key]-value),1e-12+1e-5*abs(value))
+            if r['tune']<24:
+                self.assertTrue(r['bitwise_equal_production'])
+                self.assertEqual(r['mse_vs_production'],0)
+        for ref,tune in ((6,22),(21,23),(6,26),(6,27)):
+            calculated=COMPARE(rows,ref,tune,24,7,['o3','o7','o8'],['compute_only'],True)
+            stored=json.loads((P/f'trace24_t{tune}_vs{ref}.json').read_text())['rows']
+            self.assertEqual(calculated,stored)
+            for r in calculated:
+                if tune in (26,27) or (tune==23 and r['variant']=='o3'):
+                    self.assertLess(r['paired_speedup_ci95'][1],1)
+                else:
+                    self.assertGreater(r['paired_speedup_ci95'][0],1)
+                self.assertGreater(r['cv'][str(tune)]['any_stage_failed'],0)
+        smoke=E/'runs/o378_roof_v17_reduction_four_smoke'
+        s=json.loads((smoke/'summary.json').read_text())
+        self.assertTrue(s['all_four_modes_completed'] and s['mse_regression_passed'])
+        self.assertFalse(s['all_24_samples'])
+        self.assertEqual(len((smoke/'results.jsonl').read_text().splitlines()),108)
+
+    def test_o3_reuse_saves_load_work_but_not_proportional_runtime(self):
+        results=[]
+        for tune,instructions in ((6,117268480),(22,112279552)):
+            r=ANALYZE((P/f'ncu_o3_t{tune}_raw.csv').read_text(),
+                      (P/f'ncu_o3_t{tune}_source_sass.csv').read_text(),tune,'o3',True,True)
+            self.assertEqual(r['dynamic_instructions'],instructions)
+            self.assertEqual(r['source_memory_work']['L2 Theoretical Sectors Local'],6291456)
+            self.assertEqual(r['source_memory_work_by_opcode']['LDSM']['L1 Wavefronts Shared Excessive'],0)
+            results.append(r)
+        baseline,candidate=results
+        self.assertEqual(candidate['source_memory_work_by_opcode']['LDGSTS']['L1 Wavefronts Shared Excessive'],8388608)
+        self.assertEqual(candidate['source_memory_work_by_opcode']['LDSM']['L1 Wavefronts Shared'],16777216)
+        self.assertEqual(baseline['source_memory_work_by_opcode']['LDSM']['L1 Wavefronts Shared'],25165824)
+        self.assertLess(candidate['issue_active_percent'],baseline['issue_active_percent'])
+        self.assertEqual(candidate['binding_modeled_resources'],['mma','i2f'])
+
     def test_new_entries_have_no_spill_and_old_code_is_preserved(self):
         audit=json.loads((P/'audit/audit.json').read_text())
         self.assertTrue(audit['passed'])

@@ -58,3 +58,10 @@ local理论sector分别为10,485,760／31,064,064／82,575,360；MMA/I2F/FFMA数
 的device计算体，独立编译以保留旧对照机器码。此举允许更多寄存器，可能降低spill，
 也可能因只驻留一个CTA而损失延迟隐藏能力；不能预先宣称更快。
 仍需显式 `--allow-reassociation`，不改变正式默认、5090或任何量化/scale语义。
+
+已完成的GPU证据见[v16完整24样本](evidence/a100_o378_roof_v16/README.md)与
+[v17寄存器预算对照](evidence/a100_o378_roof_v17/README.md)。放宽预算确实消除了spill，
+但初筛仍慢于单链对照：不能将“存在一条FP32累加依赖”当作“它是当前主瓶颈”的证据。
+复用流水线23的NCU not-issued wait采样，IMMA/I2F consumer分别1135/877次，FFMA为383次。
+这些不是时间占比，也不直接定位producer；支持继续分析供数、INT4→整数重构→I2F的依赖与驻留量，
+而不是只增加FP32累加链。
