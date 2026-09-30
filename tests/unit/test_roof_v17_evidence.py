@@ -1,9 +1,12 @@
 """Reconcile preflight, full24 compute and NCU; full24 four-mode is separate."""
 import collections
+import itertools
 import json
+import math
 from pathlib import Path
 import re
 import runpy
+import statistics
 import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -14,6 +17,50 @@ COMPARE=runpy.run_path(str(ROOT/'scripts/compare_roof_trace_candidates.py'))['co
 
 
 class ReductionBudgetEvidence(unittest.TestCase):
+    def test_o78_four_modes_are_complete_balanced_and_bitwise(self):
+        d=E/'runs/o378_roof_v17_o78_four24'
+        env=json.loads((d/'environment.json').read_text())
+        summary=json.loads((d/'summary.json').read_text())
+        rows=[json.loads(x) for x in (d/'results.jsonl').read_text().splitlines()]
+        modes=['conversion_only','compute_only','cold','steady_state']
+        variants=['o7','o8'];tunes=[-1,21,23]
+        self.assertEqual(env['binary_sha256'],json.loads((P/'audit/audit.json').read_text())['binary_sha256'])
+        self.assertEqual((env['args']['samples'],env['args']['rounds'],env['args']['warmup'],
+                          env['args']['repeats'],env['args']['inner']),(24,3,50,200,100))
+        self.assertEqual((env['args']['variants'],env['args']['tunes']),(variants,tunes))
+        self.assertTrue(summary['all_24_samples'] and summary['all_four_modes_completed']
+                        and summary['correctness_passed'] and summary['no_filtering'])
+        self.assertEqual(summary['numerical_policy'],'bitwise')
+        ids={r['sample_id'] for r in rows}
+        self.assertEqual(len(ids),24)
+        self.assertEqual(len(rows),1728)
+        self.assertEqual({(r['sample_id'],r['variant'],r['mode'],r['round'],r['tune']) for r in rows},
+                         set(itertools.product(ids,variants,modes,range(3),tunes)))
+        for v,mode,tune in itertools.product(variants,modes,tunes):
+            selected=[r for r in rows if (r['variant'],r['mode'],r['tune'])==(v,mode,tune)]
+            self.assertEqual(collections.Counter(r['order_position'] for r in selected),dict.fromkeys(range(3),24))
+        for r in rows:
+            self.assertTrue(r['bitwise_equal_production'])
+            self.assertEqual(r['mse_vs_production'],0)
+            self.assertEqual(r['conversion_inner_repeats'],100)
+            self.assertEqual(r['total_timing'],'sum_of_batched_stage_samples' if r['mode']=='conversion_only'
+                             else 'single_execution_cuda_event')
+            for stage,values in r['stage_timings_ms'].items():
+                self.assertEqual(len(values),200)
+                self.assertTrue(all(math.isfinite(x) and x>0 for x in values))
+                self.assertAlmostEqual(statistics.median(values),r['stage_summaries'][stage]['median_ms'],places=12)
+                self.assertEqual(r['stage_timing_inner_repeats'][stage],100 if
+                                 stage.endswith('_conversion') or r['mode']=='conversion_only' else 1)
+        for ref,label in ((-1,'prod'),(21,'21')):
+            calculated=COMPARE(rows,ref,23,24,3,variants,modes)
+            stored=json.loads((P/f'o78_four24_t23_vs{label}.json').read_text())['rows']
+            self.assertEqual(calculated,stored)
+            for r in calculated:
+                self.assertEqual(r['cv']['23']['records'],72)
+                if r['mode']!='conversion_only':
+                    self.assertGreater(r['paired_speedup_ci95'][0],1)
+                    self.assertGreater(r['cv']['23']['any_stage_failed'],0)
+
     def test_complete_trace_is_balanced_and_all_mse_are_recomputed(self):
         d=E/'runs/o378_roof_v17_trace24'
         env=json.loads((d/'environment.json').read_text())
