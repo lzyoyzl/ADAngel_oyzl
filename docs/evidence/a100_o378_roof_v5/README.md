@@ -17,4 +17,4 @@ Candidate12 vs candidate6 paired speedup median is **0.99724×**, sample-bootstr
 
 Median MSE unchanged: vs O0 `0.01190031796545981`, vs O5 `0.0055361724266658075`; candidate vs production MSE is zero. O3/O8 synthetic results do not imply that the O7-specific power2 shortcut applies to their general scale distributions.
 
-The candidate6 24-sample four-mode balanced run (`runs/o378_roof_v5_four24_balanced` on A100) was still live when this archive was assembled and is deliberately excluded here. It must be collected after completion, with full coverage and timing metadata checked; this README is not full four-mode acceptance. Next candidate13 addresses O3 scale layout rather than continuing ineffective scalar replacements.
+The candidate6 24-sample four-mode balanced run was still live when this partial archive was assembled. It has since completed with all576 records bitwise correct and 12AB/12BA sample pairs per variant/mode; its separate [complete archive](../a100_o378_roof_v5_four24/README.md) records the timing gains and remaining CV failures. Next candidate13 addresses O3 scale layout rather than continuing ineffective scalar replacements.

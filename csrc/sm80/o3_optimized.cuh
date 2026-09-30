@@ -4,7 +4,7 @@ template<int N,bool Cached> struct O3ScaleCodeScratch {};
 template<int N> struct O3ScaleCodeScratch<N,true> { uint8_t scale_codes[N*32]; };
 template<int M,int Groups,bool Enabled> struct SplitActivationScales {};
 template<int M,int Groups> struct SplitActivationScales<M,Groups,true> {
-  float activation_scales[2*Groups*M];
+  alignas(16) float activation_scales[2*Groups*M];
 };
 
 template<int M,int N,int K,bool Cached=false,int WN=2,bool DualScale=false>
@@ -34,7 +34,7 @@ struct O3AmpereConfig {
   };
 };
 
-template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,bool PrebiasActivationScale=false>
+template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,bool PrebiasActivationScale=false,bool AsyncScale=false>
 __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN,DualScale>::Storage& s,
     int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k,
     const float* grouped_as=nullptr,int total_n=0) {
@@ -42,6 +42,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   static_assert(!DualScale || (!Fast && !Cached && !VectorScale));
   static_assert(!GroupMajorScale || DualScale || (!Cached && !VectorScale));
   static_assert(!PrebiasActivationScale || DualScale);
+  static_assert(!AsyncScale || (DualScale && GroupMajorScale && !PrebiasActivationScale));
   typename C::template ByteLayout<M> la;
   typename C::template ByteLayout<N> lb;
   auto copy_a=[&](unsigned off) {
@@ -72,7 +73,24 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
     for(unsigned off=threadIdx.x*16;off<M*C::Bytes;off+=C::Threads*16) copy_a(off);
     for(unsigned off=threadIdx.x*16;off<N*C::Bytes;off+=C::Threads*16) copy_b(off);
   }
-  if constexpr(DualScale) {
+  if constexpr(AsyncScale) {
+    // Candidate14: group-major FP32 panels are contiguous and 16B aligned.
+    // Copy their bits directly, with no scale arithmetic or temporary GPRs.
+    // The existing commit/wait_group + CTA barrier covers payload AND scales;
+    // do not consume this slot before the next process_stage wait/barrier.
+    static_assert(M%4==0 && N%4==0 && alignof(typename C::Storage)>=16);
+    const auto* grouped_ws=reinterpret_cast<const float*>(ws);
+    o1_static_for<0,C::Groups>([&](auto group) {
+      int g=stage*C::Groups+group;
+      unsigned first=threadIdx.x*4;
+      if(threadIdx.x<M/4)
+        copy16(s.activation_scales+(slot*C::Groups+group)*M+first,
+               grouped_as+g*m+blockIdx.y*M+first);
+      if(threadIdx.x<N/4)
+        copy16(s.scales+(slot*C::Groups+group)*N+first,
+               grouped_ws+g*total_n+blockIdx.x*N+first);
+    });
+  } else if constexpr(DualScale) {
     // Both sides vary across G128. Only a host-guarded candidate may prebias A.
     const auto* grouped_ws=reinterpret_cast<const float*>(ws);
     o1_static_for<0,C::Groups>([&](auto group) {
@@ -113,7 +131,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
@@ -122,6 +140,7 @@ __device__ __forceinline__ void o3_body(
   static_assert(!DualScale || (!Fast && !Cached && !Magic && Stream));
   static_assert(!ActivationPower2 || (DualScale && RoofTune!=0));
   static_assert(!PrebiasActivationScale || ActivationPower2);
+  static_assert(!AsyncScale || (DualScale && GroupMajorScale && !ActivationPower2));
   extern __shared__ __align__(128) uint8_t buf[];
   auto& s=*reinterpret_cast<typename C::Storage*>(buf);
   if constexpr(Cached) {
@@ -189,11 +208,11 @@ __device__ __forceinline__ void o3_body(
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
   auto bd1=bc.retile_D(rb1);
   auto ld1=lc.retile_D(ra1);auto hd1=hc.retile_D(rh1);
-  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale>(s,0,0,a,w,ws,m,k,as,n);
+  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale>(s,0,0,a,w,ws,m,k,as,n);
   auto process_stage=[&](int stage,auto slot) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
-    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale>(s,1-slot,stage+1,a,w,ws,m,k,as,n);
+    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale>(s,1-slot,stage+1,a,w,ws,m,k,as,n);
     auto process_group=[&](auto group) {
       if constexpr(Stream) {
         // Preload both K64 A sets, but retain only a narrow N slice of B.

@@ -26,10 +26,12 @@ def main():
     p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
+    if 14 in args.tunes and 'o3' in args.variants:
+        p.error('candidate14 is O7/O8 only')
     import torch
     from adangel import _sm80 as native
     from adangel.quantization.arbitrary_bits import split_int8_to_packed_int4
@@ -117,6 +119,10 @@ def main():
                             y = result["output"]
                             if tune==13:
                                 assert torch.equal(result['converted_weight_scale'],values[3].T.contiguous())
+                            if tune==14:
+                                assert result['kernel']['scale_copy_async']
+                                assert not result['kernel']['activation_power2_fast_path']
+                                assert not result['kernel']['activation_power2_guard_fallback']
                             assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, m, n, k, pattern)
                             if tune in (11,12) and variant!="o3":
                                 expected_fast=pattern=="power2_a" or (pattern=="random" and variant=="o7")

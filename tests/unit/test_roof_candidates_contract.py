@@ -9,7 +9,7 @@ class RoofCandidatesContractTest(unittest.TestCase):
     def test_production_default_unchanged(self):
         host = (ROOT / "csrc/sm80/o1_o3.cu").read_text()
         self.assertIn('implementation="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2";', host)
-        self.assertIn('int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false>', (ROOT / "csrc/sm80/o3_optimized.cuh").read_text())
+        self.assertIn('int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false>', (ROOT / "csrc/sm80/o3_optimized.cuh").read_text())
 
     def test_same_group_math_no_magic(self):
         body = (ROOT / "csrc/sm80/o3_optimized.cuh").read_text()
@@ -61,7 +61,31 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('__fmaf_rn(float(partial),scale,acc(vi,mi,full_ni))',body)
         self.assertIn('static_assert(!PrebiasActivationScale || ActivationPower2)',body)
         self.assertIn('row_scale=__uint_as_float(__float_as_uint(row_scale)-0x3f800000u)',body)
-        self.assertEqual(body.count('o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale>'),2)
+        self.assertEqual(body.count('o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale>'),2)
+
+    def test_async_scale_uses_existing_payload_wait_and_group_major_alignment(self):
+        body=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+        block=body.split('if constexpr(AsyncScale) {',1)[1].split('} else if constexpr(DualScale)',1)[0]
+        self.assertIn('copy16(s.activation_scales+',block)
+        self.assertIn('copy16(s.scales+',block)
+        self.assertNotIn('__fmul',block)
+        self.assertIn('!AsyncScale || (DualScale && GroupMajorScale && !PrebiasActivationScale)',body)
+        self.assertIn('alignas(16) float activation_scales',body)
+        stage=body.split('auto process_stage=',1)[1]
+        self.assertLess(stage.index('cp.async.wait_group 0'),stage.index('__syncthreads()'))
+        self.assertLess(stage.index('__syncthreads()'),stage.index('auto process_group='))
+        for rows in (64,128):
+            touched=[]
+            for slot in (0,1):
+                for group in (0,1):
+                    for lane in range(rows//4):
+                        first=(slot*2+group)*rows+lane*4
+                        self.assertEqual(first*4%16,0)
+                        touched.extend(range(first,first+4))
+            self.assertEqual(touched,list(range(4*rows)))
+        host=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
+        self.assertIn('return adangel_sm80_roof_candidate<true,false,14>',host)
+        self.assertIn('if(tune==11 || tune==12) fast=roof_power2_activation_guard',host)
 
     def test_o3_group_major_scale_is_timed_in_weight_conversion(self):
         host=(ROOT/'csrc/sm80/o1_o3.cu').read_text()

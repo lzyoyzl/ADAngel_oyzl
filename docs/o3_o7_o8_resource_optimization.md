@@ -28,7 +28,9 @@ ISA 审计确认同一候选函数包含 LDGSTS、`IMMA.16864.U4.S4` 和 `IMMA.1
 
 ## 尚不能宣布正式完成的原因
 
-配对加速约 1.05–1.075×，离目标仍远。72 条记录中，原实现/候选的 CV≥3% 数量分别为 O3 `49/52`、O7 `34/47`、O8 `35/46`。全部保留，bootstrap为同trace相关样本的描述性统计；不能宣称全阶段CV验收通过，快照也不足以确定每个离群值的原因。平衡顺序的四模式验收尚未完成。
+配对加速约 1.05–1.075×，离目标仍远。72 条记录中，原实现/候选的 CV≥3% 数量分别为 O3 `49/52`、O7 `34/47`、O8 `35/46`。全部保留，bootstrap为同trace相关样本的描述性统计；不能宣称全阶段CV验收通过，快照也不足以确定每个离群值的原因。
+
+后续平衡顺序的24样本四模式复测已完成：576条全部逐位一致，每个variant/mode有12AB、12BA。compute-only配对加速为O3 `1.0432×`、O7 `1.0695×`、O8 `1.0635×`；cold为`1.0407×/1.0701×/1.0602×`，steady-state为`1.0451×/1.0637×/1.0625×`。转换代码未变，转换耗时无实质收益。仍有多条CV≥3%记录，详见[完整四模式证据](evidence/a100_o378_roof_v5_four24/README.md)。
 
 ## 第二轮诊断与后续候选
 
@@ -50,7 +52,9 @@ NCU 中，O3 发射活跃比例由43.95%变为45.60%，O7/O8由约44.7%变为47.
 
 候选12把指数偏置减法移到每CTA、每row/group的shared scale预取阶段。288项逐位检查、原生INT4审计、memcheck/synccheck（各72项，0错误）通过。24样本O7候选6/12为0.553984/0.557056ms，MSE仍相同；目前没有明显增益，暂不采用。后续重点不再反复替换这一条乘法。
 
-新候选13只针对O3的UE8M0读取：将W scale由自然[N,G]重排为[G,N]，使同group的相邻列连续。重排单独kernel计入W转换（新增logical bytes=2×N×G），cold计入，compute-only/steady-state缓存。两路INT4、G128及scale数值不变；O7/O8不接受该候选。当前本地已实现，GPU编译/审计/四模式验收待执行。候选6平衡顺序的24样本四模式复测正在运行。
+新候选13只针对O3的UE8M0读取：将W scale由自然[N,G]重排为[G,N]，使同group的相邻列连续。重排单独kernel计入W转换（新增logical bytes=2×N×G），cold计入，compute-only/steady-state缓存。两路INT4、G128及scale数值不变；O7/O8不接受该候选。当前本地已实现，GPU编译/审计/四模式验收待执行。
+
+候选14针对O7/O8：既有group-major FP32 scale panel改用16字节cp.async直接写入shared，与A/W payload共用commit/wait和CTA barrier，避免同步global load→寄存器→shared store。保持原FMUL、I2F、G128 FMA顺序、tile和双缓冲，不再使用无收益的power2替换。当前仅本地实现及CPU契约检查通过，尚未GPU验收，不能声称性能提升。
 
 代码先本地提交推送，再同步A100；直接HTTPS fetch断流时，使用校验Git bundle导入同一已推送提交。默认仍是旧实现，不修改5090。改动工作量后重算资源上界，不把旧约0.28ms下界当性能承诺。
 
