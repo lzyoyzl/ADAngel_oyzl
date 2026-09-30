@@ -58,6 +58,24 @@ class RoofPairComparison(unittest.TestCase):
         self.assertEqual(result["candidate_tune"], 21)
         self.assertEqual(result["source_binary_sha256"], "88b4c5e206eea0135a71e03c22c2c5f7a22ff3f1c17bfc202c9394e0c8c1cf37")
 
+    def test_reassociation_requires_opt_in_and_does_not_relax_old_gate(self):
+        rows=self.rows()
+        for row in rows:
+            if row['tune']==21:
+                row.update(tune=24,bitwise_equal_production=False,mse_vs_production=1e-12,
+                    max_abs_vs_production=1e-5,mse_vs_semantic_fp64=1e-13,max_abs_vs_semantic_fp64=1e-6,
+                    semantic_tolerance_passed=True,mse_regression_passed=True,fp32_reassociated=True,
+                    mse_vs_paired_fp16=.050000001)
+        args=(14,24,2,3,['o7'],['compute_only','cold'])
+        with self.assertRaisesRegex(ValueError,'bitwise'): COMPARE(rows,*args)
+        result=COMPARE(rows,*args,allow_reassociation=True)
+        self.assertEqual(result[0]['median_mse_vs_paired_fp16'],.050000001)
+        self.assertEqual(result[0]['median_reference_mse_vs_paired_fp16'],.05)
+        bad=copy.deepcopy(rows);bad[-1]['mse_regression_passed']=False
+        with self.assertRaisesRegex(ValueError,'acceptance'): COMPARE(bad,*args,allow_reassociation=True)
+        bad=copy.deepcopy(rows);bad[0]['bitwise_equal_production']=False
+        with self.assertRaisesRegex(ValueError,'bitwise'): COMPARE(bad,*args,allow_reassociation=True)
+
 
 if __name__ == "__main__":
     unittest.main()
