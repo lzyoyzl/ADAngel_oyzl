@@ -69,6 +69,7 @@ def extensions():
         sources = [
             "csrc/sm80/o1_o3.cu",
             "csrc/sm80/roof_pipeline.cu",
+            "csrc/sm80/roof_warp_reuse.cu",
             "csrc/common/validation.cu",
             "csrc/sm120/conversion.cu",
             "csrc/sm120/o0_gemm.cu",

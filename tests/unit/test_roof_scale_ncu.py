@@ -92,6 +92,14 @@ class RoofScaleNcuTests(unittest.TestCase):
             self.assertEqual(result['max_ctas_per_sm_from_launch_limits'],3)
             self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Local'],local)
             self.assertEqual(result['source_memory_work']['L1 Wavefronts Shared Excessive'],8388608)
+            by_op=result['source_memory_work_by_opcode']
+            for name,total_work in result['source_memory_work'].items():
+                self.assertEqual(sum(work[name] for work in by_op.values()),total_work)
+            # Extra copy work is not evidence of ldmatrix bank conflicts.
+            self.assertEqual(by_op['LDGSTS']['L1 Wavefronts Shared Excessive'],8388608)
+            self.assertEqual(by_op['LDSM']['L1 Wavefronts Shared Excessive'],0)
+            self.assertEqual(by_op['LDL']['L2 Theoretical Sectors Local']+
+                             by_op['STL']['L2 Theoretical Sectors Local'],local)
 
 
 if __name__=='__main__': unittest.main()

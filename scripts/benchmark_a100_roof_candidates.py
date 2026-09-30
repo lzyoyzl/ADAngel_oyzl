@@ -40,7 +40,7 @@ def main():
     p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
@@ -143,6 +143,12 @@ def main():
                                 assert result['kernel']['pipeline_stages']==3
                                 assert result['kernel']['cta_tile']==[64,128,128]
                                 assert result['kernel']['launch_bounds_min_blocks']==(3 if tune in (16,17) else 2)
+                            if tune in (20,21):
+                                assert result['kernel']['pipeline_stages']==2
+                                assert result['kernel']['cta_tile']==[64,128,256]
+                                assert result['kernel']['threads']==128
+                                assert result['kernel']['warp_layout']==[2,2]
+                                assert result['kernel']['accumulators_per_thread']==64
                             if tune in (14,15):
                                 assert result['kernel']['scale_copy_async']
                                 assert result['kernel']['scale_copy_combined_panels']==(tune==15)

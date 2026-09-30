@@ -192,6 +192,8 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;meta["shared_memory_bytes"]=roof_cfg.smem;
     meta["pipeline_stages"]=roof_cfg.stages;
+    meta["warp_layout"]=std::vector<int>{roof_tune>=20?2:4,roof_cfg.threads/(32*(roof_tune>=20?2:4))};
+    meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["activation_power2_fast_path"]=activation_power2;
     meta["activation_power2_guard_fallback"]=(roof_tune==11 || roof_tune==12) && !activation_power2;
     meta["activation_scale_prebias"]=roof_tune==12 && activation_power2;

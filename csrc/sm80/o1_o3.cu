@@ -617,6 +617,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(roof_tune>=0) {
     meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
     meta["pipeline_stages"]=roof_cfg.stages;
+    meta["warp_layout"]=std::vector<int>{roof_tune>=20?2:4,roof_cfg.threads/(32*(roof_tune>=20?2:4))};
+    meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["kernel_symbol"]="adangel_sm80_roof_candidate";meta["roof_tune"]=roof_tune;
     meta["status"]="candidate_not_production";meta["scale_hoist"]=bool(roof_cfg.core_tune&1);
     meta["interleaved_n_atoms"]=bool(roof_cfg.core_tune&2);meta["weight_register_slice_n"]=roof_cfg.slice_n;

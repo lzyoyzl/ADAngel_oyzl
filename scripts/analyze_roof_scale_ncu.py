@@ -10,7 +10,7 @@ import re
 
 
 def analyze(raw_payload, sass_payload, tune, variant='o7'):
-    allowed={'o3':(6,13,16,17,18,19),'o7':(6,11,12,14,15,16,17,18,19),'o8':(6,14,15,16,17,18,19)}
+    allowed={'o3':(6,13,16,17,18,19,20,21),'o7':(6,11,12,14,15,16,17,18,19,20,21),'o8':(6,14,15,16,17,18,19,20,21)}
     if variant not in allowed or tune not in allowed[variant]:
         raise ValueError('unsupported variant/tune profiling pair')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
@@ -30,13 +30,17 @@ def analyze(raw_payload, sass_payload, tune, variant='o7'):
     counts={}
     work={key:0 for key in ('L1 Wavefronts Shared Excessive','L1 Wavefronts Shared',
                            'L2 Theoretical Sectors Global Excessive','L2 Theoretical Sectors Local')}
+    work_by_opcode={}
     for row in csv.DictReader(src):
         match=re.match(r'\s*(?:@!?P(?:T|\d+)\s+)?([A-Z][A-Z0-9_]*)',row['Source'])
         if not match: raise ValueError('unknown opcode')
         count=int(row['Instructions Executed'].replace(',',''))
         counts[match[1]]=counts.get(match[1],0)+count
+        opcode_work=work_by_opcode.setdefault(match[1],{key:0 for key in work})
         for key in work:
-            work[key]+=int(row[key].replace(',',''))
+            value=int(row[key].replace(',',''))
+            work[key]+=value
+            opcode_work[key]+=value
     def metric(key,unit=None):
         if unit is not None and units[key]!=unit: raise ValueError(f'unexpected unit for {key}')
         return float(raw[key].replace(',',''))
@@ -56,6 +60,7 @@ def analyze(raw_payload, sass_payload, tune, variant='o7'):
                       for name in ('blocks','registers','shared_mem','warps')}
     return dict(variant=variant,tune=tune,kernel=identity[1],dynamic_instructions=sum(counts.values()),
         opcodes=counts,source_memory_work=work,
+        source_memory_work_by_opcode={op:values for op,values in work_by_opcode.items() if any(values.values())},
         source_memory_work_note='theoretical sectors/wavefront work; not actual HBM bytes',
         ncu_duration_ms=metric('gpu__time_duration.sum','us')/1000,
         eligible_warps=metric('smsp__warps_eligible.avg.per_cycle_active'),

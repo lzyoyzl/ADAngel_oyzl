@@ -70,14 +70,41 @@ class RoofCandidatesContractTest(unittest.TestCase):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
         self.assertIn('WN=Tune==8?4:2',text)
         self.assertIn('MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17)?3:2',text)
-        self.assertIn('CoreTune=(Tune==16 || Tune==18)?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
-        self.assertIn('K=(Tune==10 || Tune>=16)?128:256',text)
-        self.assertIn('Stages=Tune>=16?3:2',text)
+        self.assertIn('CoreTune=(Tune==16 || Tune==18 || Tune==20)?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
+        self.assertIn('K=(Tune==10 || (Tune>=16 && Tune<=19))?128:256',text)
+        self.assertIn('Stages=(Tune>=16 && Tune<=19)?3:2',text)
         self.assertIn('dim3(n/cfg.n,m/64),cfg.threads,smem',text)
         self.assertIn('cudaOccupancyMaxActiveBlocksPerMultiprocessor',text)
         for name in ('o1_o3.cu','mixed_benchmark.cuh'):
             self.assertIn('dim3(n/roof_cfg.n,m/64),roof_cfg.threads',
                           (ROOT/'csrc/sm80'/name).read_text())
+
+    def test_two_by_two_warps_reuse_b_without_modifying_controls(self):
+        separate=(ROOT/'csrc/sm80/roof_warp_reuse.cu').read_text()
+        experiment=(ROOT/'csrc/sm80/o3_warp_reuse_candidate.cuh').read_text()
+        host=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
+        self.assertIn('__launch_bounds__(128,2)',separate)
+        self.assertIn('static constexpr int WM=2;',experiment)
+        self.assertIn('static_assert(M==64 && WN==2 && K==256)',experiment)
+        self.assertNotIn('__global__',experiment)
+        self.assertIn('Threads=Tune>=20?128:128*WN',host)
+        self.assertIn('select_warp_reuse_kernel(dual,fast,tune)',host)
+        self.assertNotIn('#include "o3_warp_reuse_candidate.cuh"',host)
+        self.assertIn('"csrc/sm80/roof_warp_reuse.cu"',(ROOT/'setup.py').read_text())
+        # The experiment is copied from the preserved body, with exactly one
+        # intentional config change. Enforce all arithmetic/pipeline code stays
+        # identical here; source equivalence does not replace GPU acceptance.
+        original=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+        start='template<int N,bool Cached> struct O3ScaleCodeScratch'
+        end='template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false>\n__global__'
+        original=original[original.index(start):original.index(end)].strip()
+        actual=experiment[experiment.index(start):experiment.index('} // namespace o3_warp_reuse_experiment')].strip()
+        changed='// Two M warps each reuse B across two M atoms; no cross-warp exchange.\n  static constexpr int WM=2;\n  static_assert(M==64 && WN==2 && K==256);'
+        self.assertEqual(actual.replace(changed,'static constexpr int WM=M==32?2:4;'),original)
+        self.assertEqual(64*128//128,64)  # FP32 output accumulators/thread.
+        # Logical B elements supplied per group: WM duplicate readers. This
+        # is a request-count model, not a measured wavefront or latency claim.
+        self.assertEqual((2*128*128)/(4*128*128),0.5)
 
     def test_power2_scale_guard_preserves_i2f_and_fma(self):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
