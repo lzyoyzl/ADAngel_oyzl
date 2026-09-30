@@ -52,9 +52,11 @@ NCU 中，O3 发射活跃比例由43.95%变为45.60%，O7/O8由约44.7%变为47.
 
 候选12把指数偏置减法移到每CTA、每row/group的shared scale预取阶段。288项逐位检查、原生INT4审计、memcheck/synccheck（各72项，0错误）通过。24样本O7候选6/12为0.553984/0.557056ms，MSE仍相同；目前没有明显增益，暂不采用。后续重点不再反复替换这一条乘法。
 
-新候选13只针对O3的UE8M0读取：将W scale由自然[N,G]重排为[G,N]，使同group的相邻列连续。重排单独kernel计入W转换（新增logical bytes=2×N×G），cold计入，compute-only/steady-state缓存。两路INT4、G128及scale数值不变；O7/O8不接受该候选。当前本地已实现，GPU编译/审计/四模式验收待执行。
+候选13只针对O3的UE8M0读取：将W scale由自然[N,G]重排为[G,N]，使同group的相邻列连续。重排单独kernel计入W转换（新增logical bytes=2×N×G），cold计入，compute-only/steady-state缓存。两路INT4、G128及scale数值不变；O7/O8不接受该候选。
 
-候选14针对O7/O8：既有group-major FP32 scale panel改用16字节cp.async直接写入shared，与A/W payload共用commit/wait和CTA barrier，避免同步global load→寄存器→shared store。保持原FMUL、I2F、G128 FMA顺序、tile和双缓冲，不再使用无收益的power2替换。当前仅本地实现及CPU契约检查通过，尚未GPU验收，不能声称性能提升。
+已通过72项合成逐位验证、原生INT4审计、memcheck及有限K768 racecheck。24样本3轮compute对照：旧实现/候选6/13分别为`0.558080/0.531968/0.527616ms`；候选13比6的配对加速仅`1.00724×`，CI`[1.00192,1.01167]`，MSE不变。NCU额外global sectors由8,126,464降为0，long-scoreboard下降，但shared fragment及IMMA/I2F/FFMA工作量没有减少。四模式目前仅完成单样本烟测，重排增加转换时间，尚不切换默认。详见[候选13证据](evidence/a100_o378_roof_v6/README.md)。
+
+候选14针对O7/O8：既有group-major FP32 scale panel改用16字节cp.async直接写入shared，与A/W payload共用commit/wait和CTA barrier，避免同步global load→寄存器→shared store。保持原FMUL、I2F、G128 FMA顺序、tile和双缓冲，不再使用无收益的power2替换。已本地实现、通过CPU契约检查、推送GitHub并由A100 fetch/merge；当前正在编译，尚未GPU验收，不能声称性能提升。
 
 代码先本地提交推送，再同步A100；直接HTTPS fetch断流时，使用校验Git bundle导入同一已推送提交。默认仍是旧实现，不修改5090。改动工作量后重算资源上界，不把旧约0.28ms下界当性能承诺。
 
