@@ -77,12 +77,14 @@ def main():
     args = p.parse_args()
     if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2 or args.inner<2
         or -1 not in args.tunes or len(set(args.tunes))!=len(args.tunes)
-        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
+        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50)+(51,52) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
         p.error('fresh output, production control (-1), unique valid cases and positive repetitions required')
     if any(t in (43,44) for t in args.tunes) and not args.all_modes:
         p.error('fused conversion candidates43/44 require --all-modes; prepared-core has no source conversion')
-    if any(t in (24,25,26,27,34,35,36,37,38,39,40) for t in args.tunes) and not args.allow_reassociation:
-        p.error('candidates24-27/34-40 require explicit --allow-reassociation')
+    if any(t in (24,25,26,27,34,35,36,37,38,39,40,51,52) for t in args.tunes) and not args.allow_reassociation:
+        p.error('candidates24-27/34-40/51-52 require explicit --allow-reassociation')
+    if any(t in (51,52) for t in args.tunes) and args.variants != ['o3']:
+        p.error('row-scale epilogue candidates51/52 are O3 only')
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
     if any(t in (14,15) for t in args.tunes) and 'o3' in args.variants:
@@ -216,7 +218,8 @@ def main():
         raise RuntimeError('incomplete measurement coverage')
     save('summary.json',dict(scope='real_trace_four_modes' if args.all_modes else 'real_trace_prepared_core_only',all_24_samples=args.samples==24,
         all_four_modes_completed=args.all_modes,correctness_passed=True,no_filtering=True,
-        numerical_policy=('explicit_reassociation_only_for_24_25_26_27_34_35_36_37_38_39_40' if any(t in (34,35,36,37,38,39,40) for t in args.tunes)
+        numerical_policy=('explicit_reassociation_only_for_51_52' if any(t in (51,52) for t in args.tunes)
+            else 'explicit_reassociation_only_for_24_25_26_27_34_35_36_37_38_39_40' if any(t in (34,35,36,37,38,39,40) for t in args.tunes)
             else 'explicit_reassociation_only_for_24_25_26_27' if any(t in (26,27) for t in args.tunes)
             else 'explicit_reassociation_only_for_24_25') if args.allow_reassociation else 'bitwise',
         mse_regression_passed=all(r.get('mse_regression_passed',True) for r in records),

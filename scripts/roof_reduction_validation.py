@@ -41,9 +41,14 @@ def compare_output(y, baseline, reference, tune, kernel, tree_baseline=None):
     if y.dtype!=torch.float32 or not torch.isfinite(y).all():
         raise AssertionError('output must be finite FP32')
     changed=not torch.equal(y.view(torch.int32),baseline.view(torch.int32))
-    reassociated=tune in (24,25,26,27,34,35,36,37,38,39,40)
+    reassociated=tune in (24,25,26,27,34,35,36,37,38,39,40,51,52)
     if not reassociated and changed:
         raise AssertionError('old candidate differs bitwise from production')
+    if tune in (51,52):
+        if (not kernel.get('row_scale_in_epilogue') or not kernel.get('fp32_reassociated')
+                or kernel.get('cross_group_accumulator_dtype')!='fp32'
+                or not kernel.get('unscaled_fp32_bound_checked')):
+            raise AssertionError('row-scale epilogue guard/FP32 metadata missing')
     if tune==37:
         if (not kernel.get('compile_time_reduction_phase') or tree_baseline is None
                 or not torch.equal(y.view(torch.int32),tree_baseline.view(torch.int32))):

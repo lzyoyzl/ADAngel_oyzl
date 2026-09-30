@@ -24,6 +24,7 @@
 #include "roof_narrow_payload_api.h"
 #include "roof_static_ring_api.h"
 #include "roof_phased_finish_api.h"
+#include "roof_row_scale_epilogue_api.h"
 
 namespace py = pybind11;
 namespace {
@@ -278,6 +279,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   // Validation and allocation are outside every timing range.
   TORCH_CHECK(at::isfinite(as).all().item<bool>()&&as.ge(0).all().item<bool>(),"invalid activation scale");
   TORCH_CHECK(ws.ne(255).all().item<bool>(),"UE8M0 code 255 is invalid");
+  check_roof_row_scale_guard(roof_tune,as,ws,k);
   bool exponent_scale=false;
   if(implementation.find("_exp")!=std::string::npos||implementation.find("_magic")!=std::string::npos) {
     float amin=as.min().item<float>(),amax=as.max().item<float>();
@@ -636,7 +638,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(roof_tune>=0) {
     meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=50))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=52))?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);

@@ -39,12 +39,24 @@ void adangel_sm80_roof_candidate(
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=50);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=52);
 }
 
 //43/44 are conversion-only variants of41/42, NOT new GEMM instantiations.
 bool roof_fused_payload(int tune) {return tune==43 || tune==44;}
-bool roof_grouped_payload(int tune) {return tune>=41 && tune<=50;}
+bool roof_grouped_payload(int tune) {return tune>=41 && tune<=52;}
+bool roof_row_scale_epilogue(int tune) {return tune==51 || tune==52;}
+// New intermediate is sum(P_g*W_scale_g), before multiplication by A_scale.
+// Reject its overflow/subnormal-scale risk explicitly; no numerical fallback.
+void check_roof_row_scale_guard(int tune,const at::Tensor& as,const at::Tensor& ws,int k) {
+  if(!roof_row_scale_epilogue(tune)) return;
+  TORCH_CHECK(ws.scalar_type()==at::kByte && as.dim()==1,"row-scale epilogue candidate is O3 only");
+  const double bound=std::ldexp(1.0,ws.max().item<int>()-127)*double(k)*128.0*8.0;
+  TORCH_CHECK(ws.min().item<int>()>=1 && std::isfinite(bound) &&
+      bound<=std::numeric_limits<float>::max() &&
+      bound*as.max().item<double>()<=std::numeric_limits<float>::max(),
+      "row-scale epilogue requires normal W scales and safe unscaled/output FP32 bounds");
+}
 void roof_pack_payload(const at::Tensor& src,const at::Tensor& dst,int planes,int rows,int k,cudaStream_t stream) {
   adangel_sm80_experiment::pack_g128_payload(src.data_ptr<uint8_t>(),dst.data_ptr<uint8_t>(),planes,rows,k,stream);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
@@ -60,6 +72,14 @@ void roof_payload_metadata(py::dict& meta,int tune,int m,int n,int k) {
   meta["compile_time_ring_slots"]=tune==47 || tune==48;
   meta["phased_fragment_finish"]=tune==49 || tune==50;
   meta["finish_batch_values_per_thread"]=(tune==49 || tune==50)?16:0;
+  meta["row_scale_in_epilogue"]=roof_row_scale_epilogue(tune);
+  if(roof_row_scale_epilogue(tune)) {
+    meta["fp32_reassociated"]=true;
+    meta["exponent_fast_path"]=false;
+    meta["group_accumulation"]="ascending_g128_fp32_fma_then_row_scale";
+    meta["cross_group_accumulator_dtype"]="fp32";
+    meta["unscaled_fp32_bound_checked"]=true;
+  }
   meta["activation_payload_reorder_traffic_bytes"]=packed && !fused?int64_t(2)*m*k:0;
   meta["weight_payload_reorder_traffic_bytes"]=packed && !fused?int64_t(n)*k:0;
 }
@@ -158,6 +178,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 48:return roof_config_for<42>(dual);
     case 49:return roof_config_for<41>(dual);
     case 50:return roof_config_for<42>(dual);
+    case 51:return roof_config_for<41>(dual);
+    case 52:return roof_config_for<42>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -169,6 +191,10 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
+  if(roof_row_scale_epilogue(tune)) {
+    TORCH_CHECK(!dual,"row-scale epilogue candidate is O3 only");
+    return adangel_sm80_experiment::select_row_scale_epilogue_kernel(tune);
+  }
   if(tune==47 || tune==48) return adangel_sm80_experiment::select_static_ring_kernel(dual,fast,tune);
   if(tune==49 || tune==50) return adangel_sm80_experiment::select_phased_finish_kernel(dual,fast,tune);
   if(tune==45 || tune==46) return adangel_sm80_experiment::select_narrow_payload_kernel(dual,fast,tune);
@@ -227,6 +253,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
     at::Tensor w,at::Tensor ws,int warmup,int repeats) {
   const bool dual=variant=="o7" || variant=="o8";
   TORCH_CHECK(dual || variant=="o3","expected o3/o7/o8");
+  TORCH_CHECK(!roof_row_scale_epilogue(tune) || !dual,"row-scale epilogue candidate is O3 only");
   TORCH_CHECK(tune!=13 || !dual,"group-major UE8M0 candidate is O3 only");
   TORCH_CHECK((tune!=14 && tune!=15) || dual,"asynchronous FP32 scale candidate requires O7/O8");
   TORCH_CHECK(valid_roof_tune(tune) && warmup>=0 && repeats>0,"invalid candidate/repetitions");
@@ -237,7 +264,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
       a.scalar_type()==at::kByte && w.scalar_type()==at::kByte,"packed contiguous uint8 required");
   int64_t m64=a.size(0)/2,n64=w.size(0),k64=a.size(1)*2;
   check_roof_fixed_shape(tune,m64,n64,k64);
-  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || (tune>=28 && tune<=50))?128:256;
+  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || (tune>=28 && tune<=52))?128:256;
   TORCH_CHECK(a.size(0)%2==0 && m64>0 && n64>0 && k64>0 && m64%64==0 && n64%128==0 && k64%required_k==0 &&
       m64*k64<=2147483647LL && n64*k64<=2147483647LL && m64*n64<=2147483647LL &&
       m64/64<=65535 && n64/128<=65535 && w.size(1)==a.size(1),"invalid aligned shape/index range");
@@ -268,6 +295,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
     fast=amin>0 && emin>0 && emin+ws.min().item<int>()-127>=1 && emax+ws.max().item<int>()-127<=254;
   }
   const double maxw=dual ? ws.max().item<double>() : std::ldexp(1.0,ws.max().item<int>()-127);
+  check_roof_row_scale_guard(tune,as,ws,k);
   TORCH_CHECK(as.max().item<double>()*maxw*double(k)*128.0*8.0<=std::numeric_limits<float>::max(),
       "scale product may overflow output");
   auto y=at::empty({m,n},as.options());
@@ -330,7 +358,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
   meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
   meta["pipeline_stages"]=cfg.stages;
-  const int warp_m=((tune>=20 && tune<=23) || (tune>=28 && tune<=50))?2:4;
+  const int warp_m=((tune>=20 && tune<=23) || (tune>=28 && tune<=52))?2:4;
   meta["warp_layout"]=std::vector<int>{warp_m,cfg.threads/(32*warp_m)};
   meta["accumulators_per_thread"]=64*cfg.n/cfg.threads;
   meta["fp32_accumulation_chains"]=(tune==24 || tune==26)?2:((tune==25 || tune==27)?4:1);

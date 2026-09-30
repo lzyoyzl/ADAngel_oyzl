@@ -8,7 +8,7 @@ def payload_reorder_bytes_for_stage(meta, mode, stage):
 
 
 def verify_grouped_payload(result, tune, natural_a, natural_w):
-    if tune not in (41,42,43,44,45,46,47,48,49,50):
+    if tune not in (41,42,43,44,45,46,47,48,49,50)+(51,52):
         return {}
     import torch
     m=natural_a.shape[0]//2
@@ -27,7 +27,7 @@ def verify_grouped_payload(result, tune, natural_a, natural_w):
     assert meta['payload_reorder_in_conversion'] and meta['payload_reorder_fused']==fused
     assert meta['activation_payload_reorder_traffic_bytes']==(0 if fused else 4*m*kbytes)
     assert meta['weight_payload_reorder_traffic_bytes']==(0 if fused else 2*n*kbytes)
-    assert meta['pipeline_stages']==(2 if tune in (41,43,45,47,49) else 3)
+    assert meta['pipeline_stages']==(2 if tune in (41,43,45,47,49,51) else 3)
     if fused:
         assert meta['gemm_tune']==tune-2 and meta['conversion_kernels_per_operand']==1
         assert meta['natural_payload_export']=='diagnostic_inverse_layout_after_timing'
@@ -42,5 +42,8 @@ def verify_grouped_payload(result, tune, natural_a, natural_w):
         assert meta['phased_fragment_finish'] and meta['finish_batch_values_per_thread']==16
         assert not meta['compile_time_ring_slots'] and meta['accumulators_per_thread']==64
         assert meta['launch_bounds_min_blocks']==3 and meta['warp_layout']==[2,2]
-    assert not meta['fp32_reassociated'] and meta['product_window_groups']==0
+    assert meta['fp32_reassociated']==(tune in (51,52)) and meta['product_window_groups']==0
+    if tune in (51,52):
+        assert meta['row_scale_in_epilogue'] and meta['cross_group_accumulator_dtype']=='fp32'
+        assert meta['unscaled_fp32_bound_checked']
     return {'payload_layout_bitwise_verified':True}

@@ -63,7 +63,7 @@ class PhasedFinishTests(unittest.TestCase):
         self.assertFalse(all(missing.values()))
         for name in ('benchmark_a100_roof_candidates.py','benchmark_a100_roof_trace.py',
                      'compare_roof_trace_candidates.py','roof_payload_validation.py'):
-            self.assertIn('49,50)',(ROOT/'scripts'/name).read_text())
+            self.assertRegex((ROOT/'scripts'/name).read_text(),r'49,50(?:,51,52)?\)')
 
 
 if __name__=='__main__': unittest.main()
