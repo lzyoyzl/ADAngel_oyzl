@@ -9,7 +9,7 @@ class RoofCandidatesContractTest(unittest.TestCase):
     def test_production_default_unchanged(self):
         host = (ROOT / "csrc/sm80/o1_o3.cu").read_text()
         self.assertIn('implementation="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2";', host)
-        self.assertIn('int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false>', (ROOT / "csrc/sm80/o3_optimized.cuh").read_text())
+        self.assertIn('int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false,int Stages=2>', (ROOT / "csrc/sm80/o3_optimized.cuh").read_text())
 
     def test_same_group_math_no_magic(self):
         body = (ROOT / "csrc/sm80/o3_optimized.cuh").read_text()
@@ -42,9 +42,9 @@ class RoofCandidatesContractTest(unittest.TestCase):
     def test_targeted_occupancy_candidates_use_configured_launch(self):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
         self.assertIn('WN=Tune==8?4:2',text)
-        self.assertIn('MinBlocks=(Tune==9 || Tune==10)?3:2',text)
-        self.assertIn('CoreTune=Tune>=11?6:(Tune>=8?2:Tune)',text)
-        self.assertIn('K=Tune==10?128:256',text)
+        self.assertIn('MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17)?3:2',text)
+        self.assertIn('CoreTune=Tune==16?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
+        self.assertIn('K=(Tune==10 || Tune==16 || Tune==17)?128:256',text)
         self.assertIn('dim3(n/cfg.n,m/64),cfg.threads,smem',text)
         self.assertIn('cudaOccupancyMaxActiveBlocksPerMultiprocessor',text)
         for name in ('o1_o3.cu','mixed_benchmark.cuh'):
@@ -61,7 +61,36 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('__fmaf_rn(float(partial),scale,acc(vi,mi,full_ni))',body)
         self.assertIn('static_assert(!PrebiasActivationScale || ActivationPower2)',body)
         self.assertIn('row_scale=__uint_as_float(__float_as_uint(row_scale)-0x3f800000u)',body)
-        self.assertEqual(body.count('o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>'),2)
+        self.assertIn('o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>',body)
+
+    def test_three_stage_prologue_wait_drain_and_slot_reuse(self):
+        body=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+        self.assertIn('if(k/K>1) prefetch(1,1)',body)
+        self.assertIn('if(stage+2<k/K) asm volatile("cp.async.wait_group 1;',body)
+        self.assertIn('if(stage+2<k/K) prefetch((stage+2)%Stages,stage+2)',body)
+        self.assertIn('process_stage(stage,stage%Stages)',body)
+        for total in (1,2,3,4,5,6,7,32):
+            slots={};pending=[];completed=set();consumed=[]
+            def issue(g):
+                slot=g%3
+                self.assertTrue(slot not in slots or slots[slot] in consumed)
+                slots[slot]=g;pending.append(g)
+            for g in range(min(total,2)):
+                issue(g)
+            for g in range(total):
+                leave=1 if g+2<total else 0
+                while len(pending)>leave:
+                    completed.add(pending.pop(0))
+                self.assertIn(g,completed)
+                self.assertEqual(slots[g%3],g)
+                if g+2<total:
+                    issue(g+2)
+                consumed.append(g)
+            self.assertEqual(consumed,list(range(total)))
+            self.assertFalse(pending)
+        # Allocated payload+FP32 scale bytes; not an occupancy claim.
+        for dual,expected in ((False,50688),(True,51456)):
+            self.assertEqual(3*(64*128+128*128//2)+3*128*4+(3*64*4 if dual else 0),expected)
 
     def test_async_scale_uses_existing_payload_wait_and_group_major_alignment(self):
         body=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()

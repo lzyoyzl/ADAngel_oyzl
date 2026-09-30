@@ -2,14 +2,15 @@
 #pragma once
 template<int N,bool Cached> struct O3ScaleCodeScratch {};
 template<int N> struct O3ScaleCodeScratch<N,true> { uint8_t scale_codes[N*32]; };
-template<int M,int Groups,bool Enabled> struct SplitActivationScales {};
-template<int M,int Groups> struct SplitActivationScales<M,Groups,true> {
-  alignas(16) float activation_scales[2*Groups*M];
+template<int M,int Groups,bool Enabled,int Stages=2> struct SplitActivationScales {};
+template<int M,int Groups,int Stages> struct SplitActivationScales<M,Groups,true,Stages> {
+  alignas(16) float activation_scales[Stages*Groups*M];
 };
 
-template<int M,int N,int K,bool Cached=false,int WN=2,bool DualScale=false>
+template<int M,int N,int K,bool Cached=false,int WN=2,bool DualScale=false,int Stages=2>
 struct O3AmpereConfig {
   static_assert(K==128||K==256);
+  static_assert(Stages==2 || Stages==3);
   static constexpr int WM=M==32?2:4;
   static constexpr int Threads=32*WM*WN, Groups=K/128, Bytes=K/2;
   using Low=cutlass::uint4b_t;
@@ -28,17 +29,17 @@ struct O3AmpereConfig {
       cute::Swizzle<K==256?3:2,5,3>{},cute::Layout<cute::Shape<cute::Int<Rows>,cute::Int<K>>,
       cute::Stride<cute::Int<K>,cute::_1>>{}));
   struct alignas(128) Storage : O3ScaleCodeScratch<N,Cached>,
-      SplitActivationScales<M,Groups,DualScale> {
-    alignas(128) uint8_t low[2][M*Bytes], high[2][M*Bytes], weight[2][N*Bytes];
-    float scales[(Cached?32:2*Groups)*N];
+      SplitActivationScales<M,Groups,DualScale,Stages> {
+    alignas(128) uint8_t low[Stages][M*Bytes], high[Stages][M*Bytes], weight[Stages][N*Bytes];
+    float scales[(Cached?32:Stages*Groups)*N];
   };
 };
 
-template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false>
-__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN,DualScale>::Storage& s,
+template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false,int Stages=2>
+__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN,DualScale,Stages>::Storage& s,
     int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k,
     const float* grouped_as=nullptr,int total_n=0) {
-  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
+  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale,Stages>;
   static_assert(!DualScale || (!Fast && !Cached && !VectorScale));
   static_assert(!GroupMajorScale || DualScale || (!Cached && !VectorScale));
   static_assert(!PrebiasActivationScale || DualScale);
@@ -150,10 +151,11 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false,int Stages=2>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
-  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
+  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale,Stages>;
+  static_assert(Stages==2 || (K==128 && !PhasePair && !Cached && !AsyncScale));
   static_assert(RoofTune>=0 && RoofTune<=7);
   static_assert(RoofTune==0 || (Stream && !Merge && !Magic));
   static_assert(!DualScale || (!Fast && !Cached && !Magic && Stream));
@@ -228,11 +230,28 @@ __device__ __forceinline__ void o3_body(
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
   auto bd1=bc.retile_D(rb1);
   auto ld1=lc.retile_D(ra1);auto hd1=hc.retile_D(rh1);
-  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>(s,0,0,a,w,ws,m,k,as,n);
+  auto prefetch=[&](int slot,int stage) {
+    o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(s,slot,stage,a,w,ws,m,k,as,n);
+  };
+  prefetch(0,0);
+  // Three-stage candidate: prime a second G128. Each copy stage has its own
+  // commit group. The prologue/drain also covers short/odd stage counts.
+  if constexpr(Stages==3) { if(k/K>1) prefetch(1,1); }
   auto process_stage=[&](int stage,auto slot) {
+    if constexpr(Stages==3) {
+      if(stage+2<k/K) asm volatile("cp.async.wait_group 1;" ::: "memory");
+      else asm volatile("cp.async.wait_group 0;" ::: "memory");
+    } else {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
+    }
+    // The completed current slot is visible to every warp. This barrier also
+    // protects the previous slot before any warp reuses it for stage+2.
     __syncthreads();
-    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>(s,1-slot,stage+1,a,w,ws,m,k,as,n);
+    if constexpr(Stages==3) {
+      if(stage+2<k/K) prefetch((stage+2)%Stages,stage+2);
+    } else {
+      if(stage+1<k/K) prefetch(1-slot,stage+1);
+    }
     auto process_group=[&](auto group) {
       if constexpr(Stream) {
         // Preload both K64 A sets, but retain only a narrow N slice of B.
@@ -464,7 +483,7 @@ __device__ __forceinline__ void o3_body(
       if(stage+1<k/K) process_stage(stage+1,cute::_1{});
     }
   } else {
-    for(int stage=0;stage<k/K;++stage) process_stage(stage,stage%2);
+    for(int stage=0;stage<k/K;++stage) process_stage(stage,stage%Stages);
   }
   if constexpr(VectorStore) {
     // SM80_16x8_Row pairs values 0/1 and 2/3 along N. Addresses still come

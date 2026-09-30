@@ -8,6 +8,14 @@ EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v4/reports/o378_roof_v4'
 
 
 class RoofScaleNcuTests(unittest.TestCase):
+    def test_archived_full_warp_copy_tradeoff(self):
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v8/reports/o378_roof_v8'
+        result=ANALYZE((evidence/'ncu_o7_t15_raw.csv').read_text(),
+                       (evidence/'ncu_o7_t15_source_sass.csv').read_text(),15,'o7')
+        self.assertEqual(result['dynamic_instructions'],124698624)
+        self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Local'],12582912)
+        self.assertEqual(result['opcodes']['FMUL'],16777216)
+
     def test_counts_reconcile_with_raw(self):
         for tune,total in ((6,127238144),(11,135364608)):
             raw=(EVIDENCE/f'ncu_o7_t{tune}_raw.csv').read_text()

@@ -5,13 +5,16 @@
 // 8: twice as many warps at the same CTA shape (register cap from bound2).
 // 9: half the output N tile, allowing three resident CTAs if resources permit.
 // 10: candidate9 with a G128 stage to bound operand liveness further.
+// 16/17: keep N128, three G128 copy stages and a three-CTA register budget;
+// compare streamed N32/N64 fragments. FP32 group order is unchanged.
 template<int Tune> struct RoofShape {
   static constexpr int N=(Tune==9 || Tune==10)?64:128;
-  static constexpr int K=Tune==10?128:256;
+  static constexpr int K=(Tune==10 || Tune==16 || Tune==17)?128:256;
+  static constexpr int Stages=(Tune==16 || Tune==17)?3:2;
   static constexpr int WN=Tune==8?4:2;
   static constexpr int Threads=128*WN;
-  static constexpr int MinBlocks=(Tune==9 || Tune==10)?3:2;
-  static constexpr int CoreTune=Tune>=11?6:(Tune>=8?2:Tune);
+  static constexpr int MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17)?3:2;
+  static constexpr int CoreTune=Tune==16?2:(Tune>=11?6:(Tune>=8?2:Tune));
 };
 
 template<bool DualScale,bool Fast,int Tune>
@@ -22,11 +25,11 @@ void adangel_sm80_roof_candidate(
   using R=RoofShape<Tune>;
   o3_body<64,R::N,R::K,Fast && !DualScale,false,false,R::WN,false,true,false,true,true,true,false,
           DualScale,DualScale || Tune==13,R::CoreTune,DualScale && Fast && (Tune==11 || Tune==12),
-          DualScale && Fast && Tune==12,Tune==14 || Tune==15,Tune==15>(a,w,as,ws,y,m,n,k);
+          DualScale && Fast && Tune==12,Tune==14 || Tune==15,Tune==15,R::Stages>(a,w,as,ws,y,m,n,k);
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=15);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=17);
 }
 
 // Natural U8 [N,G] -> group-major [G,N]. Called inside O3 W conversion for
@@ -56,12 +59,12 @@ bool roof_power2_activation_guard(const at::Tensor& as,const at::Tensor& ws) {
   return amin>0 && wmin>0 && amin+wmin-127>=1 && amax+wmax-127<=254;
 }
 
-struct RoofLaunchConfig {int n,k,threads,min_blocks,core_tune,slice_n;size_t smem;};
+struct RoofLaunchConfig {int n,k,threads,min_blocks,core_tune,slice_n,stages;size_t smem;};
 template<int Tune> RoofLaunchConfig roof_config_for(bool dual) {
   using R=RoofShape<Tune>;
-  const size_t smem=dual ? sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,true>::Storage)
-                        : sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,false>::Storage);
-  return {R::N,R::K,R::Threads,R::MinBlocks,R::CoreTune,R::WN*((R::CoreTune&4)?32:16),smem};
+  const size_t smem=dual ? sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,true,R::Stages>::Storage)
+                        : sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,false,R::Stages>::Storage);
+  return {R::N,R::K,R::Threads,R::MinBlocks,R::CoreTune,R::WN*((R::CoreTune&4)?32:16),R::Stages,smem};
 }
 RoofLaunchConfig roof_config(int tune,bool dual) {
   TORCH_CHECK(valid_roof_tune(tune),"invalid roof candidate configuration");
@@ -74,6 +77,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 13:return roof_config_for<13>(dual);
     case 14:return roof_config_for<14>(dual);
     case 15:return roof_config_for<15>(dual);
+    case 16:return roof_config_for<16>(dual);
+    case 17:return roof_config_for<17>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -107,7 +112,7 @@ auto select_roof_kernel(bool dual,bool fast,int tune) {
   #define ROOF_PICK(T) case T: kernel=dual ? adangel_sm80_roof_candidate<true,false,T> : \
       (fast ? adangel_sm80_roof_candidate<false,true,T> : adangel_sm80_roof_candidate<false,false,T>); break
   switch(tune) {ROOF_PICK(0);ROOF_PICK(1);ROOF_PICK(2);ROOF_PICK(3);ROOF_PICK(6);ROOF_PICK(7);
-               ROOF_PICK(8);ROOF_PICK(9);ROOF_PICK(10);}
+               ROOF_PICK(8);ROOF_PICK(9);ROOF_PICK(10);ROOF_PICK(16);ROOF_PICK(17);}
   #undef ROOF_PICK
   return kernel;
 }
@@ -124,7 +129,8 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   TORCH_CHECK(a.dim()==2 && w.dim()==2 && a.is_contiguous() && w.is_contiguous() &&
       a.scalar_type()==at::kByte && w.scalar_type()==at::kByte,"packed contiguous uint8 required");
   int64_t m64=a.size(0)/2,n64=w.size(0),k64=a.size(1)*2;
-  TORCH_CHECK(a.size(0)%2==0 && m64>0 && n64>0 && k64>0 && m64%64==0 && n64%128==0 && k64%256==0 &&
+  const int required_k=(tune==16 || tune==17)?128:256;
+  TORCH_CHECK(a.size(0)%2==0 && m64>0 && n64>0 && k64>0 && m64%64==0 && n64%128==0 && k64%required_k==0 &&
       m64*k64<=2147483647LL && n64*k64<=2147483647LL && m64*n64<=2147483647LL &&
       m64/64<=65535 && n64/128<=65535 && w.size(1)==a.size(1),"invalid aligned shape/index range");
   int m=int(m64),n=int(n64),k=int(k64),g=k/128;
@@ -208,6 +214,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["scale_hoist"]=tune>=0 && bool(cfg.core_tune&1);meta["interleaved_n_atoms"]=tune>=0 && bool(cfg.core_tune&2);
   meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
   meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
+  meta["pipeline_stages"]=cfg.stages;
   meta["shared_memory_bytes"]=smem;meta["scope"]="candidate_compute_only_not_production";
   meta["registers_per_thread"]=attributes.numRegs;meta["local_bytes_per_thread"]=attributes.localSizeBytes;
   meta["max_resident_blocks_per_sm"]=resident_blocks;
