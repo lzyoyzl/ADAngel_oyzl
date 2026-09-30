@@ -5,11 +5,39 @@ import runpy
 import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
-ANALYZE=runpy.run_path(str(ROOT/'scripts/analyze_roof_scale_ncu.py'))['analyze']
+MODULE=runpy.run_path(str(ROOT/'scripts/analyze_roof_scale_ncu.py'))
+ANALYZE=MODULE['analyze']
 EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v4/reports/o378_roof_v4'
 
 
 class RoofScaleNcuTests(unittest.TestCase):
+    def test_archived_pc_wait_evidence_is_reconciled_not_time_fraction(self):
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v14/reports/o378_roof_v14'
+        for variant,tune,total,wait in (('o3',6,13548,3029),('o3',21,18486,7975),
+                                       ('o7',6,13756,2855),('o7',21,17272,7519)):
+            result=ANALYZE((evidence/f'ncu_{variant}_t{tune}_raw.csv').read_text(),
+                           (evidence/f'ncu_{variant}_t{tune}_source_sass.csv').read_text(),
+                           tune,variant,False,True)['pc_sampling']
+            self.assertEqual(result['not_issued_samples'],total)
+            self.assertEqual(result['reason_samples']['wait'],wait)
+            self.assertAlmostEqual(sum(result['reason_share_percent'].values()),100)
+            self.assertAlmostEqual(result['reason_share_percent']['wait'],100*wait/total)
+            self.assertEqual(sum(sum(v.values()) for v in result['samples_by_consumer_opcode'].values()),total)
+            self.assertIn('not runtime fractions',result['interpretation'])
+            self.assertIn('preceding_instructions',result['top_wait_consumer_pcs'][0])
+
+    def test_pc_sampling_rejects_missing_negative_and_inconsistent_counts(self):
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v14/reports/o378_roof_v14'
+        rows=list(csv.DictReader((evidence/'ncu_o7_t21_source_sass.csv').read_text().splitlines()[1:]))
+        analyze=MODULE['pc_stall_summary']
+        with self.assertRaisesRegex(ValueError,'empty PC'):
+            analyze([])
+        with self.assertRaisesRegex(ValueError,'missing PC sampling'):
+            analyze([{k:v for k,v in rows[0].items() if k!='stall_wait (Not Issued)'}])
+        for value,error in (('-1','negative PC'),('999','reason/total mismatch')):
+            with self.assertRaisesRegex(ValueError,error):
+                analyze([dict(rows[0],**{'stall_wait (Not Issued)':value})])
+
     def test_missing_local_column_only_allowed_without_local_instructions(self):
         # Parser fixture, not profiling evidence. Preserve executed instruction
         # totals while substituting nonlocal opcodes so the omission is valid.

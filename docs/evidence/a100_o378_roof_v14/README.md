@@ -65,6 +65,24 @@ O3无收益，不采用。O7/O8存在小幅收益，因此继续真实样本测�
 
 后续22/23将复用与K128流水结合，测试两/三阶段及三CTA寄存器预算，检查能否在保留供数收益时提高可驻留warp；可能增加copy、同步或spill，必须审计和实测。当前不切换默认。
 
+### 逐指令等待采样
+
+对同一批已归档NCU的Source/SASS导出进一步核对，每个PC的18类not-issued原因之和都与其总数一致。以下是**未发射采样内部的比例，不是运行时间占比**，不同profile的样本总数也不能直接解释为周期增减。
+
+|指标|O3/6|O3/21|O7/6|O7/21|
+|---|---:|---:|---:|---:|
+|未发射采样总数|13,548|18,486|13,756|17,272|
+|wait 占比|22.36%|43.14%|20.75%|43.53%|
+|long scoreboard 占比|12.99%|16.78%|11.52%|11.68%|
+|MIO throttle 占比|14.79%|7.24%|23.98%|10.46%|
+|barrier 占比|14.92%|6.77%|11.49%|6.87%|
+
+`wait`指固定延迟的执行依赖；采样标记等待的consumer指令，并不直接标记造成等待的producer，解释依据为[NVIDIA NCU Profiling Guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html)。汇总中的热点PC保留前三条SASS作上下文，不能仅因热点位于IMMA或I2F就断言是该指令自身造成全部等待。
+
+结合常驻warp减半、eligible warp和发射率下降，当前证据支持继续测试延迟隐藏，而不是把21的收益不足全部归因于shared带宽。22/23的可检验假设是：保留B复用的同时增加可驻留warp，能否缓解依赖等待。不能预先保证提速。
+
+复算文件为`pc_sampling_o3.json`、`pc_sampling_o7.json`。它们来自既有文本计数，不是新增GPU测量；`scripts/analyze_roof_scale_ncu.py --pc-sampling`会拒绝缺失列、负数或逐PC计数不一致的输入。
+
 ## 复算
 
 ```bash
