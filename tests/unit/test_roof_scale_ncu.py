@@ -127,7 +127,13 @@ class RoofScaleNcuTests(unittest.TestCase):
         evidence=ROOT/'docs/evidence/a100_o378_roof_v13/reports/o378_roof_v13'
         for variant,total,local in (('o3',125894656,131072),('o7',128892928,0)):
             result=ANALYZE((evidence/f'ncu_{variant}_t19_raw.csv').read_text(),
-                           (evidence/f'ncu_{variant}_t19_source_sass.csv').read_text(),19,variant)
+                           (evidence/f'ncu_{variant}_t19_source_sass.csv').read_text(),19,variant,resource_model=True)
+            bounds=result['resource_service_lower_bounds_ms_at_1410']
+            self.assertAlmostEqual(bounds['mma'],0.22034693984764905)
+            self.assertEqual(bounds['mma'],bounds['i2f'])
+            self.assertAlmostEqual(result['optimistic_fixed_work_lower_bound_ms'],max(bounds.values()))
+            self.assertLess(result['optimistic_fixed_work_lower_bound_ms'],sum(bounds.values()))
+            self.assertAlmostEqual(result['shared_capacity_crosscheck_wavefronts_per_sm_cycle'],1,places=5)
             self.assertEqual(result['dynamic_instructions'],total)
             self.assertEqual(result['registers_per_thread'],128)
             self.assertEqual(result['max_ctas_per_sm_from_launch_limits'],2)

@@ -69,10 +69,10 @@ class RoofCandidatesContractTest(unittest.TestCase):
     def test_targeted_occupancy_candidates_use_configured_launch(self):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
         self.assertIn('WN=Tune==8?4:2',text)
-        self.assertIn('MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17)?3:2',text)
+        self.assertIn('MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17 || Tune>=22)?3:2',text)
         self.assertIn('CoreTune=(Tune==16 || Tune==18 || Tune==20)?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
-        self.assertIn('K=(Tune==10 || (Tune>=16 && Tune<=19))?128:256',text)
-        self.assertIn('Stages=(Tune>=16 && Tune<=19)?3:2',text)
+        self.assertIn('K=(Tune==10 || (Tune>=16 && Tune<=19) || Tune>=22)?128:256',text)
+        self.assertIn('Stages=((Tune>=16 && Tune<=19) || Tune==23)?3:2',text)
         self.assertIn('dim3(n/cfg.n,m/64),cfg.threads,smem',text)
         self.assertIn('cudaOccupancyMaxActiveBlocksPerMultiprocessor',text)
         for name in ('o1_o3.cu','mixed_benchmark.cuh'):
@@ -105,6 +105,31 @@ class RoofCandidatesContractTest(unittest.TestCase):
         # Logical B elements supplied per group: WM duplicate readers. This
         # is a request-count model, not a measured wavefront or latency claim.
         self.assertEqual((2*128*128)/(4*128*128),0.5)
+
+    def test_reuse_k128_candidates_are_isolated_and_preserve_group_math(self):
+        experiment=(ROOT/'csrc/sm80/o3_reuse_pipeline_candidate.cuh').read_text()
+        separate=(ROOT/'csrc/sm80/roof_reuse_pipeline.cu').read_text()
+        roof=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
+        self.assertIn('__launch_bounds__(128,3)',separate)
+        self.assertIn('Stages=Tune==22?2:3',separate)
+        self.assertIn('select_reuse_pipeline_kernel(dual,fast,tune)',roof)
+        self.assertNotIn('#include "o3_reuse_pipeline_candidate.cuh"',roof)
+        self.assertNotIn('ROOF_PICK(22)',roof)
+        self.assertNotIn('ROOF_PICK(23)',roof)
+        self.assertIn('"csrc/sm80/roof_reuse_pipeline.cu"',(ROOT/'setup.py').read_text())
+        old=(ROOT/'csrc/sm80/o3_pipeline_candidate.cuh').read_text()
+        old=old[old.index('#pragma once'):].replace('o3_pipeline_experiment','o3_reuse_pipeline_experiment')
+        old=old.replace('static constexpr int WM=M==32?2:4;',
+                        'static constexpr int WM=2;\n  static_assert(M==64 && WN==2 && K==128);')
+        old=old.replace('static_assert(Stages==3 && K==128',
+                        'static_assert((Stages==2 || Stages==3) && K==128')
+        self.assertEqual(experiment[experiment.index('#pragma once'):].strip(),old.strip())
+        # Same formulas for host buffer allocation; driver adds reserved bytes.
+        for stages in (2,3):
+            for dual in (False,True):
+                size=stages*(64*128+128*128//2+128*4+(64*4 if dual else 0))
+                self.assertLess(size+1024,164*1024//3)
+        self.assertEqual(128//32*3,12)  # Potential, not yet measured residency.
 
     def test_power2_scale_guard_preserves_i2f_and_fma(self):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()

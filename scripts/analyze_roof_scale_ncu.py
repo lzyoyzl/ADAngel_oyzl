@@ -5,12 +5,13 @@ import csv
 import hashlib
 import io
 import json
+import math
 from pathlib import Path
 import re
 
 
-def analyze(raw_payload, sass_payload, tune, variant='o7'):
-    allowed={'o3':(6,13,16,17,18,19,20,21),'o7':(6,11,12,14,15,16,17,18,19,20,21),'o8':(6,14,15,16,17,18,19,20,21)}
+def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False):
+    allowed={'o3':(6,13,16,17,18,19,20,21,22,23),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23),'o8':(6,14,15,16,17,18,19,20,21,22,23)}
     if variant not in allowed or tune not in allowed[variant]:
         raise ValueError('unsupported variant/tune profiling pair')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
@@ -53,7 +54,9 @@ def analyze(raw_payload, sass_payload, tune, variant='o7'):
             opcode_work[key]+=value
     def metric(key,unit=None):
         if unit is not None and units[key]!=unit: raise ValueError(f'unexpected unit for {key}')
-        return float(raw[key].replace(',',''))
+        value=float(raw[key].replace(',',''))
+        if not math.isfinite(value) or value<0: raise ValueError(f'invalid counter for {key}')
+        return value
     def shared_bytes(key):
         factors={'byte/block':1,'Kbyte/block':1000,'Mbyte/block':1000000}
         if units[key] not in factors: raise ValueError(f'unexpected memory unit for {key}')
@@ -68,6 +71,46 @@ def analyze(raw_payload, sass_payload, tune, variant='o7'):
     fraction=metric('l1tex__data_pipe_lsu_wavefronts.avg.pct_of_peak_sustained_elapsed','%')/100
     occupancy_limits={name:metric(f'launch__occupancy_limit_{name}','block')
                       for name in ('blocks','registers','shared_mem','warps')}
+    model={}
+    if resource_model:
+        # Recompute the model when a candidate changes instruction/memory work.
+        # These are overlapping necessary capacity constraints, NOT additive
+        # timings, a latency-DAG solution or an achieved speedup prediction.
+        sm=metric('device__attribute_multiprocessor_count')
+        ipc=metric('device__attribute_max_ipc_per_multiprocessor')
+        if sm!=108 or ipc!=4:
+            raise ValueError('resource model requires the 108-SM A100')
+        cycles_per_ms=1410000
+        shared_count=metric('l1tex__data_pipe_lsu_wavefronts_mem_shared.sum')
+        shared_fraction=metric('l1tex__data_pipe_lsu_wavefronts_mem_shared.sum.pct_of_peak_sustained_elapsed','%')/100
+        if cycles<=0 or shared_fraction<=0:
+            raise ValueError('cannot cross-check shared data-pipe capacity')
+        capacity=shared_count/(sm*cycles*shared_fraction)
+        if not math.isclose(capacity,1,rel_tol=1e-5):
+            raise ValueError('unexpected shared wavefront/SM/cycle capacity')
+        active=metric('sm__cycles_active.avg','cycle')
+        dram_bytes=(metric('dram__bytes_read.sum','Mbyte')+metric('dram__bytes_write.sum','Mbyte'))*1e6
+        useful_ops=2*4096**3
+        bounds=dict(
+            mma=2*useful_ops/(sm*8192*cycles_per_ms),
+            all_instruction_issue=sum(counts.values())/(sm*ipc*cycles_per_ms),
+            i2f=counts['I2F']*32/(sm*16*cycles_per_ms),
+            fp32_scale_and_accumulate_subset=(counts['FFMA']+counts.get('FMUL',0))*32/(sm*64*cycles_per_ms),
+            l1tex_data_wavefront_capacity=cycles*fraction/cycles_per_ms,
+            shared_wavefront_subset=shared_count/(sm*cycles_per_ms),
+            dram_observed_bytes_at_spec_bw=dram_bytes/1.555e12*1000)
+        for pipe in ('fma','alu','lsu'):
+            bounds[pipe+'_pipe_counter_capacity']=active*metric(
+                f'sm__inst_executed_pipe_{pipe}.avg.pct_of_peak_sustained_active','%')/100/cycles_per_ms
+        floor=max(bounds.values())
+        model=dict(
+            resource_service_lower_bounds_ms_at_1410=bounds,
+            binding_modeled_resources=[k for k,v in bounds.items() if math.isclose(v,floor,rel_tol=1e-7)],
+            optimistic_fixed_work_lower_bound_ms=floor,
+            optimistic_effective_ceiling_tops=useful_ops/floor/1e9,
+            shared_capacity_crosscheck_wavefronts_per_sm_cycle=capacity,
+            resource_model_note='fixed observed work, ideal overlap, 1410MHz; not achievable peak or Event timing',
+        )
     return dict(variant=variant,tune=tune,kernel=identity[1],dynamic_instructions=sum(counts.values()),
         opcodes=counts,source_memory_work=work,
         source_memory_work_by_opcode={op:values for op,values in work_by_opcode.items() if any(values.values())},
@@ -82,6 +125,7 @@ def analyze(raw_payload, sass_payload, tune, variant='o7'):
         allocated_shared_bytes_including_driver=shared_bytes('launch__shared_mem_per_block_allocated'),
         occupancy_cta_limits=occupancy_limits,
         max_ctas_per_sm_from_launch_limits=min(occupancy_limits.values()),
+        **model,
         achieved_occupancy_percent=metric('sm__warps_active.avg.pct_of_peak_sustained_active','%'),
         l1_data_pipe_peak_percent=fraction*100,
         l1_service_ms_at_1410=cycles*fraction/1410000,
@@ -96,6 +140,8 @@ def main():
     p.add_argument('--directory',type=Path,required=True)
     p.add_argument('--tunes',type=int,nargs='+',default=[6,11])
     p.add_argument('--variant',choices=['o3','o7','o8'],default='o7')
+    p.add_argument('--resource-model',action='store_true',
+                   help='require additional raw metrics and recompute all fixed-work capacity constraints')
     args=p.parse_args()
     rows=[];sources=[]
     for tune in args.tunes:
@@ -104,7 +150,7 @@ def main():
             path=args.directory/f'ncu_{args.variant}_t{tune}_{suffix}.csv'
             b=path.read_bytes();payloads.append(b.decode('utf-8-sig'))
             sources.append(dict(file=str(path),sha256=hashlib.sha256(b).hexdigest()))
-        rows.append(analyze(*payloads,tune,args.variant))
+        rows.append(analyze(*payloads,tune,args.variant,args.resource_model))
     print(json.dumps(dict(scope='same_binary_NCU_diagnostic_not_Event_acceptance',
         sources=sources,rows=rows),indent=2,allow_nan=False))
 

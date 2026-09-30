@@ -29,7 +29,7 @@ def roof_scale_checks(symbol, instruction_counts):
 
 def roof_pipeline_checks(symbol, ptx, sass):
     """Require overlapping and draining waits in the same three-stage entry."""
-    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi1[6-9]EE',symbol):
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi(?:1[6-9]|23)EE',symbol):
         return {}
     return dict(pipeline_ptx_wait_one=bool(re.search(r'cp\.async\.wait_group\s+1\s*;',ptx)),
                 pipeline_ptx_drain=bool(re.search(r'cp\.async\.wait_group\s+0\s*;',ptx)),
