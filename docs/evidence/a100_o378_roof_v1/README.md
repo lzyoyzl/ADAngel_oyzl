@@ -1,0 +1,29 @@
+# A100 O3/O7/O8：资源上界优化第一轮证据
+
+日期：2026-09-30。**这是候选验证记录，不是正式默认切换或最终性能验收。**
+
+- 编译源码：`7847ac38bb1f6c73c741126858961031acf2dff2`。
+- 二进制 SHA256：`80784cb05791f850ffb1616409f5fc7766dd5cabc2abb7c89facdda0e6647875`。
+- 真实 trace 脚本版本：`164e5a9`；其相对编译提交只增加 Python 测试脚本。
+- 设备：A100-PCIE-40GB；未锁频、未剔除离群值。
+- A100 原始目录：`/home/zlouyang/ADAngel_oyzl/`。本目录仅复制文本证据，不含原始矩阵或 `.so`。
+
+## 文件索引
+
+| 路径 | 内容 |
+|---|---|
+| `runs/o378_roof_v1_screen/` | 合成输入、240 项逐位检查、4096³ 三轮初筛 |
+| `runs/o378_roof_v1_trace_smoke/` | 一个真实样本的流程检查 |
+| `runs/o378_roof_v1_trace24/` | 24 样本×3 后端×2 实现×3 轮，共 432 条 compute-only 记录；每条保留 200 次原始耗时 |
+| `reports/o378_roof_v1/audit/audit.json` | 同一函数内 cp.async、原生 U4/S4 SASS 与资源审计 |
+| `reports/o378_roof_v1/audit/resources.txt` | 二进制完整资源清单 |
+
+Tune `-1` 调用原正式 kernel；`0` 为同算法候选包装；`1` 提前读取/复用 scale；`2` 交错两个独立 N atom 的 MMA；`3` 合并两项。生产默认未改变。
+
+真实数据从原始 FP16 trace 重新生成 O7/O8 源格式，位于计时外；校验 raw/prepared manifest hash 并逐元素重放公共准备。O3 使用同一 prepared G128 权重。每次候选输出要求与原 kernel 逐位相同；O7/O8 还与独立整数点积参考比较，并核对 O5/O6 FP16 解码。MSE 采用 FP64 reduction。
+
+## 重要限制
+
+此轮只计准备好的执行输入的 GEMM，不是四模式验收。NCU 时间没有参与此表。原始与候选的部分记录 CV≥3%，包含明显的批次内耗时变化；没有删除、替换或重试到通过。时钟快照不足以证明变化的具体原因。Bootstrap 以样本为单位、先合并轮次；24 样本来自同一 trace，有相关性，置信区间仅作描述性配对证据。
+
+12 个候选实例 ISA 审计均通过；存在 LDL/STL/stack，按用户允许的 spill 策略记录为警告，**不是零 spill 通过**。内存安全检查和后续四模式验收另行保存，不能由本轮 ISA 审计推定。
