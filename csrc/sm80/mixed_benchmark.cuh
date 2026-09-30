@@ -192,12 +192,12 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;meta["shared_memory_bytes"]=roof_cfg.smem;
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=(roof_tune>=20 && roof_tune<=23)?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || roof_tune==28)?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
     meta["fp32_reassociated"]=roof_tune>=24 && roof_tune<=27;
-    meta["group_accumulation"]=roof_tune>=24 ? "interleaved_chains_then_balanced_tree" : "ascending_g128_fma";
+    meta["group_accumulation"]=(roof_tune>=24 && roof_tune<=27) ? "interleaved_chains_then_balanced_tree" : "ascending_g128_fma";
     meta["activation_power2_fast_path"]=activation_power2;
     meta["activation_power2_guard_fallback"]=(roof_tune==11 || roof_tune==12) && !activation_power2;
     meta["activation_scale_prebias"]=roof_tune==12 && activation_power2;

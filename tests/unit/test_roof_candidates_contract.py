@@ -69,9 +69,9 @@ class RoofCandidatesContractTest(unittest.TestCase):
     def test_targeted_occupancy_candidates_use_configured_launch(self):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
         self.assertIn('WN=Tune==8?4:2',text)
-        self.assertIn('MinBlocks=(Tune==26 || Tune==27)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23))?3:2)',text)
+        self.assertIn('MinBlocks=Tune==28?4:((Tune==26 || Tune==27)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23))?3:2))',text)
         self.assertIn('CoreTune=(Tune==16 || Tune==18 || Tune==20)?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
-        self.assertIn('K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23))?128:256',text)
+        self.assertIn('K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23) || Tune==28)?128:256',text)
         self.assertIn('Stages=((Tune>=16 && Tune<=19) || Tune==23)?3:2',text)
         self.assertIn('dim3(n/cfg.n,m/64),cfg.threads,smem',text)
         self.assertIn('cudaOccupancyMaxActiveBlocksPerMultiprocessor',text)
@@ -87,7 +87,7 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('static constexpr int WM=2;',experiment)
         self.assertIn('static_assert(M==64 && WN==2 && K==256)',experiment)
         self.assertNotIn('__global__',experiment)
-        self.assertIn('Threads=(Tune>=20 && Tune<=23)?128:128*WN',host)
+        self.assertIn('Threads=((Tune>=20 && Tune<=23) || Tune==28)?128:128*WN',host)
         self.assertIn('select_warp_reuse_kernel(dual,fast,tune)',host)
         self.assertNotIn('#include "o3_warp_reuse_candidate.cuh"',host)
         self.assertIn('"csrc/sm80/roof_warp_reuse.cu"',(ROOT/'setup.py').read_text())
@@ -130,6 +130,31 @@ class RoofCandidatesContractTest(unittest.TestCase):
                 size=stages*(64*128+128*128//2+128*4+(64*4 if dual else 0))
                 self.assertLess(size+1024,164*1024//3)
         self.assertEqual(128//32*3,12)  # Potential, not yet measured residency.
+
+    def test_four_cta_reuse_budget_only_changes_launch_bound(self):
+        original=(ROOT/'csrc/sm80/roof_reuse_pipeline.cu').read_text()
+        budget=(ROOT/'csrc/sm80/roof_reuse_budget.cu').read_text()
+        self.assertIn('__launch_bounds__(128,4)',budget)
+        self.assertIn('#include "o3_reuse_pipeline_candidate.cuh"',budget)
+        start='o3_reuse_pipeline_experiment::o3_body<'
+        old_call=original[original.index(start):original.index(';',original.index(start))]
+        new_call=budget[budget.index(start):budget.index(';',budget.index(start))]
+        self.assertEqual(old_call.replace('Stages>','2>'),new_call)
+        self.assertIn('"csrc/sm80/roof_reuse_budget.cu"',(ROOT/'setup.py').read_text())
+        host=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
+        self.assertIn('select_reuse_budget_kernel(dual,fast,tune)',host)
+        self.assertNotIn('ROOF_PICK(28)',host)
+        self.assertLess(host.index('if(tune==28)'),host.index('if(tune>=26)'))
+        # Reassociation permission remains restricted to24-27, never28.
+        self.assertIn('meta["fp32_reassociated"]=tune>=24 && tune<=27;',host)
+        self.assertIn('meta["group_accumulation"]=(tune>=24 && tune<=27)',host)
+        for name in ('o1_o3.cu','mixed_benchmark.cuh'):
+            self.assertIn('meta["group_accumulation"]=(roof_tune>=24 && roof_tune<=27)',
+                          (ROOT/'csrc/sm80'/name).read_text())
+        for dual in (False,True):
+            bytes_per_cta=2*(64*128+128*128//2+128*4+(64*4 if dual else 0))
+            self.assertLess(4*(bytes_per_cta+1024),164*1024)
+        self.assertEqual(128*128*4,65536)  # Register budget, not observed occupancy.
 
     def test_power2_scale_guard_preserves_i2f_and_fma(self):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
