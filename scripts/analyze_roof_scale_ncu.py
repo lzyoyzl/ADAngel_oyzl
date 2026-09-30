@@ -31,14 +31,24 @@ def analyze(raw_payload, sass_payload, tune, variant='o7'):
     work={key:0 for key in ('L1 Wavefronts Shared Excessive','L1 Wavefronts Shared',
                            'L2 Theoretical Sectors Global Excessive','L2 Theoretical Sectors Local')}
     work_by_opcode={}
-    for row in csv.DictReader(src):
+    source_rows=list(csv.DictReader(src))
+    if not source_rows:
+        raise ValueError('empty SASS source export')
+    missing_columns=set(work)-set(source_rows[0])
+    # NCU omits the local-sector column if this function has no local
+    # instructions. Never interpret arbitrary missing metrics as measured0.
+    local_key='L2 Theoretical Sectors Local'
+    no_local_opcodes=not any(re.match(r'\s*(?:@!?P(?:T|\d+)\s+)?(?:LDL|STL)(?:\.|\s)',row['Source']) for row in source_rows)
+    if missing_columns and (missing_columns!={local_key} or not no_local_opcodes):
+        raise ValueError(f'missing required memory counters: {sorted(missing_columns)}')
+    for row in source_rows:
         match=re.match(r'\s*(?:@!?P(?:T|\d+)\s+)?([A-Z][A-Z0-9_]*)',row['Source'])
         if not match: raise ValueError('unknown opcode')
         count=int(row['Instructions Executed'].replace(',',''))
         counts[match[1]]=counts.get(match[1],0)+count
         opcode_work=work_by_opcode.setdefault(match[1],{key:0 for key in work})
         for key in work:
-            value=int(row[key].replace(',',''))
+            value=0 if key in missing_columns else int(row[key].replace(',',''))
             work[key]+=value
             opcode_work[key]+=value
     def metric(key,unit=None):
@@ -61,6 +71,7 @@ def analyze(raw_payload, sass_payload, tune, variant='o7'):
     return dict(variant=variant,tune=tune,kernel=identity[1],dynamic_instructions=sum(counts.values()),
         opcodes=counts,source_memory_work=work,
         source_memory_work_by_opcode={op:values for op,values in work_by_opcode.items() if any(values.values())},
+        source_memory_work_omitted_zero_columns=sorted(missing_columns),
         source_memory_work_note='theoretical sectors/wavefront work; not actual HBM bytes',
         ncu_duration_ms=metric('gpu__time_duration.sum','us')/1000,
         eligible_warps=metric('smsp__warps_eligible.avg.per_cycle_active'),

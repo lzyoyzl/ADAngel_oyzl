@@ -1,4 +1,6 @@
 from pathlib import Path
+import csv
+import io
 import runpy
 import unittest
 
@@ -8,6 +10,26 @@ EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v4/reports/o378_roof_v4'
 
 
 class RoofScaleNcuTests(unittest.TestCase):
+    def test_missing_local_column_only_allowed_without_local_instructions(self):
+        # Parser fixture, not profiling evidence. Preserve executed instruction
+        # totals while substituting nonlocal opcodes so the omission is valid.
+        raw=(EVIDENCE/'ncu_o7_t6_raw.csv').read_text()
+        sass=(EVIDENCE/'ncu_o7_t6_source_sass.csv').read_text()
+        lines=list(csv.reader(io.StringIO(sass)))
+        column=lines[1].index('L2 Theoretical Sectors Local')
+        for row in lines[1:]:
+            row.pop(column)
+        output=io.StringIO();csv.writer(output).writerows(lines)
+        missing=output.getvalue()
+        with self.assertRaisesRegex(ValueError,'missing required memory counters'):
+            ANALYZE(raw,missing,6,'o7')
+        no_local=missing.replace('LDL','LDG').replace('STL','STG')
+        result=ANALYZE(raw,no_local,6,'o7')
+        self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Local'],0)
+        self.assertEqual(result['source_memory_work_omitted_zero_columns'],['L2 Theoretical Sectors Local'])
+        with self.assertRaises(ValueError):
+            ANALYZE(raw,no_local.replace('L1 Wavefronts Shared Excessive','missing'),6,'o7')
+
     def test_archived_full_warp_copy_tradeoff(self):
         evidence=ROOT/'docs/evidence/a100_o378_roof_v8/reports/o378_roof_v8'
         result=ANALYZE((evidence/'ncu_o7_t15_raw.csv').read_text(),
