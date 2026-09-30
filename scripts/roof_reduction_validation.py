@@ -36,22 +36,28 @@ def reference_fp64(variant, values):
     return y
 
 
-def compare_output(y, baseline, reference, tune, kernel):
+def compare_output(y, baseline, reference, tune, kernel, tree_baseline=None):
     import torch
     if y.dtype!=torch.float32 or not torch.isfinite(y).all():
         raise AssertionError('output must be finite FP32')
     changed=not torch.equal(y.view(torch.int32),baseline.view(torch.int32))
-    reassociated=tune in (24,25,26,27,34,35,36)
+    reassociated=tune in (24,25,26,27,34,35,36,37,38)
     if not reassociated and changed:
         raise AssertionError('old candidate differs bitwise from production')
+    if tune==37:
+        if (not kernel.get('compile_time_reduction_phase') or tree_baseline is None
+                or not torch.equal(y.view(torch.int32),tree_baseline.view(torch.int32))):
+            raise AssertionError('static phases must remain bitwise equal to dynamic tree36')
+    if tune==38 and not kernel.get('compile_time_reduction_phase'):
+        raise AssertionError('two-product tree must use explicit static-phase metadata')
     if tune in (24,25,26,27):
         if (kernel.get('fp32_accumulation_chains')!=(2 if tune in (24,26) else 4)
                 or not kernel.get('fp32_reassociated')):
             raise AssertionError('missing explicit reassociation metadata')
-    if tune in (34,35,36):
+    if tune in (34,35,36,37,38):
         if (not kernel.get('fp32_reassociated') or not kernel.get('separate_rounded_products')
-                or kernel.get('product_window_groups')!=(32 if tune==35 else 4)
-                or kernel.get('eager_product_reduction')!=(tune==36)
+                or kernel.get('product_window_groups')!=(32 if tune==35 else 2 if tune==38 else 4)
+                or kernel.get('eager_product_reduction')!=(tune in (36,37,38))
                 or kernel.get('group_accumulation')!='rounded_products_then_window_balanced_tree'):
             raise AssertionError('missing explicit product-tree metadata')
     torch.testing.assert_close(y.double(),reference,rtol=1e-3,atol=1e-3)
@@ -65,4 +71,5 @@ def compare_output(y, baseline, reference, tune, kernel):
         mse_vs_semantic_fp64=error.square().mean().item(),
         baseline_mse_vs_semantic_fp64=base_error.square().mean().item(),
         max_abs_vs_semantic_fp64=error.abs().max().item(),
-        semantic_tolerance_passed=True,fp32_reassociated=reassociated)
+        semantic_tolerance_passed=True,fp32_reassociated=reassociated,
+        **({'bitwise_equal_dynamic_tree':True} if tune==37 else {}))

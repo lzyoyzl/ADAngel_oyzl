@@ -59,7 +59,7 @@ def validate_arithmetic_work(counts, tune, fast):
     groups = 16777216  # 4096^2 outputs * 32 groups / 32 lanes.
     if any(counts.get(k) != groups for k in ('IMMA', 'I2F')):
         raise ValueError('expected 4096^3, G128, two-route native INT4 work')
-    if tune in (34, 35, 36):
+    if tune in (34, 35, 36, 37, 38):
         # Tree variants separately round P*S. Predicated tree instructions may
         # execute even when their lanes do not contribute, so FADD is a lower
         # bound here; retain the observed count in the resource model.
@@ -78,7 +78,7 @@ def validate_arithmetic_work(counts, tune, fast):
 
 def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False):
     allowed={'o3':(6,13,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o8':(6,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31)}
-    if variant not in allowed or tune not in allowed[variant] + (34,35,36):
+    if variant not in allowed or tune not in allowed[variant] + (34,35,36,37,38):
         raise ValueError('unsupported variant/tune profiling pair')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
     if len(raw_rows)!=2:
