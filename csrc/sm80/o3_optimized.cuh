@@ -109,7 +109,7 @@ template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
-  static_assert(RoofTune>=0 && RoofTune<=3);
+  static_assert(RoofTune>=0 && RoofTune<=7);
   static_assert(RoofTune==0 || (Stream && !Merge && !Magic));
   static_assert(!DualScale || (!Fast && !Cached && !Magic && Stream));
   extern __shared__ __align__(128) uint8_t buf[];
@@ -194,7 +194,9 @@ __device__ __forceinline__ void o3_body(
         cute::copy(SCopy{},hc.partition_S(tile_a(make_high(slot),sub)),hd);
         cute::copy(LCopy{},lc.partition_S(tile_a(make_low(slot),sub+cute::_1{})),ld1);
         cute::copy(SCopy{},hc.partition_S(tile_a(make_high(slot),sub+cute::_1{})),hd1);
-        constexpr int SliceN=WN*16;
+        // Roof bit 2 doubles the streamed N slice, exposing four independent
+        // MMA atoms per warp instead of two without changing the CTA or G128.
+        constexpr int SliceN=WN*((RoofTune&4)?32:16);
         using SmallCopy=SCopy;
         using SliceMma=typename O3AmpereConfig<M,SliceN,K,Cached,WN>::Mma;
         SliceMma slice_mma;

@@ -63,7 +63,7 @@ def main():
     args = p.parse_args()
     if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2
         or -1 not in args.tunes or len(set(args.tunes))!=len(args.tunes)
-        or any(t not in range(-1,4) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
+        or any(t not in (-1,0,1,2,3,6,7) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
         p.error('fresh output, production control (-1), unique valid cases and positive repetitions required')
     import torch
     from adangel import _sm80 as native

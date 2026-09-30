@@ -13,7 +13,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
     at::Tensor w,at::Tensor ws,int warmup,int repeats) {
   const bool dual=variant=="o7" || variant=="o8";
   TORCH_CHECK(dual || variant=="o3","expected o3/o7/o8");
-  TORCH_CHECK(tune>=-1 && tune<=3 && warmup>=0 && repeats>0,"invalid candidate/repetitions");
+  TORCH_CHECK(((tune>=-1 && tune<=3) || tune==6 || tune==7) && warmup>=0 && repeats>0,"invalid candidate/repetitions");
   for(const auto& t : {a,as,w,ws})
     TORCH_CHECK(t.is_cuda() && t.device()==a.device(),"CUDA device mismatch");
   TORCH_CHECK(a.dim()==2 && w.dim()==2 && a.is_contiguous() && w.is_contiguous() &&
@@ -62,7 +62,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   }
   #define ROOF_SELECT(T) case T: kernel=dual ? adangel_sm80_roof_candidate<true,false,T> : \
       (fast ? adangel_sm80_roof_candidate<false,true,T> : adangel_sm80_roof_candidate<false,false,T>); break
-  switch(tune) {ROOF_SELECT(0);ROOF_SELECT(1);ROOF_SELECT(2);ROOF_SELECT(3);}
+  switch(tune) {ROOF_SELECT(0);ROOF_SELECT(1);ROOF_SELECT(2);ROOF_SELECT(3);ROOF_SELECT(6);ROOF_SELECT(7);}
   #undef ROOF_SELECT
   if(existing_dual)
     check(cudaFuncSetAttribute(adangel_sm80_split_grouped_major<128,256>,
@@ -84,6 +84,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
       (dual ? "adangel_sm80_split_grouped_major" : "adangel_sm80_o3_swizzled_bound2");
   meta["tune"]=tune;meta["dual_scale"]=dual;meta["exponent_fast_path"]=fast;
   meta["scale_hoist"]=tune>=0 && bool(tune&1);meta["interleaved_n_atoms"]=tune>=0 && bool(tune&2);
+  meta["stream_n_slice"]=tune>=0 && (tune&4) ? 64:32;
   meta["cta_tile"]=std::vector<int>{64,128,256};meta["group_size"]=128;
   meta["shared_memory_bytes"]=smem;meta["scope"]="candidate_compute_only_not_production";
   py::dict result;result["output"]=y;result["gemm_ms"]=times;result["kernel"]=meta;
