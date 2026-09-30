@@ -19,6 +19,7 @@
 #include "adangel/data_types.cuh"
 #include "adangel/fp16_runner.h"
 #include <cuda_fp16.h>
+#include "roof_pipeline_api.h"
 
 namespace py = pybind11;
 namespace {

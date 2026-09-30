@@ -1,6 +1,5 @@
 // Internal prepared-input experiments. Production defaults are untouched.
 #pragma once
-#include "o3_pipeline_candidate.cuh"
 
 // Targeted latency-hiding experiments, not a production tile search:
 // 8: twice as many warps at the same CTA shape (register cap from bound2).
@@ -24,14 +23,10 @@ void adangel_sm80_roof_candidate(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,
     float* y,int m,int n,int k) {
   using R=RoofShape<Tune>;
-  if constexpr(R::Stages==3) {
-  o3_pipeline_experiment::o3_body<64,R::N,R::K,Fast && !DualScale,false,false,R::WN,false,true,false,true,true,true,false,
-          DualScale,DualScale,R::CoreTune,false,false,false,false,3>(a,w,as,ws,y,m,n,k);
-  } else {
+  static_assert(R::Stages==2,"three-stage kernels must compile in their own translation unit");
   o3_body<64,R::N,R::K,Fast && !DualScale,false,false,R::WN,false,true,false,true,true,true,false,
           DualScale,DualScale || Tune==13,R::CoreTune,DualScale && Fast && (Tune==11 || Tune==12),
           DualScale && Fast && Tune==12,Tune==14 || Tune==15,Tune==15>(a,w,as,ws,y,m,n,k);
-  }
 }
 
 bool valid_roof_tune(int tune) {
@@ -70,8 +65,7 @@ template<int Tune> RoofLaunchConfig roof_config_for(bool dual) {
   using R=RoofShape<Tune>;
   size_t smem;
   if constexpr(R::Stages==3) {
-    smem=dual ? sizeof(typename o3_pipeline_experiment::O3AmpereConfig<64,R::N,R::K,false,R::WN,true,3>::Storage)
-              : sizeof(typename o3_pipeline_experiment::O3AmpereConfig<64,R::N,R::K,false,R::WN,false,3>::Storage);
+    smem=adangel_sm80_experiment::three_stage_shared_bytes(dual);
   } else {
     smem=dual ? sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,true>::Storage)
               : sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,false>::Storage);
@@ -102,6 +96,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
+  if(tune==16 || tune==17)
+    return adangel_sm80_experiment::select_three_stage_kernel(dual,fast,tune);
   auto kernel=adangel_sm80_roof_candidate<false,false,0>;
   if(tune==15) {
     TORCH_CHECK(dual,"combined asynchronous scale panels require O7/O8");
@@ -124,7 +120,7 @@ auto select_roof_kernel(bool dual,bool fast,int tune) {
   #define ROOF_PICK(T) case T: kernel=dual ? adangel_sm80_roof_candidate<true,false,T> : \
       (fast ? adangel_sm80_roof_candidate<false,true,T> : adangel_sm80_roof_candidate<false,false,T>); break
   switch(tune) {ROOF_PICK(0);ROOF_PICK(1);ROOF_PICK(2);ROOF_PICK(3);ROOF_PICK(6);ROOF_PICK(7);
-               ROOF_PICK(8);ROOF_PICK(9);ROOF_PICK(10);ROOF_PICK(16);ROOF_PICK(17);}
+               ROOF_PICK(8);ROOF_PICK(9);ROOF_PICK(10);}
   #undef ROOF_PICK
   return kernel;
 }

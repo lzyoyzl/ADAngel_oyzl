@@ -19,6 +19,15 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('static_assert(Stages==3 && K==128',experiment)
         self.assertIn('static_assert(RoofTune==2 || RoofTune==6)',experiment)
         self.assertIn('__fmaf_rn(float(partial),scale,acc(vi,mi,full_ni))',experiment)
+        host=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
+        roof=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
+        separate=(ROOT/'csrc/sm80/roof_pipeline.cu').read_text()
+        self.assertNotIn('#include "o3_pipeline_candidate.cuh"',host+roof)
+        self.assertIn('#include "o3_pipeline_candidate.cuh"',separate)
+        self.assertIn('"csrc/sm80/roof_pipeline.cu"',(ROOT/'setup.py').read_text())
+        self.assertIn('select_three_stage_kernel(dual,fast,tune)',roof)
+        self.assertNotIn('ROOF_PICK(16)',roof)
+        self.assertNotIn('ROOF_PICK(17)',roof)
 
     def test_production_default_unchanged(self):
         host = (ROOT / "csrc/sm80/o1_o3.cu").read_text()
@@ -85,7 +94,7 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('process_stage(stage,stage%Stages)',body)
         self.assertIn('static_assert(Stages==3 && K==128',body)
         roof=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
-        self.assertIn('o3_pipeline_experiment::o3_body',roof)
+        self.assertIn('o3_pipeline_experiment::o3_body',(ROOT/'csrc/sm80/roof_pipeline.cu').read_text())
         self.assertIn('if constexpr(R::Stages==3)',roof)
         for total in (1,2,3,4,5,6,7,32):
             slots={};pending=[];completed=set();consumed=[]

@@ -55,6 +55,7 @@ class CudaBuildTargetTests(unittest.TestCase):
         extension = configuration("sm80")[0]
         self.assertEqual(extension.name, "adangel._sm80")
         self.assertIn("csrc/sm80/o1_o3.cu", extension.sources)
+        self.assertIn("csrc/sm80/roof_pipeline.cu", extension.sources)
         self.assertNotIn("csrc/bindings.cpp", extension.sources)
         self.assertNotIn("csrc/sm120/o1_gemm.cu", extension.sources)
         self.assertIn("-gencode=arch=compute_80,code=[sm_80,compute_80]",
