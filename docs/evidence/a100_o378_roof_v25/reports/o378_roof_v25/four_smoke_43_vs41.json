@@ -1,0 +1,491 @@
+{
+  "reference_tune": 41,
+  "candidate_tune": 43,
+  "source_binary_sha256": "23530dba211d16393b91f9287aecdb9e402c94af39cd23dee960d1b19e2a6a3c",
+  "reassociation_opt_in": false,
+  "sources": [
+    {
+      "file": "runs/o378_roof_v25_four_smoke/environment.json",
+      "sha256": "14559df23489026267d62abf1c1d0fe2b39a5c25f185f23a05cf0ed775c7527b"
+    },
+    {
+      "file": "runs/o378_roof_v25_four_smoke/summary.json",
+      "sha256": "c1a26875e7da6c1faf1fd2844903c32c1cf774dc6c6c05cf32a7441ab7154492"
+    },
+    {
+      "file": "runs/o378_roof_v25_four_smoke/results.jsonl",
+      "sha256": "945c145ced8bd62f53f5026fd0212678012870f6926140b1e692d4391081d186"
+    }
+  ],
+  "policy": "same-run paired rounds; no CV filtering; sample bootstrap descriptive, same-trace samples correlated",
+  "rows": [
+    {
+      "variant": "o3",
+      "mode": "conversion_only",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.1253068745136261,
+      "candidate_median_ms": 0.11389952152967453,
+      "paired_speedup_median": 1.1001527735213494,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.0005745973478203796,
+      "median_mse_vs_paired_fp16": 0.0005745973478203796,
+      "median_reference_mse_vs_paired_fp16": 0.0005745973478203796,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.1253068745136261,
+          "candidate_median_ms": 0.11389952152967453,
+          "paired_speedup": 1.1001527735213494,
+          "mse_vs_o0": 0.0005745973478203796,
+          "mse_vs_paired_fp16": 0.0005745973478203796,
+          "reference_mse_vs_o0": 0.0005745973478203796,
+          "reference_mse_vs_paired_fp16": 0.0005745973478203796,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o3",
+      "mode": "compute_only",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.4280320107936859,
+      "candidate_median_ms": 0.4413439929485321,
+      "paired_speedup_median": 0.9698376269587098,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.0005745973478203796,
+      "median_mse_vs_paired_fp16": 0.0005745973478203796,
+      "median_reference_mse_vs_paired_fp16": 0.0005745973478203796,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.4280320107936859,
+          "candidate_median_ms": 0.4413439929485321,
+          "paired_speedup": 0.9698376269587098,
+          "mse_vs_o0": 0.0005745973478203796,
+          "mse_vs_paired_fp16": 0.0005745973478203796,
+          "reference_mse_vs_o0": 0.0005745973478203796,
+          "reference_mse_vs_paired_fp16": 0.0005745973478203796,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o3",
+      "mode": "cold",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.5457919836044312,
+      "candidate_median_ms": 0.5345280170440674,
+      "paired_speedup_median": 1.021072733703751,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.0005745973478203796,
+      "median_mse_vs_paired_fp16": 0.0005745973478203796,
+      "median_reference_mse_vs_paired_fp16": 0.0005745973478203796,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.5457919836044312,
+          "candidate_median_ms": 0.5345280170440674,
+          "paired_speedup": 1.021072733703751,
+          "mse_vs_o0": 0.0005745973478203796,
+          "mse_vs_paired_fp16": 0.0005745973478203796,
+          "reference_mse_vs_o0": 0.0005745973478203796,
+          "reference_mse_vs_paired_fp16": 0.0005745973478203796,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o3",
+      "mode": "steady_state",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.48179200291633606,
+      "candidate_median_ms": 0.4700160026550293,
+      "paired_speedup_median": 1.0250544666453618,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.0005745973478203796,
+      "median_mse_vs_paired_fp16": 0.0005745973478203796,
+      "median_reference_mse_vs_paired_fp16": 0.0005745973478203796,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.48179200291633606,
+          "candidate_median_ms": 0.4700160026550293,
+          "paired_speedup": 1.0250544666453618,
+          "mse_vs_o0": 0.0005745973478203796,
+          "mse_vs_paired_fp16": 0.0005745973478203796,
+          "reference_mse_vs_o0": 0.0005745973478203796,
+          "reference_mse_vs_paired_fp16": 0.0005745973478203796,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o7",
+      "mode": "conversion_only",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.16417791694402695,
+      "candidate_median_ms": 0.1508198380470276,
+      "paired_speedup_median": 1.088569773512382,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.005262686510301441,
+      "median_mse_vs_paired_fp16": 0.00017169781257259873,
+      "median_reference_mse_vs_paired_fp16": 0.00017169781257259873,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.16417791694402695,
+          "candidate_median_ms": 0.1508198380470276,
+          "paired_speedup": 1.088569773512382,
+          "mse_vs_o0": 0.005262686510301441,
+          "mse_vs_paired_fp16": 0.00017169781257259873,
+          "reference_mse_vs_o0": 0.005262686510301441,
+          "reference_mse_vs_paired_fp16": 0.00017169781257259873,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o7",
+      "mode": "compute_only",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.4628480076789856,
+      "candidate_median_ms": 0.45772799849510193,
+      "paired_speedup_median": 1.0111857024274613,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.005262686510301441,
+      "median_mse_vs_paired_fp16": 0.00017169781257259873,
+      "median_reference_mse_vs_paired_fp16": 0.00017169781257259873,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.4628480076789856,
+          "candidate_median_ms": 0.45772799849510193,
+          "paired_speedup": 1.0111857024274613,
+          "mse_vs_o0": 0.005262686510301441,
+          "mse_vs_paired_fp16": 0.00017169781257259873,
+          "reference_mse_vs_o0": 0.005262686510301441,
+          "reference_mse_vs_paired_fp16": 0.00017169781257259873,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o7",
+      "mode": "cold",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.6138880252838135,
+      "candidate_median_ms": 0.6266880035400391,
+      "paired_speedup_median": 0.9795751982103997,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.005262686510301441,
+      "median_mse_vs_paired_fp16": 0.00017169781257259873,
+      "median_reference_mse_vs_paired_fp16": 0.00017169781257259873,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.6138880252838135,
+          "candidate_median_ms": 0.6266880035400391,
+          "paired_speedup": 0.9795751982103997,
+          "mse_vs_o0": 0.005262686510301441,
+          "mse_vs_paired_fp16": 0.00017169781257259873,
+          "reference_mse_vs_o0": 0.005262686510301441,
+          "reference_mse_vs_paired_fp16": 0.00017169781257259873,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o7",
+      "mode": "steady_state",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.5314559936523438,
+      "candidate_median_ms": 0.5294079780578613,
+      "paired_speedup_median": 1.0038685015703686,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.005262686510301441,
+      "median_mse_vs_paired_fp16": 0.00017169781257259873,
+      "median_reference_mse_vs_paired_fp16": 0.00017169781257259873,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.5314559936523438,
+          "candidate_median_ms": 0.5294079780578613,
+          "paired_speedup": 1.0038685015703686,
+          "mse_vs_o0": 0.005262686510301441,
+          "mse_vs_paired_fp16": 0.00017169781257259873,
+          "reference_mse_vs_o0": 0.005262686510301441,
+          "reference_mse_vs_paired_fp16": 0.00017169781257259873,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o8",
+      "mode": "conversion_only",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.14565888047218323,
+      "candidate_median_ms": 0.15241214632987976,
+      "paired_speedup_median": 0.9556907633655404,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.0034977923595691848,
+      "median_mse_vs_paired_fp16": 0.00021370230554795398,
+      "median_reference_mse_vs_paired_fp16": 0.00021370230554795398,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.14565888047218323,
+          "candidate_median_ms": 0.15241214632987976,
+          "paired_speedup": 0.9556907633655404,
+          "mse_vs_o0": 0.0034977923595691848,
+          "mse_vs_paired_fp16": 0.00021370230554795398,
+          "reference_mse_vs_o0": 0.0034977923595691848,
+          "reference_mse_vs_paired_fp16": 0.00021370230554795398,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o8",
+      "mode": "compute_only",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.4689919948577881,
+      "candidate_median_ms": 0.4423680007457733,
+      "paired_speedup_median": 1.0601851717735693,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.0034977923595691848,
+      "median_mse_vs_paired_fp16": 0.00021370230554795398,
+      "median_reference_mse_vs_paired_fp16": 0.00021370230554795398,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.4689919948577881,
+          "candidate_median_ms": 0.4423680007457733,
+          "paired_speedup": 1.0601851717735693,
+          "mse_vs_o0": 0.0034977923595691848,
+          "mse_vs_paired_fp16": 0.00021370230554795398,
+          "reference_mse_vs_o0": 0.0034977923595691848,
+          "reference_mse_vs_paired_fp16": 0.00021370230554795398,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o8",
+      "mode": "cold",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.5980160236358643,
+      "candidate_median_ms": 0.5980160236358643,
+      "paired_speedup_median": 1.0,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.0034977923595691848,
+      "median_mse_vs_paired_fp16": 0.00021370230554795398,
+      "median_reference_mse_vs_paired_fp16": 0.00021370230554795398,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.5980160236358643,
+          "candidate_median_ms": 0.5980160236358643,
+          "paired_speedup": 1.0,
+          "mse_vs_o0": 0.0034977923595691848,
+          "mse_vs_paired_fp16": 0.00021370230554795398,
+          "reference_mse_vs_o0": 0.0034977923595691848,
+          "reference_mse_vs_paired_fp16": 0.00021370230554795398,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    },
+    {
+      "variant": "o8",
+      "mode": "steady_state",
+      "samples": 1,
+      "rounds": 1,
+      "reference_median_ms": 0.5304319858551025,
+      "candidate_median_ms": 0.5263360142707825,
+      "paired_speedup_median": 1.0077820469685983,
+      "paired_speedup_ci95": null,
+      "median_mse_vs_o0": 0.0034977923595691848,
+      "median_mse_vs_paired_fp16": 0.00021370230554795398,
+      "median_reference_mse_vs_paired_fp16": 0.00021370230554795398,
+      "median_candidate_mse_vs_production": 0.0,
+      "cv": {
+        "41": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        },
+        "43": {
+          "records": 1,
+          "selected_stage_failed": 0,
+          "any_stage_failed": 0
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.5304319858551025,
+          "candidate_median_ms": 0.5263360142707825,
+          "paired_speedup": 1.0077820469685983,
+          "mse_vs_o0": 0.0034977923595691848,
+          "mse_vs_paired_fp16": 0.00021370230554795398,
+          "reference_mse_vs_o0": 0.0034977923595691848,
+          "reference_mse_vs_paired_fp16": 0.00021370230554795398,
+          "candidate_mse_vs_production": 0.0
+        }
+      ]
+    }
+  ]
+}
