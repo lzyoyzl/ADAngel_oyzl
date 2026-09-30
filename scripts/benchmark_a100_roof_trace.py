@@ -11,7 +11,7 @@ import statistics
 import time
 
 from benchmark_a100_o1 import command, stats
-from benchmark_a100_mixed import integer_reference, validate_fp16_result
+from benchmark_a100_mixed import conversion_bytes, integer_reference, validate_fp16_result
 from benchmark_a100_mixed_trace import (
     inspect_inputs, inspect_raw_inputs, mse, source_identity, verify_raw_prepared,
 )
@@ -44,7 +44,9 @@ def summarize(records):
             paired_speedup_ci95=list(bootstrap_median_ci(speeds,10000,.95,20260930)) if len(samples)>1 else None,
             median_mse_vs_o0=statistics.median(r['mse_vs_o0'] for r in samples),
             median_mse_vs_paired_fp16=statistics.median(r['mse_vs_paired_fp16'] for r in samples),
-            cv_failed_records=sum(r['summary']['cv_percent']>=3 for r in rows), per_sample=samples))
+            cv_failed_records=sum(r['summary']['cv_percent']>=3 for r in rows),
+            any_stage_cv_failed_records=sum(any(s['cv_percent']>=3 for s in r.get('stage_summaries',{'selected':r['summary']}).values()) for r in rows),
+            per_sample=samples))
     return result
 
 
@@ -161,9 +163,14 @@ def main():
                         stage='gemm' if mode=='compute_only' else 'total'
                         times=timings[stage]
                         stage_stats={k:stats(v) for k,v in timings.items()}
+                        for name, st in stage_stats.items():
+                            count=conversion_bytes(variant,name,*x.shape) if 'conversion' in name or mode=='conversion_only' else 0
+                            st['logical_bytes']=count
+                            st['logical_gbps']=count/st['median_ms']/1e6 if count else None
                         row=dict(sample_id=x.sample_id,variant=variant,tune=tune,round=r,mode=mode,
                             raw_ms=times,summary=stage_stats[stage],stage_timings_ms=timings,stage_summaries=stage_stats,
                             kernel=dict(result['kernel']),conversion_inner_repeats=args.inner if args.all_modes else None,
+                            stage_timing_inner_repeats={name:args.inner if 'conversion' in name or mode=='conversion_only' else 1 for name in timings},
                             total_timing='sum_of_batched_stage_samples' if mode=='conversion_only' else 'single_execution_cuda_event',
                             bitwise_equal_production=True,mse_vs_production=0.0,paired_fp16=reference_name,**metrics)
                         records.append(row);append('results.jsonl',row)
