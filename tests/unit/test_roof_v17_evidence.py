@@ -17,6 +17,54 @@ COMPARE=runpy.run_path(str(ROOT/'scripts/compare_roof_trace_candidates.py'))['co
 
 
 class ReductionBudgetEvidence(unittest.TestCase):
+    def test_o3_four_modes_preserve_mse_but_steady_loses_to_tune6(self):
+        d=E/'runs/o378_roof_v17_o3_four24'
+        env=json.loads((d/'environment.json').read_text())
+        summary=json.loads((d/'summary.json').read_text())
+        rows=[json.loads(x) for x in (d/'results.jsonl').read_text().splitlines()]
+        modes=['conversion_only','compute_only','cold','steady_state']
+        tunes=[-1,6,22]
+        self.assertEqual(env['binary_sha256'],json.loads((P/'audit/audit.json').read_text())['binary_sha256'])
+        self.assertEqual((env['args']['samples'],env['args']['rounds'],env['args']['warmup'],
+                          env['args']['repeats'],env['args']['inner']),(24,3,50,200,100))
+        self.assertEqual((env['args']['variants'],env['args']['tunes']),(['o3'],tunes))
+        self.assertTrue(summary['all_24_samples'] and summary['all_four_modes_completed']
+                        and summary['correctness_passed'] and summary['no_filtering'])
+        self.assertEqual(summary['numerical_policy'],'bitwise')
+        ids={r['sample_id'] for r in rows}
+        self.assertEqual(len(ids),24)
+        self.assertEqual(len(rows),864)
+        self.assertEqual({(r['sample_id'],r['mode'],r['round'],r['tune']) for r in rows},
+                         set(itertools.product(ids,modes,range(3),tunes)))
+        for mode,tune in itertools.product(modes,tunes):
+            selected=[r for r in rows if (r['mode'],r['tune'])==(mode,tune)]
+            self.assertEqual(collections.Counter(r['order_position'] for r in selected),dict.fromkeys(range(3),24))
+        for r in rows:
+            self.assertTrue(r['bitwise_equal_production'])
+            self.assertEqual(r['mse_vs_production'],0)
+            self.assertEqual(r['conversion_inner_repeats'],100)
+            self.assertEqual(r['total_timing'],'sum_of_batched_stage_samples' if r['mode']=='conversion_only'
+                             else 'single_execution_cuda_event')
+            for stage,values in r['stage_timings_ms'].items():
+                self.assertEqual(len(values),200)
+                self.assertTrue(all(math.isfinite(x) and x>0 for x in values))
+                self.assertAlmostEqual(statistics.median(values),r['stage_summaries'][stage]['median_ms'],places=12)
+                self.assertEqual(r['stage_timing_inner_repeats'][stage],100 if
+                                 stage.endswith('_conversion') or r['mode']=='conversion_only' else 1)
+        for ref,label in ((-1,'prod'),(6,'6')):
+            calculated=COMPARE(rows,ref,22,24,3,['o3'],modes)
+            stored=json.loads((P/f'o3_four24_t22_vs{label}.json').read_text())['rows']
+            self.assertEqual(calculated,stored)
+            for r in calculated:
+                self.assertEqual(r['cv']['22']['records'],72)
+                if r['mode']=='conversion_only':
+                    continue
+                self.assertGreater(r['cv']['22']['any_stage_failed'],0)
+                if ref==6 and r['mode']=='steady_state':
+                    self.assertLess(r['paired_speedup_ci95'][1],1)
+                else:
+                    self.assertGreater(r['paired_speedup_ci95'][0],1)
+
     def test_o78_four_modes_are_complete_balanced_and_bitwise(self):
         d=E/'runs/o378_roof_v17_o78_four24'
         env=json.loads((d/'environment.json').read_text())
