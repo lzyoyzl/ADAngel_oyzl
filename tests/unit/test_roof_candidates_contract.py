@@ -1,15 +1,29 @@
 """Source gates only; GPU numerical/ISA/performance acceptance is separate."""
 from pathlib import Path
+import hashlib
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class RoofCandidatesContractTest(unittest.TestCase):
+    def test_three_stage_cannot_edit_the_preserved_two_stage_source(self):
+        # Audited v8/c971aff source. A future production change must deliberately
+        # update this gate AND pass same-binary numerical/ISA/performance tests.
+        body=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+        self.assertEqual(hashlib.sha256(body.encode()).hexdigest(),
+                         'e3d8e0c0f4be4d128cf3aee41fe6ef774e5b279618b50d13b7c070bc1f56706a')
+        experiment=(ROOT/'csrc/sm80/o3_pipeline_candidate.cuh').read_text()
+        self.assertIn('namespace o3_pipeline_experiment',experiment)
+        self.assertNotIn('__global__',experiment)
+        self.assertIn('static_assert(Stages==3 && K==128',experiment)
+        self.assertIn('static_assert(RoofTune==2 || RoofTune==6)',experiment)
+        self.assertIn('__fmaf_rn(float(partial),scale,acc(vi,mi,full_ni))',experiment)
+
     def test_production_default_unchanged(self):
         host = (ROOT / "csrc/sm80/o1_o3.cu").read_text()
         self.assertIn('implementation="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2";', host)
-        self.assertIn('int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false,int Stages=2>', (ROOT / "csrc/sm80/o3_optimized.cuh").read_text())
+        self.assertIn('int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false>', (ROOT / "csrc/sm80/o3_optimized.cuh").read_text())
 
     def test_same_group_math_no_magic(self):
         body = (ROOT / "csrc/sm80/o3_optimized.cuh").read_text()
@@ -61,14 +75,18 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('__fmaf_rn(float(partial),scale,acc(vi,mi,full_ni))',body)
         self.assertIn('static_assert(!PrebiasActivationScale || ActivationPower2)',body)
         self.assertIn('row_scale=__uint_as_float(__float_as_uint(row_scale)-0x3f800000u)',body)
-        self.assertIn('o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>',body)
+        self.assertIn('o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>',body)
 
     def test_three_stage_prologue_wait_drain_and_slot_reuse(self):
-        body=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+        body=(ROOT/'csrc/sm80/o3_pipeline_candidate.cuh').read_text()
         self.assertIn('(s,1,1,a,w,ws,m,k,as,n)',body)
         self.assertIn('if(stage+2<k/K) asm volatile("cp.async.wait_group 1;',body)
         self.assertIn('(s,(stage+2)%Stages,stage+2,a,w,ws,m,k,as,n)',body)
         self.assertIn('process_stage(stage,stage%Stages)',body)
+        self.assertIn('static_assert(Stages==3 && K==128',body)
+        roof=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
+        self.assertIn('o3_pipeline_experiment::o3_body',roof)
+        self.assertIn('if constexpr(R::Stages==3)',roof)
         for total in (1,2,3,4,5,6,7,32):
             slots={};pending=[];completed=set();consumed=[]
             def issue(g):

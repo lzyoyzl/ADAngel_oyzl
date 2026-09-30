@@ -1,5 +1,6 @@
 // Internal prepared-input experiments. Production defaults are untouched.
 #pragma once
+#include "o3_pipeline_candidate.cuh"
 
 // Targeted latency-hiding experiments, not a production tile search:
 // 8: twice as many warps at the same CTA shape (register cap from bound2).
@@ -23,9 +24,14 @@ void adangel_sm80_roof_candidate(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,
     float* y,int m,int n,int k) {
   using R=RoofShape<Tune>;
+  if constexpr(R::Stages==3) {
+  o3_pipeline_experiment::o3_body<64,R::N,R::K,Fast && !DualScale,false,false,R::WN,false,true,false,true,true,true,false,
+          DualScale,DualScale,R::CoreTune,false,false,false,false,3>(a,w,as,ws,y,m,n,k);
+  } else {
   o3_body<64,R::N,R::K,Fast && !DualScale,false,false,R::WN,false,true,false,true,true,true,false,
           DualScale,DualScale || Tune==13,R::CoreTune,DualScale && Fast && (Tune==11 || Tune==12),
-          DualScale && Fast && Tune==12,Tune==14 || Tune==15,Tune==15,R::Stages>(a,w,as,ws,y,m,n,k);
+          DualScale && Fast && Tune==12,Tune==14 || Tune==15,Tune==15>(a,w,as,ws,y,m,n,k);
+  }
 }
 
 bool valid_roof_tune(int tune) {
@@ -62,8 +68,14 @@ bool roof_power2_activation_guard(const at::Tensor& as,const at::Tensor& ws) {
 struct RoofLaunchConfig {int n,k,threads,min_blocks,core_tune,slice_n,stages;size_t smem;};
 template<int Tune> RoofLaunchConfig roof_config_for(bool dual) {
   using R=RoofShape<Tune>;
-  const size_t smem=dual ? sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,true,R::Stages>::Storage)
-                        : sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,false,R::Stages>::Storage);
+  size_t smem;
+  if constexpr(R::Stages==3) {
+    smem=dual ? sizeof(typename o3_pipeline_experiment::O3AmpereConfig<64,R::N,R::K,false,R::WN,true,3>::Storage)
+              : sizeof(typename o3_pipeline_experiment::O3AmpereConfig<64,R::N,R::K,false,R::WN,false,3>::Storage);
+  } else {
+    smem=dual ? sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,true>::Storage)
+              : sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,false>::Storage);
+  }
   return {R::N,R::K,R::Threads,R::MinBlocks,R::CoreTune,R::WN*((R::CoreTune&4)?32:16),R::Stages,smem};
 }
 RoofLaunchConfig roof_config(int tune,bool dual) {

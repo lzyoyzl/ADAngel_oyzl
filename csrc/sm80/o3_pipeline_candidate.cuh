@@ -1,15 +1,19 @@
-// SM80 O3: preserve two native U4/S4 MMA paths and the ordered G128 FMA.
+// Isolated three-stage experiment. Keep the two-stage production body in
+// o3_optimized.cuh byte-identical to the audited v8 source until acceptance.
+// Only roof candidates16/17 instantiate this namespace; not a default backend.
 #pragma once
+namespace o3_pipeline_experiment {
 template<int N,bool Cached> struct O3ScaleCodeScratch {};
 template<int N> struct O3ScaleCodeScratch<N,true> { uint8_t scale_codes[N*32]; };
-template<int M,int Groups,bool Enabled> struct SplitActivationScales {};
-template<int M,int Groups> struct SplitActivationScales<M,Groups,true> {
-  alignas(16) float activation_scales[2*Groups*M];
+template<int M,int Groups,bool Enabled,int Stages=2> struct SplitActivationScales {};
+template<int M,int Groups,int Stages> struct SplitActivationScales<M,Groups,true,Stages> {
+  alignas(16) float activation_scales[Stages*Groups*M];
 };
 
-template<int M,int N,int K,bool Cached=false,int WN=2,bool DualScale=false>
+template<int M,int N,int K,bool Cached=false,int WN=2,bool DualScale=false,int Stages=2>
 struct O3AmpereConfig {
   static_assert(K==128||K==256);
+  static_assert(Stages==2 || Stages==3);
   static constexpr int WM=M==32?2:4;
   static constexpr int Threads=32*WM*WN, Groups=K/128, Bytes=K/2;
   using Low=cutlass::uint4b_t;
@@ -28,17 +32,17 @@ struct O3AmpereConfig {
       cute::Swizzle<K==256?3:2,5,3>{},cute::Layout<cute::Shape<cute::Int<Rows>,cute::Int<K>>,
       cute::Stride<cute::Int<K>,cute::_1>>{}));
   struct alignas(128) Storage : O3ScaleCodeScratch<N,Cached>,
-      SplitActivationScales<M,Groups,DualScale> {
-    alignas(128) uint8_t low[2][M*Bytes], high[2][M*Bytes], weight[2][N*Bytes];
-    float scales[(Cached?32:2*Groups)*N];
+      SplitActivationScales<M,Groups,DualScale,Stages> {
+    alignas(128) uint8_t low[Stages][M*Bytes], high[Stages][M*Bytes], weight[Stages][N*Bytes];
+    float scales[(Cached?32:Stages*Groups)*N];
   };
 };
 
-template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false>
-__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN,DualScale>::Storage& s,
+template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false,int Stages=2>
+__device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN,DualScale,Stages>::Storage& s,
     int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k,
     const float* grouped_as=nullptr,int total_n=0) {
-  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
+  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale,Stages>;
   static_assert(!DualScale || (!Fast && !Cached && !VectorScale));
   static_assert(!GroupMajorScale || DualScale || (!Cached && !VectorScale));
   static_assert(!PrebiasActivationScale || DualScale);
@@ -150,10 +154,12 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false,bool AsyncScale=false,bool CombinedScalePanels=false,int Stages=2>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
-  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
+  using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale,Stages>;
+  static_assert(Stages==3 && K==128 && !PhasePair && !Cached && !AsyncScale);
+  static_assert(RoofTune==2 || RoofTune==6);
   static_assert(RoofTune>=0 && RoofTune<=7);
   static_assert(RoofTune==0 || (Stream && !Merge && !Magic));
   static_assert(!DualScale || (!Fast && !Cached && !Magic && Stream));
@@ -228,11 +234,32 @@ __device__ __forceinline__ void o3_body(
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
   auto bd1=bc.retile_D(rb1);
   auto ld1=lc.retile_D(ra1);auto hd1=hc.retile_D(rh1);
-  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>(s,0,0,a,w,ws,m,k,as,n);
+  if constexpr(Stages==2) {
+    // Keep the historical call structure for the existing binary controls.
+    o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>(s,0,0,a,w,ws,m,k,as,n);
+  } else {
+    o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(s,0,0,a,w,ws,m,k,as,n);
+  }
+  // Three-stage candidate: prime a second G128. Each copy stage has its own
+  // commit group. The prologue/drain also covers short/odd stage counts.
+  if constexpr(Stages==3) {
+    if(k/K>1) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(s,1,1,a,w,ws,m,k,as,n);
+  }
   auto process_stage=[&](int stage,auto slot) {
+    if constexpr(Stages==3) {
+      if(stage+2<k/K) asm volatile("cp.async.wait_group 1;" ::: "memory");
+      else asm volatile("cp.async.wait_group 0;" ::: "memory");
+    } else {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
+    }
+    // The completed current slot is visible to every warp. This barrier also
+    // protects the previous slot before any warp reuses it for stage+2.
     __syncthreads();
-    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>(s,1-slot,stage+1,a,w,ws,m,k,as,n);
+    if constexpr(Stages==3) {
+      if(stage+2<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(s,(stage+2)%Stages,stage+2,a,w,ws,m,k,as,n);
+    } else {
+      if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>(s,1-slot,stage+1,a,w,ws,m,k,as,n);
+    }
     auto process_group=[&](auto group) {
       if constexpr(Stream) {
         // Preload both K64 A sets, but retain only a narrow N slice of B.
@@ -463,8 +490,10 @@ __device__ __forceinline__ void o3_body(
       process_stage(stage,cute::_0{});
       if(stage+1<k/K) process_stage(stage+1,cute::_1{});
     }
-  } else {
+  } else if constexpr(Stages==2) {
     for(int stage=0;stage<k/K;++stage) process_stage(stage,stage%2);
+  } else {
+    for(int stage=0;stage<k/K;++stage) process_stage(stage,stage%Stages);
   }
   if constexpr(VectorStore) {
     // SM80_16x8_Row pairs values 0/1 and 2/3 along N. Addresses still come
@@ -489,40 +518,4 @@ __device__ __forceinline__ void o3_body(
   }
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false>
-__global__ __launch_bounds__(32*(M==32?2:4)*WN) void adangel_sm80_o3_swizzled(
-    const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
-  o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>(a,w,as,ws,y,m,n,k);
-}
-
-// A distinct entry keeps the original one-argument launch policy unchanged.
-template<int M,int N,int K,bool Fast,bool Cached,bool Magic,int WN,bool Merge,bool StaticCopy,bool PhasePair,bool Stream,bool VectorStore=false,bool VectorScale=false>
-__global__ __launch_bounds__(256,2) void adangel_sm80_o3_swizzled_bound2(
-    const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
-  static_assert(M==64 && N==128 && K==256 && WN==2 && (Stream || Merge));
-  o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,true,VectorStore,VectorScale>(a,w,as,ws,y,m,n,k);
-}
-
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool Bound2=false,bool VectorStore=false,bool VectorScale=false>
-void o3_configure() {
-  static_assert((!VectorStore && !VectorScale) || Bound2);
-  auto f=[]() {
-    if constexpr(Bound2) return adangel_sm80_o3_swizzled_bound2<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,VectorStore,VectorScale>;
-    else return adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream>;
-  }();
-  TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributeMaxDynamicSharedMemorySize,
-      sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage))==cudaSuccess,"O3 shared memory opt-in failed");
-  TORCH_CHECK(cudaFuncSetAttribute(f,cudaFuncAttributePreferredSharedMemoryCarveout,100)==cudaSuccess,"O3 carveout failed");
-}
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool Bound2=false,bool VectorStore=false,bool VectorScale=false>
-void o3_launch(const at::Tensor& a,const at::Tensor& w,const at::Tensor& as,const at::Tensor& ws,
-    at::Tensor& out,cudaStream_t stream) {
-  if constexpr(Bound2) {
-  adangel_sm80_o3_swizzled_bound2<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,VectorStore,VectorScale><<<dim3(out.size(1)/N,out.size(0)/M),32*(M==32?2:4)*WN,
-      sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),out.size(0),out.size(1),w.size(1)*2);
-  } else {
-  adangel_sm80_o3_swizzled<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream><<<dim3(out.size(1)/N,out.size(0)/M),32*(M==32?2:4)*WN,
-      sizeof(typename O3AmpereConfig<M,N,K,Cached,WN>::Storage),stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
-      as.data_ptr<float>(),ws.data_ptr<uint8_t>(),out.data_ptr<float>(),out.size(0),out.size(1),w.size(1)*2);
-  }
-}
+} // namespace o3_pipeline_experiment
