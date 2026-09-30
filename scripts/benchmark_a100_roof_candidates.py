@@ -13,7 +13,7 @@ import statistics
 import time
 
 from benchmark_a100_o1 import command, stats
-from roof_reduction_validation import compare_output, reference_fp64
+from roof_reduction_validation import row_scale_layout_reference, compare_output, reference_fp64
 from roof_payload_validation import verify_grouped_payload
 
 
@@ -37,7 +37,7 @@ def main():
     p.add_argument("--synthetic", action="store_true", required=True)
     p.add_argument("--validate", action="store_true")
     p.add_argument("--allow-reassociation", action="store_true",
-                   help="Numerical opt-in for candidates24-27/34-40/51-52; other cases remain bitwise gated")
+                   help="Numerical opt-in for candidates24-27/34-40/51-54; other cases remain bitwise gated")
     p.add_argument("--size", type=int, default=4096)
     p.add_argument("--warmup", type=int, default=50)
     p.add_argument("--repeats", type=int, default=200)
@@ -45,14 +45,14 @@ def main():
     p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52)+(53,54) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
     if any(t in (32,33) for t in args.tunes) and args.size!=4096:
         p.error('fixed4096 candidates32/33 require --size 4096')
-    if any(t in (24,25,26,27,34,35,36,37,38,39,40,51,52) for t in args.tunes) and not args.allow_reassociation:
-        p.error('candidates24-27/34-40/51-52 require explicit --allow-reassociation')
-    if any(t in (51,52) for t in args.tunes) and args.variants != ['o3']:
-        p.error('row-scale epilogue candidates51/52 are O3 only')
+    if any(t in (24,25,26,27,34,35,36,37,38,39,40,51,52,53,54) for t in args.tunes) and not args.allow_reassociation:
+        p.error('candidates24-27/34-40/51-54 require explicit --allow-reassociation')
+    if any(t in (51,52,53,54) for t in args.tunes) and args.variants != ['o3']:
+        p.error('row-scale epilogue candidates51/52/53/54 are O3 only')
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
     if any(t in (14,15) for t in args.tunes) and 'o3' in args.variants:
@@ -135,7 +135,7 @@ def main():
         rejected_shapes = []
         for variant in args.variants:
             shapes=[(64, 128, 256), (128, 256, 512), (64, 128, 768), (128, 128, 4096)]
-            if any(t in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52) for t in args.tunes):
+            if any(t in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52)+(53,54) for t in args.tunes):
                 shapes += [(64,128,128),(64,128,384),(64,128,640)]
             if any(t in (32,33) for t in args.tunes):
                 shapes += [(4096,4096,4096)]
@@ -158,7 +158,7 @@ def main():
                                         raise AssertionError('fixed shape candidate accepted unsupported shape')
                                     rejected_shapes.append(dict(variant=variant,tune=tune,shape=[m,n,k]))
                                 continue
-                            if k%256 and tune not in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52):
+                            if k%256 and tune not in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52)+(53,54):
                                 continue  # Only these kernels support odd G128 counts.
                             result = native._benchmark_roof_candidate(variant, tune, *values, 0, 1)
                             stream.synchronize()
@@ -209,7 +209,8 @@ def main():
                                 assert not result['kernel']['activation_power2_guard_fallback']
                             if args.allow_reassociation:
                                 tree_base=native._benchmark_roof_candidate(variant,36 if tune==37 else 38,*values,0,1)['output'] if tune in (37,39,40) else None
-                                numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']),tree_base)
+                                numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']),tree_base,
+                                    row_scale_baseline=row_scale_layout_reference(native,variant,tune,values))
                             else:
                                 assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, m, n, k, pattern)
                                 numeric=dict(bitwise_equal_production=True,mse_vs_production=0.0)
@@ -217,7 +218,7 @@ def main():
                                 expected_fast=pattern=="power2_a" or (pattern=="random" and variant=="o7")
                                 assert bool(result["kernel"]["activation_power2_fast_path"])==expected_fast
                                 assert bool(result["kernel"]["activation_scale_prebias"])==(tune==12 and expected_fast)
-                            numeric.update(verify_grouped_payload(result,tune,values[0],values[2]))
+                            numeric.update(verify_grouped_payload(result,tune,values[0],values[2],values[3]))
                             checks.append(dict(variant=variant, tune=tune, shape=[m,n,k], pattern=pattern,
                                                **numeric,kernel=dict(result["kernel"])))
         save("validation.json", {"passed": True, "checks": checks, "rejected_shapes": rejected_shapes})
@@ -238,11 +239,12 @@ def main():
                 y = result["output"]
                 if args.allow_reassociation:
                     tree_base=native._benchmark_roof_candidate(variant,36 if tune==37 else 38,*values,0,1)['output'] if tune in (37,39,40) else None
-                    numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']),tree_base)
+                    numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']),tree_base,
+                        row_scale_baseline=row_scale_layout_reference(native,variant,tune,values))
                 else:
                     assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, "large")
                     numeric=dict(bitwise_equal_production=True,mse_vs_production=0.0)
-                numeric.update(verify_grouped_payload(result,tune,values[0],values[2]))
+                numeric.update(verify_grouped_payload(result,tune,values[0],values[2],values[3]))
                 raw = list(result["gemm_ms"])
                 row = dict(variant=variant, tune=tune, round=r, raw_ms=raw, summary=stats(raw),
                            execution_order=order,order_position=order.index(tune),

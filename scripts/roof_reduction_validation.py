@@ -36,19 +36,32 @@ def reference_fp64(variant, values):
     return y
 
 
-def compare_output(y, baseline, reference, tune, kernel, tree_baseline=None):
+def row_scale_layout_reference(native, variant, tune, values):
+    """Outside timed intervals: layout-only candidates must equal51/52 bitwise."""
+    if tune not in (53,54):
+        return None
+    return native._benchmark_roof_candidate(variant,tune-2,*values,0,1)['output']
+
+
+def compare_output(y, baseline, reference, tune, kernel, tree_baseline=None, row_scale_baseline=None):
     import torch
     if y.dtype!=torch.float32 or not torch.isfinite(y).all():
         raise AssertionError('output must be finite FP32')
     changed=not torch.equal(y.view(torch.int32),baseline.view(torch.int32))
-    reassociated=tune in (24,25,26,27,34,35,36,37,38,39,40,51,52)
+    reassociated=tune in (24,25,26,27,34,35,36,37,38,39,40,51,52,53,54)
     if not reassociated and changed:
         raise AssertionError('old candidate differs bitwise from production')
-    if tune in (51,52):
+    if tune in (51,52,53,54):
         if (not kernel.get('row_scale_in_epilogue') or not kernel.get('fp32_reassociated')
                 or kernel.get('cross_group_accumulator_dtype')!='fp32'
                 or not kernel.get('unscaled_fp32_bound_checked')):
             raise AssertionError('row-scale epilogue guard/FP32 metadata missing')
+    if tune in (53,54):
+        if (kernel.get('weight_scale_layout')!='group_major'
+                or kernel.get('row_scale_layout_reference_tune')!=tune-2
+                or row_scale_baseline is None
+                or not torch.equal(y.view(torch.int32),row_scale_baseline.view(torch.int32))):
+            raise AssertionError('scale layout must remain bitwise equal to row-scale baseline51/52')
     if tune==37:
         if (not kernel.get('compile_time_reduction_phase') or tree_baseline is None
                 or not torch.equal(y.view(torch.int32),tree_baseline.view(torch.int32))):
@@ -83,5 +96,6 @@ def compare_output(y, baseline, reference, tune, kernel, tree_baseline=None):
         baseline_mse_vs_semantic_fp64=base_error.square().mean().item(),
         max_abs_vs_semantic_fp64=error.abs().max().item(),
         semantic_tolerance_passed=True,fp32_reassociated=reassociated,
+        **({'bitwise_equal_row_scale_baseline':True} if tune in (53,54) else {}),
         **({'bitwise_equal_dynamic_tree':True} if tune==37 else {}),
         **({'bitwise_equal_pair_tree':True} if tune in (39,40) else {}))

@@ -70,7 +70,7 @@ def validate_arithmetic_work(counts, tune, fast):
     else:
         if counts.get('FFMA') != groups:
             raise ValueError('expected 4096^3, G128, two-route native INT4 work')
-        if counts.get('FMUL', 0) != (4096**2//32 if tune in (51,52) else 0 if fast else groups):
+        if counts.get('FMUL', 0) != (4096**2//32 if tune in (51,52,53,54) else 0 if fast else groups):
             raise ValueError('unexpected scale math')
         if tune in (24,25,26,27) and counts.get('FADD') != 4096**2//32*(1 if tune in (24,26) else 3):
             raise ValueError('expected one/three final FP32 additions per output for two/four chains')
@@ -78,7 +78,7 @@ def validate_arithmetic_work(counts, tune, fast):
 
 def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False):
     allowed={'o3':(6,13,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o8':(6,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31)}
-    if variant not in allowed or tune not in allowed[variant] + (34,35,36,37,38,39,40,41,42,45,46,47,48,49,50,51,52):
+    if variant not in allowed or tune not in allowed[variant] + (34,35,36,37,38,39,40,41,42,45,46,47,48,49,50,51,52,53,54):
         raise ValueError('unsupported variant/tune profiling pair')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
     if len(raw_rows)!=2:
@@ -88,8 +88,8 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
     identity=next(csv.reader(src))
     # The archived O3 random-input profile uses the guarded exponent path.
     # Power2 substitutions apply ONLY to O7 tunes11/12, never async tune14.
-    fast=(variant=='o3' and tune not in (51,52)) or tune in (11,12)
-    if tune in (51,52) and variant!='o3': raise ValueError('row-scale epilogue is O3 only')
+    fast=(variant=='o3' and tune not in (51,52,53,54)) or tune in (11,12)
+    if tune in (51,52,53,54) and variant!='o3': raise ValueError('row-scale epilogue is O3 only')
     expected=f'adangel_sm80_roof_candidate<{int(variant!="o3")},{int(fast)},{tune}>'
     def normalized(symbol):
         return re.sub(r'\((?:bool|int)\)|\s+','',symbol)

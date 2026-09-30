@@ -248,7 +248,7 @@ class RoofCandidatesContractTest(unittest.TestCase):
         host=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
         cvw=host.split('auto cvw=[&](){',1)[1].split('auto cva=',1)[0]
         self.assertIn('roof_reorder_o3_scale(ws,roof_ws,n,k/128,stream)',cvw)
-        self.assertIn('auto roof_ws=roof_tune==13 ? at::empty({k/128,n},ws.options()) : ws',host)
+        self.assertIn('auto roof_ws=roof_group_major_w_scale(roof_tune) ? at::empty({k/128,n},ws.options()) : ws',host)
         self.assertIn('weight_scale_reorder_in_conversion',host)
         body=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
         self.assertIn('(stage*C::Groups+group)*total_n+blockIdx.x*N+threadIdx.x',body)

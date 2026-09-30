@@ -25,6 +25,7 @@
 #include "roof_static_ring_api.h"
 #include "roof_phased_finish_api.h"
 #include "roof_row_scale_epilogue_api.h"
+#include "roof_epilogue_scale_layout_api.h"
 
 namespace py = pybind11;
 namespace {
@@ -294,7 +295,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
   auto roof_a=roof_grouped_payload(roof_tune)?at::empty({2,k/128,m,64},w.options()):aa;
   auto roof_w=roof_grouped_payload(roof_tune)?at::empty({k/128,n,64},w.options()):wa;
-  auto roof_ws=roof_tune==13 ? at::empty({k/128,n},ws.options()) : ws;
+  auto roof_ws=roof_group_major_w_scale(roof_tune) ? at::empty({k/128,n},ws.options()) : ws;
   auto roof_kernel=select_roof_kernel(false,exponent_scale,roof_tune<0?0:roof_tune);
   const auto roof_cfg=roof_config(roof_tune,false);
   const size_t roof_smem=roof_cfg.smem;
@@ -428,7 +429,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     }
     if(split) adangel_launch_mxfp4_to_q4(w,wa,stream);
     else adangel_launch_mxfp4_to_int8(w,wa,stream);
-    if(roof_tune==13) roof_reorder_o3_scale(ws,roof_ws,n,k/128,stream);
+    if(roof_group_major_w_scale(roof_tune)) roof_reorder_o3_scale(ws,roof_ws,n,k/128,stream);
     if(roof_grouped_payload(roof_tune)) roof_pack_payload(wa,roof_w,1,n,k,stream);
   };
   auto cva=[&](){
@@ -638,7 +639,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(roof_tune>=0) {
     meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=52))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=54))?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
@@ -663,9 +664,9 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;
     meta["minimum_blocks_launch_bound"]=std::to_string(roof_cfg.min_blocks);
-    meta["weight_scale_layout"]=roof_tune==13 ? "group_major" : "row_major";
-    meta["weight_scale_reorder_in_conversion"]=roof_tune==13;
-    meta["weight_scale_reorder_bytes"]=roof_tune==13 ? int64_t(2)*n*(k/128) : 0;
+    meta["weight_scale_layout"]=roof_group_major_w_scale(roof_tune) ? "group_major" : "row_major";
+    meta["weight_scale_reorder_in_conversion"]=roof_group_major_w_scale(roof_tune);
+    meta["weight_scale_reorder_bytes"]=roof_group_major_w_scale(roof_tune) ? int64_t(2)*n*(k/128) : 0;
     meta["shared_memory_bytes"]=roof_smem;
     roof_payload_metadata(meta,roof_tune,m,n,k);
   }
@@ -678,7 +679,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     meta["natural_payload_export"]="diagnostic_inverse_layout_after_timing";
   }
   r["converted_weight"]=wa;r["converted_activation"]=aa;
-  if(roof_tune==13) r["converted_weight_scale"]=roof_ws;
+  if(roof_group_major_w_scale(roof_tune)) r["converted_weight_scale"]=roof_ws;
   if(roof_grouped_payload(roof_tune)) {
     r["packed_activation_g128_major"]=roof_a;
     r["packed_weight_g128_major"]=roof_w;
