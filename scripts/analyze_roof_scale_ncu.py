@@ -127,6 +127,15 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         factors={'byte/block':1,'Kbyte/block':1000,'Mbyte/block':1000000}
         if units[key] not in factors: raise ValueError(f'unexpected memory unit for {key}')
         return metric(key)*factors[units[key]]
+    def dram_bytes_value(key):
+        factors={'byte':1,'Kbyte':1000,'Mbyte':1000000,'Gbyte':1000000000}
+        if units[key] not in factors: raise ValueError(f'unexpected DRAM unit for {key}')
+        return metric(key)*factors[units[key]]
+    def duration_ms():
+        key='gpu__time_duration.sum'
+        factors={'ns':1e-6,'us':1e-3,'ms':1,'s':1000}
+        if units[key] not in factors: raise ValueError('unexpected duration unit')
+        return metric(key)*factors[units[key]]
     if sum(counts.values())!=metric('smsp__inst_executed.sum','inst'):
         raise ValueError('raw/source dynamic instruction mismatch')
     validate_arithmetic_work(counts, tune, fast)
@@ -152,7 +161,7 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         if not math.isclose(capacity,1,rel_tol=1e-5):
             raise ValueError('unexpected shared wavefront/SM/cycle capacity')
         active=metric('sm__cycles_active.avg','cycle')
-        dram_bytes=(metric('dram__bytes_read.sum','Mbyte')+metric('dram__bytes_write.sum','Mbyte'))*1e6
+        dram_bytes=dram_bytes_value('dram__bytes_read.sum')+dram_bytes_value('dram__bytes_write.sum')
         useful_ops=2*4096**3
         bounds=dict(
             mma=2*useful_ops/(sm*8192*cycles_per_ms),
@@ -179,7 +188,11 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         source_memory_work_by_opcode={op:values for op,values in work_by_opcode.items() if any(values.values())},
         source_memory_work_omitted_zero_columns=sorted(missing_columns),
         source_memory_work_note='theoretical sectors/wavefront work; not actual HBM bytes',
-        ncu_duration_ms=metric('gpu__time_duration.sum','us')/1000,
+        ncu_duration_ms=duration_ms(),
+        # Older minimal captures did not request DRAM bytes. Missing is not0;
+        # resource_model above still requires these counters explicitly.
+        dram_read_bytes=dram_bytes_value('dram__bytes_read.sum') if 'dram__bytes_read.sum' in units else None,
+        dram_write_bytes=dram_bytes_value('dram__bytes_write.sum') if 'dram__bytes_write.sum' in units else None,
         eligible_warps=metric('smsp__warps_eligible.avg.per_cycle_active'),
         issue_active_percent=metric('smsp__issue_active.avg.pct_of_peak_sustained_active','%'),
         registers_per_thread=metric('launch__registers_per_thread','register/thread'),
