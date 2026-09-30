@@ -38,6 +38,18 @@ def eager(values):
 
 
 class ProductTreeTest(unittest.TestCase):
+    def test_ncu_work_keeps_actual_predicated_tree_instruction_count(self):
+        import runpy
+        validate=runpy.run_path(str(ROOT/'scripts/analyze_roof_scale_ncu.py'))['validate_arithmetic_work']
+        groups=16777216
+        for tune in (34,35,36):
+            for fast in (False,True):
+                counts=dict(IMMA=groups,I2F=groups,FMUL=groups*(1 if fast else 2),FADD=groups*3)
+                validate(counts,tune,fast)
+                self.assertEqual(counts['FADD'],groups*3)
+                for change in (dict(FFMA=1),dict(FMUL=0),dict(FADD=groups-1),dict(IMMA=groups//2)):
+                    with self.assertRaises(ValueError): validate(dict(counts,**change),tune,fast)
+
     def test_eager_reuses_storage_without_changing_four_term_tree(self):
         rng=random.Random(930)
         for count in (1,2,3,4,5,6,7,8,31,32,33,64):
