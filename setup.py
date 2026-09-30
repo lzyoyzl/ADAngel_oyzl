@@ -78,6 +78,7 @@ def extensions():
             "csrc/sm80/roof_product_tree.cu",
             "csrc/sm80/roof_eager_tree.cu",
             "csrc/sm80/roof_static_eager_tree.cu",
+            "csrc/sm80/roof_fragment_tree.cu",
             "csrc/sm80/roof_reduction.cu",
             "csrc/sm80/roof_reduction_budget.cu",
             "csrc/common/validation.cu",

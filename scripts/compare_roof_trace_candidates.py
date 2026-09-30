@@ -32,7 +32,9 @@ def compare(rows, reference, candidate, samples, rounds, variants, modes, allow_
     for r in selected:
         if r['tune']==37 and not r.get('bitwise_equal_dynamic_tree'):
             raise ValueError('missing bitwise comparison against dynamic tree36')
-        if allow_reassociation and r['tune'] in (24,25,26,27,34,35,36,37,38):
+        if r['tune'] in (39,40) and not r.get('bitwise_equal_pair_tree'):
+            raise ValueError('missing bitwise comparison against pair tree38')
+        if allow_reassociation and r['tune'] in (24,25,26,27,34,35,36,37,38,39,40):
             required=('mse_vs_production','max_abs_vs_production','mse_vs_semantic_fp64','max_abs_vs_semantic_fp64')
             if (not r.get('fp32_reassociated') or not r.get('semantic_tolerance_passed')
                     or not r.get('mse_regression_passed')
@@ -93,7 +95,7 @@ def main():
     if not summary.get("correctness_passed") or not summary.get("no_filtering"):
         raise ValueError("completed correctness summary required")
     if args.allow_reassociation and (not run_args.get('allow_reassociation') or
-            summary.get('numerical_policy') not in ('explicit_reassociation_only_for_24_25','explicit_reassociation_only_for_24_25_26_27','explicit_reassociation_only_for_24_25_26_27_34_35_36','explicit_reassociation_only_for_24_25_26_27_34_35_36_37','explicit_reassociation_only_for_24_25_26_27_34_35_36_37_38')):
+            summary.get('numerical_policy') not in ('explicit_reassociation_only_for_24_25','explicit_reassociation_only_for_24_25_26_27','explicit_reassociation_only_for_24_25_26_27_34_35_36','explicit_reassociation_only_for_24_25_26_27_34_35_36_37','explicit_reassociation_only_for_24_25_26_27_34_35_36_37_38','explicit_reassociation_only_for_24_25_26_27_34_35_36_37_38_39_40')):
         raise ValueError('run was not explicitly opted into reassociation')
     if bool(summary.get("all_four_modes_completed")) != bool(run_args["all_modes"]):
         raise ValueError("declared mode completion mismatch")

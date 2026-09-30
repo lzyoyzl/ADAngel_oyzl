@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Synthetic screen of internal O3/O7/O8 candidates; NOT formal trace acceptance.
 
-Each candidate must equal the unchanged production arithmetic bitwise. Timing
-is paired in alternating orders, with raw samples and no outlier removal.
+Old candidates must equal production bitwise. Explicit reassociation opt-in
+uses FP64 semantic and tree-to-tree checks; no numerical fallback is permitted.
+Timing uses cyclic orders, with raw samples and no outlier removal.
 """
 import argparse
 import hashlib
@@ -35,7 +36,7 @@ def main():
     p.add_argument("--synthetic", action="store_true", required=True)
     p.add_argument("--validate", action="store_true")
     p.add_argument("--allow-reassociation", action="store_true",
-                   help="Numerical opt-in for candidates24-27/34-38; other cases remain bitwise gated")
+                   help="Numerical opt-in for candidates24-27/34-40; other cases remain bitwise gated")
     p.add_argument("--size", type=int, default=4096)
     p.add_argument("--warmup", type=int, default=50)
     p.add_argument("--repeats", type=int, default=200)
@@ -43,12 +44,12 @@ def main():
     p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
     if any(t in (32,33) for t in args.tunes) and args.size!=4096:
         p.error('fixed4096 candidates32/33 require --size 4096')
-    if any(t in (24,25,26,27,34,35,36,37,38) for t in args.tunes) and not args.allow_reassociation:
-        p.error('candidates24-27/34-38 require explicit --allow-reassociation')
+    if any(t in (24,25,26,27,34,35,36,37,38,39,40) for t in args.tunes) and not args.allow_reassociation:
+        p.error('candidates24-27/34-40 require explicit --allow-reassociation')
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
     if any(t in (14,15) for t in args.tunes) and 'o3' in args.variants:
@@ -131,7 +132,7 @@ def main():
         rejected_shapes = []
         for variant in args.variants:
             shapes=[(64, 128, 256), (128, 256, 512), (64, 128, 768), (128, 128, 4096)]
-            if any(t in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38) for t in args.tunes):
+            if any(t in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40) for t in args.tunes):
                 shapes += [(64,128,128),(64,128,384),(64,128,640)]
             if any(t in (32,33) for t in args.tunes):
                 shapes += [(4096,4096,4096)]
@@ -154,7 +155,7 @@ def main():
                                         raise AssertionError('fixed shape candidate accepted unsupported shape')
                                     rejected_shapes.append(dict(variant=variant,tune=tune,shape=[m,n,k]))
                                 continue
-                            if k%256 and tune not in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38):
+                            if k%256 and tune not in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40):
                                 continue  # Only these kernels support odd G128 counts.
                             result = native._benchmark_roof_candidate(variant, tune, *values, 0, 1)
                             stream.synchronize()
@@ -183,13 +184,15 @@ def main():
                                     assert result['kernel']['paired_g128_copy']
                                     assert result['kernel']['physical_stage_payload_padding_bytes']==128
                                     assert result['kernel']['shared_memory_bytes']==(51840 if variant=='o3' else 52608)
-                            if tune in (34,35,36,37,38):
-                                assert result['kernel']['product_window_groups']==(32 if tune==35 else 2 if tune==38 else 4)
-                                assert result['kernel']['eager_product_reduction']==(tune in (36,37,38))
+                            if tune in (34,35,36,37,38,39,40):
+                                assert result['kernel']['product_window_groups']==(32 if tune==35 else 2 if tune>=38 else 4)
+                                assert result['kernel']['eager_product_reduction']==(tune in (36,37,38,39,40))
                                 assert result['kernel']['separate_rounded_products']
                                 assert result['kernel']['cta_tile']==[64,128,128]
                                 assert result['kernel']['threads']==128
-                                assert result['kernel']['launch_bounds_min_blocks']==1
+                                assert result['kernel']['launch_bounds_min_blocks']==(3 if tune in (39,40) else 1)
+                                if tune in (39,40):
+                                    assert result['kernel']['stream_n_slice']==(64 if tune==39 else 32)
                             if tune in (24,25,26,27):
                                 assert result['kernel']['cta_tile']==[64,128,256]
                                 assert result['kernel']['pipeline_stages']==2
@@ -202,7 +205,7 @@ def main():
                                 assert not result['kernel']['activation_power2_fast_path']
                                 assert not result['kernel']['activation_power2_guard_fallback']
                             if args.allow_reassociation:
-                                tree_base=native._benchmark_roof_candidate(variant,36,*values,0,1)['output'] if tune==37 else None
+                                tree_base=native._benchmark_roof_candidate(variant,36 if tune==37 else 38,*values,0,1)['output'] if tune in (37,39,40) else None
                                 numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']),tree_base)
                             else:
                                 assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, m, n, k, pattern)
@@ -230,7 +233,7 @@ def main():
                 wall_end=time.time()
                 y = result["output"]
                 if args.allow_reassociation:
-                    tree_base=native._benchmark_roof_candidate(variant,36,*values,0,1)['output'] if tune==37 else None
+                    tree_base=native._benchmark_roof_candidate(variant,36 if tune==37 else 38,*values,0,1)['output'] if tune in (37,39,40) else None
                     numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']),tree_base)
                 else:
                     assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, "large")

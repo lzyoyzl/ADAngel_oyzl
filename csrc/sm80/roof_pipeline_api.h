@@ -16,6 +16,8 @@ Kernel select_fixed_shape_kernel(bool dual, bool fast, int tune);
 Kernel select_product_tree_kernel(bool dual, bool fast, int tune);
 Kernel select_eager_tree_kernel(bool dual, bool fast, int tune);
 Kernel select_static_eager_tree_kernel(bool dual, bool fast, int tune);
+Kernel select_fragment_tree_kernel(bool dual, bool fast, int tune);
+size_t fragment_tree_shared_bytes(bool dual);
 size_t paired_pipeline_shared_bytes(bool dual);
 Kernel select_reduction_kernel(bool dual, bool fast, int tune);
 Kernel select_reduction_budget_kernel(bool dual, bool fast, int tune);

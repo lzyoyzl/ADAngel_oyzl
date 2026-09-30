@@ -38,7 +38,7 @@ def roof_pipeline_checks(symbol, ptx, sass):
 
 
 def roof_reduction_checks(symbol, counts):
-    if re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi3[4-8]EE',symbol):
+    if re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi(?:3[4-9]|40)EE',symbol):
         return dict(products_keep_i2f=counts.get('I2F',0)>0,
                     products_keep_fmul=counts.get('FMUL',0)>0,
                     products_keep_fadd=counts.get('FADD',0)>0,
@@ -53,7 +53,7 @@ def roof_reduction_checks(symbol, counts):
 
 def roof_paired_pipeline_checks(symbol, ptx, sass):
     """Paired ring drains the copy pair before consumers; unlike23 no wait1."""
-    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi29EE',symbol):
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi(?:29|39|40)EE',symbol):
         return {}
     return dict(paired_ptx_drain=bool(re.search(r'cp\.async\.wait_group\s+0\s*;',ptx)),
                 paired_ptx_commit='cp.async.commit_group' in ptx,
