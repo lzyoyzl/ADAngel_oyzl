@@ -76,7 +76,7 @@ class RoofScaleNcuTests(unittest.TestCase):
         # Parser fixture only: renaming an archived kernel is NOT GPU evidence.
         raw=(EVIDENCE/'ncu_o7_t6_raw.csv').read_text()
         sass=(EVIDENCE/'ncu_o7_t6_source_sass.csv').read_text()
-        for tune in (16,17,18,19):
+        for tune in (16,17,18,19,45,46):
             new_raw=raw.replace('<1, 0, 6>',f'<1, 0, {tune}>')
             new_sass=sass.replace('(int)6>',f'(int){tune}>')
             result=ANALYZE(new_raw,new_sass,tune,'o7')
