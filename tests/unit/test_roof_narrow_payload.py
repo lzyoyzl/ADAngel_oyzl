@@ -46,9 +46,9 @@ class NarrowPayloadTests(unittest.TestCase):
         self.assertTrue(checks and all(checks.values()))
         for name in ('benchmark_a100_roof_candidates.py','benchmark_a100_roof_trace.py'):
             self.assertIn('41,42,', (ROOT/'scripts'/name).read_text())
-            self.assertIn('45,46,47,48)', (ROOT/'scripts'/name).read_text())
+            self.assertIn('45,46,47,48,49,50)', (ROOT/'scripts'/name).read_text())
         comparison=(ROOT/'scripts/compare_roof_trace_candidates.py').read_text()
-        self.assertIn("in (41,42,43,44,45,46,47,48) and not r.get('payload_layout_bitwise_verified')",comparison)
+        self.assertIn("in (41,42,43,44,45,46,47,48,49,50) and not r.get('payload_layout_bitwise_verified')",comparison)
 
 
 if __name__=='__main__': unittest.main()

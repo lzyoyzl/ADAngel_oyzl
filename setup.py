@@ -83,6 +83,7 @@ def extensions():
             "csrc/sm80/roof_fused_conversion.cu",
             "csrc/sm80/roof_narrow_payload.cu",
             "csrc/sm80/roof_static_ring.cu",
+            "csrc/sm80/roof_phased_finish.cu",
             "csrc/sm80/roof_reduction.cu",
             "csrc/sm80/roof_reduction_budget.cu",
             "csrc/common/validation.cu",
