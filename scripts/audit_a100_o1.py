@@ -18,6 +18,15 @@ def audit_policy(checks, allow_spills=False):
                 errors=errors,warnings=warnings)
 
 
+def roof_scale_checks(symbol, instruction_counts):
+    """Recognize only the guarded dual-scale tune11 specialization, not probes."""
+    if not re.search(r'adangel_sm80_roof_candidateILb1ELb1ELi11EE', symbol):
+        return {}
+    return dict(power2_scale_no_fmul=instruction_counts.get('FMUL', 0)==0,
+                power2_scale_keeps_i2f=instruction_counts.get('I2F', 0)>0,
+                power2_scale_keeps_ffma=instruction_counts.get('FFMA', 0)>0)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
@@ -85,12 +94,14 @@ def main():
             if not args_match: raise RuntimeError(f'Unknown O3 template signature: {symbol}')
             magic=args_match[3]=='1'
         instruction_counts={op:len(re.findall(r'\b'+op+r'(?:\.|\s)',block))
-                            for op in ('I2F','FADD','FFMA','IMMA','BMMA','LDSM','LDGSTS','LDL','STL')}
+                            for op in ('I2F','FADD','FMUL','FFMA','IMAD','IADD3','IMMA','BMMA','LDSM','LDGSTS','LDL','STL')}
         instruction_counts['STG64']=len(re.findall(r'\bSTG(?:\.[A-Z]+)*\.64\b',block))
         instruction_counts['LDG_U16']=len(re.findall(r'\bLDG(?:\.[A-Z]+)*\.U16\b',block))
         if magic:
             checks['magic_no_i2f']=instruction_counts['I2F']==0
             checks['magic_has_fadd']=instruction_counts['FADD']>0
+        if args.variant=='roof_candidate':
+            checks.update(roof_scale_checks(symbol,instruction_counts))
         functions.append(dict(symbol=symbol,checks=checks,**audit_policy(checks,args.allow_spills),resource=resource,
                               instruction_counts=instruction_counts))
     passed=bool(functions) and all(f['passed'] for f in functions)
