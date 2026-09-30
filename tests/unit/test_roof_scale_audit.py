@@ -7,6 +7,17 @@ AUDIT=runpy.run_path(str(Path(__file__).resolve().parents[2]/'scripts/audit_a100
 
 
 class RoofScaleAuditTests(unittest.TestCase):
+    def test_three_stage_waits_are_both_required_in_same_entry(self):
+        check=AUDIT['roof_pipeline_checks']
+        for tune in (16,17):
+            symbol=f'adangel_sm80_roof_candidateILb1ELb0ELi{tune}EE'
+            ptx='cp.async.wait_group 1; cp.async.wait_group 0;'
+            sass='DEPBAR.LE SB0, 0x1; DEPBAR.LE SB0, 0x0;'
+            self.assertTrue(all(check(symbol,ptx,sass).values()))
+            self.assertFalse(all(check(symbol,ptx,sass.replace('0x1','0x0')).values()))
+            self.assertFalse(all(check(symbol,ptx.replace('1;','0;'),sass).values()))
+        self.assertEqual(check('adangel_sm80_roof_candidateILb1ELb0ELi14EE','',''),{})
+
     def test_fast_specialization(self):
         symbol='_ZN40_GLOBAL_adangel_sm80_roof_candidateILb1ELb1ELi11EEEv'
         checks=AUDIT['roof_scale_checks'](symbol,dict(FMUL=0,I2F=32,FFMA=32))

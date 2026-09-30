@@ -27,6 +27,16 @@ def roof_scale_checks(symbol, instruction_counts):
                 power2_scale_keeps_ffma=instruction_counts.get('FFMA', 0)>0)
 
 
+def roof_pipeline_checks(symbol, ptx, sass):
+    """Require overlapping and draining waits in the same three-stage entry."""
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi1[67]EE',symbol):
+        return {}
+    return dict(pipeline_ptx_wait_one=bool(re.search(r'cp\.async\.wait_group\s+1\s*;',ptx)),
+                pipeline_ptx_drain=bool(re.search(r'cp\.async\.wait_group\s+0\s*;',ptx)),
+                pipeline_sass_wait_one=bool(re.search(r'DEPBAR\.LE\s+SB\d+,\s*0x1\b',sass)),
+                pipeline_sass_drain=bool(re.search(r'DEPBAR\.LE\s+SB\d+,\s*0x0\b',sass)))
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
@@ -102,6 +112,7 @@ def main():
             checks['magic_has_fadd']=instruction_counts['FADD']>0
         if args.variant=='roof_candidate':
             checks.update(roof_scale_checks(symbol,instruction_counts))
+            checks.update(roof_pipeline_checks(symbol,ptx,block))
         functions.append(dict(symbol=symbol,checks=checks,**audit_policy(checks,args.allow_spills),resource=resource,
                               instruction_counts=instruction_counts))
     passed=bool(functions) and all(f['passed'] for f in functions)
