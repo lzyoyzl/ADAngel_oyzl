@@ -1,4 +1,4 @@
-"""Recorded preliminary v25 evidence. Does NOT assert 24-sample acceptance."""
+"""Recorded v25 numerical/four-mode evidence; never hides performance regressions."""
 import json
 import statistics
 from pathlib import Path
@@ -92,6 +92,31 @@ class V25EvidenceTests(unittest.TestCase):
             speed=statistics.median(x['summary']['median_ms']/y['summary']['median_ms'] for x,y in zip(a,b))
             self.assertEqual(speed,r['paired_speedup_median'])
             self.assertEqual(r['cv']['43']['selected_stage_failed'],sum(y['summary']['cv_percent']>=3 for y in b))
+
+    def test_o78_complete_and_negative_o8_result_is_retained(self):
+        run=ROOT/'runs/o378_roof_v25_o78_four24'
+        if not (run/'summary.json').exists(): self.skipTest('O7/O8 complete archive not present')
+        env=json.loads((run/'environment.json').read_text())
+        self.assertEqual(env['binary_sha256'],BINARY)
+        self.assertEqual((env['args']['samples'],env['args']['rounds']),(24,1))
+        self.assertEqual((env['args']['warmup'],env['args']['repeats'],env['args']['inner']),(50,200,100))
+        rows=[json.loads(line) for line in (run/'results.jsonl').read_text().splitlines()]
+        self.assertEqual(len(rows),768)
+        self.assertTrue(all(r['bitwise_equal_production'] and r['mse_vs_production']==0 for r in rows))
+        report=json.loads((REPORTS/'o78_four24_44_vs42.json').read_text())
+        doc=(ROOT/'README.md').read_text()
+        for r in report['rows']:
+            self.assertIn(f"{r['candidate_median_ms']:.6f}",doc)
+            self.assertIn(f"{r['reference_median_ms']:.6f}",doc)
+            for tune,key in ((42,'reference_median_ms'),(44,'candidate_median_ms')):
+                group=[x for x in rows if (x['variant'],x['mode'],x['tune'])==(r['variant'],r['mode'],tune)]
+                self.assertEqual(len(group),24)
+                self.assertEqual(statistics.median(x['summary']['median_ms'] for x in group),r[key])
+                self.assertEqual(sum(x['summary']['cv_percent']>=3 for x in group),r['cv'][str(tune)]['selected_stage_failed'])
+                self.assertTrue(all(len(x['raw_ms'])==200 for x in group))
+            if r['variant']=='o8' and r['mode'] in ('conversion_only','cold'):
+                self.assertLess(r['paired_speedup_ci95'][1],1)
+                self.assertGreater(r['candidate_median_ms'],r['reference_median_ms'])
 
 
 if __name__=='__main__': unittest.main()
