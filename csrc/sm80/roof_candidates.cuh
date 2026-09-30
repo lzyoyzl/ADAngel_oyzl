@@ -39,12 +39,12 @@ void adangel_sm80_roof_candidate(
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=46);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=48);
 }
 
 //43/44 are conversion-only variants of41/42, NOT new GEMM instantiations.
 bool roof_fused_payload(int tune) {return tune==43 || tune==44;}
-bool roof_grouped_payload(int tune) {return tune>=41 && tune<=46;}
+bool roof_grouped_payload(int tune) {return tune>=41 && tune<=48;}
 void roof_pack_payload(const at::Tensor& src,const at::Tensor& dst,int planes,int rows,int k,cudaStream_t stream) {
   adangel_sm80_experiment::pack_g128_payload(src.data_ptr<uint8_t>(),dst.data_ptr<uint8_t>(),planes,rows,k,stream);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
@@ -57,6 +57,7 @@ void roof_payload_metadata(py::dict& meta,int tune,int m,int n,int k) {
   meta["payload_reorder_fused"]=fused;
   meta["gemm_tune"]=fused?tune-2:tune;
   meta["conversion_kernels_per_operand"]=packed && !fused?2:1;
+  meta["compile_time_ring_slots"]=tune==47 || tune==48;
   meta["activation_payload_reorder_traffic_bytes"]=packed && !fused?int64_t(2)*m*k:0;
   meta["weight_payload_reorder_traffic_bytes"]=packed && !fused?int64_t(n)*k:0;
 }
@@ -151,6 +152,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 44:return roof_config_for<42>(dual);
     case 45:case 46:return {64,128,128,4,6,64,tune==45?2:3,
         adangel_sm80_experiment::narrow_payload_shared_bytes(dual,tune)};
+    case 47:return roof_config_for<41>(dual);
+    case 48:return roof_config_for<42>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -162,6 +165,7 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
+  if(tune==47 || tune==48) return adangel_sm80_experiment::select_static_ring_kernel(dual,fast,tune);
   if(tune==45 || tune==46) return adangel_sm80_experiment::select_narrow_payload_kernel(dual,fast,tune);
   if(roof_grouped_payload(tune)) return adangel_sm80_experiment::select_grouped_payload_kernel(dual,fast,roof_fused_payload(tune)?tune-2:tune);
   if(tune==39 || tune==40) return adangel_sm80_experiment::select_fragment_tree_kernel(dual,fast,tune);
@@ -228,7 +232,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
       a.scalar_type()==at::kByte && w.scalar_type()==at::kByte,"packed contiguous uint8 required");
   int64_t m64=a.size(0)/2,n64=w.size(0),k64=a.size(1)*2;
   check_roof_fixed_shape(tune,m64,n64,k64);
-  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || (tune>=28 && tune<=46))?128:256;
+  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || (tune>=28 && tune<=48))?128:256;
   TORCH_CHECK(a.size(0)%2==0 && m64>0 && n64>0 && k64>0 && m64%64==0 && n64%128==0 && k64%required_k==0 &&
       m64*k64<=2147483647LL && n64*k64<=2147483647LL && m64*n64<=2147483647LL &&
       m64/64<=65535 && n64/128<=65535 && w.size(1)==a.size(1),"invalid aligned shape/index range");
@@ -321,7 +325,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
   meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
   meta["pipeline_stages"]=cfg.stages;
-  const int warp_m=((tune>=20 && tune<=23) || (tune>=28 && tune<=46))?2:4;
+  const int warp_m=((tune>=20 && tune<=23) || (tune>=28 && tune<=48))?2:4;
   meta["warp_layout"]=std::vector<int>{warp_m,cfg.threads/(32*warp_m)};
   meta["accumulators_per_thread"]=64*cfg.n/cfg.threads;
   meta["fp32_accumulation_chains"]=(tune==24 || tune==26)?2:((tune==25 || tune==27)?4:1);
