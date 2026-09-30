@@ -77,6 +77,12 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     C10_CUDA_KERNEL_LAUNCH_CHECK();
   };
   cvw();cva();
+  bool activation_power2=false;
+  if(roof_tune==11) {
+    activation_power2=roof_power2_activation_guard(ca->scale,cw->scale);
+    roof_kernel=select_roof_kernel(true,activation_power2,roof_tune);
+    check(cudaFuncSetAttribute(roof_kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(roof_cfg.smem)));
+  }
   if(fp16) {
     TORCH_CHECK(at::isfinite(ah).all().item<bool>() && at::isfinite(wh).all().item<bool>(),
         "source dequantization overflows FP16");
@@ -184,6 +190,9 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["interleaved_n_atoms"]=bool(roof_cfg.core_tune&2);meta["stream_n_slice"]=roof_cfg.slice_n;
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;meta["shared_memory_bytes"]=roof_cfg.smem;
+    meta["activation_power2_fast_path"]=activation_power2;
+    meta["activation_power2_guard_fallback"]=roof_tune==11 && !activation_power2;
+    if(activation_power2) meta["scale_formula"]="guarded_exact_exponent_adjustment_of_W_by_power2_A";
   }
   meta["experiment_naming_version"]=3;
   meta["paired_fp16_baseline"]=nv?"o5":"o6";

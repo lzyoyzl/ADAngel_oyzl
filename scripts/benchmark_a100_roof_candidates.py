@@ -26,7 +26,7 @@ def main():
     p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
     import torch
     from adangel import _sm80 as native
@@ -79,6 +79,14 @@ def main():
             g = torch.arange(k // 128, device="cuda")[None, :]
             return ((1 + (r * multiplier + g * 29) % 113 / 128) * torch.exp2(((r + 3*g) % 7 - 10).float())).contiguous()
         asc, wsc = scales(m, 13), scales(n, 17)
+        # MXFP8 source conversion produces exact powers-of-two A scales.
+        # Preserve non-power2 tests to exercise the conservative fallback too.
+        if pattern == "power2_a" or (pattern=="random" and variant=="o7"):
+            r=torch.arange(m,device="cuda")[:,None]
+            g=torch.arange(k//128,device="cuda")[None,:]
+            asc=torch.exp2(((r+3*g)%7-10).float()).contiguous()
+        if pattern == "power2_underflow":
+            asc.fill_(2.0**-126);wsc.fill_(2.0**-10)
         if pattern == "zero_scale":
             asc[:, ::2], wsc[:, 1::2] = 0, 0
         packed_a, packed_w = split_int8_to_packed_int4(a), pack_q4(w)
@@ -94,7 +102,7 @@ def main():
         checks = []
         for variant in args.variants:
             for m, n, k in ((64, 128, 256), (128, 256, 512), (64, 128, 768), (128, 128, 4096)):
-                for pattern in ("random", "zero", "extrema", "zero_scale"):
+                for pattern in ("random", "zero", "extrema", "zero_scale", "power2_a", "power2_underflow"):
                     values, expected, _ = inputs(variant, m, n, k, pattern)
                     stream = torch.cuda.Stream()
                     stream.wait_stream(torch.cuda.current_stream())
@@ -104,6 +112,9 @@ def main():
                             stream.synchronize()
                             y = result["output"]
                             assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, m, n, k, pattern)
+                            if tune==11 and variant!="o3":
+                                expected_fast=pattern=="power2_a" or (pattern=="random" and variant=="o7")
+                                assert bool(result["kernel"]["activation_power2_fast_path"])==expected_fast
                             checks.append(dict(variant=variant, tune=tune, shape=[m,n,k], pattern=pattern,
                                                bitwise_equal=True, mse_vs_production=0.0, kernel=dict(result["kernel"])))
         save("validation.json", {"passed": True, "checks": checks})

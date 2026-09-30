@@ -105,13 +105,14 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0,bool ActivationPower2=false>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
   static_assert(RoofTune>=0 && RoofTune<=7);
   static_assert(RoofTune==0 || (Stream && !Merge && !Magic));
   static_assert(!DualScale || (!Fast && !Cached && !Magic && Stream));
+  static_assert(!ActivationPower2 || (DualScale && RoofTune!=0));
   extern __shared__ __align__(128) uint8_t buf[];
   auto& s=*reinterpret_cast<typename C::Storage*>(buf);
   if constexpr(Cached) {
@@ -254,6 +255,11 @@ __device__ __forceinline__ void o3_body(
                 }
                 float scale;
                 if constexpr(Fast) scale=__uint_as_float(__float_as_uint(row)+__float_as_uint(column));
+                else if constexpr(ActivationPower2) {
+                  // Guarded positive normal A=2^e, normal W and normal product:
+                  // exactly the original round_fp32(A*W), not magic-bias I2F.
+                  scale=__uint_as_float(__float_as_uint(column)+__float_as_uint(row)-0x3f800000u);
+                }
                 else scale=__fmul_rn(row,column);
                 acc(vi,mi,full_ni)=__fmaf_rn(float(partial),scale,acc(vi,mi,full_ni));
               });
