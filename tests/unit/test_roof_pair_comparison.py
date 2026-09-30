@@ -77,7 +77,7 @@ class RoofPairComparison(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'bitwise'): COMPARE(bad,*args,allow_reassociation=True)
 
     def test_register_budget_candidates_keep_explicit_numerical_policy(self):
-        for tune in (26,27):
+        for tune in (26,27,34,35,36):
             rows=self.rows()
             for row in rows:
                 if row['tune']==21:

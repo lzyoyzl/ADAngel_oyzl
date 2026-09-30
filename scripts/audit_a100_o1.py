@@ -38,6 +38,11 @@ def roof_pipeline_checks(symbol, ptx, sass):
 
 
 def roof_reduction_checks(symbol, counts):
+    if re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi3[4-6]EE',symbol):
+        return dict(products_keep_i2f=counts.get('I2F',0)>0,
+                    products_keep_fmul=counts.get('FMUL',0)>0,
+                    products_keep_fadd=counts.get('FADD',0)>0,
+                    products_not_contracted=counts.get('FFMA',0)==0)
     if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi2[4-7]EE',symbol):
         return {}
     # Does not prove the dependency graph; numeric tests cover the mapping.

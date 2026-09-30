@@ -70,7 +70,7 @@ class ReductionTest(unittest.TestCase):
         self.assertIn('constexpr int Chains=Tune==26?2:4',relaxed)
         roof=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
         self.assertLess(roof.index('if(tune>=26)'),roof.index('if(tune>=24)'))
-        self.assertIn('(Tune==26 || Tune==27)?1:',roof)
+        self.assertIn('(Tune==26 || Tune==27 || Tune==34 || Tune==35 || Tune==36)?1:',roof)
         self.assertIn('"csrc/sm80/roof_reduction_budget.cu"',(ROOT/'setup.py').read_text())
 
 
