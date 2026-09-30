@@ -38,7 +38,7 @@ def roof_pipeline_checks(symbol, ptx, sass):
 
 
 def roof_reduction_checks(symbol, counts):
-    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi2[45]EE',symbol):
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi2[4-7]EE',symbol):
         return {}
     # Does not prove the dependency graph; numeric tests cover the mapping.
     return dict(reduction_keeps_i2f=counts.get('I2F',0)>0,

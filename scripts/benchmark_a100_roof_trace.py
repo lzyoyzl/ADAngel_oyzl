@@ -70,16 +70,16 @@ def main():
     p.add_argument('--inner', type=int, default=100)
     p.add_argument('--all-modes', action='store_true')
     p.add_argument('--allow-reassociation',action='store_true',
-                   help='Opt in to candidate24/25 numerical policy; never weakens old candidate bitwise gates')
+                   help='Opt in to candidate24-27 numerical policy; never weakens old candidate bitwise gates')
     p.add_argument('--tunes', type=int, nargs='+', default=[-1,1,2,3])
     p.add_argument('--variants', nargs='+', choices=['o3','o7','o8'], default=['o3','o7','o8'])
     args = p.parse_args()
     if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2 or args.inner<2
         or -1 not in args.tunes or len(set(args.tunes))!=len(args.tunes)
-        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
+        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
         p.error('fresh output, production control (-1), unique valid cases and positive repetitions required')
-    if any(t in (24,25) for t in args.tunes) and not args.allow_reassociation:
-        p.error('candidates24/25 require explicit --allow-reassociation')
+    if any(t in (24,25,26,27) for t in args.tunes) and not args.allow_reassociation:
+        p.error('candidates24-27 require explicit --allow-reassociation')
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
     if any(t in (14,15) for t in args.tunes) and 'o3' in args.variants:
@@ -209,7 +209,8 @@ def main():
         raise RuntimeError('incomplete measurement coverage')
     save('summary.json',dict(scope='real_trace_four_modes' if args.all_modes else 'real_trace_prepared_core_only',all_24_samples=args.samples==24,
         all_four_modes_completed=args.all_modes,correctness_passed=True,no_filtering=True,
-        numerical_policy='explicit_reassociation_only_for_24_25' if args.allow_reassociation else 'bitwise',
+        numerical_policy=('explicit_reassociation_only_for_24_25_26_27' if any(t in (26,27) for t in args.tunes)
+            else 'explicit_reassociation_only_for_24_25') if args.allow_reassociation else 'bitwise',
         mse_regression_passed=all(r.get('mse_regression_passed',True) for r in records),
         bootstrap_unit='sample; rounds collapsed; descriptive CI (same-trace samples correlated)',
         records=summarize(records)))

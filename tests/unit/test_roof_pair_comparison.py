@@ -76,6 +76,18 @@ class RoofPairComparison(unittest.TestCase):
         bad=copy.deepcopy(rows);bad[0]['bitwise_equal_production']=False
         with self.assertRaisesRegex(ValueError,'bitwise'): COMPARE(bad,*args,allow_reassociation=True)
 
+    def test_register_budget_candidates_keep_explicit_numerical_policy(self):
+        for tune in (26,27):
+            rows=self.rows()
+            for row in rows:
+                if row['tune']==21:
+                    row.update(tune=tune,bitwise_equal_production=False,mse_vs_production=1e-12,
+                        max_abs_vs_production=1e-5,mse_vs_semantic_fp64=1e-13,max_abs_vs_semantic_fp64=1e-6,
+                        semantic_tolerance_passed=True,mse_regression_passed=True,fp32_reassociated=True)
+            args=(14,tune,2,3,['o7'],['compute_only','cold'])
+            with self.assertRaisesRegex(ValueError,'bitwise'): COMPARE(rows,*args)
+            self.assertEqual(COMPARE(rows,*args,allow_reassociation=True)[0]['paired_speedup_median'],2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,5 +59,19 @@ class ReductionTest(unittest.TestCase):
         for name in ('roof_candidates.cuh','o1_o3.cu','mixed_benchmark.cuh'):
             self.assertIn('fp32_reassociated',(ROOT/'csrc/sm80'/name).read_text())
 
+    def test_relaxed_register_budget_is_separate_not_new_math(self):
+        original=(ROOT/'csrc/sm80/roof_reduction.cu').read_text()
+        relaxed=(ROOT/'csrc/sm80/roof_reduction_budget.cu').read_text()
+        self.assertIn('__launch_bounds__(256,1)',relaxed)
+        # Compare the actual call and all template arguments, not just a comment.
+        import re
+        call=r'o3_reduction_experiment::o3_body<.*?\(a,w,as,ws,y,m,n,k\);'
+        self.assertEqual(re.search(call,original,re.S)[0],re.search(call,relaxed,re.S)[0])
+        self.assertIn('constexpr int Chains=Tune==26?2:4',relaxed)
+        roof=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
+        self.assertLess(roof.index('if(tune>=26)'),roof.index('if(tune>=24)'))
+        self.assertIn('(Tune==26 || Tune==27)?1:',roof)
+        self.assertIn('"csrc/sm80/roof_reduction_budget.cu"',(ROOT/'setup.py').read_text())
+
 
 if __name__=='__main__': unittest.main()

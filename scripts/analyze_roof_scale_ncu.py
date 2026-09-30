@@ -55,7 +55,7 @@ def pc_stall_summary(source_rows):
 
 
 def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False):
-    allowed={'o3':(6,13,16,17,18,19,20,21,22,23),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23),'o8':(6,14,15,16,17,18,19,20,21,22,23)}
+    allowed={'o3':(6,13,16,17,18,19,20,21,22,23,24,25,26,27),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27),'o8':(6,14,15,16,17,18,19,20,21,22,23,24,25,26,27)}
     if variant not in allowed or tune not in allowed[variant]:
         raise ValueError('unsupported variant/tune profiling pair')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
@@ -111,6 +111,8 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         raise ValueError('expected 4096^3, G128, two-route native INT4 work')
     if counts.get('FMUL',0)!=(0 if fast else 16777216):
         raise ValueError('unexpected scale math')
+    if tune in (24,25,26,27) and counts.get('FADD')!=4096**2//32*(1 if tune in (24,26) else 3):
+        raise ValueError('expected one/three final FP32 additions per output for two/four chains')
     cycles=metric('l1tex__cycles_elapsed.avg','cycle')
     fraction=metric('l1tex__data_pipe_lsu_wavefronts.avg.pct_of_peak_sustained_elapsed','%')/100
     occupancy_limits={name:metric(f'launch__occupancy_limit_{name}','block')
@@ -139,7 +141,7 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
             mma=2*useful_ops/(sm*8192*cycles_per_ms),
             all_instruction_issue=sum(counts.values())/(sm*ipc*cycles_per_ms),
             i2f=counts['I2F']*32/(sm*16*cycles_per_ms),
-            fp32_scale_and_accumulate_subset=(counts['FFMA']+counts.get('FMUL',0))*32/(sm*64*cycles_per_ms),
+            fp32_scale_and_accumulate_subset=(counts['FFMA']+counts.get('FMUL',0)+counts.get('FADD',0))*32/(sm*64*cycles_per_ms),
             l1tex_data_wavefront_capacity=cycles*fraction/cycles_per_ms,
             shared_wavefront_subset=shared_count/(sm*cycles_per_ms),
             dram_observed_bytes_at_spec_bw=dram_bytes/1.555e12*1000)

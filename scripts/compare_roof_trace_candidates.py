@@ -30,7 +30,7 @@ def compare(rows, reference, candidate, samples, rounds, variants, modes, allow_
     if len(index) != len(selected) or len(ids) != samples or set(index) != expected:
         raise ValueError("incomplete or duplicate sample/variant/mode/round/tune coverage")
     for r in selected:
-        if allow_reassociation and r['tune'] in (24,25):
+        if allow_reassociation and r['tune'] in (24,25,26,27):
             required=('mse_vs_production','max_abs_vs_production','mse_vs_semantic_fp64','max_abs_vs_semantic_fp64')
             if (not r.get('fp32_reassociated') or not r.get('semantic_tolerance_passed')
                     or not r.get('mse_regression_passed')
@@ -91,7 +91,7 @@ def main():
     if not summary.get("correctness_passed") or not summary.get("no_filtering"):
         raise ValueError("completed correctness summary required")
     if args.allow_reassociation and (not run_args.get('allow_reassociation') or
-            summary.get('numerical_policy')!='explicit_reassociation_only_for_24_25'):
+            summary.get('numerical_policy') not in ('explicit_reassociation_only_for_24_25','explicit_reassociation_only_for_24_25_26_27')):
         raise ValueError('run was not explicitly opted into reassociation')
     if bool(summary.get("all_four_modes_completed")) != bool(run_args["all_modes"]):
         raise ValueError("declared mode completion mismatch")

@@ -10,13 +10,14 @@
 // 18/19: exactly the 16/17 body/layout/stages with a two-CTA register budget.
 // 20/21: two M warps reuse B fragments across M atoms, K256/two-stage copy.
 // 22/23: retain 2x2-warp reuse; K128, bound3, two/three copy stages.
+// 26/27: exactly24/25's reduction body, relaxed to a one-CTA register budget.
 template<int Tune> struct RoofShape {
   static constexpr int N=(Tune==9 || Tune==10)?64:128;
   static constexpr int K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23))?128:256;
   static constexpr int Stages=((Tune>=16 && Tune<=19) || Tune==23)?3:2;
   static constexpr int WN=Tune==8?4:2;
   static constexpr int Threads=(Tune>=20 && Tune<=23)?128:128*WN;
-  static constexpr int MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23))?3:2;
+  static constexpr int MinBlocks=(Tune==26 || Tune==27)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23))?3:2);
   static constexpr int CoreTune=(Tune==16 || Tune==18 || Tune==20)?2:(Tune>=11?6:(Tune>=8?2:Tune));
 };
 
@@ -33,7 +34,7 @@ void adangel_sm80_roof_candidate(
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=25);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=27);
 }
 
 // Natural U8 [N,G] -> group-major [G,N]. Called inside O3 W conversion for
@@ -96,6 +97,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 23:return roof_config_for<23>(dual);
     case 24:return roof_config_for<24>(dual);
     case 25:return roof_config_for<25>(dual);
+    case 26:return roof_config_for<26>(dual);
+    case 27:return roof_config_for<27>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -107,6 +110,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
+  if(tune>=26)
+    return adangel_sm80_experiment::select_reduction_budget_kernel(dual,fast,tune);
   if(tune>=24)
     return adangel_sm80_experiment::select_reduction_kernel(dual,fast,tune);
   if(tune>=22)
@@ -243,8 +248,8 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   const int warp_m=(tune>=20 && tune<=23)?2:4;
   meta["warp_layout"]=std::vector<int>{warp_m,cfg.threads/(32*warp_m)};
   meta["accumulators_per_thread"]=64*cfg.n/cfg.threads;
-  meta["fp32_accumulation_chains"]=tune==24?2:(tune==25?4:1);
-  meta["fp32_reassociated"]=tune==24 || tune==25;
+  meta["fp32_accumulation_chains"]=(tune==24 || tune==26)?2:((tune==25 || tune==27)?4:1);
+  meta["fp32_reassociated"]=tune>=24 && tune<=27;
   meta["group_accumulation"]=tune>=24 ? "interleaved_chains_then_balanced_tree" : "ascending_g128_fma";
   meta["shared_memory_bytes"]=smem;meta["scope"]="candidate_compute_only_not_production";
   meta["registers_per_thread"]=attributes.numRegs;meta["local_bytes_per_thread"]=attributes.localSizeBytes;

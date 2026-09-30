@@ -620,8 +620,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     const int warp_m=(roof_tune>=20 && roof_tune<=23)?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
-    meta["fp32_accumulation_chains"]=roof_tune==24?2:(roof_tune==25?4:1);
-    meta["fp32_reassociated"]=roof_tune==24 || roof_tune==25;
+    meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
+    meta["fp32_reassociated"]=roof_tune>=24 && roof_tune<=27;
     meta["group_accumulation"]=roof_tune>=24 ? "interleaved_chains_then_balanced_tree" : "ascending_g128_fma";
     meta["kernel_symbol"]="adangel_sm80_roof_candidate";meta["roof_tune"]=roof_tune;
     meta["status"]="candidate_not_production";meta["scale_hoist"]=bool(roof_cfg.core_tune&1);

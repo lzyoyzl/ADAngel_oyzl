@@ -69,7 +69,7 @@ class RoofCandidatesContractTest(unittest.TestCase):
     def test_targeted_occupancy_candidates_use_configured_launch(self):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
         self.assertIn('WN=Tune==8?4:2',text)
-        self.assertIn('MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23))?3:2',text)
+        self.assertIn('MinBlocks=(Tune==26 || Tune==27)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23))?3:2)',text)
         self.assertIn('CoreTune=(Tune==16 || Tune==18 || Tune==20)?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
         self.assertIn('K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23))?128:256',text)
         self.assertIn('Stages=((Tune>=16 && Tune<=19) || Tune==23)?3:2',text)

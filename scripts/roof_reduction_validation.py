@@ -41,11 +41,11 @@ def compare_output(y, baseline, reference, tune, kernel):
     if y.dtype!=torch.float32 or not torch.isfinite(y).all():
         raise AssertionError('output must be finite FP32')
     changed=not torch.equal(y.view(torch.int32),baseline.view(torch.int32))
-    reassociated=tune in (24,25)
+    reassociated=tune in (24,25,26,27)
     if not reassociated and changed:
         raise AssertionError('old candidate differs bitwise from production')
     if reassociated:
-        if (kernel.get('fp32_accumulation_chains')!=(2 if tune==24 else 4)
+        if (kernel.get('fp32_accumulation_chains')!=(2 if tune in (24,26) else 4)
                 or not kernel.get('fp32_reassociated')):
             raise AssertionError('missing explicit reassociation metadata')
     torch.testing.assert_close(y.double(),reference,rtol=1e-3,atol=1e-3)
