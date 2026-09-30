@@ -46,6 +46,17 @@ def roof_reduction_checks(symbol, counts):
                 reduction_has_final_fadd=counts.get('FADD',0)>0)
 
 
+def roof_paired_pipeline_checks(symbol, ptx, sass):
+    """Paired ring drains the copy pair before consumers; unlike23 no wait1."""
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi29EE',symbol):
+        return {}
+    return dict(paired_ptx_drain=bool(re.search(r'cp\.async\.wait_group\s+0\s*;',ptx)),
+                paired_ptx_commit='cp.async.commit_group' in ptx,
+                paired_ptx_barrier=bool(re.search(r'bar\.sync',ptx)),
+                paired_sass_drain=bool(re.search(r'DEPBAR\.LE\s+SB\d+,\s*0x0\b',sass)),
+                paired_sass_barrier=bool(re.search(r'\bBAR\.SYNC',sass)))
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
@@ -123,6 +134,7 @@ def main():
             checks.update(roof_scale_checks(symbol,instruction_counts))
             checks.update(roof_pipeline_checks(symbol,ptx,block))
             checks.update(roof_reduction_checks(symbol,instruction_counts))
+            checks.update(roof_paired_pipeline_checks(symbol,ptx,block))
         functions.append(dict(symbol=symbol,checks=checks,**audit_policy(checks,args.allow_spills),resource=resource,
                               instruction_counts=instruction_counts))
     passed=bool(functions) and all(f['passed'] for f in functions)

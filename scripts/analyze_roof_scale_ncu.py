@@ -55,7 +55,7 @@ def pc_stall_summary(source_rows):
 
 
 def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False):
-    allowed={'o3':(6,13,16,17,18,19,20,21,22,23,24,25,26,27,28),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28),'o8':(6,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28)}
+    allowed={'o3':(6,13,16,17,18,19,20,21,22,23,24,25,26,27,28,29),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29),'o8':(6,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29)}
     if variant not in allowed or tune not in allowed[variant]:
         raise ValueError('unsupported variant/tune profiling pair')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))

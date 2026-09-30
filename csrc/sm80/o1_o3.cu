@@ -617,11 +617,13 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(roof_tune>=0) {
     meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || roof_tune==28)?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || roof_tune==28 || roof_tune==29)?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
     meta["fp32_reassociated"]=roof_tune>=24 && roof_tune<=27;
+    meta["paired_g128_copy"]=roof_tune==29;
+    meta["physical_stage_payload_padding_bytes"]=roof_tune==29?128:0;
     meta["group_accumulation"]=(roof_tune>=24 && roof_tune<=27) ? "interleaved_chains_then_balanced_tree" : "ascending_g128_fma";
     meta["kernel_symbol"]="adangel_sm80_roof_candidate";meta["roof_tune"]=roof_tune;
     meta["status"]="candidate_not_production";meta["scale_hoist"]=bool(roof_cfg.core_tune&1);

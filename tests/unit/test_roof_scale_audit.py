@@ -7,6 +7,17 @@ AUDIT=runpy.run_path(str(Path(__file__).resolve().parents[2]/'scripts/audit_a100
 
 
 class RoofScaleAuditTests(unittest.TestCase):
+    def test_paired_ring_has_its_own_wait_and_barrier_contract(self):
+        symbol='adangel_sm80_roof_candidateILb1ELb0ELi29EE'
+        ptx='cp.async.commit_group; cp.async.wait_group 0; bar.sync 0;'
+        sass='DEPBAR.LE SB0, 0x0; BAR.SYNC 0x0;'
+        check=AUDIT['roof_paired_pipeline_checks']
+        self.assertTrue(all(check(symbol,ptx,sass).values()))
+        self.assertFalse(all(check(symbol,ptx.replace('wait_group 0','wait_group 1'),sass).values()))
+        self.assertFalse(all(check(symbol,ptx,sass.replace('BAR.SYNC','NOP')).values()))
+        self.assertEqual(check(symbol.replace('Li29','Li28'),'',''),{})
+        self.assertEqual(AUDIT['roof_pipeline_checks'](symbol,ptx,sass),{})
+
     def test_reduction_final_add_is_required_for_all_opt_in_variants(self):
         for tune in (24,25,26,27):
             symbol=f'adangel_sm80_roof_candidateILb1ELb0ELi{tune}EE'

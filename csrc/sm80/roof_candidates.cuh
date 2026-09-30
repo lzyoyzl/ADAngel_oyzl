@@ -12,13 +12,14 @@
 // 22/23: retain 2x2-warp reuse; K128, bound3, two/three copy stages.
 // 26/27: exactly24/25's reduction body, relaxed to a one-CTA register budget.
 // 28: exactly22's body, tightened to a four-CTA register budget (no FP32 reassociation).
+// 29: pair two global G128 spans into three ring slots; independent G128 math.
 template<int Tune> struct RoofShape {
   static constexpr int N=(Tune==9 || Tune==10)?64:128;
-  static constexpr int K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23) || Tune==28)?128:256;
-  static constexpr int Stages=((Tune>=16 && Tune<=19) || Tune==23)?3:2;
+  static constexpr int K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23) || Tune==28 || Tune==29)?128:256;
+  static constexpr int Stages=((Tune>=16 && Tune<=19) || Tune==23 || Tune==29)?3:2;
   static constexpr int WN=Tune==8?4:2;
-  static constexpr int Threads=((Tune>=20 && Tune<=23) || Tune==28)?128:128*WN;
-  static constexpr int MinBlocks=Tune==28?4:((Tune==26 || Tune==27)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23))?3:2));
+  static constexpr int Threads=((Tune>=20 && Tune<=23) || Tune==28 || Tune==29)?128:128*WN;
+  static constexpr int MinBlocks=Tune==28?4:((Tune==26 || Tune==27)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23) || Tune==29)?3:2));
   static constexpr int CoreTune=(Tune==16 || Tune==18 || Tune==20)?2:(Tune>=11?6:(Tune>=8?2:Tune));
 };
 
@@ -35,7 +36,7 @@ void adangel_sm80_roof_candidate(
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=28);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=29);
 }
 
 // Natural U8 [N,G] -> group-major [G,N]. Called inside O3 W conversion for
@@ -69,7 +70,9 @@ struct RoofLaunchConfig {int n,k,threads,min_blocks,core_tune,slice_n,stages;siz
 template<int Tune> RoofLaunchConfig roof_config_for(bool dual) {
   using R=RoofShape<Tune>;
   size_t smem;
-  if constexpr(R::Stages==3) {
+  if constexpr(Tune==29) {
+    smem=adangel_sm80_experiment::paired_pipeline_shared_bytes(dual);
+  } else if constexpr(R::Stages==3) {
     smem=adangel_sm80_experiment::three_stage_shared_bytes(dual);
   } else {
     smem=dual ? sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,true>::Storage)
@@ -101,6 +104,7 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 26:return roof_config_for<26>(dual);
     case 27:return roof_config_for<27>(dual);
     case 28:return roof_config_for<28>(dual);
+    case 29:return roof_config_for<29>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -112,6 +116,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
+  if(tune==29)
+    return adangel_sm80_experiment::select_paired_pipeline_kernel(dual,fast,tune);
   if(tune==28)
     return adangel_sm80_experiment::select_reuse_budget_kernel(dual,fast,tune);
   if(tune>=26)
@@ -163,7 +169,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   TORCH_CHECK(a.dim()==2 && w.dim()==2 && a.is_contiguous() && w.is_contiguous() &&
       a.scalar_type()==at::kByte && w.scalar_type()==at::kByte,"packed contiguous uint8 required");
   int64_t m64=a.size(0)/2,n64=w.size(0),k64=a.size(1)*2;
-  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || tune==28)?128:256;
+  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || tune==28 || tune==29)?128:256;
   TORCH_CHECK(a.size(0)%2==0 && m64>0 && n64>0 && k64>0 && m64%64==0 && n64%128==0 && k64%required_k==0 &&
       m64*k64<=2147483647LL && n64*k64<=2147483647LL && m64*n64<=2147483647LL &&
       m64/64<=65535 && n64/128<=65535 && w.size(1)==a.size(1),"invalid aligned shape/index range");
@@ -249,11 +255,13 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
   meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
   meta["pipeline_stages"]=cfg.stages;
-  const int warp_m=((tune>=20 && tune<=23) || tune==28)?2:4;
+  const int warp_m=((tune>=20 && tune<=23) || tune==28 || tune==29)?2:4;
   meta["warp_layout"]=std::vector<int>{warp_m,cfg.threads/(32*warp_m)};
   meta["accumulators_per_thread"]=64*cfg.n/cfg.threads;
   meta["fp32_accumulation_chains"]=(tune==24 || tune==26)?2:((tune==25 || tune==27)?4:1);
   meta["fp32_reassociated"]=tune>=24 && tune<=27;
+  meta["paired_g128_copy"]=tune==29;
+  meta["physical_stage_payload_padding_bytes"]=tune==29?128:0;
   meta["group_accumulation"]=(tune>=24 && tune<=27) ? "interleaved_chains_then_balanced_tree" : "ascending_g128_fma";
   meta["shared_memory_bytes"]=smem;meta["scope"]="candidate_compute_only_not_production";
   meta["registers_per_thread"]=attributes.numRegs;meta["local_bytes_per_thread"]=attributes.localSizeBytes;
