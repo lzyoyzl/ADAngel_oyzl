@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Paired O3/O7/O8 candidate compute-only measurements on original FP16 trace.
+
+Not a replacement for four-mode acceptance. Converters, source formats and
+production kernels remain unchanged. No filtering or retry-until-pass.
+"""
+import argparse
+import json
+from pathlib import Path
+import statistics
+import time
+
+from benchmark_a100_o1 import command, stats
+from benchmark_a100_mixed import integer_reference, validate_fp16_result
+from benchmark_a100_mixed_trace import (
+    inspect_inputs, inspect_raw_inputs, mse, source_identity, verify_raw_prepared,
+)
+
+
+def summarize(records):
+    from adangel.benchmark.metrics import bootstrap_median_ci
+    index = {(r['sample_id'], r['variant'], r['round'], r['tune']): r for r in records}
+    if len(index) != len(records):
+        raise ValueError('duplicate sample/variant/round/tune')
+    result = []
+    for variant, tune in sorted({(r['variant'], r['tune']) for r in records}):
+        rows = [r for r in records if (r['variant'], r['tune']) == (variant, tune)]
+        samples = []
+        for sid in sorted({r['sample_id'] for r in rows}):
+            group = [r for r in rows if r['sample_id'] == sid]
+            ratios = [index[(sid, variant, r['round'], -1)]['summary']['median_ms'] /
+                      r['summary']['median_ms'] for r in group]
+            if len({(r['mse_vs_o0'],r['mse_vs_paired_fp16']) for r in group}) != 1:
+                raise ValueError('MSE changed across rounds')
+            samples.append(dict(sample_id=sid,
+                median_ms=statistics.median(r['summary']['median_ms'] for r in group),
+                paired_speedup=statistics.median(ratios), mse_vs_o0=group[0]['mse_vs_o0'],
+                mse_vs_paired_fp16=group[0]['mse_vs_paired_fp16']))
+        speeds = [r['paired_speedup'] for r in samples]
+        median = statistics.median(r['median_ms'] for r in samples)
+        result.append(dict(variant=variant, tune=tune, samples=len(samples), records=len(rows),
+            median_ms=median, effective_tops=2*4096**3/median/1e9,
+            paired_speedup_median=statistics.median(speeds),
+            paired_speedup_ci95=list(bootstrap_median_ci(speeds,10000,.95,20260930)) if len(samples)>1 else None,
+            median_mse_vs_o0=statistics.median(r['mse_vs_o0'] for r in samples),
+            median_mse_vs_paired_fp16=statistics.median(r['mse_vs_paired_fp16'] for r in samples),
+            cv_failed_records=sum(r['summary']['cv_percent']>=3 for r in rows), per_sample=samples))
+    return result
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--data', type=Path, default=Path('data/prepared/llama2_7b_prefill_o0_o4'))
+    p.add_argument('--raw-data', type=Path, default=Path('data/raw/llama2_7b_prefill'))
+    p.add_argument('--trace-config', type=Path, default=Path('configs/trace/llama2_7b_prefill.yaml'))
+    p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--samples', type=int, default=24)
+    p.add_argument('--rounds', type=int, default=3)
+    p.add_argument('--warmup', type=int, default=50)
+    p.add_argument('--repeats', type=int, default=200)
+    p.add_argument('--tunes', type=int, nargs='+', default=[-1,1,2,3])
+    p.add_argument('--variants', nargs='+', choices=['o3','o7','o8'], default=['o3','o7','o8'])
+    args = p.parse_args()
+    if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2
+        or -1 not in args.tunes or len(set(args.tunes))!=len(args.tunes)
+        or any(t not in range(-1,4) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
+        p.error('fresh output, production control (-1), unique valid cases and positive repetitions required')
+    import torch
+    from adangel import _sm80 as native
+    from adangel.quantization import mixed_formats as mf
+    from adangel.trace.storage import load_prepared, sha256_file
+    from adangel.trace.prepare import _load_and_validate_raw
+    if torch.cuda.get_device_capability() != (8,0):
+        raise RuntimeError('SM80 required')
+    torch.set_num_threads(4)
+    torch.backends.cuda.matmul.allow_tf32 = False
+    manifest, mh = inspect_inputs(args.data)
+    raw_manifest, rh = inspect_raw_inputs(args.raw_data, manifest, args.trace_config)
+    raw_entries = {r['sample_id']:r for r in raw_manifest['samples']}
+    args.output.mkdir(parents=True)
+
+    def save(name, obj):
+        (args.output/name).write_text(json.dumps(obj,indent=2,allow_nan=False)+'\n')
+
+    def append(name, obj):
+        with (args.output/name).open('a') as stream:
+            stream.write(json.dumps(obj,allow_nan=False)+'\n')
+
+    save('environment.json', dict(git_commit=command('git','rev-parse','HEAD'),
+        binary_sha256=sha256_file(Path(native.__file__)), torch=torch.__version__, cuda=torch.version.cuda,
+        device=torch.cuda.get_device_name(), prepared_manifest_sha256=mh, raw_manifest_sha256=rh,
+        args={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
+        scope='real_trace_candidate_compute_only_not_full_timing_acceptance',
+        timing='single_execution_cuda_event', conversion_timed=False,
+        policy='unlocked shared GPU; paired sample/round; no filtering',
+        input_policy='original_fp16_direct_source_quantization'))
+    records = []
+    for si, entry in enumerate(manifest['samples'][:args.samples]):
+        path=args.data/entry['file']; raw_entry=raw_entries[entry['sample_id']]
+        raw_path=args.raw_data/raw_entry['file']
+        if sha256_file(path)!=entry['sha256'] or sha256_file(raw_path)!=raw_entry['sha256']:
+            raise ValueError('input changed after preflight')
+        x=load_prepared(path,device='cuda')
+        if x.sample_id!=entry['sample_id'] or list(x.shape)!=entry['shape']:
+            raise ValueError('sample identity mismatch')
+        raw=_load_and_validate_raw(raw_path,raw_entry['layer'],raw_entry['projection'])
+        raw_operands=(raw['activation_fp16'],raw['weight_fp16'])
+        verify_raw_prepared(x,raw_operands)
+        o0=native.benchmark_o0(x.A_int8,x.A_scale,x.W_mxfp4,x.W_scale,'compute_only',0,1,100)['output']
+        for vi, variant in enumerate(args.variants):
+            if variant=='o3':
+                base=native.benchmark('o3','compute_only',x.A_int8,x.A_scale,
+                    x.W_mxfp4_g128,x.W_scale_g128,0,1,100,'production')
+                values=(base['converted_activation'],x.A_scale,base['converted_weight'],x.W_scale_g128)
+                paired=o0; reference_name='o0'
+            else:
+                wf,af=mf.VARIANTS[variant]
+                wsrc=mf.quantize_source(raw_operands[1].cuda(),wf)
+                asrc=mf.quantize_source(raw_operands[0].cuda(),af)
+                append('source_provenance.jsonl',dict(sample_id=x.sample_id,variant=variant,
+                    raw_prepared_replay_bitwise=True,weight=source_identity(wsrc),activation=source_identity(asrc)))
+                reference_name=mf.PAIRED_BASELINE[variant]
+                fp=native._benchmark_mixed(reference_name,'compute_only',wsrc,asrc,0,1,100,'64x128x256','row_major')
+                validate_fp16_result(fp,wsrc,asrc);paired=fp['output']
+                base=native._benchmark_mixed(variant,'compute_only',wsrc,asrc,0,1,100,'64x128x256','group_major')
+                aq,asc=mf.to_fixed_reference(asrc);wq,wsc=mf.to_fixed_reference(wsrc)
+                reference=integer_reference(aq,asc,wq,wsc)
+                torch.testing.assert_close(base['output'],reference,rtol=1e-3,atol=1e-3)
+                values=(*base['converted_activation'],*base['converted_weight'])
+                del reference,aq,asc,wq,wsc
+            expected=base['output']
+            metrics=dict(mse_vs_o0=mse(expected,o0),mse_vs_paired_fp16=mse(expected,paired))
+            for r in range(args.rounds):
+                append('gpu_snapshots.jsonl',dict(sample_id=x.sample_id,variant=variant,round=r,time=time.time(),
+                    gpu=command('nvidia-smi','--query-gpu=clocks.sm,temperature.gpu,power.draw,utilization.gpu','--format=csv')))
+                offset=(si+vi+r)%len(args.tunes)
+                order=args.tunes[offset:]+args.tunes[:offset]
+                if (si+r)%2: order.reverse()
+                for tune in order:
+                    result=native._benchmark_roof_candidate(variant,tune,*values,args.warmup,args.repeats)
+                    y=result['output']
+                    if y.dtype!=torch.float32 or not torch.isfinite(y).all() or not torch.equal(y.view(torch.int32),expected.view(torch.int32)):
+                        raise AssertionError((x.sample_id,variant,tune,'output differs from production'))
+                    times=list(result['gemm_ms'])
+                    row=dict(sample_id=x.sample_id,variant=variant,tune=tune,round=r,mode='compute_only',
+                        raw_ms=times,summary=stats(times),kernel=dict(result['kernel']),
+                        bitwise_equal_production=True,mse_vs_production=0.0,paired_fp16=reference_name,**metrics)
+                    records.append(row);append('results.jsonl',row)
+                print(x.sample_id,variant,r,'paired round complete',flush=True)
+            del values,base,expected,paired
+    if len(records)!=args.samples*len(args.variants)*len(args.tunes)*args.rounds:
+        raise RuntimeError('incomplete measurement coverage')
+    save('summary.json',dict(scope='real_trace_compute_only',all_24_samples=args.samples==24,
+        all_four_modes_completed=False,correctness_passed=True,no_filtering=True,
+        bootstrap_unit='sample; rounds collapsed; descriptive CI (same-trace samples correlated)',
+        records=summarize(records)))
+
+
+if __name__=='__main__':
+    main()
