@@ -14,6 +14,20 @@ import time
 from benchmark_a100_o1 import command, stats
 
 
+def group_major_scales(value):
+    """Explicit [row,group] strides, including the singleton G128 case.
+
+    transpose().contiguous().transpose() is a no-op when groups==1 and may
+    retain stride(1,1), which does not satisfy the native layout contract.
+    This preparation is outside every timed interval.
+    """
+    import torch
+    if value.ndim != 2:
+        raise ValueError("expected two-dimensional scales")
+    return torch.empty_strided(value.shape, (1, value.shape[0]),
+                               device=value.device, dtype=value.dtype).copy_(value)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output", type=Path, required=True)
@@ -103,7 +117,7 @@ def main():
         if m <= 128 and n <= 256:
             torch.testing.assert_close(b["output"].cpu(), reference(a, asc, w, wsc), rtol=1e-3, atol=1e-3)
         # Conversion/reordering is explicitly outside these compute-only events.
-        return (packed_a, asc.T.contiguous().T, packed_w, wsc.T.contiguous().T), b["output"], baseline
+        return (packed_a, group_major_scales(asc), packed_w, group_major_scales(wsc)), b["output"], baseline
 
     if args.validate:
         checks = []
