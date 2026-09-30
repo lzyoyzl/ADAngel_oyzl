@@ -49,6 +49,7 @@ def main():
          "binary": native.__file__, "binary_sha256": hashlib.sha256(Path(native.__file__).read_bytes()).hexdigest(),
          "device": torch.cuda.get_device_name(), "torch": torch.__version__,
          "args": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
+         "measurement_order_version": "cyclic_round_v2",
          "scope": "synthetic_prepared_core_only_not_real_trace_or_full_timing_acceptance"})
 
     def inputs(variant, m, n, k, pattern="random"):
@@ -115,14 +116,13 @@ def main():
             append("gpu_snapshots.jsonl", {"variant": variant, "round": r, "time": time.time(),
                    "gpu": command("nvidia-smi", "--query-gpu=clocks.sm,temperature.gpu,power.draw,utilization.gpu", "--format=csv")})
             order = args.tunes[r % len(args.tunes):] + args.tunes[:r % len(args.tunes)]
-            if r % 2:
-                order.reverse()
             for tune in order:
                 result = native._benchmark_roof_candidate(variant, tune, *values, args.warmup, args.repeats)
                 y = result["output"]
                 assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, "large")
                 raw = list(result["gemm_ms"])
                 row = dict(variant=variant, tune=tune, round=r, raw_ms=raw, summary=stats(raw),
+                           execution_order=order,order_position=order.index(tune),
                            kernel=dict(result["kernel"]), bitwise_equal_production=True, mse_vs_production=0.0)
                 records.append(row);append("results.jsonl", row)
                 print(variant, r, tune, row["summary"], flush=True)

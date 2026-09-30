@@ -3,6 +3,8 @@
 二进制编译源码 `5f96487`；各 run 的 `environment.json` 和审计 JSON 保存实际二进制 SHA-256。
 正式默认不变，tune=-1 为原正式 symbol，tune=2 为独立 N atom 交错，tune=6 为扩大 N fragment 后交错。
 
+顺序审查：旧 trace runner 对两个实现的轮换被随后反转抵消，不能当作平衡 AB/BA 证据。该版本正确性与独立 NCU 计数仍可用；需用修正后的 runner 重做正式性能，不能从现有微小差距直接选择默认。
+
 - `runs/o378_roof_v2_screen`：192 个小矩阵/边界逐位检查，随后 4096³ 三轮合成输入性能筛选。
 - `runs/o378_roof_v2_four_smoke`：1 个原始 FP16 trace，3 路径×3实现×4模式，共36条，非正式24样本性能验收。
 - `reports/o378_roof_v2/audit`：18 个 candidate 实例均为两路原生 INT4＋cp.async；允许少量 spill，但不豁免 ISA 检查。

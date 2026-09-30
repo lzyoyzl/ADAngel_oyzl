@@ -17,6 +17,12 @@ from benchmark_a100_mixed_trace import (
 )
 
 
+def measurement_order(tunes, sample_index, variant_index, round_index, mode_index=0):
+    """Cyclic balanced order; do not reverse it again and cancel the two-case AB/BA."""
+    offset=(sample_index+variant_index+round_index+mode_index)%len(tunes)
+    return tunes[offset:]+tunes[:offset]
+
+
 def summarize(records):
     from adangel.benchmark.metrics import bootstrap_median_ci
     index = {(r['sample_id'], r['variant'], r.get('mode','compute_only'), r['round'], r['tune']): r for r in records}
@@ -91,6 +97,7 @@ def main():
             stream.write(json.dumps(obj,allow_nan=False)+'\n')
 
     save('environment.json', dict(git_commit=command('git','rev-parse','HEAD'),
+        measurement_order_version='cyclic_sample_variant_round_mode_v2',
         binary_sha256=sha256_file(Path(native.__file__)), torch=torch.__version__, cuda=torch.version.cuda,
         device=torch.cuda.get_device_name(), prepared_manifest_sha256=mh, raw_manifest_sha256=rh,
         args={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
@@ -139,10 +146,8 @@ def main():
             for r in range(args.rounds):
                 append('gpu_snapshots.jsonl',dict(sample_id=x.sample_id,variant=variant,round=r,time=time.time(),
                     gpu=command('nvidia-smi','--query-gpu=clocks.sm,temperature.gpu,power.draw,utilization.gpu','--format=csv')))
-                offset=(si+vi+r)%len(args.tunes)
-                order=args.tunes[offset:]+args.tunes[:offset]
-                if (si+r)%2: order.reverse()
-                for mode in modes:
+                for mode_index, mode in enumerate(modes):
+                    order=measurement_order(args.tunes,si,vi,r,mode_index)
                     for tune in order:
                         if not args.all_modes:
                             result=native._benchmark_roof_candidate(variant,tune,*values,args.warmup,args.repeats)
@@ -168,6 +173,7 @@ def main():
                             st['logical_bytes']=count
                             st['logical_gbps']=count/st['median_ms']/1e6 if count else None
                         row=dict(sample_id=x.sample_id,variant=variant,tune=tune,round=r,mode=mode,
+                            execution_order=order,order_position=order.index(tune),
                             raw_ms=times,summary=stage_stats[stage],stage_timings_ms=timings,stage_summaries=stage_stats,
                             kernel=dict(result['kernel']),conversion_inner_repeats=args.inner if args.all_modes else None,
                             stage_timing_inner_repeats={name:args.inner if 'conversion' in name or mode=='conversion_only' else 1 for name in timings},

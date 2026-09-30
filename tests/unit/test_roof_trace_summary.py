@@ -16,6 +16,17 @@ spec.loader.exec_module(metrics)
 
 
 class RoofTraceSummaryTest(unittest.TestCase):
+    def test_two_case_order_balanced_for_each_mode_and_variant(self):
+        for variant in range(3):
+            for mode in range(4):
+                for round_index in range(3):
+                    orders=[runner.measurement_order([-1,6],si,variant,round_index,mode) for si in range(24)]
+                    self.assertEqual(orders.count([-1,6]),12)
+                    self.assertEqual(orders.count([6,-1]),12)
+                    self.assertNotEqual(orders[0],orders[1])
+        self.assertNotEqual(runner.measurement_order([-1,6],0,0,0),
+                            runner.measurement_order([-1,6],0,0,1))
+
     def rows(self):
         rows=[]
         for sid in ('a','b'):
