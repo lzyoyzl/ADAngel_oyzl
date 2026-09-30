@@ -30,6 +30,15 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn("as.stride(0)==1", text)
         self.assertIn("ws.ne(255)", text)
 
+    def test_four_mode_opt_in_preserves_defaults(self):
+        host=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
+        mixed=(ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text()
+        self.assertEqual(host.count('py::arg("roof_tune")=-1'),2)
+        self.assertIn('candidate_not_production',host)
+        self.assertIn('candidate_not_production',mixed)
+        self.assertIn('no silent fallback',host)
+        self.assertIn('roof candidate requires O7/O8 group-major 64x128x256',mixed)
+
 
 if __name__ == "__main__":
     unittest.main()

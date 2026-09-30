@@ -9,11 +9,25 @@ __global__ __launch_bounds__(256,2) void adangel_sm80_roof_candidate(
           DualScale,DualScale,Tune>(a,w,as,ws,y,m,n,k);
 }
 
+bool valid_roof_tune(int tune) {
+  return (tune>=-1 && tune<=3) || tune==6 || tune==7;
+}
+
+auto select_roof_kernel(bool dual,bool fast,int tune) {
+  TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
+  auto kernel=adangel_sm80_roof_candidate<false,false,0>;
+  #define ROOF_PICK(T) case T: kernel=dual ? adangel_sm80_roof_candidate<true,false,T> : \
+      (fast ? adangel_sm80_roof_candidate<false,true,T> : adangel_sm80_roof_candidate<false,false,T>); break
+  switch(tune) {ROOF_PICK(0);ROOF_PICK(1);ROOF_PICK(2);ROOF_PICK(3);ROOF_PICK(6);ROOF_PICK(7);}
+  #undef ROOF_PICK
+  return kernel;
+}
+
 py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::Tensor as,
     at::Tensor w,at::Tensor ws,int warmup,int repeats) {
   const bool dual=variant=="o7" || variant=="o8";
   TORCH_CHECK(dual || variant=="o3","expected o3/o7/o8");
-  TORCH_CHECK(((tune>=-1 && tune<=3) || tune==6 || tune==7) && warmup>=0 && repeats>0,"invalid candidate/repetitions");
+  TORCH_CHECK(valid_roof_tune(tune) && warmup>=0 && repeats>0,"invalid candidate/repetitions");
   for(const auto& t : {a,as,w,ws})
     TORCH_CHECK(t.is_cuda() && t.device()==a.device(),"CUDA device mismatch");
   TORCH_CHECK(a.dim()==2 && w.dim()==2 && a.is_contiguous() && w.is_contiguous() &&
@@ -60,10 +74,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
     if(fast) kernel=adangel_sm80_o3_swizzled_bound2<64,128,256,true,false,false,2,false,true,false,true,true>;
     else kernel=adangel_sm80_o3_swizzled_bound2<64,128,256,false,false,false,2,false,true,false,true,true>;
   }
-  #define ROOF_SELECT(T) case T: kernel=dual ? adangel_sm80_roof_candidate<true,false,T> : \
-      (fast ? adangel_sm80_roof_candidate<false,true,T> : adangel_sm80_roof_candidate<false,false,T>); break
-  switch(tune) {ROOF_SELECT(0);ROOF_SELECT(1);ROOF_SELECT(2);ROOF_SELECT(3);ROOF_SELECT(6);ROOF_SELECT(7);}
-  #undef ROOF_SELECT
+  if(tune>=0) kernel=select_roof_kernel(dual,fast,tune);
   if(existing_dual)
     check(cudaFuncSetAttribute(adangel_sm80_split_grouped_major<128,256>,
         cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));

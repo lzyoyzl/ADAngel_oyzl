@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Paired O3/O7/O8 candidate compute-only measurements on original FP16 trace.
 
-Not a replacement for four-mode acceptance. Converters, source formats and
-production kernels remain unchanged. No filtering or retry-until-pass.
+Default isolates the prepared core. --all-modes reuses native conversion and
+four-mode timers. Production defaults remain unchanged. No outlier filtering.
 """
 import argparse
 import json
@@ -19,16 +19,16 @@ from benchmark_a100_mixed_trace import (
 
 def summarize(records):
     from adangel.benchmark.metrics import bootstrap_median_ci
-    index = {(r['sample_id'], r['variant'], r['round'], r['tune']): r for r in records}
+    index = {(r['sample_id'], r['variant'], r.get('mode','compute_only'), r['round'], r['tune']): r for r in records}
     if len(index) != len(records):
         raise ValueError('duplicate sample/variant/round/tune')
     result = []
-    for variant, tune in sorted({(r['variant'], r['tune']) for r in records}):
-        rows = [r for r in records if (r['variant'], r['tune']) == (variant, tune)]
+    for variant, mode, tune in sorted({(r['variant'],r.get('mode','compute_only'),r['tune']) for r in records}):
+        rows = [r for r in records if (r['variant'],r.get('mode','compute_only'),r['tune']) == (variant,mode,tune)]
         samples = []
         for sid in sorted({r['sample_id'] for r in rows}):
             group = [r for r in rows if r['sample_id'] == sid]
-            ratios = [index[(sid, variant, r['round'], -1)]['summary']['median_ms'] /
+            ratios = [index[(sid, variant, mode, r['round'], -1)]['summary']['median_ms'] /
                       r['summary']['median_ms'] for r in group]
             if len({(r['mse_vs_o0'],r['mse_vs_paired_fp16']) for r in group}) != 1:
                 raise ValueError('MSE changed across rounds')
@@ -38,8 +38,8 @@ def summarize(records):
                 mse_vs_paired_fp16=group[0]['mse_vs_paired_fp16']))
         speeds = [r['paired_speedup'] for r in samples]
         median = statistics.median(r['median_ms'] for r in samples)
-        result.append(dict(variant=variant, tune=tune, samples=len(samples), records=len(rows),
-            median_ms=median, effective_tops=2*4096**3/median/1e9,
+        result.append(dict(variant=variant, mode=mode, tune=tune, samples=len(samples), records=len(rows),
+            median_ms=median, effective_tops=2*4096**3/median/1e9 if mode!='conversion_only' else None,
             paired_speedup_median=statistics.median(speeds),
             paired_speedup_ci95=list(bootstrap_median_ci(speeds,10000,.95,20260930)) if len(samples)>1 else None,
             median_mse_vs_o0=statistics.median(r['mse_vs_o0'] for r in samples),
@@ -58,10 +58,12 @@ def main():
     p.add_argument('--rounds', type=int, default=3)
     p.add_argument('--warmup', type=int, default=50)
     p.add_argument('--repeats', type=int, default=200)
+    p.add_argument('--inner', type=int, default=100)
+    p.add_argument('--all-modes', action='store_true')
     p.add_argument('--tunes', type=int, nargs='+', default=[-1,1,2,3])
     p.add_argument('--variants', nargs='+', choices=['o3','o7','o8'], default=['o3','o7','o8'])
     args = p.parse_args()
-    if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2
+    if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2 or args.inner<2
         or -1 not in args.tunes or len(set(args.tunes))!=len(args.tunes)
         or any(t not in (-1,0,1,2,3,6,7) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
         p.error('fresh output, production control (-1), unique valid cases and positive repetitions required')
@@ -90,11 +92,13 @@ def main():
         binary_sha256=sha256_file(Path(native.__file__)), torch=torch.__version__, cuda=torch.version.cuda,
         device=torch.cuda.get_device_name(), prepared_manifest_sha256=mh, raw_manifest_sha256=rh,
         args={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
-        scope='real_trace_candidate_compute_only_not_full_timing_acceptance',
-        timing='single_execution_cuda_event', conversion_timed=False,
+        scope='real_trace_candidate_four_modes' if args.all_modes else 'real_trace_candidate_prepared_core_only',
+        timing='conversion_amortized_end_to_end_direct' if args.all_modes else 'single_execution_cuda_event',
+        conversion_timed=args.all_modes,
         policy='unlocked shared GPU; paired sample/round; no filtering',
         input_policy='original_fp16_direct_source_quantization'))
     records = []
+    modes=('conversion_only','compute_only','cold','steady_state') if args.all_modes else ('compute_only',)
     for si, entry in enumerate(manifest['samples'][:args.samples]):
         path=args.data/entry['file']; raw_entry=raw_entries[entry['sample_id']]
         raw_path=args.raw_data/raw_entry['file']
@@ -136,22 +140,39 @@ def main():
                 offset=(si+vi+r)%len(args.tunes)
                 order=args.tunes[offset:]+args.tunes[:offset]
                 if (si+r)%2: order.reverse()
-                for tune in order:
-                    result=native._benchmark_roof_candidate(variant,tune,*values,args.warmup,args.repeats)
-                    y=result['output']
-                    if y.dtype!=torch.float32 or not torch.isfinite(y).all() or not torch.equal(y.view(torch.int32),expected.view(torch.int32)):
-                        raise AssertionError((x.sample_id,variant,tune,'output differs from production'))
-                    times=list(result['gemm_ms'])
-                    row=dict(sample_id=x.sample_id,variant=variant,tune=tune,round=r,mode='compute_only',
-                        raw_ms=times,summary=stats(times),kernel=dict(result['kernel']),
-                        bitwise_equal_production=True,mse_vs_production=0.0,paired_fp16=reference_name,**metrics)
-                    records.append(row);append('results.jsonl',row)
+                for mode in modes:
+                    for tune in order:
+                        if not args.all_modes:
+                            result=native._benchmark_roof_candidate(variant,tune,*values,args.warmup,args.repeats)
+                            timings={'gemm':list(result['gemm_ms'])}
+                        else:
+                            if variant=='o3':
+                                result=native.benchmark('o3',mode,x.A_int8,x.A_scale,x.W_mxfp4_g128,
+                                    x.W_scale_g128,args.warmup,args.repeats,args.inner,'production',tune)
+                            else:
+                                result=native._benchmark_mixed(variant,mode,wsrc,asrc,args.warmup,args.repeats,
+                                    args.inner,'64x128x256','group_major',tune)
+                            timings={k:list(v) for k,v in result['timings_ms'].items()}
+                        y=result['output']
+                        if y.dtype!=torch.float32 or not torch.isfinite(y).all() or not torch.equal(y.view(torch.int32),expected.view(torch.int32)):
+                            raise AssertionError((x.sample_id,variant,tune,mode,'output differs from production'))
+                        if any(len(t)!=args.repeats for t in timings.values()):
+                            raise ValueError('missing timing repetitions')
+                        stage='gemm' if mode=='compute_only' else 'total'
+                        times=timings[stage]
+                        stage_stats={k:stats(v) for k,v in timings.items()}
+                        row=dict(sample_id=x.sample_id,variant=variant,tune=tune,round=r,mode=mode,
+                            raw_ms=times,summary=stage_stats[stage],stage_timings_ms=timings,stage_summaries=stage_stats,
+                            kernel=dict(result['kernel']),conversion_inner_repeats=args.inner if args.all_modes else None,
+                            total_timing='sum_of_batched_stage_samples' if mode=='conversion_only' else 'single_execution_cuda_event',
+                            bitwise_equal_production=True,mse_vs_production=0.0,paired_fp16=reference_name,**metrics)
+                        records.append(row);append('results.jsonl',row)
                 print(x.sample_id,variant,r,'paired round complete',flush=True)
             del values,base,expected,paired
-    if len(records)!=args.samples*len(args.variants)*len(args.tunes)*args.rounds:
+    if len(records)!=args.samples*len(args.variants)*len(args.tunes)*args.rounds*len(modes):
         raise RuntimeError('incomplete measurement coverage')
-    save('summary.json',dict(scope='real_trace_compute_only',all_24_samples=args.samples==24,
-        all_four_modes_completed=False,correctness_passed=True,no_filtering=True,
+    save('summary.json',dict(scope='real_trace_four_modes' if args.all_modes else 'real_trace_prepared_core_only',all_24_samples=args.samples==24,
+        all_four_modes_completed=args.all_modes,correctness_passed=True,no_filtering=True,
         bootstrap_unit='sample; rounds collapsed; descriptive CI (same-trace samples correlated)',
         records=summarize(records)))
 

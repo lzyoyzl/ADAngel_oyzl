@@ -51,5 +51,12 @@ class RoofTraceSummaryTest(unittest.TestCase):
         rows[-1]['mse_vs_paired_fp16']=.03
         with self.assertRaises(ValueError): self.call(rows)
 
+    def test_modes_are_separate(self):
+        rows=self.rows()
+        both=[dict(r,mode=mode) for mode in ('compute_only','cold') for r in rows]
+        out=self.call(both)
+        self.assertEqual(len(out),4)
+        self.assertEqual({r['mode'] for r in out},{'compute_only','cold'})
+
 
 if __name__=='__main__': unittest.main()

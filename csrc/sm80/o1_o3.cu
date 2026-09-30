@@ -190,12 +190,14 @@ template<class F> std::vector<float> batch(F f,int repeats,int inner,cudaStream_
 #include "mixed_benchmark.cuh"
 
 py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor as,
-    at::Tensor w,at::Tensor ws,int warmup,int repeats,int inner,std::string implementation) {
+    at::Tensor w,at::Tensor ws,int warmup,int repeats,int inner,std::string implementation,int roof_tune) {
   TORCH_CHECK(variant=="o1"||variant=="o3","variant must be o1 or o3");
   TORCH_CHECK(mode=="conversion_only"||mode=="compute_only"||mode=="cold"||mode=="steady_state","invalid mode");
   TORCH_CHECK(warmup>=0&&repeats>0&&inner>0,"invalid repetitions");
   bool split=variant=="o3";
   const auto requested_implementation=implementation;
+  TORCH_CHECK(valid_roof_tune(roof_tune) && (roof_tune<0 || (split && implementation=="production")),
+      "roof candidate requires O3 production-compatible input path");
   if(implementation=="production") {
     // Fixed SM80 policy; both O3 branches remain native U4/S4 Tensor Core.
     // Preserve the original baseline for shapes outside the optimized tile.
@@ -261,6 +263,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     TORCH_CHECK(m%tile_m==0&&n%tile_n==0&&k%tile_k==0,"candidate tile alignment required");
     if(implementation.find("_cached")!=std::string::npos) TORCH_CHECK(k<=4096,"cached scale panel requires K<=4096");
   }
+  TORCH_CHECK(roof_tune<0 || (tile_m==64 && tile_n==128 && tile_k==256),
+      "roof candidate requires 64x128x256 alignment; no silent fallback");
   c10::cuda::CUDAGuard guard(a.device());
   cudaDeviceProp prop; check(cudaGetDeviceProperties(&prop,a.get_device()));
   TORCH_CHECK(prop.major==8&&prop.minor==0,"this experiment requires SM80 A100");
@@ -280,6 +284,9 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto out=at::empty({m,n},as.options());
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
+  auto roof_kernel=select_roof_kernel(false,exponent_scale,roof_tune<0?0:roof_tune);
+  const size_t roof_smem=sizeof(O3AmpereConfig<64,128,256,false,2,false>::Storage);
+  if(roof_tune>=0) check(cudaFuncSetAttribute(roof_kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(roof_smem)));
   if(implementation=="o3_swizzle_64x128_k128_exp_static_stream") {
     if(exponent_scale) o3_configure<64,128,128,true,false,false,2,false,true,false,true>(); else o3_configure<64,128,128,false,false,false,2,false,true,false,true>();
   }
@@ -407,6 +414,11 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto gemm=[&](){
     dim3 grid(n/TN,m/TM);
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
+    if(roof_tune>=0) {
+      roof_kernel<<<dim3(n/128,m/64),256,roof_smem,stream>>>(ap,bp,as.data_ptr<float>(),
+          ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
+      C10_CUDA_KERNEL_LAUNCH_CHECK();return;
+    }
     if(implementation=="o3_swizzle_64x128_k128_exp_static_stream") {
       if(exponent_scale) o3_launch<64,128,128,true,false,false,2,false,true,false,true>(aa,wa,as,ws,out,stream); else o3_launch<64,128,128,false,false,false,2,false,true,false,true>(aa,wa,as,ws,out,stream);
     }
@@ -595,6 +607,13 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(o3_candidate) meta["kernel_symbol"]="adangel_sm80_o3_swizzled";
   if(o3_candidate&&implementation.find("_bound2")!=std::string::npos) meta["kernel_symbol"]="adangel_sm80_o3_swizzled_bound2";
   meta["mma"]=split?"m16n8k64.u4.s4 + m16n8k64.s4.s4":"m16n8k32.s8.s8";
+  if(roof_tune>=0) {
+    meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
+    meta["kernel_symbol"]="adangel_sm80_roof_candidate";meta["roof_tune"]=roof_tune;
+    meta["status"]="candidate_not_production";meta["scale_hoist"]=bool(roof_tune&1);
+    meta["interleaved_n_atoms"]=bool(roof_tune&2);meta["weight_register_slice_n"]=(roof_tune&4)?64:32;
+    meta["shared_memory_bytes"]=roof_smem;
+  }
   py::dict r;r["output"]=out;r["timings_ms"]=timings;r["kernel"]=meta;
   r["converted_weight"]=wa;r["converted_activation"]=aa;
   return r;
@@ -612,8 +631,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
   m.def("_benchmark_mixed",&benchmark_mixed,py::arg("variant"),py::arg("mode"),
       py::arg("weight_source"),py::arg("activation_source"),py::arg("warmup")=50,
       py::arg("repeats")=200,py::arg("conversion_inner_repeats")=100,
-      py::arg("tile")="64x128x256",py::arg("scale_layout")="row_major");
+      py::arg("tile")="64x128x256",py::arg("scale_layout")="row_major",py::arg("roof_tune")=-1);
   m.def("_benchmark_split_grouped",&benchmark_split_grouped,py::arg("a_split"),py::arg("a_scale"),py::arg("w_q4"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("tile")="64x128x256");
-  m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100,py::arg("implementation")="production");
+  m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100,py::arg("implementation")="production",py::arg("roof_tune")=-1);
   m.def("benchmark_o0",&adangel_benchmark_o0);
 }

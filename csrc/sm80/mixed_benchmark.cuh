@@ -5,7 +5,7 @@
 
 py::dict benchmark_mixed(std::string variant,std::string mode,
     const py::dict& weight_source,const py::dict& activation_source,
-    int warmup,int repeats,int inner,std::string tile,std::string scale_layout) {
+    int warmup,int repeats,int inner,std::string tile,std::string scale_layout,int roof_tune) {
   TORCH_CHECK(variant=="o5" || variant=="o6" || variant=="o7" || variant=="o8" || variant=="o9" || variant=="o10","expected o5 through o10");
   const bool fp16=variant=="o5" || variant=="o6";
   const bool binary=variant=="o9" || variant=="o10";
@@ -20,6 +20,9 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   TORCH_CHECK(scale_layout=="row_major" || scale_layout=="group_major","invalid scale layout");
   TORCH_CHECK(!fp16 || scale_layout=="row_major","FP16 baseline has no fixed scale-layout variant");
   const bool gm=scale_layout=="group_major";
+  TORCH_CHECK(valid_roof_tune(roof_tune) && (roof_tune<0 ||
+      ((variant=="o7" || variant=="o8") && gm && tile=="64x128x256")),
+      "roof candidate requires O7/O8 group-major 64x128x256");
   const MixedSource w(weight_source,!fp16),a(activation_source,!fp16);
   TORCH_CHECK((nv && w.kind==MixedKind::Nv4 && a.kind==MixedKind::Mx8) ||
       (!nv && w.kind==MixedKind::Hif4 && a.kind==MixedKind::Nv6),
@@ -50,13 +53,23 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
                           : sizeof(O3AmpereConfig<64,128,256,false,2,true>::Storage);
   auto kernel=tn==64 ? adangel_sm80_split_grouped<64,128> : adangel_sm80_split_grouped<128,256>;
   if(gm) kernel=tn==64 ? adangel_sm80_split_grouped_major<64,128> : adangel_sm80_split_grouped_major<128,256>;
+  auto roof_kernel=select_roof_kernel(true,false,roof_tune<0?0:roof_tune);
   if(binary) launch_mixed_binary(*ba,*bw,y,m,n,k,tn,tk,stream,true,horner,wide,swizzle);
-  else if(!fp16) check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
+  else if(!fp16) {
+    if(roof_tune>=0) check(cudaFuncSetAttribute(roof_kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
+    else check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
+  }
   auto cvw=[&]() {if(fp16) launch_mixed_fp16(w,wh,stream);else if(binary) launch_mixed_bitplanes(w,*bw,stream);else launch_mixed_conversion(w,*cw,stream);};
   auto cva=[&]() {if(fp16) launch_mixed_fp16(a,ah,stream);else if(binary) launch_mixed_bitplanes(a,*ba,stream);else launch_mixed_conversion(a,*ca,stream);};
   auto gemm=[&]() {
     if(fp16) {fp16_plan->run(stream);return;}
     if(binary) {launch_mixed_binary(*ba,*bw,y,m,n,k,tn,tk,stream,false,horner,wide,swizzle);return;}
+    if(roof_tune>=0) {
+      roof_kernel<<<dim3(n/128,m/64),256,smem,stream>>>(ca->packed.data_ptr<uint8_t>(),
+          cw->packed.data_ptr<uint8_t>(),ca->scale.data_ptr<float>(),
+          reinterpret_cast<const uint8_t*>(cw->scale.data_ptr<float>()),y.data_ptr<float>(),m,n,k);
+      C10_CUDA_KERNEL_LAUNCH_CHECK();return;
+    }
     kernel<<<dim3(n/tn,m/64),256,smem,stream>>>(
         ca->packed.data_ptr<uint8_t>(),cw->packed.data_ptr<uint8_t>(),
         ca->scale.data_ptr<float>(),cw->scale.data_ptr<float>(),y.data_ptr<float>(),m,n,k);
@@ -163,6 +176,12 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   }
   }
   meta["variant"]=variant;
+  if(roof_tune>=0) {
+    meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
+    meta["kernel_symbol"]="adangel_sm80_roof_candidate";meta["roof_tune"]=roof_tune;
+    meta["status"]="candidate_not_production";meta["scale_hoist"]=bool(roof_tune&1);
+    meta["interleaved_n_atoms"]=bool(roof_tune&2);meta["stream_n_slice"]=(roof_tune&4)?64:32;
+  }
   meta["experiment_naming_version"]=3;
   meta["paired_fp16_baseline"]=nv?"o5":"o6";
   meta["weight_source_format"]=weight_source["format"];
