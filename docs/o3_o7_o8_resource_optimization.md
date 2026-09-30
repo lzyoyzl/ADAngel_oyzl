@@ -25,11 +25,14 @@ steady快1.10234×/1.10371×。全部逐位相同，但23的cold/steady各有49/
 新O3 NCU证实22减少LDSM供数，但等待采样增加、发射率下降，不能将0.220ms理想下界当可达时间。
 详见[v17完整compute复测与NCU](evidence/a100_o378_roof_v17/README.md)。
 
-候选28正在准备：保持22的同一device计算体、64×128×128 CTA、2×2 warp、双缓冲和有序G128 FMA，
+候选28已完成初筛并拒绝：保持22的同一device计算体、64×128×128 CTA、2×2 warp、双缓冲和有序G128 FMA，
 只把launch-bound从 `(128,3)` 调整为 `(128,4)`。预期寄存器预算由168降到128，最多可驻留16而非12个warp；
 代价可能是更多spill，必须用实际资源查询、NCU和配对计时决定，不能预先认定有效。
 新编译单元隔离旧SASS；所有旧正式/候选都必须再次通过编码指令对照。候选28不允许FP32重关联。
-本地CPU契约检查通过不等于GPU编译/数值/性能通过；当前仍在完成v17四模式，测试中不替换二进制。
+CUDA12.8审计78实例、522项逐位检查、memcheck/synccheck各126项及有限racecheck均通过；12个正式和75个旧候选SASS不变。
+实际确实达到4CTA/SM，但O3/O7/O8合成4096³时间0.744448/0.800768/0.808960ms，明显慢于22/23。
+O7 NCU local理论sectors增至61,079,552、issue active仅36.519%，重算资源下界升至0.322498ms。
+单真实样本四模式108条MSE不变，但性能仍退化，不进行该候选的24样本推广。详见[v18证据](evidence/a100_o378_roof_v18/README.md)。
 
 候选29进一步针对copy工作量：v17中K128的每条LDGSTS对应8个shared wavefront（ideal为4），
 K256对照为4；LDSM没有excessive wavefront。现增加独立的成对G128搬运候选：一次copy pair按每行128B
