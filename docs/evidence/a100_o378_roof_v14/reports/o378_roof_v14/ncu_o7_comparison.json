@@ -1,0 +1,244 @@
+{
+  "scope": "same_binary_NCU_diagnostic_not_Event_acceptance",
+  "sources": [
+    {
+      "file": "reports/o378_roof_v14/ncu_o7_t6_raw.csv",
+      "sha256": "9f35075bf910c9d128162ff30bf214f4b53d73dbaa3883ea4b0ad09c92c427af"
+    },
+    {
+      "file": "reports/o378_roof_v14/ncu_o7_t6_source_sass.csv",
+      "sha256": "173bc85c049300908529392714a3a3887b695e0b94f175c65d1172d0176dc9e6"
+    },
+    {
+      "file": "reports/o378_roof_v14/ncu_o7_t21_raw.csv",
+      "sha256": "f5b5ecda541312c8e5499b59ad513caa965252ba3bd17b9e1f41a992eab1a861"
+    },
+    {
+      "file": "reports/o378_roof_v14/ncu_o7_t21_source_sass.csv",
+      "sha256": "30123449f07f9c8c12aef064bf5ef1b2b69f29c7ee038385b6ea4e6be3c2d172"
+    }
+  ],
+  "rows": [
+    {
+      "variant": "o7",
+      "tune": 6,
+      "kernel": "void <unnamed>::adangel_sm80_roof_candidate<(bool)1, (bool)0, (int)6>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, float *, int, int, int)",
+      "dynamic_instructions": 127238144,
+      "opcodes": {
+        "IMAD": 13451264,
+        "S2R": 32768,
+        "S2UR": 32768,
+        "ULDC": 65536,
+        "IADD3": 7700480,
+        "ISETP": 294912,
+        "USHF": 2129920,
+        "MOV": 1327104,
+        "LDG": 1048576,
+        "SHF": 819200,
+        "ULEA": 32768,
+        "LOP3": 1933312,
+        "LEA": 8978432,
+        "UIMAD": 16384,
+        "UISETP": 540672,
+        "LDGSTS": 2097152,
+        "PLOP3": 540672,
+        "STL": 81920,
+        "CS2R": 262144,
+        "STS": 1048576,
+        "LDGDEPBAR": 262144,
+        "BRA": 524288,
+        "UMOV": 278528,
+        "UIADD3": 262144,
+        "DEPBAR": 262144,
+        "BAR": 262144,
+        "ULOP3": 1261568,
+        "LDL": 1228800,
+        "LDS": 5980160,
+        "LDSM": 6291456,
+        "IMMA": 16777216,
+        "FMUL": 16777216,
+        "I2F": 16777216,
+        "FFMA": 16777216,
+        "CALL": 262144,
+        "STG": 786432,
+        "EXIT": 32768,
+        "NOP": 0
+      },
+      "source_memory_work": {
+        "L1 Wavefronts Shared Excessive": 0,
+        "L1 Wavefronts Shared": 43384832,
+        "L2 Theoretical Sectors Global Excessive": 0,
+        "L2 Theoretical Sectors Local": 10485760
+      },
+      "source_memory_work_by_opcode": {
+        "LDGSTS": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 8388608,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 0
+        },
+        "STL": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 0,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 655360
+        },
+        "STS": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 393216,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 0
+        },
+        "LDL": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 0,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 9830400
+        },
+        "LDS": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 9437184,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 0
+        },
+        "LDSM": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 25165824,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 0
+        }
+      },
+      "source_memory_work_omitted_zero_columns": [],
+      "source_memory_work_note": "theoretical sectors/wavefront work; not actual HBM bytes",
+      "ncu_duration_ms": 0.487808,
+      "eligible_warps": 0.891481,
+      "issue_active_percent": 47.235856,
+      "registers_per_thread": 128.0,
+      "registers_per_thread_allocated": 128.0,
+      "dynamic_shared_bytes": 68608.0,
+      "allocated_shared_bytes_including_driver": 69632.0,
+      "occupancy_cta_limits": {
+        "blocks": 32.0,
+        "registers": 2.0,
+        "shared_mem": 2.0,
+        "warps": 8.0
+      },
+      "max_ctas_per_sm_from_launch_limits": 2.0,
+      "achieved_occupancy_percent": 24.270563,
+      "l1_data_pipe_peak_percent": 64.127264,
+      "l1_service_ms_at_1410": 0.28808911419005434,
+      "l1_bound_note": "profile-conditioned capacity requirement only, not attainable kernel time",
+      "long_scoreboard_stall_per_issue": 0.704803,
+      "math_pipe_stall_per_issue": 1.377378,
+      "mio_stall_per_issue": 1.243079
+    },
+    {
+      "variant": "o7",
+      "tune": 21,
+      "kernel": "void <unnamed>::adangel_sm80_roof_candidate<(bool)1, (bool)0, (int)21>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, float *, int, int, int)",
+      "dynamic_instructions": 113737728,
+      "opcodes": {
+        "MOV": 1056768,
+        "S2R": 24576,
+        "ULDC": 8192,
+        "IADD3": 6594560,
+        "ISETP": 548864,
+        "IMAD": 8527872,
+        "SHF": 868352,
+        "LDG": 524288,
+        "LEA": 11878400,
+        "LOP3": 1974272,
+        "LDGSTS": 2097152,
+        "CS2R": 262144,
+        "STL": 24576,
+        "STS": 524288,
+        "LDGDEPBAR": 131072,
+        "BRA": 262144,
+        "UMOV": 139264,
+        "UIADD3": 131072,
+        "USHF": 1015808,
+        "DEPBAR": 131072,
+        "ULOP3": 761856,
+        "BAR": 131072,
+        "LDL": 368640,
+        "LDS": 3514368,
+        "LDSM": 4194304,
+        "IMMA": 16777216,
+        "I2F": 16777216,
+        "FMUL": 16777216,
+        "FFMA": 16777216,
+        "CALL": 131072,
+        "STG": 786432,
+        "EXIT": 16384,
+        "NOP": 0
+      },
+      "source_memory_work": {
+        "L1 Wavefronts Shared Excessive": 0,
+        "L1 Wavefronts Shared": 30801920,
+        "L2 Theoretical Sectors Global Excessive": 0,
+        "L2 Theoretical Sectors Local": 3145728
+      },
+      "source_memory_work_by_opcode": {
+        "LDGSTS": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 8388608,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 0
+        },
+        "STL": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 0,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 196608
+        },
+        "STS": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 393216,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 0
+        },
+        "LDL": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 0,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 2949120
+        },
+        "LDS": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 5242880,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 0
+        },
+        "LDSM": {
+          "L1 Wavefronts Shared Excessive": 0,
+          "L1 Wavefronts Shared": 16777216,
+          "L2 Theoretical Sectors Global Excessive": 0,
+          "L2 Theoretical Sectors Local": 0
+        }
+      },
+      "source_memory_work_omitted_zero_columns": [],
+      "source_memory_work_note": "theoretical sectors/wavefront work; not actual HBM bytes",
+      "ncu_duration_ms": 0.4824,
+      "eligible_warps": 0.527581,
+      "issue_active_percent": 41.321824,
+      "registers_per_thread": 255.0,
+      "registers_per_thread_allocated": 256.0,
+      "dynamic_shared_bytes": 68608.0,
+      "allocated_shared_bytes_including_driver": 69632.0,
+      "occupancy_cta_limits": {
+        "blocks": 32.0,
+        "registers": 2.0,
+        "shared_mem": 2.0,
+        "warps": 16.0
+      },
+      "max_ctas_per_sm_from_launch_limits": 2.0,
+      "achieved_occupancy_percent": 12.141235,
+      "l1_data_pipe_peak_percent": 39.792243,
+      "l1_service_ms_at_1410": 0.18257765523708433,
+      "l1_bound_note": "profile-conditioned capacity requirement only, not attainable kernel time",
+      "long_scoreboard_stall_per_issue": 0.363168,
+      "math_pipe_stall_per_issue": 0.488967,
+      "mio_stall_per_issue": 0.331693
+    }
+  ]
+}

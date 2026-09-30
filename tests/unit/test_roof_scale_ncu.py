@@ -143,5 +143,30 @@ class RoofScaleNcuTests(unittest.TestCase):
             self.assertEqual(result['source_memory_work_omitted_zero_columns'],
                              ['L2 Theoretical Sectors Local'] if variant=='o7' else [])
 
+    def test_archived_warp_reuse_reduces_work_not_latency_by_same_factor(self):
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v14/reports/o378_roof_v14'
+        for variant,total,local in (('o3',109887488,5242880),('o7',113737728,3145728)):
+            result=ANALYZE((evidence/f'ncu_{variant}_t21_raw.csv').read_text(),
+                           (evidence/f'ncu_{variant}_t21_source_sass.csv').read_text(),21,variant,True)
+            self.assertEqual(result['dynamic_instructions'],total)
+            self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Local'],local)
+            self.assertEqual(result['source_memory_work_by_opcode']['LDSM']['L1 Wavefronts Shared'],16777216)
+            self.assertEqual(result['binding_modeled_resources'],['mma','i2f'])
+            self.assertAlmostEqual(result['optimistic_fixed_work_lower_bound_ms'],0.22034693984764905)
+            self.assertLess(result['achieved_occupancy_percent'],12.5)
+            self.assertLess(result['eligible_warps'],0.55)
+            self.assertGreater(result['ncu_duration_ms'],2*result['optimistic_fixed_work_lower_bound_ms'])
+
+    def test_resource_model_requires_full_counters_and_correct_units(self):
+        raw=(EVIDENCE/'ncu_o7_t6_raw.csv').read_text()
+        sass=(EVIDENCE/'ncu_o7_t6_source_sass.csv').read_text()
+        with self.assertRaises(KeyError):
+            ANALYZE(raw,sass,6,'o7',True)  # Older partial export: not zero-filled.
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v14/reports/o378_roof_v14'
+        raw=(evidence/'ncu_o7_t21_raw.csv').read_text()
+        sass=(evidence/'ncu_o7_t21_source_sass.csv').read_text()
+        with self.assertRaises(ValueError):
+            ANALYZE(raw.replace('Mbyte','MiB'),sass,21,'o7',True)
+
 
 if __name__=='__main__': unittest.main()
