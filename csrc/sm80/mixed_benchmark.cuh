@@ -54,9 +54,10 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   auto kernel=tn==64 ? adangel_sm80_split_grouped<64,128> : adangel_sm80_split_grouped<128,256>;
   if(gm) kernel=tn==64 ? adangel_sm80_split_grouped_major<64,128> : adangel_sm80_split_grouped_major<128,256>;
   auto roof_kernel=select_roof_kernel(true,false,roof_tune<0?0:roof_tune);
+  const auto roof_cfg=roof_config(roof_tune,true);
   if(binary) launch_mixed_binary(*ba,*bw,y,m,n,k,tn,tk,stream,true,horner,wide,swizzle);
   else if(!fp16) {
-    if(roof_tune>=0) check(cudaFuncSetAttribute(roof_kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
+    if(roof_tune>=0) check(cudaFuncSetAttribute(roof_kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(roof_cfg.smem)));
     else check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
   }
   auto cvw=[&]() {if(fp16) launch_mixed_fp16(w,wh,stream);else if(binary) launch_mixed_bitplanes(w,*bw,stream);else launch_mixed_conversion(w,*cw,stream);};
@@ -65,7 +66,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     if(fp16) {fp16_plan->run(stream);return;}
     if(binary) {launch_mixed_binary(*ba,*bw,y,m,n,k,tn,tk,stream,false,horner,wide,swizzle);return;}
     if(roof_tune>=0) {
-      roof_kernel<<<dim3(n/128,m/64),256,smem,stream>>>(ca->packed.data_ptr<uint8_t>(),
+      roof_kernel<<<dim3(n/roof_cfg.n,m/64),roof_cfg.threads,roof_cfg.smem,stream>>>(ca->packed.data_ptr<uint8_t>(),
           cw->packed.data_ptr<uint8_t>(),ca->scale.data_ptr<float>(),
           reinterpret_cast<const uint8_t*>(cw->scale.data_ptr<float>()),y.data_ptr<float>(),m,n,k);
       C10_CUDA_KERNEL_LAUNCH_CHECK();return;
@@ -179,8 +180,10 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   if(roof_tune>=0) {
     meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
     meta["kernel_symbol"]="adangel_sm80_roof_candidate";meta["roof_tune"]=roof_tune;
-    meta["status"]="candidate_not_production";meta["scale_hoist"]=bool(roof_tune&1);
-    meta["interleaved_n_atoms"]=bool(roof_tune&2);meta["stream_n_slice"]=(roof_tune&4)?64:32;
+    meta["status"]="candidate_not_production";meta["scale_hoist"]=bool(roof_cfg.core_tune&1);
+    meta["interleaved_n_atoms"]=bool(roof_cfg.core_tune&2);meta["stream_n_slice"]=roof_cfg.slice_n;
+    meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
+    meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;meta["shared_memory_bytes"]=roof_cfg.smem;
   }
   meta["experiment_naming_version"]=3;
   meta["paired_fp16_baseline"]=nv?"o5":"o6";

@@ -1,16 +1,53 @@
 // Internal prepared-input experiments. Production defaults are untouched.
 #pragma once
 
+// Targeted latency-hiding experiments, not a production tile search:
+// 8: twice as many warps at the same CTA shape (register cap from bound2).
+// 9: half the output N tile, allowing three resident CTAs if resources permit.
+// 10: candidate9 with a G128 stage to bound operand liveness further.
+template<int Tune> struct RoofShape {
+  static constexpr int N=(Tune==9 || Tune==10)?64:128;
+  static constexpr int K=Tune==10?128:256;
+  static constexpr int WN=Tune==8?4:2;
+  static constexpr int Threads=128*WN;
+  static constexpr int MinBlocks=(Tune==9 || Tune==10)?3:2;
+  static constexpr int CoreTune=Tune>=8?2:Tune;
+};
+
 template<bool DualScale,bool Fast,int Tune>
-__global__ __launch_bounds__(256,2) void adangel_sm80_roof_candidate(
+__global__ __launch_bounds__(RoofShape<Tune>::Threads,RoofShape<Tune>::MinBlocks)
+void adangel_sm80_roof_candidate(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,
     float* y,int m,int n,int k) {
-  o3_body<64,128,256,Fast,false,false,2,false,true,false,true,true,true,false,
-          DualScale,DualScale,Tune>(a,w,as,ws,y,m,n,k);
+  using R=RoofShape<Tune>;
+  o3_body<64,R::N,R::K,Fast,false,false,R::WN,false,true,false,true,true,true,false,
+          DualScale,DualScale,R::CoreTune>(a,w,as,ws,y,m,n,k);
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || tune==6 || tune==7;
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=10);
+}
+
+struct RoofLaunchConfig {int n,k,threads,min_blocks,core_tune,slice_n;size_t smem;};
+template<int Tune> RoofLaunchConfig roof_config_for(bool dual) {
+  using R=RoofShape<Tune>;
+  const size_t smem=dual ? sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,true>::Storage)
+                        : sizeof(typename O3AmpereConfig<64,R::N,R::K,false,R::WN,false>::Storage);
+  return {R::N,R::K,R::Threads,R::MinBlocks,R::CoreTune,R::WN*((R::CoreTune&4)?32:16),smem};
+}
+RoofLaunchConfig roof_config(int tune,bool dual) {
+  TORCH_CHECK(valid_roof_tune(tune),"invalid roof candidate configuration");
+  switch(tune) {
+    case 8:return roof_config_for<8>(dual);
+    case 9:return roof_config_for<9>(dual);
+    case 10:return roof_config_for<10>(dual);
+    case 6:return roof_config_for<6>(dual);
+    case 7:return roof_config_for<7>(dual);
+    case 3:return roof_config_for<3>(dual);
+    case 2:return roof_config_for<2>(dual);
+    case 1:return roof_config_for<1>(dual);
+    default:return roof_config_for<0>(dual);
+  }
 }
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
@@ -18,7 +55,8 @@ auto select_roof_kernel(bool dual,bool fast,int tune) {
   auto kernel=adangel_sm80_roof_candidate<false,false,0>;
   #define ROOF_PICK(T) case T: kernel=dual ? adangel_sm80_roof_candidate<true,false,T> : \
       (fast ? adangel_sm80_roof_candidate<false,true,T> : adangel_sm80_roof_candidate<false,false,T>); break
-  switch(tune) {ROOF_PICK(0);ROOF_PICK(1);ROOF_PICK(2);ROOF_PICK(3);ROOF_PICK(6);ROOF_PICK(7);}
+  switch(tune) {ROOF_PICK(0);ROOF_PICK(1);ROOF_PICK(2);ROOF_PICK(3);ROOF_PICK(6);ROOF_PICK(7);
+               ROOF_PICK(8);ROOF_PICK(9);ROOF_PICK(10);}
   #undef ROOF_PICK
   return kernel;
 }
@@ -66,8 +104,8 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
       "scale product may overflow output");
   auto y=at::empty({m,n},as.options());
   auto stream=c10::cuda::getCurrentCUDAStream(a.get_device()).stream();
-  const size_t smem=dual ? sizeof(O3AmpereConfig<64,128,256,false,2,true>::Storage)
-                         : sizeof(O3AmpereConfig<64,128,256,false,2,false>::Storage);
+  const auto cfg=roof_config(tune,dual);
+  const size_t smem=cfg.smem;
   auto kernel=adangel_sm80_roof_candidate<false,false,0>;
   const bool existing_dual=tune==-1 && dual;
   if(tune==-1 && !dual) {
@@ -79,12 +117,21 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
     check(cudaFuncSetAttribute(adangel_sm80_split_grouped_major<128,256>,
         cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
   else check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
+  cudaFuncAttributes attributes{};int resident_blocks=0;
+  if(existing_dual) {
+    check(cudaFuncGetAttributes(&attributes,adangel_sm80_split_grouped_major<128,256>));
+    check(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&resident_blocks,
+        adangel_sm80_split_grouped_major<128,256>,cfg.threads,smem));
+  } else {
+    check(cudaFuncGetAttributes(&attributes,kernel));
+    check(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&resident_blocks,kernel,cfg.threads,smem));
+  }
   auto launch=[&]() {
     if(existing_dual)
       adangel_sm80_split_grouped_major<128,256><<<dim3(n/128,m/64),256,smem,stream>>>(
           a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),as.data_ptr<float>(),ws.data_ptr<float>(),
           y.data_ptr<float>(),m,n,k);
-    else kernel<<<dim3(n/128,m/64),256,smem,stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
+    else kernel<<<dim3(n/cfg.n,m/64),cfg.threads,smem,stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
         as.data_ptr<float>(),reinterpret_cast<const uint8_t*>(ws.data_ptr()),y.data_ptr<float>(),m,n,k);
     C10_CUDA_KERNEL_LAUNCH_CHECK();
   };
@@ -94,10 +141,12 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["kernel_symbol"]=tune>=0 ? "adangel_sm80_roof_candidate" :
       (dual ? "adangel_sm80_split_grouped_major" : "adangel_sm80_o3_swizzled_bound2");
   meta["tune"]=tune;meta["dual_scale"]=dual;meta["exponent_fast_path"]=fast;
-  meta["scale_hoist"]=tune>=0 && bool(tune&1);meta["interleaved_n_atoms"]=tune>=0 && bool(tune&2);
-  meta["stream_n_slice"]=tune>=0 && (tune&4) ? 64:32;
-  meta["cta_tile"]=std::vector<int>{64,128,256};meta["group_size"]=128;
+  meta["scale_hoist"]=tune>=0 && bool(cfg.core_tune&1);meta["interleaved_n_atoms"]=tune>=0 && bool(cfg.core_tune&2);
+  meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
+  meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
   meta["shared_memory_bytes"]=smem;meta["scope"]="candidate_compute_only_not_production";
+  meta["registers_per_thread"]=attributes.numRegs;meta["local_bytes_per_thread"]=attributes.localSizeBytes;
+  meta["max_resident_blocks_per_sm"]=resident_blocks;
   py::dict result;result["output"]=y;result["gemm_ms"]=times;result["kernel"]=meta;
   return result;
 }

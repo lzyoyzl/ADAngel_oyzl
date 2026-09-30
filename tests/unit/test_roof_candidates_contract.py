@@ -39,6 +39,18 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('no silent fallback',host)
         self.assertIn('roof candidate requires O7/O8 group-major 64x128x256',mixed)
 
+    def test_targeted_occupancy_candidates_use_configured_launch(self):
+        text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
+        self.assertIn('WN=Tune==8?4:2',text)
+        self.assertIn('MinBlocks=(Tune==9 || Tune==10)?3:2',text)
+        self.assertIn('CoreTune=Tune>=8?2:Tune',text)
+        self.assertIn('K=Tune==10?128:256',text)
+        self.assertIn('dim3(n/cfg.n,m/64),cfg.threads,smem',text)
+        self.assertIn('cudaOccupancyMaxActiveBlocksPerMultiprocessor',text)
+        for name in ('o1_o3.cu','mixed_benchmark.cuh'):
+            self.assertIn('dim3(n/roof_cfg.n,m/64),roof_cfg.threads',
+                          (ROOT/'csrc/sm80'/name).read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

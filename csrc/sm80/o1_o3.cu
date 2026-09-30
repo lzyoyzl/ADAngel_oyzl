@@ -285,7 +285,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
   auto roof_kernel=select_roof_kernel(false,exponent_scale,roof_tune<0?0:roof_tune);
-  const size_t roof_smem=sizeof(O3AmpereConfig<64,128,256,false,2,false>::Storage);
+  const auto roof_cfg=roof_config(roof_tune,false);
+  const size_t roof_smem=roof_cfg.smem;
   if(roof_tune>=0) check(cudaFuncSetAttribute(roof_kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(roof_smem)));
   if(implementation=="o3_swizzle_64x128_k128_exp_static_stream") {
     if(exponent_scale) o3_configure<64,128,128,true,false,false,2,false,true,false,true>(); else o3_configure<64,128,128,false,false,false,2,false,true,false,true>();
@@ -415,7 +416,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     dim3 grid(n/TN,m/TM);
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
     if(roof_tune>=0) {
-      roof_kernel<<<dim3(n/128,m/64),256,roof_smem,stream>>>(ap,bp,as.data_ptr<float>(),
+      roof_kernel<<<dim3(n/roof_cfg.n,m/64),roof_cfg.threads,roof_smem,stream>>>(ap,bp,as.data_ptr<float>(),
           ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
       C10_CUDA_KERNEL_LAUNCH_CHECK();return;
     }
@@ -610,8 +611,11 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(roof_tune>=0) {
     meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
     meta["kernel_symbol"]="adangel_sm80_roof_candidate";meta["roof_tune"]=roof_tune;
-    meta["status"]="candidate_not_production";meta["scale_hoist"]=bool(roof_tune&1);
-    meta["interleaved_n_atoms"]=bool(roof_tune&2);meta["weight_register_slice_n"]=(roof_tune&4)?64:32;
+    meta["status"]="candidate_not_production";meta["scale_hoist"]=bool(roof_cfg.core_tune&1);
+    meta["interleaved_n_atoms"]=bool(roof_cfg.core_tune&2);meta["weight_register_slice_n"]=roof_cfg.slice_n;
+    meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
+    meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;
+    meta["minimum_blocks_launch_bound"]=std::to_string(roof_cfg.min_blocks);
     meta["shared_memory_bytes"]=roof_smem;
   }
   py::dict r;r["output"]=out;r["timings_ms"]=timings;r["kernel"]=meta;
