@@ -123,5 +123,19 @@ class RoofScaleNcuTests(unittest.TestCase):
             self.assertEqual(by_op['LDL']['L2 Theoretical Sectors Local']+
                              by_op['STL']['L2 Theoretical Sectors Local'],local)
 
+    def test_archived_relaxed_register_budget(self):
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v13/reports/o378_roof_v13'
+        for variant,total,local in (('o3',125894656,131072),('o7',128892928,0)):
+            result=ANALYZE((evidence/f'ncu_{variant}_t19_raw.csv').read_text(),
+                           (evidence/f'ncu_{variant}_t19_source_sass.csv').read_text(),19,variant)
+            self.assertEqual(result['dynamic_instructions'],total)
+            self.assertEqual(result['registers_per_thread'],128)
+            self.assertEqual(result['max_ctas_per_sm_from_launch_limits'],2)
+            self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Local'],local)
+            self.assertEqual(result['source_memory_work_by_opcode']['LDGSTS']['L1 Wavefronts Shared Excessive'],8388608)
+            self.assertEqual(result['source_memory_work_by_opcode']['LDSM']['L1 Wavefronts Shared'],25165824)
+            self.assertEqual(result['source_memory_work_omitted_zero_columns'],
+                             ['L2 Theoretical Sectors Local'] if variant=='o7' else [])
+
 
 if __name__=='__main__': unittest.main()
