@@ -15,6 +15,7 @@ class RoofScaleAuditTests(unittest.TestCase):
         self.assertFalse(all(AUDIT['roof_scale_checks'](symbol,dict(FMUL=1,I2F=32,FFMA=32)).values()))
         self.assertFalse(all(AUDIT['roof_scale_checks'](symbol,dict(FMUL=0,I2F=0,FFMA=32)).values()))
         self.assertFalse(all(AUDIT['roof_scale_checks'](symbol,{}).values()))
+        self.assertTrue(all(AUDIT['roof_scale_checks'](symbol.replace('Li11','Li12'),dict(I2F=32,FFMA=32)).values()))
 
     def test_fallback_and_other_instances_unaffected(self):
         for arguments in ('Lb1ELb0ELi11EE','Lb0ELb1ELi11EE','Lb1ELb0ELi6EE'):

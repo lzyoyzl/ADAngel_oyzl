@@ -34,13 +34,14 @@ struct O3AmpereConfig {
   };
 };
 
-template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false>
+template<int M,int N,int K,bool Fast,bool Cached,int WN,bool StaticCopy,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,bool PrebiasActivationScale=false>
 __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached,WN,DualScale>::Storage& s,
     int slot,int stage,const uint8_t* a,const uint8_t* w,const uint8_t* ws,int m,int k,
     const float* grouped_as=nullptr,int total_n=0) {
   using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
   static_assert(!DualScale || (!Fast && !Cached && !VectorScale));
   static_assert(!GroupMajorScale || DualScale);
+  static_assert(!PrebiasActivationScale || DualScale);
   typename C::template ByteLayout<M> la;
   typename C::template ByteLayout<N> lb;
   auto copy_a=[&](unsigned off) {
@@ -72,14 +73,20 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
     for(unsigned off=threadIdx.x*16;off<N*C::Bytes;off+=C::Threads*16) copy_b(off);
   }
   if constexpr(DualScale) {
-    // Both sides vary across G128; do not use a power-of-two shortcut.
+    // Both sides vary across G128. Only a host-guarded candidate may prebias A.
     const auto* grouped_ws=reinterpret_cast<const float*>(ws);
     o1_static_for<0,C::Groups>([&](auto group) {
       int g=stage*C::Groups+group;
-      if(threadIdx.x<M)
-        s.activation_scales[(slot*C::Groups+group)*M+threadIdx.x]=
-            grouped_as[GroupMajorScale ? g*m+blockIdx.y*M+threadIdx.x
+      if(threadIdx.x<M) {
+        float row_scale=grouped_as[GroupMajorScale ? g*m+blockIdx.y*M+threadIdx.x
                                       : (blockIdx.y*M+threadIdx.x)*(k/128)+g];
+        // Bit payload only: after this transformation the shared value must
+        // never participate in FP arithmetic. Each group/row is prepared once
+        // per CTA instead of subtracting the FP32 exponent bias per output.
+        if constexpr(PrebiasActivationScale)
+          row_scale=__uint_as_float(__float_as_uint(row_scale)-0x3f800000u);
+        s.activation_scales[(slot*C::Groups+group)*M+threadIdx.x]=row_scale;
+      }
       if(threadIdx.x<N)
         s.scales[(slot*C::Groups+group)*N+threadIdx.x]=
             grouped_ws[GroupMajorScale ? g*total_n+blockIdx.x*N+threadIdx.x
@@ -105,7 +112,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0,bool ActivationPower2=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
@@ -113,6 +120,7 @@ __device__ __forceinline__ void o3_body(
   static_assert(RoofTune==0 || (Stream && !Merge && !Magic));
   static_assert(!DualScale || (!Fast && !Cached && !Magic && Stream));
   static_assert(!ActivationPower2 || (DualScale && RoofTune!=0));
+  static_assert(!PrebiasActivationScale || ActivationPower2);
   extern __shared__ __align__(128) uint8_t buf[];
   auto& s=*reinterpret_cast<typename C::Storage*>(buf);
   if constexpr(Cached) {
@@ -180,11 +188,11 @@ __device__ __forceinline__ void o3_body(
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
   auto bd1=bc.retile_D(rb1);
   auto ld1=lc.retile_D(ra1);auto hd1=hc.retile_D(rh1);
-  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale>(s,0,0,a,w,ws,m,k,as,n);
+  o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale>(s,0,0,a,w,ws,m,k,as,n);
   auto process_stage=[&](int stage,auto slot) {
     asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
-    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale>(s,1-slot,stage+1,a,w,ws,m,k,as,n);
+    if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale>(s,1-slot,stage+1,a,w,ws,m,k,as,n);
     auto process_group=[&](auto group) {
       if constexpr(Stream) {
         // Preload both K64 A sets, but retain only a narrow N slice of B.
@@ -258,7 +266,9 @@ __device__ __forceinline__ void o3_body(
                 else if constexpr(ActivationPower2) {
                   // Guarded positive normal A=2^e, normal W and normal product:
                   // exactly the original round_fp32(A*W), not magic-bias I2F.
-                  scale=__uint_as_float(__float_as_uint(column)+__float_as_uint(row)-0x3f800000u);
+                  if constexpr(PrebiasActivationScale)
+                    scale=__uint_as_float(__float_as_uint(column)+__float_as_uint(row));
+                  else scale=__uint_as_float(__float_as_uint(column)+__float_as_uint(row)-0x3f800000u);
                 }
                 else scale=__fmul_rn(row,column);
                 acc(vi,mi,full_ni)=__fmaf_rn(float(partial),scale,acc(vi,mi,full_ni));

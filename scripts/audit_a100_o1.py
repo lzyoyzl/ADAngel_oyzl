@@ -19,8 +19,8 @@ def audit_policy(checks, allow_spills=False):
 
 
 def roof_scale_checks(symbol, instruction_counts):
-    """Recognize only the guarded dual-scale tune11 specialization, not probes."""
-    if not re.search(r'adangel_sm80_roof_candidateILb1ELb1ELi11EE', symbol):
+    """Recognize only guarded dual-scale specializations, not probes."""
+    if not re.search(r'adangel_sm80_roof_candidateILb1ELb1ELi1[12]EE', symbol):
         return {}
     return dict(power2_scale_no_fmul=instruction_counts.get('FMUL', 0)==0,
                 power2_scale_keeps_i2f=instruction_counts.get('I2F', 0)>0,

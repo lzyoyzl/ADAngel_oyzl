@@ -9,7 +9,7 @@ class RoofCandidatesContractTest(unittest.TestCase):
     def test_production_default_unchanged(self):
         host = (ROOT / "csrc/sm80/o1_o3.cu").read_text()
         self.assertIn('implementation="o3_swizzle_64x128_k256_exp_static_stream_bound2_store2";', host)
-        self.assertIn('int RoofTune=0,bool ActivationPower2=false>', (ROOT / "csrc/sm80/o3_optimized.cuh").read_text())
+        self.assertIn('int RoofTune=0,bool ActivationPower2=false,bool PrebiasActivationScale=false>', (ROOT / "csrc/sm80/o3_optimized.cuh").read_text())
 
     def test_same_group_math_no_magic(self):
         body = (ROOT / "csrc/sm80/o3_optimized.cuh").read_text()
@@ -43,7 +43,7 @@ class RoofCandidatesContractTest(unittest.TestCase):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
         self.assertIn('WN=Tune==8?4:2',text)
         self.assertIn('MinBlocks=(Tune==9 || Tune==10)?3:2',text)
-        self.assertIn('CoreTune=Tune==11?6:(Tune>=8?2:Tune)',text)
+        self.assertIn('CoreTune=Tune>=11?6:(Tune>=8?2:Tune)',text)
         self.assertIn('K=Tune==10?128:256',text)
         self.assertIn('dim3(n/cfg.n,m/64),cfg.threads,smem',text)
         self.assertIn('cudaOccupancyMaxActiveBlocksPerMultiprocessor',text)
@@ -59,6 +59,9 @@ class RoofCandidatesContractTest(unittest.TestCase):
         body=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
         self.assertIn('__float_as_uint(column)+__float_as_uint(row)-0x3f800000u',body)
         self.assertIn('__fmaf_rn(float(partial),scale,acc(vi,mi,full_ni))',body)
+        self.assertIn('static_assert(!PrebiasActivationScale || ActivationPower2)',body)
+        self.assertIn('row_scale=__uint_as_float(__float_as_uint(row_scale)-0x3f800000u)',body)
+        self.assertEqual(body.count('o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale>'),2)
 
 
 if __name__ == "__main__":

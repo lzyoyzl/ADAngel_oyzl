@@ -26,7 +26,7 @@ def main():
     p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
     import torch
     from adangel import _sm80 as native
@@ -84,7 +84,9 @@ def main():
         if pattern == "power2_a" or (pattern=="random" and variant=="o7"):
             r=torch.arange(m,device="cuda")[:,None]
             g=torch.arange(k//128,device="cuda")[None,:]
-            asc=torch.exp2(((r+3*g)%7-10).float()).contiguous()
+            # Include A=0.5/1/2: prebiased shared bits include an infinity
+            # encoding which must remain an integer payload, never FP math.
+            asc=torch.exp2(((r+3*g)%7+(-5 if pattern=="power2_a" else -10)).float()).contiguous()
         if pattern == "power2_underflow":
             asc.fill_(2.0**-126);wsc.fill_(2.0**-10)
         if pattern == "zero_scale":
@@ -112,9 +114,10 @@ def main():
                             stream.synchronize()
                             y = result["output"]
                             assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, m, n, k, pattern)
-                            if tune==11 and variant!="o3":
+                            if tune in (11,12) and variant!="o3":
                                 expected_fast=pattern=="power2_a" or (pattern=="random" and variant=="o7")
                                 assert bool(result["kernel"]["activation_power2_fast_path"])==expected_fast
+                                assert bool(result["kernel"]["activation_scale_prebias"])==(tune==12 and expected_fast)
                             checks.append(dict(variant=variant, tune=tune, shape=[m,n,k], pattern=pattern,
                                                bitwise_equal=True, mse_vs_production=0.0, kernel=dict(result["kernel"])))
         save("validation.json", {"passed": True, "checks": checks})

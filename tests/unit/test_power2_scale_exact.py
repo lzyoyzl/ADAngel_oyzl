@@ -23,6 +23,8 @@ class Power2ScaleExactTest(unittest.TestCase):
                     expected=struct.pack('<f',f32(a_bits)*f32(w_bits))
                     actual=struct.pack('<I',w_bits+a_bits-0x3f800000)
                     self.assertEqual(actual,expected)
+                    prebiased=(a_bits-0x3f800000)&0xffffffff
+                    self.assertEqual(struct.pack('<I',(w_bits+prebiased)&0xffffffff),expected)
                     self.assertTrue(math.isfinite(f32(w_bits+a_bits-0x3f800000)))
                     checked+=1
         self.assertGreater(checked,200000)

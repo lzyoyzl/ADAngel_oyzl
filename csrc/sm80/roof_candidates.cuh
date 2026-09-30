@@ -11,7 +11,7 @@ template<int Tune> struct RoofShape {
   static constexpr int WN=Tune==8?4:2;
   static constexpr int Threads=128*WN;
   static constexpr int MinBlocks=(Tune==9 || Tune==10)?3:2;
-  static constexpr int CoreTune=Tune==11?6:(Tune>=8?2:Tune);
+  static constexpr int CoreTune=Tune>=11?6:(Tune>=8?2:Tune);
 };
 
 template<bool DualScale,bool Fast,int Tune>
@@ -21,11 +21,12 @@ void adangel_sm80_roof_candidate(
     float* y,int m,int n,int k) {
   using R=RoofShape<Tune>;
   o3_body<64,R::N,R::K,Fast && !DualScale,false,false,R::WN,false,true,false,true,true,true,false,
-          DualScale,DualScale,R::CoreTune,DualScale && Fast && Tune==11>(a,w,as,ws,y,m,n,k);
+          DualScale,DualScale,R::CoreTune,DualScale && Fast && Tune>=11,
+          DualScale && Fast && Tune==12>(a,w,as,ws,y,m,n,k);
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=11);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=12);
 }
 
 // Only used outside CUDA Event regions. A power-of-two times a normal W is
@@ -55,6 +56,7 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 9:return roof_config_for<9>(dual);
     case 10:return roof_config_for<10>(dual);
     case 11:return roof_config_for<11>(dual);
+    case 12:return roof_config_for<12>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -67,6 +69,9 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
   auto kernel=adangel_sm80_roof_candidate<false,false,0>;
+  if(tune==12) return dual ? (fast ? adangel_sm80_roof_candidate<true,true,12> :
+      adangel_sm80_roof_candidate<true,false,12>) : (fast ? adangel_sm80_roof_candidate<false,true,12> :
+      adangel_sm80_roof_candidate<false,false,12>);
   if(tune==11) return dual ? (fast ? adangel_sm80_roof_candidate<true,true,11> :
       adangel_sm80_roof_candidate<true,false,11>) : (fast ? adangel_sm80_roof_candidate<false,true,11> :
       adangel_sm80_roof_candidate<false,false,11>);
@@ -109,7 +114,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   bool fast=false;
   if(dual) {
     TORCH_CHECK(at::isfinite(ws).all().item<bool>() && ws.ge(0).all().item<bool>(),"invalid W scale");
-    if(tune==11) fast=roof_power2_activation_guard(as,ws);
+    if(tune>=11) fast=roof_power2_activation_guard(as,ws);
   } else {
     TORCH_CHECK(ws.ne(255).all().item<bool>(),"UE8M0 code 255 is invalid");
     float amin=as.min().item<float>(),amax=as.max().item<float>();
@@ -159,8 +164,9 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["kernel_symbol"]=tune>=0 ? "adangel_sm80_roof_candidate" :
       (dual ? "adangel_sm80_split_grouped_major" : "adangel_sm80_o3_swizzled_bound2");
   meta["tune"]=tune;meta["dual_scale"]=dual;meta["exponent_fast_path"]=fast;
-  meta["activation_power2_fast_path"]=dual && tune==11 && fast;
-  meta["activation_power2_guard_fallback"]=dual && tune==11 && !fast;
+  meta["activation_power2_fast_path"]=dual && tune>=11 && fast;
+  meta["activation_power2_guard_fallback"]=dual && tune>=11 && !fast;
+  meta["activation_scale_prebias"]=dual && tune==12 && fast;
   meta["scale_hoist"]=tune>=0 && bool(cfg.core_tune&1);meta["interleaved_n_atoms"]=tune>=0 && bool(cfg.core_tune&2);
   meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
   meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
