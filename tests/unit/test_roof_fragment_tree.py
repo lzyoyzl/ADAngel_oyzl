@@ -1,5 +1,6 @@
 """Fragment-tree contracts; model coverage is not a GPU racecheck substitute."""
 from pathlib import Path
+import json
 import runpy
 import unittest
 
@@ -7,6 +8,22 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 class FragmentTreeTest(unittest.TestCase):
+    def test_archived_v23_real_trace_keeps_pair_tree_bits_and_mse_gate(self):
+        root=ROOT/'docs/evidence/a100_o378_roof_v23/runs/o378_roof_v23_trace24'
+        summary=json.loads((root/'summary.json').read_text())
+        rows=[json.loads(line) for line in (root/'results.jsonl').read_text().splitlines()]
+        self.assertEqual(len(rows),432)
+        self.assertEqual(len({r['sample_id'] for r in rows}),24)
+        self.assertTrue(summary['mse_regression_passed'])
+        self.assertTrue(summary['no_filtering'])
+        self.assertFalse(summary['all_four_modes_completed'])
+        for row in rows:
+            if row['tune'] in (39,40):
+                self.assertTrue(row['bitwise_equal_pair_tree'])
+                self.assertTrue(row['mse_regression_passed'])
+                self.assertTrue(row['semantic_tolerance_passed'])
+                self.assertLessEqual(row['max_abs_vs_production'],3.0517578125e-5)
+
     def test_three_slot_pair_schedule_with_odd_tails(self):
         for groups in range(1,66):
             slots=[None]*3

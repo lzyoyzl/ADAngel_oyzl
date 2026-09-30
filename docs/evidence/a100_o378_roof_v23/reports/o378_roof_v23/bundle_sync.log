@@ -1,0 +1,24 @@
+From tmp/o378_1be4612.bundle
+ * branch            HEAD       -> FETCH_HEAD
+Updating 1f7729f..1be4612
+Fast-forward
+ csrc/sm80/mixed_benchmark.cuh               |  17 ++-
+ csrc/sm80/o1_o3.cu                          |  17 ++-
+ csrc/sm80/roof_candidates.cuh               |  38 +++--
+ csrc/sm80/roof_fragment_tree.cu             | 220 ++++++++++++++++++++++++++++
+ csrc/sm80/roof_pipeline_api.h               |   2 +
+ docs/evidence/a100_o378_roof_v23/README.md  |  23 +++
+ scripts/analyze_roof_scale_ncu.py           |   4 +-
+ scripts/audit_a100_o1.py                    |   4 +-
+ scripts/benchmark_a100_roof_candidates.py   |  31 ++--
+ scripts/benchmark_a100_roof_trace.py        |  12 +-
+ scripts/compare_roof_trace_candidates.py    |   6 +-
+ scripts/roof_reduction_validation.py        |  17 ++-
+ setup.py                                    |   1 +
+ tests/unit/test_roof_candidates_contract.py |  10 +-
+ tests/unit/test_roof_fragment_tree.py       |  65 ++++++++
+ tests/unit/test_roof_product_tree.py        |   2 +-
+ 16 files changed, 403 insertions(+), 66 deletions(-)
+ create mode 100644 csrc/sm80/roof_fragment_tree.cu
+ create mode 100644 docs/evidence/a100_o378_roof_v23/README.md
+ create mode 100644 tests/unit/test_roof_fragment_tree.py

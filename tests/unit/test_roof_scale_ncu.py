@@ -185,6 +185,29 @@ class RoofScaleNcuTests(unittest.TestCase):
             self.assertLess(result['eligible_warps'],0.55)
             self.assertGreater(result['ncu_duration_ms'],2*result['optimistic_fixed_work_lower_bound_ms'])
 
+    def test_archived_fragment_tree_trades_registers_for_more_work(self):
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v23/reports/o378_roof_v23'
+        results={t:ANALYZE((evidence/f'ncu_o7_t{t}_raw.csv').read_text(),
+                          (evidence/f'ncu_o7_t{t}_source_sass.csv').read_text(),
+                          t,'o7',True,True) for t in (23,38,39,40)}
+        self.assertEqual(results[38]['registers_per_thread'],255)
+        for tune,total in ((39,144392192),(40,146104320)):
+            row=results[tune]
+            self.assertEqual(row['registers_per_thread'],168)
+            self.assertEqual(row['max_ctas_per_sm_from_launch_limits'],3)
+            self.assertEqual(row['dynamic_instructions'],total)
+            self.assertEqual(row['opcodes']['LDSM'],6291456)
+            self.assertEqual(row['opcodes']['LDSM'],results[23]['opcodes']['LDSM']*1.5)
+            self.assertEqual(row['opcodes']['IMMA'],results[23]['opcodes']['IMMA'])
+            self.assertEqual(row['opcodes']['I2F'],16777216)
+            self.assertEqual(row['source_memory_work']['L2 Theoretical Sectors Local'],0)
+            self.assertEqual(row['binding_modeled_resources'],['l1tex_data_wavefront_capacity'])
+            self.assertGreater(row['optimistic_fixed_work_lower_bound_ms'],
+                               results[23]['optimistic_fixed_work_lower_bound_ms'])
+            self.assertLess(row['eligible_warps'],results[23]['eligible_warps'])
+            # Counters establish increased work, not a sum of runtime fractions.
+            self.assertIn('not runtime fractions',row['pc_sampling']['interpretation'])
+
     def test_resource_model_requires_full_counters_and_correct_units(self):
         raw=(EVIDENCE/'ncu_o7_t6_raw.csv').read_text()
         sass=(EVIDENCE/'ncu_o7_t6_source_sass.csv').read_text()
