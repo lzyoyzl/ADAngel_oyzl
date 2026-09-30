@@ -327,8 +327,8 @@ __device__ __forceinline__ void o3_body(
               else value=float(partial);
               acc(vi,mi,full_ni)=__fmaf_rn(value,scale,acc(vi,mi,full_ni));
             });
-          }
           });
+          }
         });
           // All lanes take every slice. Keep next-slice shared loads after
           // this warp-scoped boundary, limiting cross-slice operand hoisting.

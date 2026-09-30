@@ -38,8 +38,9 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   TORCH_CHECK(prop.major==8 && prop.minor==0,"requires SM80");
   TORCH_CHECK(at::isfinite(as).all().item<bool>() && as.ge(0).all().item<bool>(),"invalid A scale");
   bool fast=false;
-  if(dual) TORCH_CHECK(at::isfinite(ws).all().item<bool>() && ws.ge(0).all().item<bool>(),"invalid W scale");
-  else {
+  if(dual) {
+    TORCH_CHECK(at::isfinite(ws).all().item<bool>() && ws.ge(0).all().item<bool>(),"invalid W scale");
+  } else {
     TORCH_CHECK(ws.ne(255).all().item<bool>(),"UE8M0 code 255 is invalid");
     float amin=as.min().item<float>(),amax=as.max().item<float>();
     uint32_t lo,hi;std::memcpy(&lo,&amin,4);std::memcpy(&hi,&amax,4);
