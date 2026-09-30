@@ -15,6 +15,30 @@ class RoofScaleNcuTests(unittest.TestCase):
         self.assertEqual(result['dynamic_instructions'],124698624)
         self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Local'],12582912)
         self.assertEqual(result['opcodes']['FMUL'],16777216)
+        self.assertEqual(result['registers_per_thread'],127)
+        self.assertEqual(result['registers_per_thread_allocated'],128)
+        self.assertAlmostEqual(result['dynamic_shared_bytes'],68608)
+        self.assertAlmostEqual(result['allocated_shared_bytes_including_driver'],69632)
+        self.assertEqual(result['max_ctas_per_sm_from_launch_limits'],2)
+        self.assertLess(result['achieved_occupancy_percent'],25)
+
+    def test_three_stage_identity_and_memory_units(self):
+        # Parser fixture only: renaming an archived kernel is NOT GPU evidence.
+        raw=(EVIDENCE/'ncu_o7_t6_raw.csv').read_text()
+        sass=(EVIDENCE/'ncu_o7_t6_source_sass.csv').read_text()
+        for tune in (16,17):
+            new_raw=raw.replace('<1, 0, 6>',f'<1, 0, {tune}>')
+            new_sass=sass.replace('(int)6>',f'(int){tune}>')
+            result=ANALYZE(new_raw,new_sass,tune,'o7')
+            self.assertEqual(result['opcodes']['IMMA'],16777216)
+            self.assertEqual(result['opcodes']['FMUL'],16777216)
+            # Resource values remain the fixture's two-stage values, not a
+            # fabricated claim of three-CTA residency for the new candidate.
+            self.assertEqual(result['max_ctas_per_sm_from_launch_limits'],2)
+            with self.assertRaises(ValueError):
+                ANALYZE(new_raw.replace('Kbyte/block','KiB/block'),new_sass,tune,'o7')
+            with self.assertRaises(ValueError):
+                ANALYZE(new_raw,sass,tune,'o7')
 
     def test_counts_reconcile_with_raw(self):
         for tune,total in ((6,127238144),(11,135364608)):

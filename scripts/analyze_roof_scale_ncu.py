@@ -10,7 +10,7 @@ import re
 
 
 def analyze(raw_payload, sass_payload, tune, variant='o7'):
-    allowed={'o3':(6,13),'o7':(6,11,12,14,15),'o8':(6,14,15)}
+    allowed={'o3':(6,13,16,17),'o7':(6,11,12,14,15,16,17),'o8':(6,14,15,16,17)}
     if variant not in allowed or tune not in allowed[variant]:
         raise ValueError('unsupported variant/tune profiling pair')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
@@ -40,6 +40,10 @@ def analyze(raw_payload, sass_payload, tune, variant='o7'):
     def metric(key,unit=None):
         if unit is not None and units[key]!=unit: raise ValueError(f'unexpected unit for {key}')
         return float(raw[key].replace(',',''))
+    def shared_bytes(key):
+        factors={'byte/block':1,'Kbyte/block':1000,'Mbyte/block':1000000}
+        if units[key] not in factors: raise ValueError(f'unexpected memory unit for {key}')
+        return metric(key)*factors[units[key]]
     if sum(counts.values())!=metric('smsp__inst_executed.sum','inst'):
         raise ValueError('raw/source dynamic instruction mismatch')
     if any(counts.get(k)!=16777216 for k in ('IMMA','I2F','FFMA')):
@@ -48,12 +52,22 @@ def analyze(raw_payload, sass_payload, tune, variant='o7'):
         raise ValueError('unexpected scale math')
     cycles=metric('l1tex__cycles_elapsed.avg','cycle')
     fraction=metric('l1tex__data_pipe_lsu_wavefronts.avg.pct_of_peak_sustained_elapsed','%')/100
+    occupancy_limits={name:metric(f'launch__occupancy_limit_{name}','block')
+                      for name in ('blocks','registers','shared_mem','warps')}
     return dict(variant=variant,tune=tune,kernel=identity[1],dynamic_instructions=sum(counts.values()),
         opcodes=counts,source_memory_work=work,
         source_memory_work_note='theoretical sectors/wavefront work; not actual HBM bytes',
         ncu_duration_ms=metric('gpu__time_duration.sum','us')/1000,
         eligible_warps=metric('smsp__warps_eligible.avg.per_cycle_active'),
         issue_active_percent=metric('smsp__issue_active.avg.pct_of_peak_sustained_active','%'),
+        registers_per_thread=metric('launch__registers_per_thread','register/thread'),
+        registers_per_thread_allocated=metric('launch__registers_per_thread_allocated','register/thread'),
+        dynamic_shared_bytes=shared_bytes('launch__shared_mem_per_block_dynamic'),
+        allocated_shared_bytes_including_driver=shared_bytes('launch__shared_mem_per_block_allocated'),
+        occupancy_cta_limits=occupancy_limits,
+        max_ctas_per_sm_from_launch_limits=min(occupancy_limits.values()),
+        achieved_occupancy_percent=metric('sm__warps_active.avg.pct_of_peak_sustained_active','%'),
+        l1_data_pipe_peak_percent=fraction*100,
         l1_service_ms_at_1410=cycles*fraction/1410000,
         l1_bound_note='profile-conditioned capacity requirement only, not attainable kernel time',
         long_scoreboard_stall_per_issue=metric('smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio'),
