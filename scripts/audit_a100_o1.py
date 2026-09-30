@@ -21,7 +21,7 @@ def audit_policy(checks, allow_spills=False):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
-    p.add_argument('--variant',choices=['o1','o3','split_grouped','mixed_binary'],default='o1')
+    p.add_argument('--variant',choices=['o1','o3','split_grouped','mixed_binary','roof_candidate'],default='o1')
     p.add_argument('--allow-spills',action='store_true',
                    help='INT4 paths: report spill checks as warnings, never waive ISA checks or missing resource data')
     args=p.parse_args()
@@ -40,7 +40,7 @@ def main():
     for block in re.split(r'(?=Function\s*:\s*)',outputs['extension.sass']):
         if not block.startswith('Function'): continue
         symbol=block.splitlines()[0].split(':',1)[1].strip()
-        prefix=('adangel_sm80_'+args.variant) if args.variant in ('split_grouped','mixed_binary') else f'adangel_sm80_{args.variant}_swizzled'
+        prefix=('adangel_sm80_'+args.variant) if args.variant in ('split_grouped','mixed_binary','roof_candidate') else f'adangel_sm80_{args.variant}_swizzled'
         if prefix not in symbol: continue
         rm=re.search(r'Function\s+(?:\:\s*)?'+re.escape(symbol)+r'\s*:\s*([^\n]+)',outputs['resources.txt'])
         resource=rm[0] if rm else ''
@@ -62,7 +62,7 @@ def main():
             resource_no_stack=bool(stack and int(stack[1])==0),
             ptx_async='cp.async' in ptx,
             ptx_int8=bool(re.search(r'mma\.sync[^;]*\.s32\.s8\.s8\.s32',ptx)))
-        if args.variant in ('o3','split_grouped'):
+        if args.variant in ('o3','split_grouped','roof_candidate'):
             del checks['sass_int8'];del checks['ptx_int8']
             checks.update(sass_u4s4=bool(re.search(r'IMMA\.\w+\.U4\.S4',block)),
                 sass_s4s4=bool(re.search(r'IMMA\.\w+\.S4\.S4',block)),
@@ -77,6 +77,7 @@ def main():
         # Itanium template arguments: ExponentScale=true, PairMma=false,
         # MagicCast=true. Match both streaming and non-streaming instances.
         magic='Lb1ELb0ELb1E' in symbol
+        if args.variant=='roof_candidate': magic=False
         # Decode explicit O3 template arguments; do not infer Magic from Fast
         # or accidentally match the independent integer-merge boolean.
         if args.variant=='o3':

@@ -23,10 +23,10 @@ def main():
     p.add_argument("--warmup", type=int, default=50)
     p.add_argument("--repeats", type=int, default=200)
     p.add_argument("--rounds", type=int, default=3)
-    p.add_argument("--tunes", type=int, nargs="+", default=[0, 1, 2, 3])
+    p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in range(4) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in range(-1, 4) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
     import torch
     from adangel import _sm80 as native
