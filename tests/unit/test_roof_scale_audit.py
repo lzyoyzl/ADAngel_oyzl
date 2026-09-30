@@ -28,7 +28,7 @@ class RoofScaleAuditTests(unittest.TestCase):
 
     def test_three_stage_waits_are_both_required_in_same_entry(self):
         check=AUDIT['roof_pipeline_checks']
-        for tune in (16,17,18,19,23):
+        for tune in (16,17,18,19,23,31):
             symbol=f'adangel_sm80_roof_candidateILb1ELb0ELi{tune}EE'
             ptx='cp.async.wait_group 1; cp.async.wait_group 0;'
             sass='DEPBAR.LE SB0, 0x1; DEPBAR.LE SB0, 0x0;'
