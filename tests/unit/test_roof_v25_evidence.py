@@ -1,5 +1,6 @@
 """Recorded preliminary v25 evidence. Does NOT assert 24-sample acceptance."""
 import json
+import statistics
 from pathlib import Path
 import unittest
 
@@ -64,6 +65,33 @@ class V25EvidenceTests(unittest.TestCase):
             self.assertEqual(r['kernel']['activation_payload_reorder_traffic_bytes'],0)
             self.assertEqual(r['kernel']['weight_payload_reorder_traffic_bytes'],0)
             self.assertEqual(r['mse_vs_production'],0)
+
+    def test_o3_complete_four_modes_and_no_mse_change(self):
+        run=ROOT/'runs/o378_roof_v25_o3_four24'
+        if not (run/'summary.json').exists(): self.skipTest('O3 complete archive not present')
+        env=json.loads((run/'environment.json').read_text())
+        self.assertEqual(env['binary_sha256'],BINARY)
+        self.assertEqual(env['args']['samples'],24)
+        self.assertEqual((env['args']['warmup'],env['args']['repeats'],env['args']['inner']),(50,200,100))
+        rows=[json.loads(line) for line in (run/'results.jsonl').read_text().splitlines()]
+        self.assertEqual(len(rows),384)
+        self.assertEqual(len({r['sample_id'] for r in rows}),24)
+        for tune in (-1,22,41,43):
+            for mode in ('conversion_only','compute_only','cold','steady_state'):
+                group=[r for r in rows if (r['tune'],r['mode'])==(tune,mode)]
+                self.assertEqual(len(group),24)
+                self.assertTrue(all(r['bitwise_equal_production'] and r['mse_vs_production']==0 for r in group))
+                self.assertTrue(all(len(r['raw_ms'])==200 for r in group))
+        report=json.loads((REPORTS/'o3_four24_43_vs41.json').read_text())
+        doc=(ROOT/'README.md').read_text()
+        for r in report['rows']:
+            self.assertIn(f"{r['candidate_median_ms']:.6f}",doc)
+            self.assertIn(f"{r['reference_median_ms']:.6f}",doc)
+            a=sorted([x for x in rows if (x['tune'],x['mode'])==(41,r['mode'])],key=lambda x:x['sample_id'])
+            b=sorted([x for x in rows if (x['tune'],x['mode'])==(43,r['mode'])],key=lambda x:x['sample_id'])
+            speed=statistics.median(x['summary']['median_ms']/y['summary']['median_ms'] for x,y in zip(a,b))
+            self.assertEqual(speed,r['paired_speedup_median'])
+            self.assertEqual(r['cv']['43']['selected_stage_failed'],sum(y['summary']['cv_percent']>=3 for y in b))
 
 
 if __name__=='__main__': unittest.main()
