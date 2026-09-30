@@ -117,12 +117,15 @@ def main():
                    "gpu": command("nvidia-smi", "--query-gpu=clocks.sm,temperature.gpu,power.draw,utilization.gpu", "--format=csv")})
             order = args.tunes[r % len(args.tunes):] + args.tunes[:r % len(args.tunes)]
             for tune in order:
+                wall_start=time.time()
                 result = native._benchmark_roof_candidate(variant, tune, *values, args.warmup, args.repeats)
+                wall_end=time.time()
                 y = result["output"]
                 assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, "large")
                 raw = list(result["gemm_ms"])
                 row = dict(variant=variant, tune=tune, round=r, raw_ms=raw, summary=stats(raw),
                            execution_order=order,order_position=order.index(tune),
+                           wall_start_unix=wall_start,wall_end_unix=wall_end,
                            kernel=dict(result["kernel"]), bitwise_equal_production=True, mse_vs_production=0.0)
                 records.append(row);append("results.jsonl", row)
                 print(variant, r, tune, row["summary"], flush=True)

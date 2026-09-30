@@ -149,6 +149,7 @@ def main():
                 for mode_index, mode in enumerate(modes):
                     order=measurement_order(args.tunes,si,vi,r,mode_index)
                     for tune in order:
+                        wall_start=time.time()
                         if not args.all_modes:
                             result=native._benchmark_roof_candidate(variant,tune,*values,args.warmup,args.repeats)
                             timings={'gemm':list(result['gemm_ms'])}
@@ -160,6 +161,7 @@ def main():
                                 result=native._benchmark_mixed(variant,mode,wsrc,asrc,args.warmup,args.repeats,
                                     args.inner,'64x128x256','group_major',tune)
                             timings={k:list(v) for k,v in result['timings_ms'].items()}
+                        wall_end=time.time()
                         y=result['output']
                         if y.dtype!=torch.float32 or not torch.isfinite(y).all() or not torch.equal(y.view(torch.int32),expected.view(torch.int32)):
                             raise AssertionError((x.sample_id,variant,tune,mode,'output differs from production'))
@@ -174,6 +176,7 @@ def main():
                             st['logical_gbps']=count/st['median_ms']/1e6 if count else None
                         row=dict(sample_id=x.sample_id,variant=variant,tune=tune,round=r,mode=mode,
                             execution_order=order,order_position=order.index(tune),
+                            wall_start_unix=wall_start,wall_end_unix=wall_end,
                             raw_ms=times,summary=stage_stats[stage],stage_timings_ms=timings,stage_summaries=stage_stats,
                             kernel=dict(result['kernel']),conversion_inner_repeats=args.inner if args.all_modes else None,
                             stage_timing_inner_repeats={name:args.inner if 'conversion' in name or mode=='conversion_only' else 1 for name in timings},
