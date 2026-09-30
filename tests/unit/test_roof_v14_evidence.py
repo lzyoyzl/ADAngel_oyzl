@@ -10,6 +10,25 @@ E=ROOT/'docs/evidence/a100_o378_roof_v14'
 
 
 class WarpReuseEvidence(unittest.TestCase):
+    def test_complete_four_modes_are_separate_and_balanced(self):
+        base=E/'runs/o378_roof_v14_four24'
+        rows=[json.loads(x) for x in (base/'results.jsonl').read_text().splitlines()]
+        keys={(r['sample_id'],r['variant'],r['mode'],r['round'],r['tune']) for r in rows}
+        self.assertEqual(len(rows),1728)
+        self.assertEqual(len(keys),1728)
+        self.assertEqual(len({r['sample_id'] for r in rows}),24)
+        self.assertEqual({r['mode'] for r in rows},{'conversion_only','compute_only','cold','steady_state'})
+        self.assertTrue(all(r['bitwise_equal_production'] and r['mse_vs_production']==0 for r in rows))
+        summary=json.loads((base/'summary.json').read_text())
+        self.assertTrue(summary['all_four_modes_completed'] and summary['correctness_passed'])
+        for v in ('o7','o8'):
+            for sid in {r['sample_id'] for r in rows}:
+                rs=[r for r in rows if r['sample_id']==sid and r['variant']==v]
+                self.assertEqual(len({(r['mse_vs_o0'],r['mse_vs_paired_fp16']) for r in rs}),1)
+                for mode in ('conversion_only','compute_only','cold','steady_state'):
+                    for t in (-1,14,21):
+                        self.assertEqual(sorted(r['order_position'] for r in rs if r['mode']==mode and r['tune']==t),[0,1,2])
+
     def test_trace_coverage_order_mse_and_no_filtering(self):
         rows=[json.loads(x) for x in (E/'runs/o378_roof_v14_trace24/results.jsonl').read_text().splitlines()]
         index={(r['sample_id'],r['variant'],r['round'],r['tune']):r for r in rows}
