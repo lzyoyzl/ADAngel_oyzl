@@ -28,6 +28,10 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('select_three_stage_kernel(dual,fast,tune)',roof)
         self.assertNotIn('ROOF_PICK(16)',roof)
         self.assertNotIn('ROOF_PICK(17)',roof)
+        self.assertNotIn('ROOF_PICK(18)',roof)
+        self.assertNotIn('ROOF_PICK(19)',roof)
+        self.assertIn('__launch_bounds__(256,(Tune>=18?2:3))',separate)
+        self.assertIn('CoreTune=(Tune==16 || Tune==18)?2:6',separate)
 
     def test_production_default_unchanged(self):
         host = (ROOT / "csrc/sm80/o1_o3.cu").read_text()
@@ -66,8 +70,9 @@ class RoofCandidatesContractTest(unittest.TestCase):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
         self.assertIn('WN=Tune==8?4:2',text)
         self.assertIn('MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17)?3:2',text)
-        self.assertIn('CoreTune=Tune==16?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
-        self.assertIn('K=(Tune==10 || Tune==16 || Tune==17)?128:256',text)
+        self.assertIn('CoreTune=(Tune==16 || Tune==18)?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
+        self.assertIn('K=(Tune==10 || Tune>=16)?128:256',text)
+        self.assertIn('Stages=Tune>=16?3:2',text)
         self.assertIn('dim3(n/cfg.n,m/64),cfg.threads,smem',text)
         self.assertIn('cudaOccupancyMaxActiveBlocksPerMultiprocessor',text)
         for name in ('o1_o3.cu','mixed_benchmark.cuh'):

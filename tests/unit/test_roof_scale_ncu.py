@@ -26,7 +26,7 @@ class RoofScaleNcuTests(unittest.TestCase):
         # Parser fixture only: renaming an archived kernel is NOT GPU evidence.
         raw=(EVIDENCE/'ncu_o7_t6_raw.csv').read_text()
         sass=(EVIDENCE/'ncu_o7_t6_source_sass.csv').read_text()
-        for tune in (16,17):
+        for tune in (16,17,18,19):
             new_raw=raw.replace('<1, 0, 6>',f'<1, 0, {tune}>')
             new_sass=sass.replace('(int)6>',f'(int){tune}>')
             result=ANALYZE(new_raw,new_sass,tune,'o7')
@@ -81,6 +81,17 @@ class RoofScaleNcuTests(unittest.TestCase):
         self.assertEqual(result['opcodes']['FMUL'],16777216)
         self.assertEqual(result['source_memory_work']['L1 Wavefronts Shared Excessive'],860159)
         self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Global Excessive'],491520)
+
+    def test_archived_three_stage_tradeoff(self):
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v12/reports/o378_roof_v12'
+        for variant,total,local in (('o3',166494208,80871424),('o7',141000704,8650752)):
+            result=ANALYZE((evidence/f'ncu_{variant}_t17_raw.csv').read_text(),
+                           (evidence/f'ncu_{variant}_t17_source_sass.csv').read_text(),17,variant)
+            self.assertEqual(result['dynamic_instructions'],total)
+            self.assertEqual(result['registers_per_thread'],80)
+            self.assertEqual(result['max_ctas_per_sm_from_launch_limits'],3)
+            self.assertEqual(result['source_memory_work']['L2 Theoretical Sectors Local'],local)
+            self.assertEqual(result['source_memory_work']['L1 Wavefronts Shared Excessive'],8388608)
 
 
 if __name__=='__main__': unittest.main()

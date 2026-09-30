@@ -1,6 +1,6 @@
 // Isolated three-stage experiment. Keep the two-stage production body in
 // o3_optimized.cuh byte-identical to the audited v8 source until acceptance.
-// Only roof candidates16/17 instantiate this namespace; not a default backend.
+// Only roof candidates16..19 instantiate this namespace; not a default backend.
 #pragma once
 namespace o3_pipeline_experiment {
 template<int N,bool Cached> struct O3ScaleCodeScratch {};
