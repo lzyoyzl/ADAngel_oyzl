@@ -1,5 +1,6 @@
 """Compile-time shape isolation contracts; GPU correctness/performance separate."""
 from pathlib import Path
+import runpy
 import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -39,7 +40,13 @@ class FixedShapeContract(unittest.TestCase):
         self.assertIn("'fixed4096 candidate32/33 requires' not in str(error)",source)
         self.assertIn('rejected_shapes.append',source)
         self.assertIn('torch.equal(y.view(torch.int32), expected.view(torch.int32))',source)
-        self.assertIn('33)EE',(ROOT/'scripts/audit_a100_o1.py').read_text())
+        audit=runpy.run_path(str(ROOT/'scripts/audit_a100_o1.py'))
+        check=audit['roof_pipeline_checks']('adangel_sm80_roof_candidateILb1ELb0ELi33EE',
+            'cp.async.wait_group 1; cp.async.wait_group 0;',
+            'DEPBAR.LE SB0, 0x1; DEPBAR.LE SB0, 0x0;')
+        self.assertTrue(check and all(check.values()))
+        missing=audit['roof_pipeline_checks']('adangel_sm80_roof_candidateILb1ELb0ELi33EE', '', '')
+        self.assertFalse(all(missing.values()))
 
 
 if __name__=='__main__': unittest.main()

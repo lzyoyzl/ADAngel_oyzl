@@ -18,11 +18,11 @@
 // 34/35: independently rounded products, then window4/window32 balanced sum.
 template<int Tune> struct RoofShape {
   static constexpr int N=(Tune==9 || Tune==10)?64:128;
-  static constexpr int K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23) || (Tune>=28 && Tune<=40))?128:256;
-  static constexpr int Stages=((Tune>=16 && Tune<=19) || Tune==23 || Tune==29 || Tune==31 || Tune==33 || Tune==39 || Tune==40)?3:2;
+  static constexpr int K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23) || (Tune>=28 && Tune<=42))?128:256;
+  static constexpr int Stages=((Tune>=16 && Tune<=19) || Tune==23 || Tune==29 || Tune==31 || Tune==33 || Tune==39 || Tune==40 || Tune==42)?3:2;
   static constexpr int WN=Tune==8?4:2;
-  static constexpr int Threads=((Tune>=20 && Tune<=23) || (Tune>=28 && Tune<=40))?128:128*WN;
-  static constexpr int MinBlocks=Tune==28?4:((Tune==26 || Tune==27 || Tune==34 || Tune==35 || Tune==36 || Tune==37 || Tune==38)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23) || (Tune>=29 && Tune<=33) || Tune==39 || Tune==40)?3:2));
+  static constexpr int Threads=((Tune>=20 && Tune<=23) || (Tune>=28 && Tune<=42))?128:128*WN;
+  static constexpr int MinBlocks=Tune==28?4:((Tune==26 || Tune==27 || Tune==34 || Tune==35 || Tune==36 || Tune==37 || Tune==38)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23) || (Tune>=29 && Tune<=33) || (Tune>=39 && Tune<=42))?3:2));
   static constexpr int CoreTune=(Tune==16 || Tune==18 || Tune==20 || Tune==40)?2:(Tune>=11?6:(Tune>=8?2:Tune));
 };
 
@@ -39,7 +39,21 @@ void adangel_sm80_roof_candidate(
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=40);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=42);
+}
+
+bool roof_grouped_payload(int tune) {return tune==41 || tune==42;}
+void roof_pack_payload(const at::Tensor& src,const at::Tensor& dst,int planes,int rows,int k,cudaStream_t stream) {
+  adangel_sm80_experiment::pack_g128_payload(src.data_ptr<uint8_t>(),dst.data_ptr<uint8_t>(),planes,rows,k,stream);
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+}
+void roof_payload_metadata(py::dict& meta,int tune,int m,int n,int k) {
+  const bool packed=roof_grouped_payload(tune);
+  meta["payload_layout"]=packed?"plane_group_row_k64_bytes":"plane_row_group_k64_bytes";
+  meta["payload_reorder_in_conversion"]=packed;
+  meta["payload_reorder_fused"]=false;
+  meta["activation_payload_reorder_traffic_bytes"]=packed?int64_t(2)*m*k:0;
+  meta["weight_payload_reorder_traffic_bytes"]=packed?int64_t(n)*k:0;
 }
 
 void check_roof_fixed_shape(int tune,int64_t m,int64_t n,int64_t k) {
@@ -126,6 +140,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 38:return roof_config_for<38>(dual);
     case 39:return roof_config_for<39>(dual);
     case 40:return roof_config_for<40>(dual);
+    case 41:return roof_config_for<41>(dual);
+    case 42:return roof_config_for<42>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -137,6 +153,7 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
+  if(tune==41 || tune==42) return adangel_sm80_experiment::select_grouped_payload_kernel(dual,fast,tune);
   if(tune==39 || tune==40) return adangel_sm80_experiment::select_fragment_tree_kernel(dual,fast,tune);
   if(tune==37 || tune==38) return adangel_sm80_experiment::select_static_eager_tree_kernel(dual,fast,tune);
   if(tune==36) return adangel_sm80_experiment::select_eager_tree_kernel(dual,fast,tune);
@@ -200,7 +217,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
       a.scalar_type()==at::kByte && w.scalar_type()==at::kByte,"packed contiguous uint8 required");
   int64_t m64=a.size(0)/2,n64=w.size(0),k64=a.size(1)*2;
   check_roof_fixed_shape(tune,m64,n64,k64);
-  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || (tune>=28 && tune<=40))?128:256;
+  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || (tune>=28 && tune<=42))?128:256;
   TORCH_CHECK(a.size(0)%2==0 && m64>0 && n64>0 && k64>0 && m64%64==0 && n64%128==0 && k64%required_k==0 &&
       m64*k64<=2147483647LL && n64*k64<=2147483647LL && m64*n64<=2147483647LL &&
       m64/64<=65535 && n64/128<=65535 && w.size(1)==a.size(1),"invalid aligned shape/index range");
@@ -237,6 +254,13 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   auto stream=c10::cuda::getCurrentCUDAStream(a.get_device()).stream();
   auto launch_ws=tune==13 ? at::empty({g,n},ws.options()) : ws;
   if(tune==13) roof_reorder_o3_scale(ws,launch_ws,n,g,stream);
+  auto launch_a=roof_grouped_payload(tune)?at::empty({2,g,m,64},a.options()):a;
+  auto launch_w=roof_grouped_payload(tune)?at::empty({g,n,64},w.options()):w;
+  if(roof_grouped_payload(tune)) {
+    // Prepared-input API is compute-only; the four-mode adapters time these copies.
+    roof_pack_payload(a,launch_a,2,m,k,stream);
+    roof_pack_payload(w,launch_w,1,n,k,stream);
+  }
   const auto cfg=roof_config(tune,dual);
   const size_t smem=cfg.smem;
   auto kernel=adangel_sm80_roof_candidate<false,false,0>;
@@ -264,7 +288,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
       adangel_sm80_split_grouped_major<128,256><<<dim3(n/128,m/64),256,smem,stream>>>(
           a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),as.data_ptr<float>(),ws.data_ptr<float>(),
           y.data_ptr<float>(),m,n,k);
-    else kernel<<<dim3(n/cfg.n,m/64),cfg.threads,smem,stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
+    else kernel<<<dim3(n/cfg.n,m/64),cfg.threads,smem,stream>>>(launch_a.data_ptr<uint8_t>(),launch_w.data_ptr<uint8_t>(),
         as.data_ptr<float>(),reinterpret_cast<const uint8_t*>(launch_ws.data_ptr()),y.data_ptr<float>(),m,n,k);
     C10_CUDA_KERNEL_LAUNCH_CHECK();
   };
@@ -286,13 +310,13 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
   meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
   meta["pipeline_stages"]=cfg.stages;
-  const int warp_m=((tune>=20 && tune<=23) || (tune>=28 && tune<=40))?2:4;
+  const int warp_m=((tune>=20 && tune<=23) || (tune>=28 && tune<=42))?2:4;
   meta["warp_layout"]=std::vector<int>{warp_m,cfg.threads/(32*warp_m)};
   meta["accumulators_per_thread"]=64*cfg.n/cfg.threads;
   meta["fp32_accumulation_chains"]=(tune==24 || tune==26)?2:((tune==25 || tune==27)?4:1);
   meta["fp32_reassociated"]=tune>=24 && tune<=27;
   if(tune>=34 && tune<=40) meta["fp32_reassociated"]=true;
-  meta["product_window_groups"]=tune>=38?2:((tune==34 || tune==36 || tune==37)?4:(tune==35?32:0));
+  meta["product_window_groups"]=(tune>=38 && tune<=40)?2:((tune==34 || tune==36 || tune==37)?4:(tune==35?32:0));
   meta["separate_rounded_products"]=tune>=34 && tune<=40;
   meta["eager_product_reduction"]=tune>=36 && tune<=40;
   meta["compile_time_reduction_phase"]=tune>=37 && tune<=40;
@@ -308,7 +332,12 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["shared_memory_bytes"]=smem;meta["scope"]="candidate_compute_only_not_production";
   meta["registers_per_thread"]=attributes.numRegs;meta["local_bytes_per_thread"]=attributes.localSizeBytes;
   meta["max_resident_blocks_per_sm"]=resident_blocks;
+  roof_payload_metadata(meta,tune,m,n,k);
   py::dict result;result["output"]=y;result["gemm_ms"]=times;result["kernel"]=meta;
+  if(roof_grouped_payload(tune)) {
+    result["packed_activation_g128_major"]=launch_a;
+    result["packed_weight_g128_major"]=launch_w;
+  }
   if(tune==13) result["converted_weight_scale"]=launch_ws;
   return result;
 }

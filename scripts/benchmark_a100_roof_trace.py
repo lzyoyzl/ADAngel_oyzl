@@ -12,6 +12,7 @@ import time
 
 from benchmark_a100_o1 import command, stats
 from roof_reduction_validation import compare_output, reference_fp64, mse_regression_ok
+from roof_payload_validation import verify_grouped_payload, payload_reorder_bytes_for_stage
 from benchmark_a100_mixed import conversion_bytes, integer_reference, validate_fp16_result
 from benchmark_a100_mixed_trace import (
     inspect_inputs, inspect_raw_inputs, mse, source_identity, verify_raw_prepared,
@@ -76,7 +77,7 @@ def main():
     args = p.parse_args()
     if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2 or args.inner<2
         or -1 not in args.tunes or len(set(args.tunes))!=len(args.tunes)
-        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
+        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
         p.error('fresh output, production control (-1), unique valid cases and positive repetitions required')
     if any(t in (24,25,26,27,34,35,36,37,38,39,40) for t in args.tunes) and not args.allow_reassociation:
         p.error('candidates24-27/34-40 require explicit --allow-reassociation')
@@ -173,6 +174,7 @@ def main():
                             timings={k:list(v) for k,v in result['timings_ms'].items()}
                         wall_end=time.time()
                         y=result['output']
+                        payload_checks=verify_grouped_payload(result,tune,values[0],values[2])
                         if args.allow_reassociation:
                             tree_base=native._benchmark_roof_candidate(variant,36 if tune==37 else 38,*values,0,1)['output'] if tune in (37,39,40) else None
                             numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']),tree_base)
@@ -184,6 +186,7 @@ def main():
                                 raise AssertionError((x.sample_id,variant,tune,mode,'output differs from production'))
                             numeric=dict(bitwise_equal_production=True,mse_vs_production=0.0)
                             actual_metrics=metrics
+                        numeric.update(payload_checks)
                         if any(len(t)!=args.repeats for t in timings.values()):
                             raise ValueError('missing timing repetitions')
                         stage='gemm' if mode=='compute_only' else 'total'
@@ -193,6 +196,7 @@ def main():
                             count=conversion_bytes(variant,name,*x.shape) if 'conversion' in name or mode=='conversion_only' else 0
                             if name=='weight_conversion' or (name=='total' and mode=='conversion_only'):
                                 count+=int(result['kernel'].get('weight_scale_reorder_bytes',0))
+                            count+=payload_reorder_bytes_for_stage(result['kernel'],mode,name)
                             st['logical_bytes']=count
                             st['logical_gbps']=count/st['median_ms']/1e6 if count else None
                         row=dict(sample_id=x.sample_id,variant=variant,tune=tune,round=r,mode=mode,

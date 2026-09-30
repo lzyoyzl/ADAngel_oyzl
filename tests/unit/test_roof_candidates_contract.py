@@ -69,10 +69,10 @@ class RoofCandidatesContractTest(unittest.TestCase):
     def test_targeted_occupancy_candidates_use_configured_launch(self):
         text=(ROOT/'csrc/sm80/roof_candidates.cuh').read_text()
         self.assertIn('WN=Tune==8?4:2',text)
-        self.assertIn('MinBlocks=Tune==28?4:((Tune==26 || Tune==27 || Tune==34 || Tune==35 || Tune==36 || Tune==37 || Tune==38)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23) || (Tune>=29 && Tune<=33) || Tune==39 || Tune==40)?3:2))',text)
+        self.assertIn('MinBlocks=Tune==28?4:((Tune==26 || Tune==27 || Tune==34 || Tune==35 || Tune==36 || Tune==37 || Tune==38)?1:((Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23) || (Tune>=29 && Tune<=33) || (Tune>=39 && Tune<=42))?3:2))',text)
         self.assertIn('CoreTune=(Tune==16 || Tune==18 || Tune==20 || Tune==40)?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
-        self.assertIn('K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23) || (Tune>=28 && Tune<=40))?128:256',text)
-        self.assertIn('Stages=((Tune>=16 && Tune<=19) || Tune==23 || Tune==29 || Tune==31 || Tune==33 || Tune==39 || Tune==40)?3:2',text)
+        self.assertIn('K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23) || (Tune>=28 && Tune<=42))?128:256',text)
+        self.assertIn('Stages=((Tune>=16 && Tune<=19) || Tune==23 || Tune==29 || Tune==31 || Tune==33 || Tune==39 || Tune==40 || Tune==42)?3:2',text)
         self.assertIn('dim3(n/cfg.n,m/64),cfg.threads,smem',text)
         self.assertIn('cudaOccupancyMaxActiveBlocksPerMultiprocessor',text)
         for name in ('o1_o3.cu','mixed_benchmark.cuh'):
@@ -87,7 +87,7 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('static constexpr int WM=2;',experiment)
         self.assertIn('static_assert(M==64 && WN==2 && K==256)',experiment)
         self.assertNotIn('__global__',experiment)
-        self.assertIn('Threads=((Tune>=20 && Tune<=23) || (Tune>=28 && Tune<=40))?128:128*WN',host)
+        self.assertIn('Threads=((Tune>=20 && Tune<=23) || (Tune>=28 && Tune<=42))?128:128*WN',host)
         self.assertIn('select_warp_reuse_kernel(dual,fast,tune)',host)
         self.assertNotIn('#include "o3_warp_reuse_candidate.cuh"',host)
         self.assertIn('"csrc/sm80/roof_warp_reuse.cu"',(ROOT/'setup.py').read_text())

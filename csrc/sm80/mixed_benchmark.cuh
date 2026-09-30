@@ -47,6 +47,11 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     ah=at::empty({m,k},a.payload.options().dtype(at::kHalf));
   } else if(binary) {bw=std::make_unique<MixedBitplanes>(w,gm);ba=std::make_unique<MixedBitplanes>(a,gm);}
   else {cw=std::make_unique<MixedConverted>(w,gm);ca=std::make_unique<MixedConverted>(a,gm);}
+  at::Tensor roof_a,roof_w;
+  if(roof_grouped_payload(roof_tune)) {
+    roof_a=at::empty({2,k/128,m,64},ca->packed.options());
+    roof_w=at::empty({k/128,n,64},cw->packed.options());
+  }
   auto y=at::empty({m,n},a.payload.options().dtype(at::kFloat));
   std::unique_ptr<AdangelFp16Runner> fp16_plan;
   if(fp16) fp16_plan=adangel_make_fp16_runner(ah,wh,y);
@@ -62,14 +67,21 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     if(roof_tune>=0) check(cudaFuncSetAttribute(roof_kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(roof_cfg.smem)));
     else check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
   }
-  auto cvw=[&]() {if(fp16) launch_mixed_fp16(w,wh,stream);else if(binary) launch_mixed_bitplanes(w,*bw,stream);else launch_mixed_conversion(w,*cw,stream);};
-  auto cva=[&]() {if(fp16) launch_mixed_fp16(a,ah,stream);else if(binary) launch_mixed_bitplanes(a,*ba,stream);else launch_mixed_conversion(a,*ca,stream);};
+  auto cvw=[&]() {
+    if(fp16) launch_mixed_fp16(w,wh,stream);else if(binary) launch_mixed_bitplanes(w,*bw,stream);else launch_mixed_conversion(w,*cw,stream);
+    if(roof_grouped_payload(roof_tune)) roof_pack_payload(cw->packed,roof_w,1,n,k,stream);
+  };
+  auto cva=[&]() {
+    if(fp16) launch_mixed_fp16(a,ah,stream);else if(binary) launch_mixed_bitplanes(a,*ba,stream);else launch_mixed_conversion(a,*ca,stream);
+    if(roof_grouped_payload(roof_tune)) roof_pack_payload(ca->packed,roof_a,2,m,k,stream);
+  };
   auto gemm=[&]() {
     if(fp16) {fp16_plan->run(stream);return;}
     if(binary) {launch_mixed_binary(*ba,*bw,y,m,n,k,tn,tk,stream,false,horner,wide,swizzle);return;}
     if(roof_tune>=0) {
-      roof_kernel<<<dim3(n/roof_cfg.n,m/64),roof_cfg.threads,roof_cfg.smem,stream>>>(ca->packed.data_ptr<uint8_t>(),
-          cw->packed.data_ptr<uint8_t>(),ca->scale.data_ptr<float>(),
+      roof_kernel<<<dim3(n/roof_cfg.n,m/64),roof_cfg.threads,roof_cfg.smem,stream>>>(
+          (roof_grouped_payload(roof_tune)?roof_a:ca->packed).data_ptr<uint8_t>(),
+          (roof_grouped_payload(roof_tune)?roof_w:cw->packed).data_ptr<uint8_t>(),ca->scale.data_ptr<float>(),
           reinterpret_cast<const uint8_t*>(cw->scale.data_ptr<float>()),y.data_ptr<float>(),m,n,k);
       C10_CUDA_KERNEL_LAUNCH_CHECK();return;
     }
@@ -193,13 +205,13 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;meta["shared_memory_bytes"]=roof_cfg.smem;
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=40))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=42))?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
     meta["fp32_reassociated"]=roof_tune>=24 && roof_tune<=27;
     if(roof_tune>=34 && roof_tune<=40) meta["fp32_reassociated"]=true;
-    meta["product_window_groups"]=roof_tune>=38?2:((roof_tune==34 || roof_tune==36 || roof_tune==37)?4:(roof_tune==35?32:0));
+    meta["product_window_groups"]=(roof_tune>=38 && roof_tune<=40)?2:((roof_tune==34 || roof_tune==36 || roof_tune==37)?4:(roof_tune==35?32:0));
     meta["separate_rounded_products"]=roof_tune>=34 && roof_tune<=40;
     meta["eager_product_reduction"]=roof_tune>=36 && roof_tune<=40;
   meta["compile_time_reduction_phase"]=roof_tune>=37 && roof_tune<=40;
@@ -218,6 +230,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["scale_copy_async"]=roof_tune==14 || roof_tune==15;
     meta["scale_copy_transaction_bytes"]=(roof_tune==14 || roof_tune==15) ? 16 : 0;
     meta["scale_copy_combined_panels"]=roof_tune==15;
+    roof_payload_metadata(meta,roof_tune,m,n,k);
     if(activation_power2) meta["scale_formula"]="guarded_exact_exponent_adjustment_of_W_by_power2_A";
   }
   meta["experiment_naming_version"]=3;
@@ -233,7 +246,12 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
         result["converted_activation"]=py::make_tuple(ca->packed,ca->scale);}
   result["stage_timing_inner_repeats"]=counts;
   result["weight_cached"]=!weight;result["activation_prepared"]=!activation;
+  if(roof_grouped_payload(roof_tune)) {
+    result["packed_activation_g128_major"]=roof_a;
+    result["packed_weight_g128_major"]=roof_w;
+  }
   result["conversion_scope"]=fp16?"source_format_to_fp16":(binary?"source_format_to_fixed_bitplanes":"source_format_to_fixed_only");
+  if(roof_grouped_payload(roof_tune)) result["conversion_scope"]="source_format_to_fixed_then_g128_payload_reorder";
   result["total_timing"]=compute?"single_execution_cuda_event":"sum_of_batched_stage_samples";
   result["timing_contract_version"]=2;
   result["timing_strategy"]="conversion_amortized_end_to_end_direct";

@@ -286,6 +286,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto out=at::empty({m,n},as.options());
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
+  auto roof_a=roof_grouped_payload(roof_tune)?at::empty({2,k/128,m,64},w.options()):aa;
+  auto roof_w=roof_grouped_payload(roof_tune)?at::empty({k/128,n,64},w.options()):wa;
   auto roof_ws=roof_tune==13 ? at::empty({k/128,n},ws.options()) : ws;
   auto roof_kernel=select_roof_kernel(false,exponent_scale,roof_tune<0?0:roof_tune);
   const auto roof_cfg=roof_config(roof_tune,false);
@@ -417,13 +419,17 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     if(split) adangel_launch_mxfp4_to_q4(w,wa,stream);
     else adangel_launch_mxfp4_to_int8(w,wa,stream);
     if(roof_tune==13) roof_reorder_o3_scale(ws,roof_ws,n,k/128,stream);
+    if(roof_grouped_payload(roof_tune)) roof_pack_payload(wa,roof_w,1,n,k,stream);
   };
-  auto cva=[&](){if(split) adangel_launch_split_int8_to_int4(a,aa,stream);};
+  auto cva=[&](){
+    if(split) adangel_launch_split_int8_to_int4(a,aa,stream);
+    if(roof_grouped_payload(roof_tune)) roof_pack_payload(aa,roof_a,2,m,k,stream);
+  };
   auto gemm=[&](){
     dim3 grid(n/TN,m/TM);
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
     if(roof_tune>=0) {
-      roof_kernel<<<dim3(n/roof_cfg.n,m/64),roof_cfg.threads,roof_smem,stream>>>(ap,bp,as.data_ptr<float>(),
+      roof_kernel<<<dim3(n/roof_cfg.n,m/64),roof_cfg.threads,roof_smem,stream>>>(roof_a.data_ptr<uint8_t>(),roof_w.data_ptr<uint8_t>(),as.data_ptr<float>(),
           roof_ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
       C10_CUDA_KERNEL_LAUNCH_CHECK();return;
     }
@@ -618,13 +624,13 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(roof_tune>=0) {
     meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=40))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=42))?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
     meta["fp32_reassociated"]=roof_tune>=24 && roof_tune<=27;
     if(roof_tune>=34 && roof_tune<=40) meta["fp32_reassociated"]=true;
-    meta["product_window_groups"]=roof_tune>=38?2:((roof_tune==34 || roof_tune==36 || roof_tune==37)?4:(roof_tune==35?32:0));
+    meta["product_window_groups"]=(roof_tune>=38 && roof_tune<=40)?2:((roof_tune==34 || roof_tune==36 || roof_tune==37)?4:(roof_tune==35?32:0));
     meta["separate_rounded_products"]=roof_tune>=34 && roof_tune<=40;
     meta["eager_product_reduction"]=roof_tune>=36 && roof_tune<=40;
   meta["compile_time_reduction_phase"]=roof_tune>=37 && roof_tune<=40;
@@ -647,10 +653,15 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     meta["weight_scale_reorder_in_conversion"]=roof_tune==13;
     meta["weight_scale_reorder_bytes"]=roof_tune==13 ? int64_t(2)*n*(k/128) : 0;
     meta["shared_memory_bytes"]=roof_smem;
+    roof_payload_metadata(meta,roof_tune,m,n,k);
   }
   py::dict r;r["output"]=out;r["timings_ms"]=timings;r["kernel"]=meta;
   r["converted_weight"]=wa;r["converted_activation"]=aa;
   if(roof_tune==13) r["converted_weight_scale"]=roof_ws;
+  if(roof_grouped_payload(roof_tune)) {
+    r["packed_activation_g128_major"]=roof_a;
+    r["packed_weight_g128_major"]=roof_w;
+  }
   return r;
 }
 } // namespace

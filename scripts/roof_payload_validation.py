@@ -1,0 +1,32 @@
+"""Bitwise layout checks, always outside CUDA Event measurement intervals."""
+
+
+def payload_reorder_bytes_for_stage(meta, mode, stage):
+    weight=stage=='weight_conversion' or (mode=='conversion_only' and stage=='total')
+    activation=stage=='activation_conversion' or (mode=='conversion_only' and stage=='total')
+    return (int(meta.get('weight_payload_reorder_traffic_bytes',0)) if weight else 0)+(int(meta.get('activation_payload_reorder_traffic_bytes',0)) if activation else 0)
+
+
+def verify_grouped_payload(result, tune, natural_a, natural_w):
+    if tune not in (41,42):
+        return {}
+    import torch
+    m=natural_a.shape[0]//2
+    n,kbytes=natural_w.shape
+    groups=kbytes//64
+    expected_a=natural_a.reshape(2,m,groups,64).permute(0,2,1,3).contiguous()
+    expected_w=natural_w.reshape(n,groups,64).permute(1,0,2).contiguous()
+    actual_a=result['packed_activation_g128_major']
+    actual_w=result['packed_weight_g128_major']
+    assert actual_a.is_contiguous() and actual_w.is_contiguous()
+    assert tuple(actual_a.shape)==(2,groups,m,64) and tuple(actual_w.shape)==(groups,n,64)
+    assert torch.equal(actual_a,expected_a) and torch.equal(actual_w,expected_w)
+    meta=result['kernel']
+    assert meta['payload_layout']=='plane_group_row_k64_bytes'
+    assert meta['payload_reorder_in_conversion'] and not meta['payload_reorder_fused']
+    assert meta['activation_payload_reorder_traffic_bytes']==4*m*kbytes
+    assert meta['weight_payload_reorder_traffic_bytes']==2*n*kbytes
+    assert meta['pipeline_stages']==(2 if tune==41 else 3)
+    assert meta['cta_tile']==[64,128,128] and meta['threads']==128
+    assert not meta['fp32_reassociated'] and meta['product_window_groups']==0
+    return {'payload_layout_bitwise_verified':True}

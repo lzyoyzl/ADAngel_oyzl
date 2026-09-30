@@ -2,6 +2,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <cuda_runtime_api.h>
 
 namespace adangel_sm80_experiment {
 using Kernel = void (*)(const uint8_t*, const uint8_t*, const float*,
@@ -17,6 +18,8 @@ Kernel select_product_tree_kernel(bool dual, bool fast, int tune);
 Kernel select_eager_tree_kernel(bool dual, bool fast, int tune);
 Kernel select_static_eager_tree_kernel(bool dual, bool fast, int tune);
 Kernel select_fragment_tree_kernel(bool dual, bool fast, int tune);
+Kernel select_grouped_payload_kernel(bool dual, bool fast, int tune);
+void pack_g128_payload(const uint8_t* src, uint8_t* dst, int planes, int rows, int k, cudaStream_t stream);
 size_t fragment_tree_shared_bytes(bool dual);
 size_t paired_pipeline_shared_bytes(bool dual);
 Kernel select_reduction_kernel(bool dual, bool fast, int tune);
