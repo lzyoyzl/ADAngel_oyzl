@@ -1,0 +1,908 @@
+{
+  "reference_tune": 6,
+  "candidate_tune": 25,
+  "source_binary_sha256": "23977ea964cb66c353f33aadf3816d332dd67051e97134a3964b04579bf19ad1",
+  "reassociation_opt_in": true,
+  "sources": [
+    {
+      "file": "runs/o378_roof_v16_reduction_trace24/environment.json",
+      "sha256": "5c75dc594a25828079b7c28be09411b9c13147470ad66061b29ef595915a21c0"
+    },
+    {
+      "file": "runs/o378_roof_v16_reduction_trace24/summary.json",
+      "sha256": "78bad5f217832e61936d77fd00f5fd284f209e7ba2584c7f0b6373e759c64a6f"
+    },
+    {
+      "file": "runs/o378_roof_v16_reduction_trace24/results.jsonl",
+      "sha256": "82a02175cb7880b2fa40e6097e44680957e9f0d471df9950dc43f825e239fe09"
+    }
+  ],
+  "policy": "same-run paired rounds; no CV filtering; sample bootstrap descriptive, same-trace samples correlated",
+  "rows": [
+    {
+      "variant": "o3",
+      "mode": "compute_only",
+      "samples": 24,
+      "rounds": 4,
+      "reference_median_ms": 0.5448960065841675,
+      "candidate_median_ms": 1.2738560438156128,
+      "paired_speedup_median": 0.4269647099231246,
+      "paired_speedup_ci95": [
+        0.4247691530832476,
+        0.4285714082072326
+      ],
+      "median_mse_vs_o0": 0.0066530102869309105,
+      "median_mse_vs_paired_fp16": 0.0066530102869309105,
+      "median_reference_mse_vs_paired_fp16": 0.006653010285119311,
+      "median_candidate_mse_vs_production": 3.937994185247053e-15,
+      "cv": {
+        "6": {
+          "records": 96,
+          "selected_stage_failed": 43,
+          "any_stage_failed": 43
+        },
+        "25": {
+          "records": 96,
+          "selected_stage_failed": 3,
+          "any_stage_failed": 3
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_k_proj",
+          "reference_median_ms": 0.506879985332489,
+          "candidate_median_ms": 1.2344319820404053,
+          "paired_speedup": 0.41174021914967185,
+          "mse_vs_o0": 0.0005226830903243675,
+          "mse_vs_paired_fp16": 0.0005226830903243675,
+          "reference_mse_vs_o0": 0.0005226830858740867,
+          "reference_mse_vs_paired_fp16": 0.0005226830858740867,
+          "candidate_mse_vs_production": 2.461536167233505e-15
+        },
+        {
+          "sample_id": "layer_00_o_proj",
+          "reference_median_ms": 0.5222399830818176,
+          "candidate_median_ms": 1.243904024362564,
+          "paired_speedup": 0.4195810447922275,
+          "mse_vs_o0": 1.0585800999509743e-06,
+          "mse_vs_paired_fp16": 1.0585800999509743e-06,
+          "reference_mse_vs_o0": 1.0585801098559188e-06,
+          "reference_mse_vs_paired_fp16": 1.0585801098559188e-06,
+          "candidate_mse_vs_production": 2.2628965922527923e-18
+        },
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.4986880123615265,
+          "candidate_median_ms": 1.2052479982376099,
+          "paired_speedup": 0.412064581226788,
+          "mse_vs_o0": 0.0005745973464824896,
+          "mse_vs_paired_fp16": 0.0005745973464824896,
+          "reference_mse_vs_o0": 0.0005745973478203796,
+          "reference_mse_vs_paired_fp16": 0.0005745973478203796,
+          "candidate_mse_vs_production": 3.658069896442095e-15
+        },
+        {
+          "sample_id": "layer_00_v_proj",
+          "reference_median_ms": 0.5207040011882782,
+          "candidate_median_ms": 1.2328959703445435,
+          "paired_speedup": 0.42195794354127003,
+          "mse_vs_o0": 3.3882348673036954e-05,
+          "mse_vs_paired_fp16": 3.3882348673036954e-05,
+          "reference_mse_vs_o0": 3.388234887175937e-05,
+          "reference_mse_vs_paired_fp16": 3.388234887175937e-05,
+          "candidate_mse_vs_production": 8.334085118396123e-18
+        },
+        {
+          "sample_id": "layer_06_k_proj",
+          "reference_median_ms": 0.5391359925270081,
+          "candidate_median_ms": 1.2687360048294067,
+          "paired_speedup": 0.4247691530832476,
+          "mse_vs_o0": 0.011524675772429846,
+          "mse_vs_paired_fp16": 0.011524675772429846,
+          "reference_mse_vs_o0": 0.011524675759813271,
+          "reference_mse_vs_paired_fp16": 0.011524675759813271,
+          "candidate_mse_vs_production": 2.4167778811713977e-14
+        },
+        {
+          "sample_id": "layer_06_o_proj",
+          "reference_median_ms": 0.5414400100708008,
+          "candidate_median_ms": 1.2733440399169922,
+          "paired_speedup": 0.42469760827313296,
+          "mse_vs_o0": 6.351673516039878e-05,
+          "mse_vs_paired_fp16": 6.351673516039878e-05,
+          "reference_mse_vs_o0": 6.351673529609903e-05,
+          "reference_mse_vs_paired_fp16": 6.351673529609903e-05,
+          "candidate_mse_vs_production": 3.725064101942128e-17
+        },
+        {
+          "sample_id": "layer_06_q_proj",
+          "reference_median_ms": 0.5375999808311462,
+          "candidate_median_ms": 1.25491201877594,
+          "paired_speedup": 0.4285714082072326,
+          "mse_vs_o0": 0.011467639540072828,
+          "mse_vs_paired_fp16": 0.011467639540072828,
+          "reference_mse_vs_o0": 0.011467639546245155,
+          "reference_mse_vs_paired_fp16": 0.011467639546245155,
+          "candidate_mse_vs_production": 1.8012148904662274e-14
+        },
+        {
+          "sample_id": "layer_06_v_proj",
+          "reference_median_ms": 0.5452800095081329,
+          "candidate_median_ms": 1.2661759853363037,
+          "paired_speedup": 0.43030262064141966,
+          "mse_vs_o0": 0.003385197385930461,
+          "mse_vs_paired_fp16": 0.003385197385930461,
+          "reference_mse_vs_o0": 0.0033851973878122723,
+          "reference_mse_vs_paired_fp16": 0.0033851973878122723,
+          "candidate_mse_vs_production": 1.3873184462082826e-15
+        },
+        {
+          "sample_id": "layer_12_k_proj",
+          "reference_median_ms": 0.5447680056095123,
+          "candidate_median_ms": 1.2743680477142334,
+          "paired_speedup": 0.427310144874006,
+          "mse_vs_o0": 0.014418549967535624,
+          "mse_vs_paired_fp16": 0.014418549967535624,
+          "reference_mse_vs_o0": 0.014418549946304156,
+          "reference_mse_vs_paired_fp16": 0.014418549946304156,
+          "candidate_mse_vs_production": 2.6100168133311465e-14
+        },
+        {
+          "sample_id": "layer_12_o_proj",
+          "reference_median_ms": 0.5432319939136505,
+          "candidate_median_ms": 1.2746240496635437,
+          "paired_speedup": 0.42661927497224317,
+          "mse_vs_o0": 0.00037523205049905077,
+          "mse_vs_paired_fp16": 0.00037523205049905077,
+          "reference_mse_vs_o0": 0.0003752320503630859,
+          "reference_mse_vs_paired_fp16": 0.0003752320503630859,
+          "candidate_mse_vs_production": 1.7298827817619213e-16
+        },
+        {
+          "sample_id": "layer_12_q_proj",
+          "reference_median_ms": 0.544512003660202,
+          "candidate_median_ms": 1.2799999713897705,
+          "paired_speedup": 0.4255702298461975,
+          "mse_vs_o0": 0.014453719821718536,
+          "mse_vs_paired_fp16": 0.014453719821718536,
+          "reference_mse_vs_o0": 0.014453719817942474,
+          "reference_mse_vs_paired_fp16": 0.014453719817942474,
+          "candidate_mse_vs_production": 1.69455483547924e-14
+        },
+        {
+          "sample_id": "layer_12_v_proj",
+          "reference_median_ms": 0.5432319939136505,
+          "candidate_median_ms": 1.2677119970321655,
+          "paired_speedup": 0.4274757767440498,
+          "mse_vs_o0": 0.0050185535924208045,
+          "mse_vs_paired_fp16": 0.0050185535924208045,
+          "reference_mse_vs_o0": 0.005018553591171431,
+          "reference_mse_vs_paired_fp16": 0.005018553591171431,
+          "candidate_mse_vs_production": 2.279716294779263e-15
+        },
+        {
+          "sample_id": "layer_18_k_proj",
+          "reference_median_ms": 0.5463039875030518,
+          "candidate_median_ms": 1.2799999713897705,
+          "paired_speedup": 0.4264640252803236,
+          "mse_vs_o0": 0.01615826783468446,
+          "mse_vs_paired_fp16": 0.01615826783468446,
+          "reference_mse_vs_o0": 0.016158267811416535,
+          "reference_mse_vs_paired_fp16": 0.016158267811416535,
+          "candidate_mse_vs_production": 2.5179793868921688e-14
+        },
+        {
+          "sample_id": "layer_18_o_proj",
+          "reference_median_ms": 0.5450240075588226,
+          "candidate_median_ms": 1.2743680477142334,
+          "paired_speedup": 0.4276836217877167,
+          "mse_vs_o0": 0.00033975898233904334,
+          "mse_vs_paired_fp16": 0.00033975898233904334,
+          "reference_mse_vs_o0": 0.0003397589822969598,
+          "reference_mse_vs_paired_fp16": 0.0003397589822969598,
+          "candidate_mse_vs_production": 2.4761644655896696e-16
+        },
+        {
+          "sample_id": "layer_18_q_proj",
+          "reference_median_ms": 0.5509120225906372,
+          "candidate_median_ms": 1.272320032119751,
+          "paired_speedup": 0.43351710080373007,
+          "mse_vs_o0": 0.01583431657718518,
+          "mse_vs_paired_fp16": 0.01583431657718518,
+          "reference_mse_vs_o0": 0.015834316574124846,
+          "reference_mse_vs_paired_fp16": 0.015834316574124846,
+          "candidate_mse_vs_production": 1.8068691186154924e-14
+        },
+        {
+          "sample_id": "layer_18_v_proj",
+          "reference_median_ms": 0.550912007689476,
+          "candidate_median_ms": 1.2799999713897705,
+          "paired_speedup": 0.4304278219425409,
+          "mse_vs_o0": 0.006146871131916241,
+          "mse_vs_paired_fp16": 0.006146871131916241,
+          "reference_mse_vs_o0": 0.0061468711251645766,
+          "reference_mse_vs_paired_fp16": 0.0061468711251645766,
+          "candidate_mse_vs_production": 3.3656928894301394e-15
+        },
+        {
+          "sample_id": "layer_24_k_proj",
+          "reference_median_ms": 0.5483520030975342,
+          "candidate_median_ms": 1.282047986984253,
+          "paired_speedup": 0.4290944050550418,
+          "mse_vs_o0": 0.018079119366703953,
+          "mse_vs_paired_fp16": 0.018079119366703953,
+          "reference_mse_vs_o0": 0.01807911935999411,
+          "reference_mse_vs_paired_fp16": 0.01807911935999411,
+          "candidate_mse_vs_production": 2.428947843361649e-14
+        },
+        {
+          "sample_id": "layer_24_o_proj",
+          "reference_median_ms": 0.5442560017108917,
+          "candidate_median_ms": 1.2830719947814941,
+          "paired_speedup": 0.42461452200544036,
+          "mse_vs_o0": 0.0006173794265798083,
+          "mse_vs_paired_fp16": 0.0006173794265798083,
+          "reference_mse_vs_o0": 0.0006173794269156065,
+          "reference_mse_vs_paired_fp16": 0.0006173794269156065,
+          "candidate_mse_vs_production": 5.218570188160768e-16
+        },
+        {
+          "sample_id": "layer_24_q_proj",
+          "reference_median_ms": 0.5532160103321075,
+          "candidate_median_ms": 1.2692480087280273,
+          "paired_speedup": 0.43463016720452563,
+          "mse_vs_o0": 0.017674730817519226,
+          "mse_vs_paired_fp16": 0.017674730817519226,
+          "reference_mse_vs_o0": 0.017674730823717413,
+          "reference_mse_vs_paired_fp16": 0.017674730823717413,
+          "candidate_mse_vs_production": 1.7156297035961736e-14
+        },
+        {
+          "sample_id": "layer_24_v_proj",
+          "reference_median_ms": 0.5621760189533234,
+          "candidate_median_ms": 1.2725760340690613,
+          "paired_speedup": 0.440445709327003,
+          "mse_vs_o0": 0.00876742594237026,
+          "mse_vs_paired_fp16": 0.00876742594237026,
+          "reference_mse_vs_o0": 0.008767425939436534,
+          "reference_mse_vs_paired_fp16": 0.008767425939436534,
+          "candidate_mse_vs_production": 4.7508481868853805e-15
+        },
+        {
+          "sample_id": "layer_31_k_proj",
+          "reference_median_ms": 0.5483520030975342,
+          "candidate_median_ms": 1.2907519936561584,
+          "paired_speedup": 0.42641918048148475,
+          "mse_vs_o0": 0.014233816076307932,
+          "mse_vs_paired_fp16": 0.014233816076307932,
+          "reference_mse_vs_o0": 0.01423381609740294,
+          "reference_mse_vs_paired_fp16": 0.01423381609740294,
+          "candidate_mse_vs_production": 2.4537424631350388e-14
+        },
+        {
+          "sample_id": "layer_31_o_proj",
+          "reference_median_ms": 0.5463039875030518,
+          "candidate_median_ms": 1.2907520532608032,
+          "paired_speedup": 0.4232452556430948,
+          "mse_vs_o0": 0.001257339884105276,
+          "mse_vs_paired_fp16": 0.001257339884105276,
+          "reference_mse_vs_o0": 0.001257339881008194,
+          "reference_mse_vs_paired_fp16": 0.001257339881008194,
+          "candidate_mse_vs_production": 1.237699839493341e-15
+        },
+        {
+          "sample_id": "layer_31_q_proj",
+          "reference_median_ms": 0.5504000186920166,
+          "candidate_median_ms": 1.2794880270957947,
+          "paired_speedup": 0.43087187636616164,
+          "mse_vs_o0": 0.013784846623559183,
+          "mse_vs_paired_fp16": 0.013784846623559183,
+          "reference_mse_vs_o0": 0.01378484660352718,
+          "reference_mse_vs_paired_fp16": 0.01378484660352718,
+          "candidate_mse_vs_production": 1.6667657059652745e-14
+        },
+        {
+          "sample_id": "layer_31_v_proj",
+          "reference_median_ms": 0.549888014793396,
+          "candidate_median_ms": 1.2856320142745972,
+          "paired_speedup": 0.42822994805793657,
+          "mse_vs_o0": 0.00715914944194558,
+          "mse_vs_paired_fp16": 0.00715914944194558,
+          "reference_mse_vs_o0": 0.007159149445074045,
+          "reference_mse_vs_paired_fp16": 0.007159149445074045,
+          "candidate_mse_vs_production": 4.21791847405201e-15
+        }
+      ]
+    },
+    {
+      "variant": "o7",
+      "mode": "compute_only",
+      "samples": 24,
+      "rounds": 4,
+      "reference_median_ms": 0.5688320100307465,
+      "candidate_median_ms": 1.165952056646347,
+      "paired_speedup_median": 0.48653318300455584,
+      "paired_speedup_ci95": [
+        0.4847223419968676,
+        0.488030169506959
+      ],
+      "median_mse_vs_o0": 0.011900317976031572,
+      "median_mse_vs_paired_fp16": 0.005536172431266119,
+      "median_reference_mse_vs_paired_fp16": 0.0055361724266658075,
+      "median_candidate_mse_vs_production": 3.7298705122926096e-15,
+      "cv": {
+        "6": {
+          "records": 96,
+          "selected_stage_failed": 50,
+          "any_stage_failed": 50
+        },
+        "25": {
+          "records": 96,
+          "selected_stage_failed": 5,
+          "any_stage_failed": 5
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_k_proj",
+          "reference_median_ms": 0.5437439978122711,
+          "candidate_median_ms": 1.132032036781311,
+          "paired_speedup": 0.47945732186385653,
+          "mse_vs_o0": 0.003126521429228314,
+          "mse_vs_paired_fp16": 0.00019189448486321502,
+          "reference_mse_vs_o0": 0.0031265213628156726,
+          "reference_mse_vs_paired_fp16": 0.00019189448560604172,
+          "candidate_mse_vs_production": 2.77728773579496e-15
+        },
+        {
+          "sample_id": "layer_00_o_proj",
+          "reference_median_ms": 0.5524479746818542,
+          "candidate_median_ms": 1.134592056274414,
+          "paired_speedup": 0.48691331093564294,
+          "mse_vs_o0": 1.722874087442309e-06,
+          "mse_vs_paired_fp16": 6.396032842728804e-07,
+          "reference_mse_vs_o0": 1.7228740783328448e-06,
+          "reference_mse_vs_paired_fp16": 6.396032839954568e-07,
+          "candidate_mse_vs_production": 4.393573054749674e-19
+        },
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.5294079780578613,
+          "candidate_median_ms": 1.121280014514923,
+          "paired_speedup": 0.4710494384604361,
+          "mse_vs_o0": 0.005262686740237452,
+          "mse_vs_paired_fp16": 0.00017169782130804778,
+          "reference_mse_vs_o0": 0.005262686510301441,
+          "reference_mse_vs_paired_fp16": 0.00017169781257259873,
+          "candidate_mse_vs_production": 4.019535966172297e-15
+        },
+        {
+          "sample_id": "layer_00_v_proj",
+          "reference_median_ms": 0.5514239966869354,
+          "candidate_median_ms": 1.1453440189361572,
+          "paired_speedup": 0.4803742810156181,
+          "mse_vs_o0": 5.1346112660921126e-05,
+          "mse_vs_paired_fp16": 3.2438075201373154e-05,
+          "reference_mse_vs_o0": 5.134611187908467e-05,
+          "reference_mse_vs_paired_fp16": 3.243807517329516e-05,
+          "candidate_mse_vs_production": 8.80943066443584e-18
+        },
+        {
+          "sample_id": "layer_06_k_proj",
+          "reference_median_ms": 0.5652480125427246,
+          "candidate_median_ms": 1.1514880061149597,
+          "paired_speedup": 0.49089982474380234,
+          "mse_vs_o0": 0.022530014771574267,
+          "mse_vs_paired_fp16": 0.007834728694394808,
+          "reference_mse_vs_o0": 0.022530015137951276,
+          "reference_mse_vs_paired_fp16": 0.007834728786771782,
+          "candidate_mse_vs_production": 2.5380877117463223e-14
+        },
+        {
+          "sample_id": "layer_06_o_proj",
+          "reference_median_ms": 0.5657600164413452,
+          "candidate_median_ms": 1.1653120517730713,
+          "paired_speedup": 0.4857149533630757,
+          "mse_vs_o0": 0.0001002482869015989,
+          "mse_vs_paired_fp16": 3.6918892211447106e-05,
+          "reference_mse_vs_o0": 0.00010024828698578452,
+          "reference_mse_vs_paired_fp16": 3.691889228645963e-05,
+          "candidate_mse_vs_production": 3.7595138810561527e-17
+        },
+        {
+          "sample_id": "layer_06_q_proj",
+          "reference_median_ms": 0.5649920105934143,
+          "candidate_median_ms": 1.1663360595703125,
+          "paired_speedup": 0.4846283020205455,
+          "mse_vs_o0": 0.020604458443768896,
+          "mse_vs_paired_fp16": 0.007991279743226727,
+          "reference_mse_vs_o0": 0.020604458065171447,
+          "reference_mse_vs_paired_fp16": 0.007991279687028455,
+          "candidate_mse_vs_production": 1.8931604709358534e-14
+        },
+        {
+          "sample_id": "layer_06_v_proj",
+          "reference_median_ms": 0.56038399040699,
+          "candidate_median_ms": 1.1458560228347778,
+          "paired_speedup": 0.48905466916686696,
+          "mse_vs_o0": 0.004583320272796541,
+          "mse_vs_paired_fp16": 0.0024533533122442046,
+          "reference_mse_vs_o0": 0.004583320272796541,
+          "reference_mse_vs_paired_fp16": 0.0024533533122442046,
+          "candidate_mse_vs_production": 0.0
+        },
+        {
+          "sample_id": "layer_12_k_proj",
+          "reference_median_ms": 0.5708799958229065,
+          "candidate_median_ms": 1.1729919910430908,
+          "paired_speedup": 0.4858584088784791,
+          "mse_vs_o0": 0.02870423783780053,
+          "mse_vs_paired_fp16": 0.009888564527852618,
+          "reference_mse_vs_o0": 0.028704236369378335,
+          "reference_mse_vs_paired_fp16": 0.009888564218972412,
+          "candidate_mse_vs_production": 2.579986491333299e-14
+        },
+        {
+          "sample_id": "layer_12_o_proj",
+          "reference_median_ms": 0.5688320100307465,
+          "candidate_median_ms": 1.1694079637527466,
+          "paired_speedup": 0.48717495834395663,
+          "mse_vs_o0": 0.0005543500405359263,
+          "mse_vs_paired_fp16": 0.00022527152131440037,
+          "reference_mse_vs_o0": 0.000554350038194825,
+          "reference_mse_vs_paired_fp16": 0.00022527152025315003,
+          "candidate_mse_vs_production": 1.2859298478752198e-16
+        },
+        {
+          "sample_id": "layer_12_q_proj",
+          "reference_median_ms": 0.567296028137207,
+          "candidate_median_ms": 1.174784004688263,
+          "paired_speedup": 0.4828950223050313,
+          "mse_vs_o0": 0.02304825163342436,
+          "mse_vs_paired_fp16": 0.009817192611807843,
+          "reference_mse_vs_o0": 0.02304825182932771,
+          "reference_mse_vs_paired_fp16": 0.009817192670346508,
+          "candidate_mse_vs_production": 1.773846428778617e-14
+        },
+        {
+          "sample_id": "layer_12_v_proj",
+          "reference_median_ms": 0.5672959983348846,
+          "candidate_median_ms": 1.1601920127868652,
+          "paired_speedup": 0.48681573092371466,
+          "mse_vs_o0": 0.007351243519602217,
+          "mse_vs_paired_fp16": 0.0037943066505129286,
+          "reference_mse_vs_o0": 0.0073512435500191625,
+          "reference_mse_vs_paired_fp16": 0.0037943066668061068,
+          "candidate_mse_vs_production": 2.271021487829899e-15
+        },
+        {
+          "sample_id": "layer_18_k_proj",
+          "reference_median_ms": 0.5729279816150665,
+          "candidate_median_ms": 1.1735039949417114,
+          "paired_speedup": 0.4903684623293279,
+          "mse_vs_o0": 0.02816457918188213,
+          "mse_vs_paired_fp16": 0.00983627169555554,
+          "reference_mse_vs_o0": 0.028164579283071485,
+          "reference_mse_vs_paired_fp16": 0.00983627172279654,
+          "candidate_mse_vs_production": 2.6242259652277264e-14
+        },
+        {
+          "sample_id": "layer_18_o_proj",
+          "reference_median_ms": 0.572160005569458,
+          "candidate_median_ms": 1.1837440133094788,
+          "paired_speedup": 0.48399422599882147,
+          "mse_vs_o0": 0.0006301345480170494,
+          "mse_vs_paired_fp16": 0.00026880320784435503,
+          "reference_mse_vs_o0": 0.0006301345475501434,
+          "reference_mse_vs_paired_fp16": 0.0002688032076023092,
+          "candidate_mse_vs_production": 2.5091959196379893e-16
+        },
+        {
+          "sample_id": "layer_18_q_proj",
+          "reference_median_ms": 0.5698559880256653,
+          "candidate_median_ms": 1.1655680537223816,
+          "paired_speedup": 0.488030169506959,
+          "mse_vs_o0": 0.0246061078202714,
+          "mse_vs_paired_fp16": 0.0097447448322737,
+          "reference_mse_vs_o0": 0.024606106896549372,
+          "reference_mse_vs_paired_fp16": 0.009744744659318481,
+          "candidate_mse_vs_production": 1.8275780474105778e-14
+        },
+        {
+          "sample_id": "layer_18_v_proj",
+          "reference_median_ms": 0.5724160075187683,
+          "candidate_median_ms": 1.1760640144348145,
+          "paired_speedup": 0.4847223419968676,
+          "mse_vs_o0": 0.010976693065496746,
+          "mse_vs_paired_fp16": 0.005410590191903532,
+          "reference_mse_vs_o0": 0.010976693044541965,
+          "reference_mse_vs_paired_fp16": 0.005410590181143904,
+          "candidate_mse_vs_production": 3.4402050584129227e-15
+        },
+        {
+          "sample_id": "layer_24_k_proj",
+          "reference_median_ms": 0.574975997209549,
+          "candidate_median_ms": 1.1781120300292969,
+          "paired_speedup": 0.48804856299715194,
+          "mse_vs_o0": 0.031679533218121156,
+          "mse_vs_paired_fp16": 0.010905113772480737,
+          "reference_mse_vs_o0": 0.031679533415396074,
+          "reference_mse_vs_paired_fp16": 0.01090511378635994,
+          "candidate_mse_vs_production": 2.5396083459989485e-14
+        },
+        {
+          "sample_id": "layer_24_o_proj",
+          "reference_median_ms": 0.5724159777164459,
+          "candidate_median_ms": 1.1796480417251587,
+          "paired_speedup": 0.4852430195020921,
+          "mse_vs_o0": 0.0012517330066122655,
+          "mse_vs_paired_fp16": 0.0005412156825229626,
+          "reference_mse_vs_o0": 0.0012517330061853772,
+          "reference_mse_vs_paired_fp16": 0.0005412156816881381,
+          "candidate_mse_vs_production": 5.370647546538197e-16
+        },
+        {
+          "sample_id": "layer_24_q_proj",
+          "reference_median_ms": 0.5703679919242859,
+          "candidate_median_ms": 1.1755520105361938,
+          "paired_speedup": 0.486250635085397,
+          "mse_vs_o0": 0.026590273374078773,
+          "mse_vs_paired_fp16": 0.010878416811560683,
+          "reference_mse_vs_o0": 0.026590272667174945,
+          "reference_mse_vs_paired_fp16": 0.0108784167728407,
+          "candidate_mse_vs_production": 1.6945653101152497e-14
+        },
+        {
+          "sample_id": "layer_24_v_proj",
+          "reference_median_ms": 0.5688320100307465,
+          "candidate_median_ms": 1.1537920236587524,
+          "paired_speedup": 0.49145902024217925,
+          "mse_vs_o0": 0.015977132357247993,
+          "mse_vs_paired_fp16": 0.007595970866860053,
+          "reference_mse_vs_o0": 0.015977132357247993,
+          "reference_mse_vs_paired_fp16": 0.007595970866860053,
+          "candidate_mse_vs_production": 0.0
+        },
+        {
+          "sample_id": "layer_31_k_proj",
+          "reference_median_ms": 0.5729279816150665,
+          "candidate_median_ms": 1.182208001613617,
+          "paired_speedup": 0.48441405577323077,
+          "mse_vs_o0": 0.022147010044093998,
+          "mse_vs_paired_fp16": 0.008710441786486063,
+          "reference_mse_vs_o0": 0.022147008555841632,
+          "reference_mse_vs_paired_fp16": 0.008710441150931284,
+          "candidate_mse_vs_production": 2.406958187668752e-14
+        },
+        {
+          "sample_id": "layer_31_o_proj",
+          "reference_median_ms": 0.5688320100307465,
+          "candidate_median_ms": 1.1632640361785889,
+          "paired_speedup": 0.4881184994154681,
+          "mse_vs_o0": 0.0022136495110849043,
+          "mse_vs_paired_fp16": 0.0009321029827558064,
+          "reference_mse_vs_o0": 0.0022136494861595777,
+          "reference_mse_vs_paired_fp16": 0.0009321029822637835,
+          "candidate_mse_vs_production": 3.1445251133868646e-17
+        },
+        {
+          "sample_id": "layer_31_q_proj",
+          "reference_median_ms": 0.5713919997215271,
+          "candidate_median_ms": 1.1724799871444702,
+          "paired_speedup": 0.4869002878998569,
+          "mse_vs_o0": 0.019764277878127498,
+          "mse_vs_paired_fp16": 0.00836354883110919,
+          "reference_mse_vs_o0": 0.019764277205979,
+          "reference_mse_vs_paired_fp16": 0.008363548594949054,
+          "candidate_mse_vs_production": 1.6272855279005922e-14
+        },
+        {
+          "sample_id": "layer_31_v_proj",
+          "reference_median_ms": 0.5734400153160095,
+          "candidate_median_ms": 1.16428804397583,
+          "paired_speedup": 0.4925241810074911,
+          "mse_vs_o0": 0.012823942886566396,
+          "mse_vs_paired_fp16": 0.005661754670628705,
+          "reference_mse_vs_o0": 0.012823942886377657,
+          "reference_mse_vs_paired_fp16": 0.005661754672187711,
+          "candidate_mse_vs_production": 4.349728486364389e-15
+        }
+      ]
+    },
+    {
+      "variant": "o8",
+      "mode": "compute_only",
+      "samples": 24,
+      "rounds": 4,
+      "reference_median_ms": 0.5722880065441132,
+      "candidate_median_ms": 1.1768320202827454,
+      "paired_speedup_median": 0.4861504902963597,
+      "paired_speedup_ci95": [
+        0.4843749826311782,
+        0.48813237961903555
+      ],
+      "median_mse_vs_o0": 0.00944035486132231,
+      "median_mse_vs_paired_fp16": 0.004411084965005092,
+      "median_reference_mse_vs_paired_fp16": 0.004411084948644645,
+      "median_candidate_mse_vs_production": 3.928545833257546e-15,
+      "cv": {
+        "6": {
+          "records": 96,
+          "selected_stage_failed": 34,
+          "any_stage_failed": 34
+        },
+        "25": {
+          "records": 96,
+          "selected_stage_failed": 4,
+          "any_stage_failed": 4
+        }
+      },
+      "per_sample": [
+        {
+          "sample_id": "layer_00_k_proj",
+          "reference_median_ms": 0.5406720042228699,
+          "candidate_median_ms": 1.1279360055923462,
+          "paired_speedup": 0.47847807497641004,
+          "mse_vs_o0": 0.0023384458021457003,
+          "mse_vs_paired_fp16": 0.0002417367888358985,
+          "reference_mse_vs_o0": 0.0023384457759313072,
+          "reference_mse_vs_paired_fp16": 0.0002417367888967883,
+          "candidate_mse_vs_production": 2.6294221695406333e-15
+        },
+        {
+          "sample_id": "layer_00_o_proj",
+          "reference_median_ms": 0.547327995300293,
+          "candidate_median_ms": 1.1458560228347778,
+          "paired_speedup": 0.47846157915323584,
+          "mse_vs_o0": 1.5579421143368847e-06,
+          "mse_vs_paired_fp16": 5.473010877550349e-07,
+          "reference_mse_vs_o0": 1.557942005227202e-06,
+          "reference_mse_vs_paired_fp16": 5.473010776460812e-07,
+          "candidate_mse_vs_production": 2.322309312176026e-18
+        },
+        {
+          "sample_id": "layer_00_q_proj",
+          "reference_median_ms": 0.5375999808311462,
+          "candidate_median_ms": 1.1161600351333618,
+          "paired_speedup": 0.481101183579731,
+          "mse_vs_o0": 0.003497792415906807,
+          "mse_vs_paired_fp16": 0.00021370231271527026,
+          "reference_mse_vs_o0": 0.0034977923595691848,
+          "reference_mse_vs_paired_fp16": 0.00021370230554795398,
+          "candidate_mse_vs_production": 3.983783092696852e-15
+        },
+        {
+          "sample_id": "layer_00_v_proj",
+          "reference_median_ms": 0.5468159914016724,
+          "candidate_median_ms": 1.1340800523757935,
+          "paired_speedup": 0.48194942700129273,
+          "mse_vs_o0": 5.0188861019192875e-05,
+          "mse_vs_paired_fp16": 3.3284207661514336e-05,
+          "reference_mse_vs_o0": 5.0188860961785766e-05,
+          "reference_mse_vs_paired_fp16": 3.3284207886442776e-05,
+          "candidate_mse_vs_production": 8.233786600447522e-18
+        },
+        {
+          "sample_id": "layer_06_k_proj",
+          "reference_median_ms": 0.567296028137207,
+          "candidate_median_ms": 1.1637760400772095,
+          "paired_speedup": 0.486986406452098,
+          "mse_vs_o0": 0.01874820418407388,
+          "mse_vs_paired_fp16": 0.007705999266189109,
+          "reference_mse_vs_o0": 0.01874820406248387,
+          "reference_mse_vs_paired_fp16": 0.007705999229501484,
+          "candidate_mse_vs_production": 2.4793031696070353e-14
+        },
+        {
+          "sample_id": "layer_06_o_proj",
+          "reference_median_ms": 0.5683200061321259,
+          "candidate_median_ms": 1.164799988269806,
+          "paired_speedup": 0.48813237961903555,
+          "mse_vs_o0": 8.075759780545888e-05,
+          "mse_vs_paired_fp16": 3.190375050721311e-05,
+          "reference_mse_vs_o0": 8.075759766536258e-05,
+          "reference_mse_vs_paired_fp16": 3.1903750407187055e-05,
+          "candidate_mse_vs_production": 3.691701214171848e-17
+        },
+        {
+          "sample_id": "layer_06_q_proj",
+          "reference_median_ms": 0.5611519813537598,
+          "candidate_median_ms": 1.1509760022163391,
+          "paired_speedup": 0.4862146138278947,
+          "mse_vs_o0": 0.01765794069215548,
+          "mse_vs_paired_fp16": 0.007550013895416858,
+          "reference_mse_vs_o0": 0.017657940589066688,
+          "reference_mse_vs_paired_fp16": 0.007550013880342231,
+          "candidate_mse_vs_production": 1.8613485207674357e-14
+        },
+        {
+          "sample_id": "layer_06_v_proj",
+          "reference_median_ms": 0.5678080022335052,
+          "candidate_median_ms": 1.1560959815979004,
+          "paired_speedup": 0.4917963041268887,
+          "mse_vs_o0": 0.004227230892991936,
+          "mse_vs_paired_fp16": 0.0022336664490237666,
+          "reference_mse_vs_o0": 0.004227230888254437,
+          "reference_mse_vs_paired_fp16": 0.002233666445868943,
+          "candidate_mse_vs_production": 1.392535271551536e-15
+        },
+        {
+          "sample_id": "layer_12_k_proj",
+          "reference_median_ms": 0.5729280114173889,
+          "candidate_median_ms": 1.1709439754486084,
+          "paired_speedup": 0.4897010709278834,
+          "mse_vs_o0": 0.024133366098159435,
+          "mse_vs_paired_fp16": 0.00940474883631091,
+          "reference_mse_vs_o0": 0.024133365953078578,
+          "reference_mse_vs_paired_fp16": 0.009404748789073126,
+          "candidate_mse_vs_production": 2.470012421731634e-14
+        },
+        {
+          "sample_id": "layer_12_o_proj",
+          "reference_median_ms": 0.572160005569458,
+          "candidate_median_ms": 1.1852799654006958,
+          "paired_speedup": 0.4833688101204239,
+          "mse_vs_o0": 0.00044306301570279903,
+          "mse_vs_paired_fp16": 0.00018277407268222322,
+          "reference_mse_vs_o0": 0.0004430630160356725,
+          "reference_mse_vs_paired_fp16": 0.0001827740728996377,
+          "candidate_mse_vs_production": 1.6418854140295252e-16
+        },
+        {
+          "sample_id": "layer_12_q_proj",
+          "reference_median_ms": 0.5708800256252289,
+          "candidate_median_ms": 1.1653120517730713,
+          "paired_speedup": 0.4881331994495896,
+          "mse_vs_o0": 0.020039022336354722,
+          "mse_vs_paired_fp16": 0.00892373195303937,
+          "reference_mse_vs_o0": 0.020039022221274086,
+          "reference_mse_vs_paired_fp16": 0.008923731932094867,
+          "candidate_mse_vs_production": 1.6043228575619016e-14
+        },
+        {
+          "sample_id": "layer_12_v_proj",
+          "reference_median_ms": 0.5693440139293671,
+          "candidate_median_ms": 1.166592001914978,
+          "paired_speedup": 0.48858867878775314,
+          "mse_vs_o0": 0.006525316185706152,
+          "mse_vs_paired_fp16": 0.003284695020151565,
+          "reference_mse_vs_o0": 0.00652531617195163,
+          "reference_mse_vs_paired_fp16": 0.0032846950147780805,
+          "candidate_mse_vs_production": 2.1488498468101662e-15
+        },
+        {
+          "sample_id": "layer_18_k_proj",
+          "reference_median_ms": 0.5729279816150665,
+          "candidate_median_ms": 1.1786240339279175,
+          "paired_speedup": 0.4852543028469865,
+          "mse_vs_o0": 0.02235652362933764,
+          "mse_vs_paired_fp16": 0.008721297960018328,
+          "reference_mse_vs_o0": 0.022356521901371947,
+          "reference_mse_vs_paired_fp16": 0.008721297545085733,
+          "candidate_mse_vs_production": 2.2400681978952473e-14
+        },
+        {
+          "sample_id": "layer_18_o_proj",
+          "reference_median_ms": 0.5724160075187683,
+          "candidate_median_ms": 1.1832320094108582,
+          "paired_speedup": 0.48398713763333645,
+          "mse_vs_o0": 0.0004986165365190606,
+          "mse_vs_paired_fp16": 0.00021285778484762165,
+          "reference_mse_vs_o0": 0.0004986165365939284,
+          "reference_mse_vs_paired_fp16": 0.0002128577847594798,
+          "candidate_mse_vs_production": 2.441126107858824e-16
+        },
+        {
+          "sample_id": "layer_18_q_proj",
+          "reference_median_ms": 0.574975997209549,
+          "candidate_median_ms": 1.1839999556541443,
+          "paired_speedup": 0.4848884821316819,
+          "mse_vs_o0": 0.020110262408789704,
+          "mse_vs_paired_fp16": 0.008466033571525424,
+          "reference_mse_vs_o0": 0.02011026116992156,
+          "reference_mse_vs_paired_fp16": 0.00846603334022644,
+          "candidate_mse_vs_production": 1.6348308708581566e-14
+        },
+        {
+          "sample_id": "layer_18_v_proj",
+          "reference_median_ms": 0.5744639933109283,
+          "candidate_median_ms": 1.1893759965896606,
+          "paired_speedup": 0.4827882392753329,
+          "mse_vs_o0": 0.009237018186653206,
+          "mse_vs_paired_fp16": 0.004497549554466368,
+          "reference_mse_vs_o0": 0.009237018145925043,
+          "reference_mse_vs_paired_fp16": 0.004497549533903652,
+          "candidate_mse_vs_production": 3.113303615260069e-15
+        },
+        {
+          "sample_id": "layer_24_k_proj",
+          "reference_median_ms": 0.574975997209549,
+          "candidate_median_ms": 1.182208001613617,
+          "paired_speedup": 0.48635763126374687,
+          "mse_vs_o0": 0.025163639543811372,
+          "mse_vs_paired_fp16": 0.009372167456068694,
+          "reference_mse_vs_o0": 0.025163637553412263,
+          "reference_mse_vs_paired_fp16": 0.00937216710723494,
+          "candidate_mse_vs_production": 1.7874562265782953e-14
+        },
+        {
+          "sample_id": "layer_24_o_proj",
+          "reference_median_ms": 0.5713919997215271,
+          "candidate_median_ms": 1.1796480417251587,
+          "paired_speedup": 0.4843749826311782,
+          "mse_vs_o0": 0.0009854411425253822,
+          "mse_vs_paired_fp16": 0.00042468773440876463,
+          "reference_mse_vs_o0": 0.0009854411433468913,
+          "reference_mse_vs_paired_fp16": 0.0004246877339457905,
+          "candidate_mse_vs_production": 4.102576470710232e-16
+        },
+        {
+          "sample_id": "layer_24_q_proj",
+          "reference_median_ms": 0.574975997209549,
+          "candidate_median_ms": 1.176576018333435,
+          "paired_speedup": 0.48847649413736405,
+          "mse_vs_o0": 0.02194644359593747,
+          "mse_vs_paired_fp16": 0.009226365963005207,
+          "reference_mse_vs_o0": 0.0219464425293533,
+          "reference_mse_vs_paired_fp16": 0.00922636584684846,
+          "candidate_mse_vs_production": 1.2601923946852691e-14
+        },
+        {
+          "sample_id": "layer_24_v_proj",
+          "reference_median_ms": 0.5765120089054108,
+          "candidate_median_ms": 1.1827200055122375,
+          "paired_speedup": 0.48608636676482475,
+          "mse_vs_o0": 0.013168276236580935,
+          "mse_vs_paired_fp16": 0.006308033148413059,
+          "reference_mse_vs_o0": 0.013168276161340538,
+          "reference_mse_vs_paired_fp16": 0.006308033107554744,
+          "candidate_mse_vs_production": 3.8733085738182415e-15
+        },
+        {
+          "sample_id": "layer_31_k_proj",
+          "reference_median_ms": 0.5754879713058472,
+          "candidate_median_ms": 1.182208001613617,
+          "paired_speedup": 0.48637397117705444,
+          "mse_vs_o0": 0.017297647633007736,
+          "mse_vs_paired_fp16": 0.0066788990717384245,
+          "reference_mse_vs_o0": 0.017297647300196128,
+          "reference_mse_vs_paired_fp16": 0.0066788989574008036,
+          "candidate_mse_vs_production": 2.486166098072162e-14
+        },
+        {
+          "sample_id": "layer_31_o_proj",
+          "reference_median_ms": 0.5800959765911102,
+          "candidate_median_ms": 1.1868159770965576,
+          "paired_speedup": 0.4883620554690915,
+          "mse_vs_o0": 0.0017873813835125665,
+          "mse_vs_paired_fp16": 0.0007214977491252143,
+          "reference_mse_vs_o0": 0.0017873813835372668,
+          "reference_mse_vs_paired_fp16": 0.0007214977473175652,
+          "candidate_mse_vs_production": 1.1836854015140037e-15
+        },
+        {
+          "sample_id": "layer_31_q_proj",
+          "reference_median_ms": 0.5729280114173889,
+          "candidate_median_ms": 1.1770880222320557,
+          "paired_speedup": 0.4860505620058756,
+          "mse_vs_o0": 0.015414106952504093,
+          "mse_vs_paired_fp16": 0.006392288433405663,
+          "reference_mse_vs_o0": 0.015414106761362218,
+          "reference_mse_vs_paired_fp16": 0.0063922883812012905,
+          "candidate_mse_vs_production": 1.700749394432905e-14
+        },
+        {
+          "sample_id": "layer_31_v_proj",
+          "reference_median_ms": 0.5783040076494217,
+          "candidate_median_ms": 1.1770880222320557,
+          "paired_speedup": 0.4906578275065114,
+          "mse_vs_o0": 0.009643691535991412,
+          "mse_vs_paired_fp16": 0.004324620375543816,
+          "reference_mse_vs_o0": 0.009643691515003844,
+          "reference_mse_vs_paired_fp16": 0.004324620363385637,
+          "candidate_mse_vs_production": 4.213457490737853e-15
+        }
+      ]
+    }
+  ]
+}

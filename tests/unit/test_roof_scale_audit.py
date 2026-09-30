@@ -7,6 +7,14 @@ AUDIT=runpy.run_path(str(Path(__file__).resolve().parents[2]/'scripts/audit_a100
 
 
 class RoofScaleAuditTests(unittest.TestCase):
+    def test_reduction_final_add_is_required_for_all_opt_in_variants(self):
+        for tune in (24,25,26,27):
+            symbol=f'adangel_sm80_roof_candidateILb1ELb0ELi{tune}EE'
+            check=AUDIT['roof_reduction_checks']
+            self.assertTrue(all(check(symbol,dict(I2F=64,FFMA=64,FADD=32)).values()))
+            self.assertFalse(all(check(symbol,dict(I2F=64,FFMA=64)).values()))
+        self.assertEqual(AUDIT['roof_reduction_checks']('adangel_sm80_roof_candidateILb1ELb0ELi23EE',{}),{})
+
     def test_three_stage_waits_are_both_required_in_same_entry(self):
         check=AUDIT['roof_pipeline_checks']
         for tune in (16,17,18,19,23):
