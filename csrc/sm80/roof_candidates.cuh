@@ -12,11 +12,11 @@
 // 22/23: retain 2x2-warp reuse; K128, bound3, two/three copy stages.
 template<int Tune> struct RoofShape {
   static constexpr int N=(Tune==9 || Tune==10)?64:128;
-  static constexpr int K=(Tune==10 || (Tune>=16 && Tune<=19) || Tune>=22)?128:256;
+  static constexpr int K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23))?128:256;
   static constexpr int Stages=((Tune>=16 && Tune<=19) || Tune==23)?3:2;
   static constexpr int WN=Tune==8?4:2;
-  static constexpr int Threads=Tune>=20?128:128*WN;
-  static constexpr int MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17 || Tune>=22)?3:2;
+  static constexpr int Threads=(Tune>=20 && Tune<=23)?128:128*WN;
+  static constexpr int MinBlocks=(Tune==9 || Tune==10 || Tune==16 || Tune==17 || (Tune>=22 && Tune<=23))?3:2;
   static constexpr int CoreTune=(Tune==16 || Tune==18 || Tune==20)?2:(Tune>=11?6:(Tune>=8?2:Tune));
 };
 
@@ -33,7 +33,7 @@ void adangel_sm80_roof_candidate(
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=23);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=25);
 }
 
 // Natural U8 [N,G] -> group-major [G,N]. Called inside O3 W conversion for
@@ -94,6 +94,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 21:return roof_config_for<21>(dual);
     case 22:return roof_config_for<22>(dual);
     case 23:return roof_config_for<23>(dual);
+    case 24:return roof_config_for<24>(dual);
+    case 25:return roof_config_for<25>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -105,6 +107,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
+  if(tune>=24)
+    return adangel_sm80_experiment::select_reduction_kernel(dual,fast,tune);
   if(tune>=22)
     return adangel_sm80_experiment::select_reuse_pipeline_kernel(dual,fast,tune);
   if(tune>=20)
@@ -150,7 +154,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   TORCH_CHECK(a.dim()==2 && w.dim()==2 && a.is_contiguous() && w.is_contiguous() &&
       a.scalar_type()==at::kByte && w.scalar_type()==at::kByte,"packed contiguous uint8 required");
   int64_t m64=a.size(0)/2,n64=w.size(0),k64=a.size(1)*2;
-  const int required_k=((tune>=16 && tune<=19) || tune>=22)?128:256;
+  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23))?128:256;
   TORCH_CHECK(a.size(0)%2==0 && m64>0 && n64>0 && k64>0 && m64%64==0 && n64%128==0 && k64%required_k==0 &&
       m64*k64<=2147483647LL && n64*k64<=2147483647LL && m64*n64<=2147483647LL &&
       m64/64<=65535 && n64/128<=65535 && w.size(1)==a.size(1),"invalid aligned shape/index range");
@@ -236,8 +240,12 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
   meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
   meta["pipeline_stages"]=cfg.stages;
-  meta["warp_layout"]=std::vector<int>{tune>=20?2:4,cfg.threads/(32*(tune>=20?2:4))};
+  const int warp_m=(tune>=20 && tune<=23)?2:4;
+  meta["warp_layout"]=std::vector<int>{warp_m,cfg.threads/(32*warp_m)};
   meta["accumulators_per_thread"]=64*cfg.n/cfg.threads;
+  meta["fp32_accumulation_chains"]=tune==24?2:(tune==25?4:1);
+  meta["fp32_reassociated"]=tune==24 || tune==25;
+  meta["group_accumulation"]=tune>=24 ? "interleaved_chains_then_balanced_tree" : "ascending_g128_fma";
   meta["shared_memory_bytes"]=smem;meta["scope"]="candidate_compute_only_not_production";
   meta["registers_per_thread"]=attributes.numRegs;meta["local_bytes_per_thread"]=attributes.localSizeBytes;
   meta["max_resident_blocks_per_sm"]=resident_blocks;

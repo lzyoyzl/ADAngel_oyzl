@@ -12,6 +12,7 @@ import statistics
 import time
 
 from benchmark_a100_o1 import command, stats
+from roof_reduction_validation import compare_output, reference_fp64
 
 
 def group_major_scales(value):
@@ -33,6 +34,8 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--synthetic", action="store_true", required=True)
     p.add_argument("--validate", action="store_true")
+    p.add_argument("--allow-reassociation", action="store_true",
+                   help="Explicit numerical-policy opt-in for candidates24/25 only; old cases remain bitwise gated")
     p.add_argument("--size", type=int, default=4096)
     p.add_argument("--warmup", type=int, default=50)
     p.add_argument("--repeats", type=int, default=200)
@@ -40,8 +43,10 @@ def main():
     p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
+    if any(t in (24,25) for t in args.tunes) and not args.allow_reassociation:
+        p.error('candidates24/25 require explicit --allow-reassociation')
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
     if any(t in (14,15) for t in args.tunes) and 'o3' in args.variants:
@@ -128,6 +133,7 @@ def main():
             for m, n, k in shapes:
                 for pattern in ("random", "zero", "extrema", "zero_scale", "power2_a", "power2_underflow"):
                     values, expected, _ = inputs(variant, m, n, k, pattern)
+                    semantic=reference_fp64(variant,values) if args.allow_reassociation else None
                     stream = torch.cuda.Stream()
                     stream.wait_stream(torch.cuda.current_stream())
                     with torch.cuda.stream(stream):
@@ -155,19 +161,24 @@ def main():
                                 assert result['kernel']['scale_copy_combined_panels']==(tune==15)
                                 assert not result['kernel']['activation_power2_fast_path']
                                 assert not result['kernel']['activation_power2_guard_fallback']
-                            assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, m, n, k, pattern)
+                            if args.allow_reassociation:
+                                numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']))
+                            else:
+                                assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, m, n, k, pattern)
+                                numeric=dict(bitwise_equal_production=True,mse_vs_production=0.0)
                             if tune in (11,12) and variant!="o3":
                                 expected_fast=pattern=="power2_a" or (pattern=="random" and variant=="o7")
                                 assert bool(result["kernel"]["activation_power2_fast_path"])==expected_fast
                                 assert bool(result["kernel"]["activation_scale_prebias"])==(tune==12 and expected_fast)
                             checks.append(dict(variant=variant, tune=tune, shape=[m,n,k], pattern=pattern,
-                                               bitwise_equal=True, mse_vs_production=0.0, kernel=dict(result["kernel"])))
+                                               **numeric,kernel=dict(result["kernel"])))
         save("validation.json", {"passed": True, "checks": checks})
-        print("synthetic bitwise checks:", len(checks), flush=True)
+        print("synthetic numerical checks:" if args.allow_reassociation else "synthetic bitwise checks:", len(checks), flush=True)
 
     records = []
     for variant in args.variants:
         values, expected, baseline = inputs(variant, args.size, args.size, args.size)
+        semantic=reference_fp64(variant,values) if args.allow_reassociation else None
         for r in range(args.rounds):
             append("gpu_snapshots.jsonl", {"variant": variant, "round": r, "time": time.time(),
                    "gpu": command("nvidia-smi", "--query-gpu=clocks.sm,temperature.gpu,power.draw,utilization.gpu", "--format=csv")})
@@ -177,12 +188,16 @@ def main():
                 result = native._benchmark_roof_candidate(variant, tune, *values, args.warmup, args.repeats)
                 wall_end=time.time()
                 y = result["output"]
-                assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, "large")
+                if args.allow_reassociation:
+                    numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']))
+                else:
+                    assert torch.isfinite(y).all() and torch.equal(y.view(torch.int32), expected.view(torch.int32)), (variant, tune, "large")
+                    numeric=dict(bitwise_equal_production=True,mse_vs_production=0.0)
                 raw = list(result["gemm_ms"])
                 row = dict(variant=variant, tune=tune, round=r, raw_ms=raw, summary=stats(raw),
                            execution_order=order,order_position=order.index(tune),
                            wall_start_unix=wall_start,wall_end_unix=wall_end,
-                           kernel=dict(result["kernel"]), bitwise_equal_production=True, mse_vs_production=0.0)
+                           kernel=dict(result["kernel"]), **numeric)
                 records.append(row);append("results.jsonl", row)
                 print(variant, r, tune, row["summary"], flush=True)
     summary = []

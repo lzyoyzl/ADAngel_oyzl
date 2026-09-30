@@ -37,6 +37,15 @@ def roof_pipeline_checks(symbol, ptx, sass):
                 pipeline_sass_drain=bool(re.search(r'DEPBAR\.LE\s+SB\d+,\s*0x0\b',sass)))
 
 
+def roof_reduction_checks(symbol, counts):
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi2[45]EE',symbol):
+        return {}
+    # Does not prove the dependency graph; numeric tests cover the mapping.
+    return dict(reduction_keeps_i2f=counts.get('I2F',0)>0,
+                reduction_keeps_ffma=counts.get('FFMA',0)>0,
+                reduction_has_final_fadd=counts.get('FADD',0)>0)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
@@ -113,6 +122,7 @@ def main():
         if args.variant=='roof_candidate':
             checks.update(roof_scale_checks(symbol,instruction_counts))
             checks.update(roof_pipeline_checks(symbol,ptx,block))
+            checks.update(roof_reduction_checks(symbol,instruction_counts))
         functions.append(dict(symbol=symbol,checks=checks,**audit_policy(checks,args.allow_spills),resource=resource,
                               instruction_counts=instruction_counts))
     passed=bool(functions) and all(f['passed'] for f in functions)

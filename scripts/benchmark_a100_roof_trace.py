@@ -11,6 +11,7 @@ import statistics
 import time
 
 from benchmark_a100_o1 import command, stats
+from roof_reduction_validation import compare_output, reference_fp64, mse_regression_ok
 from benchmark_a100_mixed import conversion_bytes, integer_reference, validate_fp16_result
 from benchmark_a100_mixed_trace import (
     inspect_inputs, inspect_raw_inputs, mse, source_identity, verify_raw_prepared,
@@ -68,13 +69,17 @@ def main():
     p.add_argument('--repeats', type=int, default=200)
     p.add_argument('--inner', type=int, default=100)
     p.add_argument('--all-modes', action='store_true')
+    p.add_argument('--allow-reassociation',action='store_true',
+                   help='Opt in to candidate24/25 numerical policy; never weakens old candidate bitwise gates')
     p.add_argument('--tunes', type=int, nargs='+', default=[-1,1,2,3])
     p.add_argument('--variants', nargs='+', choices=['o3','o7','o8'], default=['o3','o7','o8'])
     args = p.parse_args()
     if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2 or args.inner<2
         or -1 not in args.tunes or len(set(args.tunes))!=len(args.tunes)
-        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
+        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
         p.error('fresh output, production control (-1), unique valid cases and positive repetitions required')
+    if any(t in (24,25) for t in args.tunes) and not args.allow_reassociation:
+        p.error('candidates24/25 require explicit --allow-reassociation')
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
     if any(t in (14,15) for t in args.tunes) and 'o3' in args.variants:
@@ -147,6 +152,7 @@ def main():
                 del reference,aq,asc,wq,wsc
             expected=base['output']
             metrics=dict(mse_vs_o0=mse(expected,o0),mse_vs_paired_fp16=mse(expected,paired))
+            semantic=reference_fp64(variant,values) if args.allow_reassociation else None
             for r in range(args.rounds):
                 append('gpu_snapshots.jsonl',dict(sample_id=x.sample_id,variant=variant,round=r,time=time.time(),
                     gpu=command('nvidia-smi','--query-gpu=clocks.sm,temperature.gpu,power.draw,utilization.gpu','--format=csv')))
@@ -167,8 +173,16 @@ def main():
                             timings={k:list(v) for k,v in result['timings_ms'].items()}
                         wall_end=time.time()
                         y=result['output']
-                        if y.dtype!=torch.float32 or not torch.isfinite(y).all() or not torch.equal(y.view(torch.int32),expected.view(torch.int32)):
-                            raise AssertionError((x.sample_id,variant,tune,mode,'output differs from production'))
+                        if args.allow_reassociation:
+                            numeric=compare_output(y,expected,semantic,tune,dict(result['kernel']))
+                            actual_metrics=dict(mse_vs_o0=mse(y,o0),mse_vs_paired_fp16=mse(y,paired))
+                            numeric['mse_regression_passed']=all(mse_regression_ok(actual_metrics[key],value) for key,value in metrics.items())
+                            numeric['baseline_mse']=metrics.copy()
+                        else:
+                            if y.dtype!=torch.float32 or not torch.isfinite(y).all() or not torch.equal(y.view(torch.int32),expected.view(torch.int32)):
+                                raise AssertionError((x.sample_id,variant,tune,mode,'output differs from production'))
+                            numeric=dict(bitwise_equal_production=True,mse_vs_production=0.0)
+                            actual_metrics=metrics
                         if any(len(t)!=args.repeats for t in timings.values()):
                             raise ValueError('missing timing repetitions')
                         stage='gemm' if mode=='compute_only' else 'total'
@@ -187,7 +201,7 @@ def main():
                             kernel=dict(result['kernel']),conversion_inner_repeats=args.inner if args.all_modes else None,
                             stage_timing_inner_repeats={name:args.inner if 'conversion' in name or mode=='conversion_only' else 1 for name in timings},
                             total_timing='sum_of_batched_stage_samples' if mode=='conversion_only' else 'single_execution_cuda_event',
-                            bitwise_equal_production=True,mse_vs_production=0.0,paired_fp16=reference_name,**metrics)
+                            **numeric,paired_fp16=reference_name,**actual_metrics)
                         records.append(row);append('results.jsonl',row)
                 print(x.sample_id,variant,r,'paired round complete',flush=True)
             del values,base,expected,paired
@@ -195,6 +209,8 @@ def main():
         raise RuntimeError('incomplete measurement coverage')
     save('summary.json',dict(scope='real_trace_four_modes' if args.all_modes else 'real_trace_prepared_core_only',all_24_samples=args.samples==24,
         all_four_modes_completed=args.all_modes,correctness_passed=True,no_filtering=True,
+        numerical_policy='explicit_reassociation_only_for_24_25' if args.allow_reassociation else 'bitwise',
+        mse_regression_passed=all(r.get('mse_regression_passed',True) for r in records),
         bootstrap_unit='sample; rounds collapsed; descriptive CI (same-trace samples correlated)',
         records=summarize(records)))
 
