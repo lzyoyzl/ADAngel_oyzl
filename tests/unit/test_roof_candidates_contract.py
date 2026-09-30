@@ -65,9 +65,9 @@ class RoofCandidatesContractTest(unittest.TestCase):
 
     def test_three_stage_prologue_wait_drain_and_slot_reuse(self):
         body=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
-        self.assertIn('if(k/K>1) prefetch(1,1)',body)
+        self.assertIn('(s,1,1,a,w,ws,m,k,as,n)',body)
         self.assertIn('if(stage+2<k/K) asm volatile("cp.async.wait_group 1;',body)
-        self.assertIn('if(stage+2<k/K) prefetch((stage+2)%Stages,stage+2)',body)
+        self.assertIn('(s,(stage+2)%Stages,stage+2,a,w,ws,m,k,as,n)',body)
         self.assertIn('process_stage(stage,stage%Stages)',body)
         for total in (1,2,3,4,5,6,7,32):
             slots={};pending=[];completed=set();consumed=[]

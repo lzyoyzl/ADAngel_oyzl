@@ -230,13 +230,17 @@ __device__ __forceinline__ void o3_body(
   auto ld=lc.retile_D(ra); auto hd=hc.retile_D(rh); auto bd=bc.retile_D(rb);
   auto bd1=bc.retile_D(rb1);
   auto ld1=lc.retile_D(ra1);auto hd1=hc.retile_D(rh1);
-  auto prefetch=[&](int slot,int stage) {
-    o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(s,slot,stage,a,w,ws,m,k,as,n);
-  };
-  prefetch(0,0);
+  if constexpr(Stages==2) {
+    // Keep the historical call structure for the existing binary controls.
+    o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>(s,0,0,a,w,ws,m,k,as,n);
+  } else {
+    o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(s,0,0,a,w,ws,m,k,as,n);
+  }
   // Three-stage candidate: prime a second G128. Each copy stage has its own
   // commit group. The prologue/drain also covers short/odd stage counts.
-  if constexpr(Stages==3) { if(k/K>1) prefetch(1,1); }
+  if constexpr(Stages==3) {
+    if(k/K>1) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(s,1,1,a,w,ws,m,k,as,n);
+  }
   auto process_stage=[&](int stage,auto slot) {
     if constexpr(Stages==3) {
       if(stage+2<k/K) asm volatile("cp.async.wait_group 1;" ::: "memory");
@@ -248,9 +252,9 @@ __device__ __forceinline__ void o3_body(
     // protects the previous slot before any warp reuses it for stage+2.
     __syncthreads();
     if constexpr(Stages==3) {
-      if(stage+2<k/K) prefetch((stage+2)%Stages,stage+2);
+      if(stage+2<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(s,(stage+2)%Stages,stage+2,a,w,ws,m,k,as,n);
     } else {
-      if(stage+1<k/K) prefetch(1-slot,stage+1);
+      if(stage+1<k/K) o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels>(s,1-slot,stage+1,a,w,ws,m,k,as,n);
     }
     auto process_group=[&](auto group) {
       if constexpr(Stream) {
@@ -482,6 +486,8 @@ __device__ __forceinline__ void o3_body(
       process_stage(stage,cute::_0{});
       if(stage+1<k/K) process_stage(stage+1,cute::_1{});
     }
+  } else if constexpr(Stages==2) {
+    for(int stage=0;stage<k/K;++stage) process_stage(stage,stage%2);
   } else {
     for(int stage=0;stage<k/K;++stage) process_stage(stage,stage%Stages);
   }
