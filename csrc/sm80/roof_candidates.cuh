@@ -39,21 +39,26 @@ void adangel_sm80_roof_candidate(
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=42);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=44);
 }
 
-bool roof_grouped_payload(int tune) {return tune==41 || tune==42;}
+//43/44 are conversion-only variants of41/42, NOT new GEMM instantiations.
+bool roof_fused_payload(int tune) {return tune==43 || tune==44;}
+bool roof_grouped_payload(int tune) {return tune>=41 && tune<=44;}
 void roof_pack_payload(const at::Tensor& src,const at::Tensor& dst,int planes,int rows,int k,cudaStream_t stream) {
   adangel_sm80_experiment::pack_g128_payload(src.data_ptr<uint8_t>(),dst.data_ptr<uint8_t>(),planes,rows,k,stream);
   C10_CUDA_KERNEL_LAUNCH_CHECK();
 }
 void roof_payload_metadata(py::dict& meta,int tune,int m,int n,int k) {
   const bool packed=roof_grouped_payload(tune);
+  const bool fused=roof_fused_payload(tune);
   meta["payload_layout"]=packed?"plane_group_row_k64_bytes":"plane_row_group_k64_bytes";
   meta["payload_reorder_in_conversion"]=packed;
-  meta["payload_reorder_fused"]=false;
-  meta["activation_payload_reorder_traffic_bytes"]=packed?int64_t(2)*m*k:0;
-  meta["weight_payload_reorder_traffic_bytes"]=packed?int64_t(n)*k:0;
+  meta["payload_reorder_fused"]=fused;
+  meta["gemm_tune"]=fused?tune-2:tune;
+  meta["conversion_kernels_per_operand"]=packed && !fused?2:1;
+  meta["activation_payload_reorder_traffic_bytes"]=packed && !fused?int64_t(2)*m*k:0;
+  meta["weight_payload_reorder_traffic_bytes"]=packed && !fused?int64_t(n)*k:0;
 }
 
 void check_roof_fixed_shape(int tune,int64_t m,int64_t n,int64_t k) {
@@ -142,6 +147,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 40:return roof_config_for<40>(dual);
     case 41:return roof_config_for<41>(dual);
     case 42:return roof_config_for<42>(dual);
+    case 43:return roof_config_for<41>(dual);
+    case 44:return roof_config_for<42>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -153,7 +160,7 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
-  if(tune==41 || tune==42) return adangel_sm80_experiment::select_grouped_payload_kernel(dual,fast,tune);
+  if(roof_grouped_payload(tune)) return adangel_sm80_experiment::select_grouped_payload_kernel(dual,fast,roof_fused_payload(tune)?tune-2:tune);
   if(tune==39 || tune==40) return adangel_sm80_experiment::select_fragment_tree_kernel(dual,fast,tune);
   if(tune==37 || tune==38) return adangel_sm80_experiment::select_static_eager_tree_kernel(dual,fast,tune);
   if(tune==36) return adangel_sm80_experiment::select_eager_tree_kernel(dual,fast,tune);
@@ -211,6 +218,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   TORCH_CHECK(tune!=13 || !dual,"group-major UE8M0 candidate is O3 only");
   TORCH_CHECK((tune!=14 && tune!=15) || dual,"asynchronous FP32 scale candidate requires O7/O8");
   TORCH_CHECK(valid_roof_tune(tune) && warmup>=0 && repeats>0,"invalid candidate/repetitions");
+  TORCH_CHECK(!roof_fused_payload(tune),"candidate43/44 require source-format four-mode API; no conversion is performed by prepared-core API");
   for(const auto& t : {a,as,w,ws})
     TORCH_CHECK(t.is_cuda() && t.device()==a.device(),"CUDA device mismatch");
   TORCH_CHECK(a.dim()==2 && w.dim()==2 && a.is_contiguous() && w.is_contiguous() &&

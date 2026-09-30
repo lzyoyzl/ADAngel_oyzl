@@ -20,6 +20,7 @@
 #include "adangel/fp16_runner.h"
 #include <cuda_fp16.h>
 #include "roof_pipeline_api.h"
+#include "roof_fused_conversion_api.h"
 
 namespace py = pybind11;
 namespace {
@@ -416,12 +417,20 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(implementation=="swizzle_128x128_k128") o1_ampere_configure<128,128,128>();
   if(implementation=="swizzle_128x64_k64") o1_ampere_configure<128,64,64>();
   auto cvw=[&](){
+    if(roof_fused_payload(roof_tune)) {
+      adangel_sm80_experiment::fused_o3_weight(w.data_ptr<uint8_t>(),roof_w.data_ptr<uint8_t>(),n,k,stream);
+      C10_CUDA_KERNEL_LAUNCH_CHECK();return;
+    }
     if(split) adangel_launch_mxfp4_to_q4(w,wa,stream);
     else adangel_launch_mxfp4_to_int8(w,wa,stream);
     if(roof_tune==13) roof_reorder_o3_scale(ws,roof_ws,n,k/128,stream);
     if(roof_grouped_payload(roof_tune)) roof_pack_payload(wa,roof_w,1,n,k,stream);
   };
   auto cva=[&](){
+    if(roof_fused_payload(roof_tune)) {
+      adangel_sm80_experiment::fused_o3_activation(a.data_ptr<int8_t>(),roof_a.data_ptr<uint8_t>(),m,k,stream);
+      C10_CUDA_KERNEL_LAUNCH_CHECK();return;
+    }
     if(split) adangel_launch_split_int8_to_int4(a,aa,stream);
     if(roof_grouped_payload(roof_tune)) roof_pack_payload(aa,roof_a,2,m,k,stream);
   };
@@ -624,7 +633,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(roof_tune>=0) {
     meta["implementation"]="roof_candidate_"+std::to_string(roof_tune);
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=42))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=44))?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
@@ -656,6 +665,13 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     roof_payload_metadata(meta,roof_tune,m,n,k);
   }
   py::dict r;r["output"]=out;r["timings_ms"]=timings;r["kernel"]=meta;
+  if(roof_fused_payload(roof_tune)) {
+    // Optional diagnostic export only, AFTER all measured work. GEMM consumes
+    // roof_a/roof_w directly and never requires these inverse-layout copies.
+    aa=roof_a.permute({0,2,1,3}).contiguous().reshape({2*m,k/2});
+    wa=roof_w.permute({1,0,2}).contiguous().reshape({n,k/2});
+    meta["natural_payload_export"]="diagnostic_inverse_layout_after_timing";
+  }
   r["converted_weight"]=wa;r["converted_activation"]=aa;
   if(roof_tune==13) r["converted_weight_scale"]=roof_ws;
   if(roof_grouped_payload(roof_tune)) {
@@ -674,6 +690,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
   m.def("_convert_mixed_bitplanes",&convert_mixed_bitplanes,py::arg("source"),py::arg("scale_layout")="row_major");
   m.def("_convert_mixed_source",&convert_mixed_source,py::arg("source"),
       py::arg("scale_layout")="row_major");
+  m.def("_convert_mixed_fused_payload",&convert_mixed_fused_payload,py::arg("source"));
   m.def("_benchmark_mixed",&benchmark_mixed,py::arg("variant"),py::arg("mode"),
       py::arg("weight_source"),py::arg("activation_source"),py::arg("warmup")=50,
       py::arg("repeats")=200,py::arg("conversion_inner_repeats")=100,

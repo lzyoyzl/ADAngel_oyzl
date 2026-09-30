@@ -8,7 +8,7 @@ def payload_reorder_bytes_for_stage(meta, mode, stage):
 
 
 def verify_grouped_payload(result, tune, natural_a, natural_w):
-    if tune not in (41,42):
+    if tune not in (41,42,43,44):
         return {}
     import torch
     m=natural_a.shape[0]//2
@@ -23,10 +23,14 @@ def verify_grouped_payload(result, tune, natural_a, natural_w):
     assert torch.equal(actual_a,expected_a) and torch.equal(actual_w,expected_w)
     meta=result['kernel']
     assert meta['payload_layout']=='plane_group_row_k64_bytes'
-    assert meta['payload_reorder_in_conversion'] and not meta['payload_reorder_fused']
-    assert meta['activation_payload_reorder_traffic_bytes']==4*m*kbytes
-    assert meta['weight_payload_reorder_traffic_bytes']==2*n*kbytes
-    assert meta['pipeline_stages']==(2 if tune==41 else 3)
+    fused=tune in (43,44)
+    assert meta['payload_reorder_in_conversion'] and meta['payload_reorder_fused']==fused
+    assert meta['activation_payload_reorder_traffic_bytes']==(0 if fused else 4*m*kbytes)
+    assert meta['weight_payload_reorder_traffic_bytes']==(0 if fused else 2*n*kbytes)
+    assert meta['pipeline_stages']==(2 if tune in (41,43) else 3)
+    if fused:
+        assert meta['gemm_tune']==tune-2 and meta['conversion_kernels_per_operand']==1
+        assert meta['natural_payload_export']=='diagnostic_inverse_layout_after_timing'
     assert meta['cta_tile']==[64,128,128] and meta['threads']==128
     assert not meta['fp32_reassociated'] and meta['product_window_groups']==0
     return {'payload_layout_bitwise_verified':True}

@@ -3,6 +3,35 @@
 // data-loading fallback, or default-production switch is hidden in this entry.
 #pragma once
 
+void launch_mixed_fused_payload(const MixedSource& s,MixedConverted& d,
+    at::Tensor& packed,cudaStream_t stream) {
+  using Kind=adangel_sm80_experiment::GroupedSourceKind;
+  const Kind kind=s.kind==MixedKind::Nv4?Kind::Nv4:(s.kind==MixedKind::Mx8?Kind::Mx8:
+      (s.kind==MixedKind::Hif4?Kind::Hif4:Kind::Nv6));
+  TORCH_CHECK(d.group_major,"fused payload experiment requires group-major scales");
+  adangel_sm80_experiment::fused_mixed_fixed(kind,s.payload.data_ptr<uint8_t>(),
+      s.scale.data_ptr<uint8_t>(),s.tensor_scale.defined()?s.tensor_scale.data_ptr<float>():nullptr,
+      s.micro8.defined()?s.micro8.data_ptr<uint8_t>():nullptr,
+      s.micro4.defined()?s.micro4.data_ptr<uint8_t>():nullptr,
+      packed.data_ptr<uint8_t>(),d.scale.data_ptr<float>(),s.rows,s.k,stream);
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+}
+
+py::dict convert_mixed_fused_payload(const py::dict& source) {
+  const MixedSource s(source);
+  c10::cuda::CUDAGuard guard(s.payload.device());
+  cudaDeviceProp prop;check(cudaGetDeviceProperties(&prop,s.payload.get_device()));
+  TORCH_CHECK(prop.major==8 && prop.minor==0,"requires A100 SM80");
+  MixedConverted d(s,true);
+  auto packed=s.weight?at::empty({s.k/128,s.rows,64},s.payload.options()):
+      at::empty({2,s.k/128,s.rows,64},s.payload.options());
+  launch_mixed_fused_payload(s,d,packed,c10::cuda::getCurrentCUDAStream(s.payload.get_device()).stream());
+  py::dict result;result["packed"]=packed;result["scale"]=d.scale;
+  result["payload_layout"]="plane_group_row_k64_bytes";
+  result["scope"]="fused_conversion_validation_not_production";
+  return result;
+}
+
 py::dict benchmark_mixed(std::string variant,std::string mode,
     const py::dict& weight_source,const py::dict& activation_source,
     int warmup,int repeats,int inner,std::string tile,std::string scale_layout,int roof_tune) {
@@ -68,10 +97,12 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     else check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
   }
   auto cvw=[&]() {
+    if(roof_fused_payload(roof_tune)) {launch_mixed_fused_payload(w,*cw,roof_w,stream);return;}
     if(fp16) launch_mixed_fp16(w,wh,stream);else if(binary) launch_mixed_bitplanes(w,*bw,stream);else launch_mixed_conversion(w,*cw,stream);
     if(roof_grouped_payload(roof_tune)) roof_pack_payload(cw->packed,roof_w,1,n,k,stream);
   };
   auto cva=[&]() {
+    if(roof_fused_payload(roof_tune)) {launch_mixed_fused_payload(a,*ca,roof_a,stream);return;}
     if(fp16) launch_mixed_fp16(a,ah,stream);else if(binary) launch_mixed_bitplanes(a,*ba,stream);else launch_mixed_conversion(a,*ca,stream);
     if(roof_grouped_payload(roof_tune)) roof_pack_payload(ca->packed,roof_a,2,m,k,stream);
   };
@@ -205,7 +236,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;meta["shared_memory_bytes"]=roof_cfg.smem;
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=42))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=44))?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
@@ -238,6 +269,13 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   meta["weight_source_format"]=weight_source["format"];
   meta["activation_source_format"]=activation_source["format"];
   py::dict result;
+  if(roof_fused_payload(roof_tune)) {
+    // Validation exports only. All events have completed; neither the real
+    // conversion nor GEMM needs a natural-layout intermediate.
+    ca->packed=roof_a.permute({0,2,1,3}).contiguous().reshape({2*m,k/2});
+    cw->packed=roof_w.permute({1,0,2}).contiguous().reshape({n,k/2});
+    meta["natural_payload_export"]="diagnostic_inverse_layout_after_timing";
+  }
   result["output"]=y;result["timings_ms"]=timings;result["kernel"]=meta;
   if(fp16) {result["converted_weight"]=wh;result["converted_activation"]=ah;}
   else if(binary) {result["converted_weight"]=py::make_tuple(bw->packed,bw->scale);
@@ -252,6 +290,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   }
   result["conversion_scope"]=fp16?"source_format_to_fp16":(binary?"source_format_to_fixed_bitplanes":"source_format_to_fixed_only");
   if(roof_grouped_payload(roof_tune)) result["conversion_scope"]="source_format_to_fixed_then_g128_payload_reorder";
+  if(roof_fused_payload(roof_tune)) result["conversion_scope"]="source_format_to_fixed_g128_payload_fused";
   result["total_timing"]=compute?"single_execution_cuda_event":"sum_of_batched_stage_samples";
   result["timing_contract_version"]=2;
   result["timing_strategy"]="conversion_amortized_end_to_end_direct";

@@ -30,7 +30,7 @@ def compare(rows, reference, candidate, samples, rounds, variants, modes, allow_
     if len(index) != len(selected) or len(ids) != samples or set(index) != expected:
         raise ValueError("incomplete or duplicate sample/variant/mode/round/tune coverage")
     for r in selected:
-        if r['tune'] in (41,42) and not r.get('payload_layout_bitwise_verified'):
+        if r['tune'] in (41,42,43,44) and not r.get('payload_layout_bitwise_verified'):
             raise ValueError('missing bitwise G128 payload layout verification')
         if r['tune']==37 and not r.get('bitwise_equal_dynamic_tree'):
             raise ValueError('missing bitwise comparison against dynamic tree36')
