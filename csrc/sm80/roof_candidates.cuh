@@ -21,12 +21,26 @@ void adangel_sm80_roof_candidate(
     float* y,int m,int n,int k) {
   using R=RoofShape<Tune>;
   o3_body<64,R::N,R::K,Fast && !DualScale,false,false,R::WN,false,true,false,true,true,true,false,
-          DualScale,DualScale,R::CoreTune,DualScale && Fast && Tune>=11,
+          DualScale,DualScale || Tune==13,R::CoreTune,DualScale && Fast && (Tune==11 || Tune==12),
           DualScale && Fast && Tune==12>(a,w,as,ws,y,m,n,k);
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=12);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=13);
+}
+
+// Natural U8 [N,G] -> group-major [G,N]. Called inside O3 W conversion for
+// cold/conversion-only; cached before compute-only and steady-state. Values,
+// E8M0 decoding, Q4 payload and ordered G128 accumulation do not change.
+__global__ void adangel_sm80_roof_reorder_o3_scale(const uint8_t* src,uint8_t* dst,int n,int groups) {
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  if(i<n*groups) dst[i]=src[(i%n)*groups+i/n];
+}
+
+void roof_reorder_o3_scale(const at::Tensor& src,const at::Tensor& dst,int n,int groups,cudaStream_t stream) {
+  adangel_sm80_roof_reorder_o3_scale<<<(n*groups+255)/256,256,0,stream>>>(
+      src.data_ptr<uint8_t>(),dst.data_ptr<uint8_t>(),n,groups);
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
 }
 
 // Only used outside CUDA Event regions. A power-of-two times a normal W is
@@ -57,6 +71,7 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 10:return roof_config_for<10>(dual);
     case 11:return roof_config_for<11>(dual);
     case 12:return roof_config_for<12>(dual);
+    case 13:return roof_config_for<13>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -69,6 +84,10 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
   auto kernel=adangel_sm80_roof_candidate<false,false,0>;
+  if(tune==13) {
+    TORCH_CHECK(!dual,"group-major UE8M0 candidate is O3 only");
+    return fast ? adangel_sm80_roof_candidate<false,true,13> : adangel_sm80_roof_candidate<false,false,13>;
+  }
   if(tune==12) return dual ? (fast ? adangel_sm80_roof_candidate<true,true,12> :
       adangel_sm80_roof_candidate<true,false,12>) : (fast ? adangel_sm80_roof_candidate<false,true,12> :
       adangel_sm80_roof_candidate<false,false,12>);
@@ -87,6 +106,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
     at::Tensor w,at::Tensor ws,int warmup,int repeats) {
   const bool dual=variant=="o7" || variant=="o8";
   TORCH_CHECK(dual || variant=="o3","expected o3/o7/o8");
+  TORCH_CHECK(tune!=13 || !dual,"group-major UE8M0 candidate is O3 only");
   TORCH_CHECK(valid_roof_tune(tune) && warmup>=0 && repeats>0,"invalid candidate/repetitions");
   for(const auto& t : {a,as,w,ws})
     TORCH_CHECK(t.is_cuda() && t.device()==a.device(),"CUDA device mismatch");
@@ -127,6 +147,8 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
       "scale product may overflow output");
   auto y=at::empty({m,n},as.options());
   auto stream=c10::cuda::getCurrentCUDAStream(a.get_device()).stream();
+  auto launch_ws=tune==13 ? at::empty({g,n},ws.options()) : ws;
+  if(tune==13) roof_reorder_o3_scale(ws,launch_ws,n,g,stream);
   const auto cfg=roof_config(tune,dual);
   const size_t smem=cfg.smem;
   auto kernel=adangel_sm80_roof_candidate<false,false,0>;
@@ -155,7 +177,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
           a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),as.data_ptr<float>(),ws.data_ptr<float>(),
           y.data_ptr<float>(),m,n,k);
     else kernel<<<dim3(n/cfg.n,m/64),cfg.threads,smem,stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
-        as.data_ptr<float>(),reinterpret_cast<const uint8_t*>(ws.data_ptr()),y.data_ptr<float>(),m,n,k);
+        as.data_ptr<float>(),reinterpret_cast<const uint8_t*>(launch_ws.data_ptr()),y.data_ptr<float>(),m,n,k);
     C10_CUDA_KERNEL_LAUNCH_CHECK();
   };
   for(int j=0;j<warmup;++j) launch();
@@ -167,6 +189,8 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["activation_power2_fast_path"]=dual && tune>=11 && fast;
   meta["activation_power2_guard_fallback"]=dual && tune>=11 && !fast;
   meta["activation_scale_prebias"]=dual && tune==12 && fast;
+  meta["weight_scale_layout"]=dual || tune==13 ? "group_major" : "row_major";
+  meta["weight_scale_reorder_bytes"]=tune==13 ? int64_t(2)*n*g : 0;
   meta["scale_hoist"]=tune>=0 && bool(cfg.core_tune&1);meta["interleaved_n_atoms"]=tune>=0 && bool(cfg.core_tune&2);
   meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
   meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
@@ -174,5 +198,6 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["registers_per_thread"]=attributes.numRegs;meta["local_bytes_per_thread"]=attributes.localSizeBytes;
   meta["max_resident_blocks_per_sm"]=resident_blocks;
   py::dict result;result["output"]=y;result["gemm_ms"]=times;result["kernel"]=meta;
+  if(tune==13) result["converted_weight_scale"]=launch_ws;
   return result;
 }

@@ -63,6 +63,23 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('row_scale=__uint_as_float(__float_as_uint(row_scale)-0x3f800000u)',body)
         self.assertEqual(body.count('o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale>'),2)
 
+    def test_o3_group_major_scale_is_timed_in_weight_conversion(self):
+        host=(ROOT/'csrc/sm80/o1_o3.cu').read_text()
+        cvw=host.split('auto cvw=[&](){',1)[1].split('auto cva=',1)[0]
+        self.assertIn('roof_reorder_o3_scale(ws,roof_ws,n,k/128,stream)',cvw)
+        self.assertIn('auto roof_ws=roof_tune==13 ? at::empty({k/128,n},ws.options()) : ws',host)
+        self.assertIn('weight_scale_reorder_in_conversion',host)
+        body=(ROOT/'csrc/sm80/o3_optimized.cuh').read_text()
+        self.assertIn('(stage*C::Groups+group)*total_n+blockIdx.x*N+threadIdx.x',body)
+        self.assertIn('weight_scale_reorder_bytes',(ROOT/'scripts/benchmark_a100_roof_trace.py').read_text())
+
+    def test_o3_scale_permutation_indexing(self):
+        for n,groups in ((128,2),(256,4),(128,6),(4096,32)):
+            source=[(row*17+group*31)%255 for row in range(n) for group in range(groups)]
+            actual=[source[(i%n)*groups+i//n] for i in range(n*groups)]
+            expected=[source[row*groups+group] for group in range(groups) for row in range(n)]
+            self.assertEqual(actual,expected)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -40,7 +40,7 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
     const float* grouped_as=nullptr,int total_n=0) {
   using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
   static_assert(!DualScale || (!Fast && !Cached && !VectorScale));
-  static_assert(!GroupMajorScale || DualScale);
+  static_assert(!GroupMajorScale || DualScale || (!Cached && !VectorScale));
   static_assert(!PrebiasActivationScale || DualScale);
   typename C::template ByteLayout<M> la;
   typename C::template ByteLayout<N> lb;
@@ -104,7 +104,8 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
     o1_static_for<0,C::Groups>([&](auto group) {
       uint32_t code;
       if constexpr(VectorScale) code=(packed_codes>>(8*group))&255u;
-      else code=ws[(blockIdx.x*N+threadIdx.x)*(k/128)+stage*C::Groups+group];
+      else code=ws[GroupMajorScale ? (stage*C::Groups+group)*total_n+blockIdx.x*N+threadIdx.x
+                                  : (blockIdx.x*N+threadIdx.x)*(k/128)+stage*C::Groups+group];
       uint32_t bits=code?code<<23:0x00400000u;
       s.scales[(slot*C::Groups+group)*N+threadIdx.x]=__uint_as_float(Fast?((code-127u)<<23):bits);
     });

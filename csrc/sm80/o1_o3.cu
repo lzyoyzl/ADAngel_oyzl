@@ -284,6 +284,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto out=at::empty({m,n},as.options());
   auto wa=at::empty({n,split?k/2:k},w.options().dtype(split?at::kByte:at::kChar));
   auto aa=split?at::empty({2*m,k/2},w.options()):a;
+  auto roof_ws=roof_tune==13 ? at::empty({k/128,n},ws.options()) : ws;
   auto roof_kernel=select_roof_kernel(false,exponent_scale,roof_tune<0?0:roof_tune);
   const auto roof_cfg=roof_config(roof_tune,false);
   const size_t roof_smem=roof_cfg.smem;
@@ -410,14 +411,18 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   }
   if(implementation=="swizzle_128x128_k128") o1_ampere_configure<128,128,128>();
   if(implementation=="swizzle_128x64_k64") o1_ampere_configure<128,64,64>();
-  auto cvw=[&](){if(split) adangel_launch_mxfp4_to_q4(w,wa,stream); else adangel_launch_mxfp4_to_int8(w,wa,stream);};
+  auto cvw=[&](){
+    if(split) adangel_launch_mxfp4_to_q4(w,wa,stream);
+    else adangel_launch_mxfp4_to_int8(w,wa,stream);
+    if(roof_tune==13) roof_reorder_o3_scale(ws,roof_ws,n,k/128,stream);
+  };
   auto cva=[&](){if(split) adangel_launch_split_int8_to_int4(a,aa,stream);};
   auto gemm=[&](){
     dim3 grid(n/TN,m/TM);
     auto ap=reinterpret_cast<uint8_t*>(aa.data_ptr()); auto bp=reinterpret_cast<uint8_t*>(wa.data_ptr());
     if(roof_tune>=0) {
       roof_kernel<<<dim3(n/roof_cfg.n,m/64),roof_cfg.threads,roof_smem,stream>>>(ap,bp,as.data_ptr<float>(),
-          ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
+          roof_ws.data_ptr<uint8_t>(),out.data_ptr<float>(),m,n,k);
       C10_CUDA_KERNEL_LAUNCH_CHECK();return;
     }
     if(implementation=="o3_swizzle_64x128_k128_exp_static_stream") {
@@ -616,10 +621,14 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;
     meta["minimum_blocks_launch_bound"]=std::to_string(roof_cfg.min_blocks);
+    meta["weight_scale_layout"]=roof_tune==13 ? "group_major" : "row_major";
+    meta["weight_scale_reorder_in_conversion"]=roof_tune==13;
+    meta["weight_scale_reorder_bytes"]=roof_tune==13 ? int64_t(2)*n*(k/128) : 0;
     meta["shared_memory_bytes"]=roof_smem;
   }
   py::dict r;r["output"]=out;r["timings_ms"]=timings;r["kernel"]=meta;
   r["converted_weight"]=wa;r["converted_activation"]=aa;
+  if(roof_tune==13) r["converted_weight_scale"]=roof_ws;
   return r;
 }
 } // namespace

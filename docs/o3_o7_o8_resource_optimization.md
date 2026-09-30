@@ -46,7 +46,11 @@ NCU 中，O3 发射活跃比例由43.95%变为45.60%，O7/O8由约44.7%变为47.
 
 候选10零spill仍更慢，不能只追求occupancy或零spill。候选6另通过K768三后端racecheck（0 hazards/errors/warnings），但这是有限范围的安全检查。
 
-下一步候选11利用O7激活scale为2的整数次幂：在A/W及乘积均为正normal的guard下，用精确指数位运算替代逐组scale乘法；不修改INT32→FP32转换、不用magic-bias、不改FMA顺序。不满足guard时回到候选6普通精确路径。CPU指数/边界测试通过，A100编译和GPU验收进行中，尚无性能结论。O8一般不满足该格式特例，不能推定同样受益。
+候选11利用O7激活scale为2的整数次幂：在A/W及乘积均为正normal的guard下，用精确指数位运算替代逐组scale乘法；I2F/FMA顺序不变，不用magic-bias。216项合成逐位检查及24样本对照通过，但O7候选6/11为0.552960/0.565248ms，候选11相对6配对加速0.98016×，不采用。NCU显示FMUL虽减少，总动态指令反而增加6.39%。[完整证据](evidence/a100_o378_roof_v4/README.md)
+
+候选12把指数偏置减法移到每CTA、每row/group的shared scale预取阶段。288项逐位检查、原生INT4审计、memcheck/synccheck（各72项，0错误）通过。24样本O7候选6/12为0.553984/0.557056ms，MSE仍相同；目前没有明显增益，暂不采用。后续重点不再反复替换这一条乘法。
+
+新候选13只针对O3的UE8M0读取：将W scale由自然[N,G]重排为[G,N]，使同group的相邻列连续。重排单独kernel计入W转换（新增logical bytes=2×N×G），cold计入，compute-only/steady-state缓存。两路INT4、G128及scale数值不变；O7/O8不接受该候选。当前本地已实现，GPU编译/审计/四模式验收待执行。候选6平衡顺序的24样本四模式复测正在运行。
 
 代码先本地提交推送，再同步A100；直接HTTPS fetch断流时，使用校验Git bundle导入同一已推送提交。默认仍是旧实现，不修改5090。改动工作量后重算资源上界，不把旧约0.28ms下界当性能承诺。
 

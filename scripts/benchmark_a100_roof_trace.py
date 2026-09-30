@@ -73,8 +73,10 @@ def main():
     args = p.parse_args()
     if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2 or args.inner<2
         or -1 not in args.tunes or len(set(args.tunes))!=len(args.tunes)
-        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
+        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
         p.error('fresh output, production control (-1), unique valid cases and positive repetitions required')
+    if 13 in args.tunes and args.variants != ['o3']:
+        p.error('candidate13 is O3 only')
     import torch
     from adangel import _sm80 as native
     from adangel.quantization import mixed_formats as mf
@@ -172,6 +174,8 @@ def main():
                         stage_stats={k:stats(v) for k,v in timings.items()}
                         for name, st in stage_stats.items():
                             count=conversion_bytes(variant,name,*x.shape) if 'conversion' in name or mode=='conversion_only' else 0
+                            if name=='weight_conversion' or (name=='total' and mode=='conversion_only'):
+                                count+=int(result['kernel'].get('weight_scale_reorder_bytes',0))
                             st['logical_bytes']=count
                             st['logical_gbps']=count/st['median_ms']/1e6 if count else None
                         row=dict(sample_id=x.sample_id,variant=variant,tune=tune,round=r,mode=mode,

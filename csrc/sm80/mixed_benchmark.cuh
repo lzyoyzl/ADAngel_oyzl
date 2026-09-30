@@ -23,6 +23,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   TORCH_CHECK(valid_roof_tune(roof_tune) && (roof_tune<0 ||
       ((variant=="o7" || variant=="o8") && gm && tile=="64x128x256")),
       "roof candidate requires O7/O8 group-major 64x128x256");
+  TORCH_CHECK(roof_tune!=13,"group-major UE8M0 candidate is O3 only");
   const MixedSource w(weight_source,!fp16),a(activation_source,!fp16);
   TORCH_CHECK((nv && w.kind==MixedKind::Nv4 && a.kind==MixedKind::Mx8) ||
       (!nv && w.kind==MixedKind::Hif4 && a.kind==MixedKind::Nv6),
