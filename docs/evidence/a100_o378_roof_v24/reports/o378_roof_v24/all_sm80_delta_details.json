@@ -1,0 +1,91 @@
+{
+  "scope": "commuted FMUL inputs and removed reuse hints only; NOT machine code equality or performance proof",
+  "rows": [
+    {
+      "symbol": "_ZN40_GLOBAL__N__7f9b572e_8_o1_o3_cu_ac14f08f25adangel_sm80_mixed_binaryILi6ELi64ELi512ELb0ELb0ELi256ELb0EEEvPKjS2_PKfS4_Pfiii",
+      "old_count": 3472,
+      "new_count": 3472,
+      "normalized_text_equal": true,
+      "diff": [
+        "--- \n",
+        "+++ \n",
+        "@@ -1656,5 +1656,5 @@\n",
+        " LDS.64 R24, [R81+0x14860] ;",
+        "-FMUL R3, R14, R10.reuse ;",
+        "+FMUL R3, R14, R10 ;",
+        " LEA R37, R54, R37, 0x8 ;",
+        "-FMUL R7, R15, R10 ;",
+        "+FMUL R7, R10, R15 ;",
+        " LDS R22, [R11+0xd010] ;",
+        "@@ -1674,5 +1674,5 @@\n",
+        " IADD3 R69, R69, R32, RZ ;",
+        "-FMUL R12, R10, R19.reuse ;",
+        "+FMUL R12, R10, R19 ;",
+        " LDS R3, [R11+0xd210] ;",
+        "-FMUL R15, R15, R20 ;",
+        "+FMUL R15, R20.reuse, R15 ;",
+        " I2F R16, R16 ;"
+      ]
+    },
+    {
+      "symbol": "_ZN40_GLOBAL__N__7f9b572e_8_o1_o3_cu_ac14f08f25adangel_sm80_mixed_binaryILi6ELi128ELi256ELb1ELb0ELi512ELb0EEEvPKjS2_PKfS4_Pfiii",
+      "old_count": 2488,
+      "new_count": 2488,
+      "normalized_text_equal": true,
+      "diff": [
+        "--- \n",
+        "+++ \n",
+        "@@ -1770,3 +1770,3 @@\n",
+        " I2F R32, R24 ;",
+        "-FMUL R16, R6, R37 ;",
+        "+FMUL R16, R37.reuse, R6.reuse ;",
+        " LDS.64 R28, [R7.X4+0xe460] ;",
+        "@@ -1775,3 +1775,3 @@\n",
+        " LDS R25, [R13.X4+0x6110] ;",
+        "-FMUL R37, R0, R37 ;",
+        "+FMUL R37, R37, R0.reuse ;",
+        " I2F R40, R40 ;"
+      ]
+    },
+    {
+      "symbol": "_ZN40_GLOBAL__N__7f9b572e_8_o1_o3_cu_ac14f08f25adangel_sm80_mixed_binaryILi8ELi128ELi256ELb0ELb1ELi512ELb0EEEvPKjS2_PKfS4_Pfiii",
+      "old_count": 2704,
+      "new_count": 2704,
+      "normalized_text_equal": true,
+      "diff": [
+        "--- \n",
+        "+++ \n",
+        "@@ -1341,3 +1341,3 @@\n",
+        " IMAD R10, R55, -0x2, R59 ;",
+        "-FMUL R12, R33, R24 ;",
+        "+FMUL R12, R24, R33 ;",
+        " BMMA.168128.AND.POPC R40, R34.ROW, R8.COL, R40 ;",
+        "@@ -1580,3 +1580,3 @@\n",
+        " BMMA.168128.AND.POPC R40, R28.ROW, R10.COL, R36 ;",
+        "-FMUL R36, R33, R25 ;",
+        "+FMUL R36, R25, R33 ;",
+        " LEA R56, -R56, RZ, 0x1 ;"
+      ]
+    },
+    {
+      "symbol": "_ZN40_GLOBAL__N__7f9b572e_8_o1_o3_cu_ac14f08f25adangel_sm80_mixed_binaryILi8ELi64ELi512ELb1ELb0ELi256ELb0EEEvPKjS2_PKfS4_Pfiii",
+      "old_count": 4136,
+      "new_count": 4136,
+      "normalized_text_equal": true,
+      "diff": [
+        "--- \n",
+        "+++ \n",
+        "@@ -1839,6 +1839,6 @@\n",
+        " LDS R5, [R12+0x10210] ;",
+        "-FMUL R11, R15, R9 ;",
+        "-FMUL R8, R15, R17 ;",
+        "+FMUL R11, R9, R15 ;",
+        "+FMUL R8, R15, R17.reuse ;",
+        " LDS R3, [R12+0x11210] ;",
+        "-FMUL R9, R10, R9 ;",
+        "+FMUL R9, R9, R10 ;",
+        " I2F R4, R49 ;"
+      ]
+    }
+  ]
+}
