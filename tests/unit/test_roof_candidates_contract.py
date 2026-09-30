@@ -23,7 +23,8 @@ class RoofCandidatesContractTest(unittest.TestCase):
 
     def test_exact_old_entry_and_guarded_shapes(self):
         text = (ROOT / "csrc/sm80/roof_candidates.cuh").read_text()
-        self.assertIn("if(tune==-1)", text)
+        self.assertIn("if(tune==-1 && !dual)", text)
+        self.assertIn("const bool existing_dual=tune==-1 && dual;", text)
         self.assertIn("adangel_sm80_split_grouped_major<128,256>", text)
         self.assertIn("m64*k64<=2147483647LL", text)
         self.assertIn("as.stride(0)==1", text)

@@ -55,18 +55,25 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   const size_t smem=dual ? sizeof(O3AmpereConfig<64,128,256,false,2,true>::Storage)
                          : sizeof(O3AmpereConfig<64,128,256,false,2,false>::Storage);
   auto kernel=adangel_sm80_roof_candidate<false,false,0>;
-  if(tune==-1) {
-    if(dual) kernel=adangel_sm80_split_grouped_major<128,256>;
-    else if(fast) kernel=adangel_sm80_o3_swizzled_bound2<64,128,256,true,false,false,2,false,true,false,true,true>;
+  const bool existing_dual=tune==-1 && dual;
+  if(tune==-1 && !dual) {
+    if(fast) kernel=adangel_sm80_o3_swizzled_bound2<64,128,256,true,false,false,2,false,true,false,true,true>;
     else kernel=adangel_sm80_o3_swizzled_bound2<64,128,256,false,false,false,2,false,true,false,true,true>;
   }
   #define ROOF_SELECT(T) case T: kernel=dual ? adangel_sm80_roof_candidate<true,false,T> : \
       (fast ? adangel_sm80_roof_candidate<false,true,T> : adangel_sm80_roof_candidate<false,false,T>); break
   switch(tune) {ROOF_SELECT(0);ROOF_SELECT(1);ROOF_SELECT(2);ROOF_SELECT(3);}
   #undef ROOF_SELECT
-  check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
+  if(existing_dual)
+    check(cudaFuncSetAttribute(adangel_sm80_split_grouped_major<128,256>,
+        cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
+  else check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
   auto launch=[&]() {
-    kernel<<<dim3(n/128,m/64),256,smem,stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
+    if(existing_dual)
+      adangel_sm80_split_grouped_major<128,256><<<dim3(n/128,m/64),256,smem,stream>>>(
+          a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),as.data_ptr<float>(),ws.data_ptr<float>(),
+          y.data_ptr<float>(),m,n,k);
+    else kernel<<<dim3(n/128,m/64),256,smem,stream>>>(a.data_ptr<uint8_t>(),w.data_ptr<uint8_t>(),
         as.data_ptr<float>(),reinterpret_cast<const uint8_t*>(ws.data_ptr()),y.data_ptr<float>(),m,n,k);
     C10_CUDA_KERNEL_LAUNCH_CHECK();
   };
