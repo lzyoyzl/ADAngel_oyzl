@@ -105,10 +105,12 @@ __device__ __forceinline__ void o3_prefetch(typename O3AmpereConfig<M,N,K,Cached
   asm volatile("cp.async.commit_group;" ::: "memory");
 }
 
-template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false>
+template<int M,int N,int K,bool Fast,bool Cached=false,bool Magic=Fast,int WN=2,bool Merge=false,bool StaticCopy=false,bool PhasePair=false,bool Stream=false,bool BoundedOperands=false,bool VectorStore=false,bool VectorScale=false,bool DualScale=false,bool GroupMajorScale=false,int RoofTune=0>
 __device__ __forceinline__ void o3_body(
     const uint8_t* a,const uint8_t* w,const float* as,const uint8_t* ws,float* y,int m,int n,int k) {
   using C=O3AmpereConfig<M,N,K,Cached,WN,DualScale>;
+  static_assert(RoofTune>=0 && RoofTune<=3);
+  static_assert(RoofTune==0 || (Stream && !Merge && !Magic));
   static_assert(!DualScale || (!Fast && !Cached && !Magic && Stream));
   extern __shared__ __align__(128) uint8_t buf[];
   auto& s=*reinterpret_cast<typename C::Storage*>(buf);
@@ -205,10 +207,88 @@ __device__ __forceinline__ void o3_body(
         auto sd0=sbc.retile_D(br0);auto sd1=sbc.retile_D(br1);
         constexpr int NAtoms=decltype(cute::size<1>(br0))::value;
         static_assert(NAtoms*(N/SliceN)==decltype(cute::size<2>(acc))::value);
+        constexpr int MAtoms=decltype(cute::size<1>(acc))::value;
+        // Candidate-only: identity coordinates determine each owned row. Keep
+        // row scales live across N slices instead of rediscovering them after
+        // every MMA. No group may borrow another group's scale.
+        auto group_rows=cute::make_tensor<float>(cute::make_shape(cute::_4{},cute::Int<MAtoms>{}));
+        const int roof_scale_group=(Cached?stage:slot)*C::Groups+group;
+        if constexpr(RoofTune&1) {
+          o1_static_for<0,MAtoms>([&](auto mi) {
+            o1_static_for<0,4>([&](auto vi) {
+              if constexpr(DualScale)
+                group_rows(vi,mi)=s.activation_scales[roof_scale_group*M+cute::get<0>(coords(vi,mi,cute::_0{}))];
+              else group_rows(vi,mi)=rows(vi,mi,cute::_0{});
+            });
+          });
+        }
         o1_static_for<0,N/SliceN>([&](auto nb) {
           cute::copy(SmallCopy{},sbc.partition_S(slice_b(nb,sub)),sd0);
           cute::copy(SmallCopy{},sbc.partition_S(slice_b(nb,sub+cute::_1{})),sd1);
           o1_static_for<0,decltype(cute::size<1>(acc))::value>([&](auto mi) {
+          if constexpr(RoofTune!=0) {
+            using LA=cute::MMA_Atom<cute::SM80_16x8x64_S32U4S4S32_TN>;
+            using HA=cute::MMA_Atom<cute::SM80_16x8x64_S32S4S4S32_TN>;
+            auto columns=cute::make_tensor<float>(cute::make_shape(cute::_4{},cute::Int<NAtoms>{}));
+            if constexpr(RoofTune&1) {
+              o1_static_for<0,NAtoms>([&](auto ni) {
+                auto full_ni=nb*cute::Int<NAtoms>{}+ni;
+                o1_static_for<0,4>([&](auto vi) {
+                  columns(vi,ni)=s.scales[roof_scale_group*N+cute::get<1>(coords(vi,mi,full_ni))];
+                });
+              });
+            }
+            auto finish=[&](auto ni,auto& pl,auto& ph) {
+              auto full_ni=nb*cute::Int<NAtoms>{}+ni;
+              o1_static_for<0,4>([&](auto vi) {
+                const int partial=pl(vi)+16*ph(vi);
+                auto coord=coords(vi,mi,full_ni);
+                float column,row;
+                if constexpr(RoofTune&1) {column=columns(vi,ni);row=group_rows(vi,mi);}
+                else {
+                  column=s.scales[roof_scale_group*N+cute::get<1>(coord)];
+                  if constexpr(DualScale) row=s.activation_scales[roof_scale_group*M+cute::get<0>(coord)];
+                  else row=rows(vi,mi,full_ni);
+                }
+                float scale;
+                if constexpr(Fast) scale=__uint_as_float(__float_as_uint(row)+__float_as_uint(column));
+                else scale=__fmul_rn(row,column);
+                acc(vi,mi,full_ni)=__fmaf_rn(float(partial),scale,acc(vi,mi,full_ni));
+              });
+            };
+            if constexpr(RoofTune&2) {
+              // Independent output atoms have separate integer dependency
+              // chains. Interleave them before conversion; FP32 G128 order
+              // remains unchanged for every output element.
+              auto pls=cute::make_tensor<int>(cute::make_shape(cute::_4{},cute::Int<NAtoms>{}));
+              auto phs=cute::make_tensor<int>(cute::make_shape(cute::_4{},cute::Int<NAtoms>{}));
+              cute::clear(pls);cute::clear(phs);
+              o1_static_for<0,NAtoms>([&](auto ni) {
+                auto pl=pls(cute::_,ni),ph=phs(cute::_,ni);
+                cute::gemm(LA{},pl,ra(cute::_,mi,cute::_0{}),br0(cute::_,ni,cute::_0{}),pl);
+                cute::gemm(HA{},ph,rh(cute::_,mi,cute::_0{}),br0(cute::_,ni,cute::_0{}),ph);
+              });
+              o1_static_for<0,NAtoms>([&](auto ni) {
+                auto pl=pls(cute::_,ni),ph=phs(cute::_,ni);
+                cute::gemm(LA{},pl,ra1(cute::_,mi,cute::_0{}),br1(cute::_,ni,cute::_0{}),pl);
+                cute::gemm(HA{},ph,rh1(cute::_,mi,cute::_0{}),br1(cute::_,ni,cute::_0{}),ph);
+              });
+              o1_static_for<0,NAtoms>([&](auto ni) {
+                auto pl=pls(cute::_,ni),ph=phs(cute::_,ni);finish(ni,pl,ph);
+              });
+            } else {
+              o1_static_for<0,NAtoms>([&](auto ni) {
+                auto pl=cute::make_tensor<int>(cute::make_shape(cute::_4{}));
+                auto ph=cute::make_tensor<int>(cute::make_shape(cute::_4{}));
+                cute::clear(pl);cute::clear(ph);
+                cute::gemm(LA{},pl,ra(cute::_,mi,cute::_0{}),br0(cute::_,ni,cute::_0{}),pl);
+                cute::gemm(HA{},ph,rh(cute::_,mi,cute::_0{}),br0(cute::_,ni,cute::_0{}),ph);
+                cute::gemm(LA{},pl,ra1(cute::_,mi,cute::_0{}),br1(cute::_,ni,cute::_0{}),pl);
+                cute::gemm(HA{},ph,rh1(cute::_,mi,cute::_0{}),br1(cute::_,ni,cute::_0{}),ph);
+                finish(ni,pl,ph);
+              });
+            }
+          } else {
           o1_static_for<0,NAtoms>([&](auto ni) {
             auto full_ni=nb*cute::Int<NAtoms>{}+ni;
             auto pl=cute::make_tensor<int>(cute::make_shape(cute::_4{}));
@@ -247,6 +327,7 @@ __device__ __forceinline__ void o3_body(
               else value=float(partial);
               acc(vi,mi,full_ni)=__fmaf_rn(value,scale,acc(vi,mi,full_ni));
             });
+          }
           });
         });
           // All lanes take every slice. Keep next-slice shared loads after

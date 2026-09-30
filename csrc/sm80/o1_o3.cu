@@ -13,6 +13,7 @@
 #include <torch/extension.h>
 #include <vector>
 #include <cstring>
+#include <cmath>
 #include <limits>
 #include "adangel/kernel_api.h"
 #include "adangel/data_types.cuh"
@@ -183,6 +184,7 @@ template<class F> std::vector<float> batch(F f,int repeats,int inner,cudaStream_
 }
 
 #include "split_grouped.cuh"
+#include "roof_candidates.cuh"
 #include "mixed_conversion.cuh"
 #include "mixed_bitplane.cuh"
 #include "mixed_benchmark.cuh"
@@ -599,6 +601,9 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
 }
 } // namespace
 PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
+  m.def("_benchmark_roof_candidate",&benchmark_roof_candidate,py::arg("variant"),py::arg("tune"),
+      py::arg("a_split"),py::arg("a_scale"),py::arg("w_q4"),py::arg("w_scale"),
+      py::arg("warmup")=50,py::arg("repeats")=200);
   m.attr("mixed_experiment_naming_version")=3;
   m.def("_dequantize_mixed_source",&dequantize_mixed_source,py::arg("source"));
   m.def("_convert_mixed_bitplanes",&convert_mixed_bitplanes,py::arg("source"),py::arg("scale_layout")="row_major");
