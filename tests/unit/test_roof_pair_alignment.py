@@ -74,5 +74,14 @@ class PairAlignmentTests(unittest.TestCase):
                   'reference_fp64','torch.cuda.Stream()'):
             self.assertIn(s,script)
 
+    def test_ncu_math_accounting_does_not_relax_old_checks(self):
+        from analyze_roof_scale_ncu import validate_arithmetic_work, validate_paired_integer_work
+        pair=dict(IMMA=16777216,I2F=8388608,FFMA=8388608,FMUL=524288)
+        validate_paired_integer_work(pair)
+        with self.assertRaises(ValueError): validate_arithmetic_work(pair,54,False)
+        old=dict(pair,I2F=16777216,FFMA=16777216)
+        validate_arithmetic_work(old,54,False)
+        with self.assertRaises(ValueError): validate_paired_integer_work(old)
+
 
 if __name__=='__main__': unittest.main()

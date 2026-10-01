@@ -79,19 +79,36 @@ def main():
                 semantic=reference_fp64(variant,values)
                 stream=torch.cuda.Stream();stream.wait_stream(torch.cuda.current_stream())
                 with torch.cuda.stream(stream):
-                    best=native._benchmark_roof_candidate(variant,tune,*values,0,1)
-                    verify_grouped_payload(best,tune,values[0],values[2],values[3])
+                    # Existing tune54 intentionally rejects subnormal UE8M0.
+                    # Obtain/verify its packing with normal scales, then test
+                    # code0 only on the isolated candidate against FP64.
+                    reference_values=values if pattern!='subnormal' else (*values[:3],wsc.clamp_min(1))
+                    best=native._benchmark_roof_candidate(variant,tune,*reference_values,0,1)
+                    verify_grouped_payload(best,tune,reference_values[0],reference_values[2],reference_values[3])
+                    if pattern=='subnormal':
+                        best['converted_weight_scale']=wsc.T.contiguous()
+                        best['output']=semantic.float()
                     driver=Driver(library,cubins,variant,best['kernel']['shared_memory_bytes'])
                     try:
-                        for policy in (0,1):
+                        for policy in ((1,) if pattern=='subnormal' else (0,1)):
                             ws=best['converted_weight_scale'] if variant=='o3' else wsc
                             y,_=driver.run(policy,best,asc,ws,0,1)
                             torch.testing.assert_close(y.double(),semantic,rtol=1e-3,atol=1e-3)
+                            if pattern=='subnormal':
+                                torch.testing.assert_close(y,semantic.float(),rtol=1e-5,atol=0)
                             checks.append(dict(variant=variant,shape=[m,n,k],pattern=pattern,policy=policy,
                                 bitwise_equal_best=bool(torch.equal(y.view(torch.int32),best['output'].view(torch.int32))),
+                                best_reference='fp64_semantic_float' if pattern=='subnormal' else 'tune54',
                                 finite_fp32=True,probe_resources=driver.resources[policy],
                                 max_abs_difference_best=(y-best['output']).abs().max().item(),
                                 max_abs_error_fp64=(y.double()-semantic).abs().max().item()))
+                        invalid_ws=torch.full_like(best['converted_weight_scale'],255)
+                        try:
+                            driver.run(1,best,asc,invalid_ws,0,1)
+                        except ValueError as error:
+                            assert 'code 255' in str(error)
+                        else:
+                            raise AssertionError('invalid UE8M0 must fail before launch')
                     finally: driver.close()
                 stream.synchronize()
         print(variant,'checks complete',flush=True)
