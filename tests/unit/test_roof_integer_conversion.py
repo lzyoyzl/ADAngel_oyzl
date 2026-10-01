@@ -58,6 +58,9 @@ class IntegerConversionTests(unittest.TestCase):
         self.assertFalse(analyze(sass.replace('IADD3','F2I',1),resources)['passed'])
         self.assertFalse(analyze(sass,resources.replace('LOCAL:0','LOCAL:4',1))['passed'])
         self.assertFalse(analyze(sass,'')['passed'])
+        division=sass.replace('IADD3','MUFU.RCP R9,R8;\n F2I.FTZ.U32.TRUNC.NTZ',1)
+        self.assertTrue(analyze(division,resources)['passed'])
+        self.assertFalse(analyze(division.replace('test0','ELb1Etest0'),resources.replace('test0','ELb1Etest0'))['passed'])
 
     def test_benchmark_scope_and_rotation(self):
         import ast

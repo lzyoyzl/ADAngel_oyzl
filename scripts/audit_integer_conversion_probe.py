@@ -17,11 +17,19 @@ def analyze(sass,resources):
         match=re.search(r'Function\s+(?:\:\s*)?'+re.escape(symbol)+r'\s*:\s*([^\n]+)',resources)
         resource=match[0] if match else ''
         fields={k:int(v) for k,v in re.findall(r'(REG|LOCAL|STACK):(\d+)',resource)}
+        tiled='ELb1E' in symbol
+        f2i=re.findall(r'\bF2I[.\w]*',block)
+        # Flat is the deliberately retained general-division control. CUDA12.8
+        # lowers its integer address division through MUFU.RCP + U32.TRUNC F2I.
+        # Do not mislabel that as payload RNE or waive it for the tiled path.
         checks=dict(resource_present=set(fields)=={'REG','LOCAL','STACK'},
             no_local_sass=not bool(re.search(r'\b(?:LDL|STL)(?:\.|\s)',block)),
-            no_float_to_integer=not bool(re.search(r'\bF2I(?:\.|\s)',block)),
+            f2i_matches_traversal=(not f2i if tiled else
+                all(op=='F2I.FTZ.U32.TRUNC.NTZ' for op in f2i) and
+                (not f2i or 'MUFU.RCP' in block)),
             no_stack=fields.get('STACK')==0,no_local_resource=fields.get('LOCAL')==0)
-        rows.append(dict(symbol=symbol,checks=checks,passed=all(checks.values()),resource=resource))
+        rows.append(dict(symbol=symbol,tiled=tiled,f2i_instructions=f2i,
+            no_float_to_integer=not f2i,checks=checks,passed=all(checks.values()),resource=resource))
     return dict(passed=len(rows)==8 and all(r['passed'] for r in rows),functions=rows,
         scope='conversion_only_integer_payload_and_resource_audit_not_mma')
 
