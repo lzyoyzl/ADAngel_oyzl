@@ -41,6 +41,8 @@ class SharedPairTests(unittest.TestCase):
             self.assertIn(text,driver)
         validation=(ROOT/'scripts/validate_roof_pair_scale_shared_probe.py').read_text()
         self.assertIn("pattern in ('fallback14','fallback15') and g>1",validation)
+        self.assertIn('safe_then_unsafe_fallback=True',validation)
+        self.assertIn('invalid_after_cached_guard_rejected=True',validation)
         for file in ('setup.py','csrc/sm80/roof_candidates.cuh'):
             self.assertNotIn('pair_scale_shared_probe',(ROOT/file).read_text())
 

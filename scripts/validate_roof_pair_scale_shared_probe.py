@@ -41,7 +41,7 @@ def main():
         assert sha256_file(Path(source['file']))==source['sha256']
     for i,path in cubins.items():
         assert sha256_file(path)==codegen['variants'][str(i)]['cubin_sha256']
-    checks=[]
+    checks=[];guard_cache_checks=[]
     for variant in ('o3',):
         for m,n,k in ((64,128,128),(64,128,256),(64,128,384),(128,256,640),(64,128,4096)):
             for pattern in ('random','zero','extrema','zero_scale','guard13','fallback14','fallback15','subnormal'):
@@ -112,10 +112,29 @@ def main():
                             assert 'code 255' in str(error)
                         else:
                             raise AssertionError('invalid UE8M0 must fail before launch')
+                        if pattern=='guard13' and g>1:
+                            # Exercise the SAME scale tensor after an in-place edit;
+                            # stale cached eligibility must not reach the fast kernel.
+                            ws=best['converted_weight_scale']
+                            ws[1::2].fill_(130)  # 130-115=15, so now unsafe.
+                            changed=(values[0],values[1],values[2],ws.T.contiguous())
+                            ref_changed=reference_fp64('o3',changed)
+                            actual,_=driver.run(1,best,asc,ws,0,1)
+                            assert driver.last_policy==2
+                            torch.testing.assert_close(actual.double(),ref_changed,rtol=1e-3,atol=1e-3)
+                            ws.fill_(255)
+                            try:
+                                driver.run(1,best,asc,ws,0,1)
+                            except ValueError as error:
+                                assert 'code 255' in str(error)
+                            else:
+                                raise AssertionError('mutated code255 must invalidate cached guard')
+                            guard_cache_checks.append(dict(shape=[m,n,k],safe_then_unsafe_fallback=True,
+                                invalid_after_cached_guard_rejected=True,output_matches_fp64=True))
                     finally: driver.close()
                 stream.synchronize()
         print(variant,'checks complete',flush=True)
-    result=dict(passed=True,count=len(checks),checks=checks,
+    result=dict(passed=True,count=len(checks),checks=checks,guard_cache_checks=guard_cache_checks,
         git_commit=command('git','rev-parse','HEAD'),extension_sha256=sha256_file(Path(native.__file__)),
         cubins={str(i):sha256_file(path) for i,path in cubins.items()},
         scope='finite prepared-core checks, nondefault stream, not conversion or full experimental acceptance')
