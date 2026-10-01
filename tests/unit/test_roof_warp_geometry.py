@@ -53,5 +53,15 @@ class WarpGeometryTests(unittest.TestCase):
         with self.assertRaises(ValueError): check(sass.replace('warp_o78','unrelated'))
         self.assertTrue(all(r['int8_mma'] for r in check(sass.replace('.U4.', '.U8.')).values()))
 
+    def test_ncu_identity_override_is_narrow(self):
+        analyze=runpy.run_path(str(ROOT/'scripts/analyze_roof_scale_ncu.py'))['analyze']
+        # Identity protection is also exercised by all historical NCU evidence
+        # tests; adding a cubin must not relax their default symbol contract.
+        import inspect
+        self.assertIsNone(inspect.signature(analyze).parameters['expected_symbol'].default)
+        source=(ROOT/'scripts/analyze_roof_scale_ncu.py').read_text()
+        self.assertIn("tune!=(54 if variant=='o3' else 59)",source)
+        self.assertIn("expected_symbol!=permitted",source)
+
 
 if __name__=='__main__': unittest.main()

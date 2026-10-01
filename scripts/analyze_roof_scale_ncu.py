@@ -76,7 +76,7 @@ def validate_arithmetic_work(counts, tune, fast):
             raise ValueError('expected one/three final FP32 additions per output for two/four chains')
 
 
-def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False):
+def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False, expected_symbol=None):
     allowed={'o3':(6,13,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o8':(6,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31)}
     if variant not in allowed or tune not in allowed[variant] + (34,35,36,37,38,39,40,41,42,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62):
         raise ValueError('unsupported variant/tune profiling pair')
@@ -93,6 +93,11 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
     fast=(variant=='o3' and tune not in (51,52,53,54,61)) or tune in (11,12)
     if tune in (51,52,53,54,61) and variant!='o3': raise ValueError('row-scale epilogue is O3 only')
     expected=f'adangel_sm80_roof_candidate<{int(variant!="o3")},{int(fast)},{tune}>'
+    if expected_symbol is not None:
+        permitted='adangel_roof_warp_o3' if variant=='o3' else 'adangel_roof_warp_o78'
+        if expected_symbol!=permitted or tune!=(54 if variant=='o3' else 59):
+            raise ValueError('unexpected isolated warp-probe math/identity')
+        expected=expected_symbol
     def normalized(symbol):
         return re.sub(r'\((?:bool|int)\)|\s+','',symbol)
     if identity[0]!='Kernel Name' or expected not in normalized(identity[1]) or expected not in normalized(raw['Kernel Name']):
