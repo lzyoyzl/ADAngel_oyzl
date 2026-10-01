@@ -128,7 +128,8 @@ O7方案2新增shared工作来自LDGSTS：9.265152M→15.921152M wavefronts，
 ```bash
 python scripts/probe_roof_fixed_dims_codegen.py --output reports/fixed_dims_recheck
 python scripts/audit_roof_fixed_dims_probe.py --directory reports/fixed_dims_recheck \
-  --best-sass docs/evidence/a100_o378_roof_v45/reports/o378_roof_v45/best_controls.sass
+  --best-sass docs/evidence/a100_o378_roof_v45/reports/o378_roof_v45/best_controls.sass \
+  > reports/fixed_dims_recheck/audit.json
 python scripts/validate_roof_fixed_dims_probe.py --cubins reports/fixed_dims_recheck \
   --output runs/fixed_dims_validation
 python scripts/benchmark_roof_fixed_dims_probe.py --cubins reports/fixed_dims_recheck \
