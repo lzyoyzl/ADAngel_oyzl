@@ -53,15 +53,16 @@ class BestReportTest(unittest.TestCase):
 
     def test_fourmode_sources_and_no_default_promotion(self):
         doc=(ROOT/'docs/o3_o7_o8_current_best.md').read_text()
-        paths=(O3_EVIDENCE/'reports/o378_roof_v30/four24_54_vs52.json',)
-        for path in paths:
-            report=json.loads(path.read_text())
-            for row in report['rows']:
-                self.assertEqual(row['rounds'],1)
-                self.assertEqual(row['samples'],24)
-                if row['mode']=='compute_only': continue
-                self.assertIn(f"{row['candidate_median_ms']:.6f}",doc)
-                self.assertIn(f"{row['reference_median_ms']:.6f}",doc)
+        o3=json.loads((ROOT/'docs/evidence/a100_o378_roof_v36/runs/o378_roof_v36_four24/summary.json').read_text())
+        self.assertEqual(len(o3),12)
+        for row in o3:
+            self.assertEqual(row['samples'],24)
+            self.assertEqual(row['records'],24)
+            if row['implementation'] not in (0,2): continue
+            self.assertIn(f"{row['median_ms']:.6f}",doc)
+            if row['implementation']==2:
+                self.assertIn(f"{(row['paired_speedup']-1)*100:.2f}%",doc)
+        self.assertIn('O3为v36，同一个GEMM54',doc)
         # Latest conversion/end-to-end results use the v35 same-GEMM 0/4 pair,
         # not the older v33 comparison between GEMM candidates 56 and 59.
         latest=json.loads((FOUR_EVIDENCE/'runs/o378_roof_v35_four24/summary.json').read_text())
