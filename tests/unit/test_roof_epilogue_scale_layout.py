@@ -41,7 +41,7 @@ class EpilogueScaleLayoutTests(unittest.TestCase):
         self.assertIn('meta["weight_scale_reorder_bytes"]=roof_group_major_w_scale(tune) ? int64_t(2)*n*g',core)
         self.assertIn('meta["conversion_kernels_per_operand"]=py::none()',core)
         self.assertIn('meta["weight_conversion_kernels"]=3',core)
-        self.assertIn('bool roof_row_scale_epilogue(int tune) {return tune>=51 && tune<=54;}',core)
+        self.assertIn('bool roof_row_scale_epilogue(int tune) {return (tune>=51 && tune<=54) || tune==61;}',core)
 
     def test_bitwise_reference_is_explicit_and_outside_timing(self):
         module=runpy.run_path(str(ROOT/'scripts/roof_reduction_validation.py'))

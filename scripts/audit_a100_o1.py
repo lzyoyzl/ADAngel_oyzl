@@ -29,7 +29,7 @@ def roof_scale_checks(symbol, instruction_counts):
 
 def roof_pipeline_checks(symbol, ptx, sass):
     """Require overlapping and draining waits in the same three-stage entry."""
-    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi(?:1[6-9]|23|31|33|42|46|48|50|52|54|56|58|60)EE',symbol):
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi(?:1[6-9]|23|31|33|42|46|48|50|52|54|56|58|60|61)EE',symbol):
         return {}
     return dict(pipeline_ptx_wait_one=bool(re.search(r'cp\.async\.wait_group\s+1\s*;',ptx)),
                 pipeline_ptx_drain=bool(re.search(r'cp\.async\.wait_group\s+0\s*;',ptx)),
@@ -38,7 +38,7 @@ def roof_pipeline_checks(symbol, ptx, sass):
 
 
 def roof_async_payload_checks(symbol, ptx, sass):
-    if not re.search(r'adangel_sm80_roof_candidateILb1ELb0ELi(?:5[5-9]|60)EE',symbol):
+    if not re.search(r'adangel_sm80_roof_candidateILb1ELb0ELi(?:5[5-9]|60|62)EE',symbol):
         return {}
     # These kernels have no other scalar global inputs: payload and both scale
     # panels must all arrive through LDGSTS. Do not confuse LDG with LDGSTS.
@@ -47,6 +47,15 @@ def roof_async_payload_checks(symbol, ptx, sass):
                 async_scales_ptx_commit='cp.async.commit_group' in ptx,
                 async_scales_ptx_wait='cp.async.wait_group' in ptx,
                 async_scales_cta_barrier=bool(re.search(r'\bBAR\.SYNC',sass)))
+
+
+def roof_cache_policy_checks(symbol, ptx, sass):
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb0ELi(?:61|62)EE',symbol):
+        return {}
+    return dict(cache_ca_ptx=bool(re.search(r'cp\.async\.ca\.shared\.global',ptx)),
+                cache_no_cg_ptx=not bool(re.search(r'cp\.async\.cg\.',ptx)),
+                cache_ldgsts_present='LDGSTS' in sass,
+                cache_no_bypass_sass=not bool(re.search(r'\bLDGSTS[^;]*\.BYPASS',sass)))
 
 
 def roof_reduction_checks(symbol, counts):
@@ -153,6 +162,7 @@ def main():
             checks.update(roof_async_payload_checks(symbol,ptx,block))
             checks.update(roof_reduction_checks(symbol,instruction_counts))
             checks.update(roof_paired_pipeline_checks(symbol,ptx,block))
+            checks.update(roof_cache_policy_checks(symbol,ptx,block))
         functions.append(dict(symbol=symbol,checks=checks,**audit_policy(checks,args.allow_spills),resource=resource,
                               instruction_counts=instruction_counts))
     passed=bool(functions) and all(f['passed'] for f in functions)

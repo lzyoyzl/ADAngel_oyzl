@@ -48,7 +48,7 @@ class RowScaleEpilogueTests(unittest.TestCase):
     def test_numerical_opt_in_payload_and_three_stage_safety_are_preserved(self):
         for name in ('benchmark_a100_roof_candidates.py','benchmark_a100_roof_trace.py'):
             s=(ROOT/'scripts'/name).read_text()
-            self.assertIn('39,40,51,52,53,54) for t in args.tunes) and not args.allow_reassociation',s)
+            self.assertIn('39,40,51,52,53,54,61) for t in args.tunes) and not args.allow_reassociation',s)
             self.assertIn('row-scale epilogue candidates51/52/53/54 are O3 only',s)
         audit=runpy.run_path(str(ROOT/'scripts/audit_a100_o1.py'))
         checks=audit['roof_pipeline_checks']('adangel_sm80_roof_candidateILb0ELb0ELi52EE',

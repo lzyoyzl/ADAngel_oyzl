@@ -31,6 +31,7 @@
 #include "roof_unsigned_payload_api.h"
 #include "roof_integer_conversion_api.h"
 #include "roof_o3_conversion_api.h"
+#include "roof_cache_policy_api.h"
 
 namespace py = pybind11;
 namespace {
@@ -212,6 +213,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   TORCH_CHECK(conversion_impl==0 || (split && roof_tune==54 && implementation=="production"),
       "O3 conversion candidates require explicit GEMM54; formal defaults remain unchanged");
   const auto requested_implementation=implementation;
+  TORCH_CHECK(roof_tune!=61 && roof_tune!=62,"cache candidates61/62 require prepared-core API");
   TORCH_CHECK(valid_roof_tune(roof_tune) && (roof_tune<0 || (split && implementation=="production")),
       "roof candidate requires O3 production-compatible input path");
   if(implementation=="production") {

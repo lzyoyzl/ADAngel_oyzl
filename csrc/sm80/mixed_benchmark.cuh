@@ -56,6 +56,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   TORCH_CHECK(roof_tune!=13,"group-major UE8M0 candidate is O3 only");
   TORCH_CHECK(!roof_m32_payload(roof_tune),"M32 candidate57/58 is prepared-core only until performance screening passes");
   TORCH_CHECK(roof_tune!=60,"unsigned candidate60 remains prepared-core only; only59 passed repeated trace screening");
+  TORCH_CHECK(roof_tune!=61 && roof_tune!=62,"cache candidates61/62 require prepared-core API");
   // Independent v35 conversion experiment on the already validated GEMM59.
   // Existing callers retain0; no production dispatch or GEMM math changes.
   TORCH_CHECK(conversion_impl>=0 && conversion_impl<=4,"conversion candidate must be0..4");

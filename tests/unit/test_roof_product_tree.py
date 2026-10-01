@@ -86,7 +86,7 @@ class ProductTreeTest(unittest.TestCase):
 
     def test_explicit_opt_in_and_audit(self):
         policy=(ROOT/'scripts/roof_reduction_validation.py').read_text()
-        self.assertIn('reassociated=tune in (24,25,26,27,34,35,36,37,38,39,40,51,52,53,54)',policy)
+        self.assertIn('reassociated=tune in (24,25,26,27,34,35,36,37,38,39,40,51,52,53,54,61)',policy)
         self.assertIn('if not reassociated and changed:',policy)
         for name in ('roof_product_tree.cu','roof_eager_tree.cu'):
             wrapper=(ROOT/'csrc/sm80'/name).read_text()

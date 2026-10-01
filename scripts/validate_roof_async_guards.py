@@ -13,7 +13,7 @@ def main():
     args = parser.parse_args()
     if args.output.exists() or not args.output.parent.is_dir():
         parser.error('fresh output file with existing parent required')
-    if not args.tunes or len(set(args.tunes))!=len(args.tunes) or any(t not in (55,56,57,58,59,60) for t in args.tunes):
+    if not args.tunes or len(set(args.tunes))!=len(args.tunes) or any(t not in (55,56,57,58,59,60,62) for t in args.tunes):
         parser.error('unique asynchronous scale candidate55-60 required')
     import torch
     from adangel import _sm80 as native
