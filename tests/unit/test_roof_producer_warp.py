@@ -93,5 +93,14 @@ class ProducerWarpTests(unittest.TestCase):
         with self.assertRaises(ValueError): summary(rows[:-1])
         with self.assertRaises(ValueError): summary(rows+[rows[0]])
 
+    def test_ncu_launch_selection(self):
+        order=runpy.run_path(str(ROOT/'scripts/benchmark_a100_roof_trace.py'))['measurement_order']
+        for candidate in (1,2):
+            self.assertEqual(order([0,candidate],0,0,0),[0,candidate])
+        source=(ROOT/'scripts/profile_roof_producer_probe.py').read_text()
+        self.assertIn('skip=50 if policy==0 else 101',source)
+        self.assertIn("row['registers_per_thread']!=expected_resources['registers_per_thread']",source)
+        self.assertIn("threads!=expected_resources['threads']",source)
+
 
 if __name__=='__main__': unittest.main()

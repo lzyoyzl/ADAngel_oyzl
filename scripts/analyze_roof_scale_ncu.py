@@ -95,8 +95,10 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
     expected=f'adangel_sm80_roof_candidate<{int(variant!="o3")},{int(fast)},{tune}>'
     if expected_symbol is not None:
         permitted='adangel_roof_warp_o3' if variant=='o3' else 'adangel_roof_warp_o78'
+        if expected_symbol in ('adangel_roof_producer_o3','adangel_roof_producer_o78'):
+            permitted='adangel_roof_producer_o3' if variant=='o3' else 'adangel_roof_producer_o78'
         if expected_symbol!=permitted or tune!=(54 if variant=='o3' else 59):
-            raise ValueError('unexpected isolated warp-probe math/identity')
+            raise ValueError('unexpected isolated probe math/identity')
         expected=expected_symbol
     def normalized(symbol):
         return re.sub(r'\((?:bool|int)\)|\s+','',symbol)
