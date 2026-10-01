@@ -36,7 +36,7 @@ def static_entries(sass):
         if not text:
             raise ValueError('missing instructions')
         from collections import Counter
-        counts = dict(Counter(re.search(r'\b([A-Z][A-Z0-9]*)\b', ins).group(1) for ins in text))
+        counts = dict(Counter(re.sub(r'^@!?U?P\w+\s+', '', ins).split()[0].split('.')[0] for ins in text))
         copies = [ins for ins in text if re.search(r'\bLDGSTS\b', ins)]
         entries[symbol] = dict(instructions=len(text), opcode_counts=counts, copies=copies,
             all_copies_bypass_l1=bool(copies) and all('.BYPASS' in s for s in copies),

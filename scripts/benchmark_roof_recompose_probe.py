@@ -119,6 +119,10 @@ def main():
     raw_entries={r['sample_id']:r for r in raw_manifest['samples']}
     codegen=json.loads((args.cubins/'codegen.json').read_text())
     assert codegen['all_probe_copies_bypass_l1'] and codegen['native_int4_entries']
+    audit=json.loads((args.cubins/'audit.json').read_text())
+    assert audit['passed'] and all(audit['control_encoded_sass_matches_best'].values())
+    for source in audit['sources']:
+        assert sha256_file(Path(source['file']))==source['sha256']
     cubins={s:(args.cubins/f'recompose_{s}.cubin').resolve() for s in (0,1,2)}
     for s,path in cubins.items(): assert sha256_file(path)==codegen['variants'][str(s)]['cubin_sha256']
     args.output.mkdir(parents=True)
