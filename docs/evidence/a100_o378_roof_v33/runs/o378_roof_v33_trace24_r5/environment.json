@@ -1,0 +1,37 @@
+{
+  "git_commit": "1c69700c448a93293158a7a382464ac8af1e77f1",
+  "measurement_order_version": "cyclic_sample_variant_round_mode_v2",
+  "binary_sha256": "402c9ebd54670fef538389d7c72adea7d2f0abbec65c2185f92f071e1052690f",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "device": "NVIDIA A100-PCIE-40GB",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+  "args": {
+    "data": "data/prepared/llama2_7b_prefill_o0_o4",
+    "raw_data": "data/raw/llama2_7b_prefill",
+    "trace_config": "configs/trace/llama2_7b_prefill.yaml",
+    "output": "runs/o378_roof_v33_trace24_r5",
+    "samples": 24,
+    "rounds": 5,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100,
+    "all_modes": false,
+    "allow_reassociation": false,
+    "tunes": [
+      -1,
+      56,
+      59
+    ],
+    "variants": [
+      "o7",
+      "o8"
+    ]
+  },
+  "scope": "real_trace_candidate_prepared_core_only",
+  "timing": "single_execution_cuda_event",
+  "conversion_timed": false,
+  "policy": "unlocked shared GPU; paired sample/round; no filtering",
+  "input_policy": "original_fp16_direct_source_quantization"
+}

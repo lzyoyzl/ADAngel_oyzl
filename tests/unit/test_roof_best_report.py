@@ -5,19 +5,20 @@ import statistics
 import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
-EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v31'
+EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v33'
+FOUR_EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v31'
 O3_EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v30'
 
 
-@unittest.skipUnless((EVIDENCE/'runs/o378_roof_v31_trace24_r5/summary.json').exists(),
-                     'v31 archive has not yet been imported')
+@unittest.skipUnless((EVIDENCE/'runs/o378_roof_v33_trace24_r5/summary.json').exists(),
+                     'v33 archive has not yet been imported')
 class BestReportTest(unittest.TestCase):
     def test_compute_and_mse_reconcile(self):
         doc=(ROOT/'docs/o3_o7_o8_current_best.md').read_text()
-        summary=json.loads((EVIDENCE/'runs/o378_roof_v31_trace24_r5/summary.json').read_text())
+        summary=json.loads((EVIDENCE/'runs/o378_roof_v33_trace24_r5/summary.json').read_text())
         self.assertTrue(summary['all_24_samples'])
         self.assertEqual(summary['numerical_policy'],'bitwise')
-        for variant,old,tune in (('o7',42,56),('o8',42,56)):
+        for variant,old,tune in (('o7',56,59),('o8',56,59)):
             rows=[r for r in summary['records'] if r['variant']==variant]
             baseline=next(r for r in rows if r['tune']==-1)
             previous=next(r for r in rows if r['tune']==old)
@@ -25,7 +26,7 @@ class BestReportTest(unittest.TestCase):
             self.assertEqual(candidate['records'],120)
             for row in (baseline,previous,candidate):
                 self.assertIn(f"{row['median_ms']:.6f}",doc)
-            comparison=json.loads((EVIDENCE/f'reports/o378_roof_v31/trace24_r5_{tune}_vs{old}.json').read_text())
+            comparison=json.loads((EVIDENCE/f'reports/o378_roof_v33/trace24_r5_{tune}_vs{old}.json').read_text())
             paired=next(r for r in comparison['rows'] if r['variant']==variant)
             self.assertIn(f"{(paired['paired_speedup_median']-1)*100:.2f}%",doc)
             mse=[r['mse_vs_paired_fp16'] for r in candidate['per_sample']]
@@ -48,11 +49,11 @@ class BestReportTest(unittest.TestCase):
             self.assertTrue(all(r['candidate_mse_vs_production']>0 for r in x['per_sample']))
             self.assertIn(f"{x['cv']['54']['selected_stage_failed']}/120",doc)
         self.assertIn('新版O3与原正式并非逐位相同，但与上一版52逐位相同',doc)
-        self.assertIn('O3沿用v30，O7/O8来自v31',doc)
+        self.assertIn('O3沿用v30，O7/O8来自v33',doc)
 
     def test_fourmode_sources_and_no_default_promotion(self):
         doc=(ROOT/'docs/o3_o7_o8_current_best.md').read_text()
-        paths=(EVIDENCE/'reports/o378_roof_v31/four24_56_vs42.json',
+        paths=(FOUR_EVIDENCE/'reports/o378_roof_v31/four24_56_vs42.json',
                O3_EVIDENCE/'reports/o378_roof_v30/four24_54_vs52.json')
         for path in paths:
             report=json.loads(path.read_text())
