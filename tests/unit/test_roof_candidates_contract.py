@@ -73,7 +73,9 @@ class RoofCandidatesContractTest(unittest.TestCase):
         self.assertIn('CoreTune=(Tune==16 || Tune==18 || Tune==20 || Tune==40)?2:(Tune>=11?6:(Tune>=8?2:Tune))',text)
         self.assertIn('K=(Tune==10 || (Tune>=16 && Tune<=19) || (Tune>=22 && Tune<=23) || (Tune>=28 && Tune<=42))?128:256',text)
         self.assertIn('Stages=((Tune>=16 && Tune<=19) || Tune==23 || Tune==29 || Tune==31 || Tune==33 || Tune==39 || Tune==40 || Tune==42)?3:2',text)
-        self.assertIn('dim3(n/cfg.n,m/64),cfg.threads,smem',text)
+        self.assertIn('dim3(n/cfg.n,m/tile_m),cfg.threads,smem',text)
+        self.assertIn('const int tile_m=roof_cta_m(tune)',text)
+        self.assertIn('return roof_m32_payload(tune)?32:64',text)
         self.assertIn('cudaOccupancyMaxActiveBlocksPerMultiprocessor',text)
         for name in ('o1_o3.cu','mixed_benchmark.cuh'):
             self.assertIn('dim3(n/roof_cfg.n,m/64),roof_cfg.threads',

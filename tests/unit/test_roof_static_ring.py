@@ -69,7 +69,7 @@ class StaticRingTests(unittest.TestCase):
         self.assertTrue(checks and all(checks.values()))
         for name in ('benchmark_a100_roof_candidates.py','benchmark_a100_roof_trace.py',
                      'compare_roof_trace_candidates.py','roof_payload_validation.py'):
-            self.assertRegex((ROOT/'scripts'/name).read_text(),r'47,48,49,50(?:,51,52(?:,53,54(?:,55,56)?)?)?\)')
+            self.assertRegex((ROOT/'scripts'/name).read_text(),r'47,48,49,50(?:,51,52(?:,53,54(?:,55,56(?:,57,58)?)?)?)?\)')
         self.assertIn('"csrc/sm80/roof_static_ring.cu"',(ROOT/'setup.py').read_text())
 
 

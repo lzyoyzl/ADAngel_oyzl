@@ -27,6 +27,7 @@
 #include "roof_row_scale_epilogue_api.h"
 #include "roof_epilogue_scale_layout_api.h"
 #include "roof_async_payload_api.h"
+#include "roof_m32_payload_api.h"
 
 namespace py = pybind11;
 namespace {

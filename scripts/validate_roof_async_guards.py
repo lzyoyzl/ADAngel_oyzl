@@ -9,16 +9,19 @@ from pathlib import Path
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--tunes', type=int, nargs='+', default=[55,56])
     args = parser.parse_args()
     if args.output.exists() or not args.output.parent.is_dir():
         parser.error('fresh output file with existing parent required')
+    if not args.tunes or len(set(args.tunes))!=len(args.tunes) or any(t not in (55,56,57,58) for t in args.tunes):
+        parser.error('unique asynchronous scale candidate55-58 required')
     import torch
     from adangel import _sm80 as native
     if torch.cuda.get_device_capability() != (8,0):
         raise RuntimeError('requires SM80')
     torch.set_num_threads(4)
     rows = []
-    for tune in (55,56):
+    for tune in args.tunes:
         for variant in ('o7','o8'):
             m,n,k = 64,128,384
             a = torch.zeros((2*m,k//2),device='cuda',dtype=torch.uint8)

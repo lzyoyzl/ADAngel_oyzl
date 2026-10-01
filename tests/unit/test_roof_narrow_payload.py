@@ -48,7 +48,7 @@ class NarrowPayloadTests(unittest.TestCase):
             self.assertIn('41,42,', (ROOT/'scripts'/name).read_text())
             self.assertIn('45,46,47,48,49,50)', (ROOT/'scripts'/name).read_text())
         comparison=(ROOT/'scripts/compare_roof_trace_candidates.py').read_text()
-        self.assertIn("in (41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56) and not r.get('payload_layout_bitwise_verified')",comparison)
+        self.assertIn("in (41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58) and not r.get('payload_layout_bitwise_verified')",comparison)
 
 
 if __name__=='__main__': unittest.main()
