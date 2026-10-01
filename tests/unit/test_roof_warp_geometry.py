@@ -62,6 +62,11 @@ class WarpGeometryTests(unittest.TestCase):
         source=(ROOT/'scripts/analyze_roof_scale_ncu.py').read_text()
         self.assertIn("tune!=(54 if variant=='o3' else 59)",source)
         self.assertIn("expected_symbol!=permitted",source)
+        order=runpy.run_path(str(ROOT/'scripts/benchmark_a100_roof_trace.py'))['measurement_order']
+        self.assertEqual(order([0,1],0,0,0),[0,1])
+        capture=(ROOT/'scripts/profile_roof_warp_probe.py').read_text()
+        self.assertIn('skip=50 if geometry==0 else 101',capture)
+        self.assertIn("'--launch-count','1'",capture)
 
 
 if __name__=='__main__': unittest.main()
