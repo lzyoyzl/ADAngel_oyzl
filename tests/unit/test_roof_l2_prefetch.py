@@ -9,6 +9,20 @@ CHECK = runpy.run_path(str(ROOT / 'scripts/probe_roof_l2_codegen.py'))['static_e
 
 
 class L2PrefetchTests(unittest.TestCase):
+    def test_paired_summary_keeps_outliers_and_rejects_missing_data(self):
+        aggregate=runpy.run_path(str(ROOT/'scripts/benchmark_roof_l2_probe.py'))['summary']
+        rows=[dict(sample_id='x',variant='o7',round=r,prefetch_bytes=size,
+            summary=dict(median_ms=1.0 if size==0 else 2.0,cv_percent=9.0),
+            mse_vs_o0=0.5,mse_vs_paired_fp16=0.125,bitwise_equal_current_best=True,mse_vs_current_best=0.0)
+            for r in range(3) for size in (0,128,256)]
+        result=aggregate(rows)
+        self.assertEqual([r['paired_speedup'] for r in result],[1.0,0.5,0.5])
+        self.assertTrue(all(r['cv_failed_records']==3 for r in result))
+        with self.assertRaises(ValueError): aggregate(rows[:-1])
+        with self.assertRaises(ValueError): aggregate(rows+[rows[0]])
+        rows[0]=dict(rows[0],mse_vs_paired_fp16=0.25)
+        with self.assertRaises(ValueError): aggregate(rows)
+
     def test_native_event_harness_has_no_python_launch_loop(self):
         driver=(ROOT/'csrc/sm80/roof_probe_driver.cpp').read_text()
         self.assertLess(driver.index('Events events(repeats*2)'),driver.index('cuEventRecord(events.handles[i*2],stream)'))

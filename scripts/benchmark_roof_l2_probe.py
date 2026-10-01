@@ -63,7 +63,7 @@ class Driver:
 
 
 def summary(rows):
-    from adangel.benchmark.metrics import bootstrap_median_ci
+    from compare_roof_trace_candidates import metrics
     out=[]
     for variant in sorted({r['variant'] for r in rows}):
         selected=[r for r in rows if r['variant']==variant]
@@ -71,6 +71,14 @@ def summary(rows):
         if len(index)!=len(selected): raise ValueError('duplicate probe record')
         ids=sorted({r['sample_id'] for r in selected})
         rounds=sorted({r['round'] for r in selected})
+        expected={(sid,r,size) for sid in ids for r in rounds for size in (0,128,256)}
+        if set(index)!=expected or rounds!=list(range(len(rounds))):
+            raise ValueError('incomplete probe coverage')
+        for sid in ids:
+            group=[r for r in selected if r['sample_id']==sid]
+            if (any(not r['bitwise_equal_current_best'] or r['mse_vs_current_best']!=0 for r in group)
+                    or len({(r['mse_vs_o0'],r['mse_vs_paired_fp16']) for r in group})!=1):
+                raise ValueError('bitwise or MSE regression')
         for size in (0,128,256):
             chosen=[r for r in selected if r['prefetch_bytes']==size]
             speeds=[statistics.median(index[sid,r,0]['summary']['median_ms']/index[sid,r,size]['summary']['median_ms'] for r in rounds) for sid in ids]
@@ -78,7 +86,7 @@ def summary(rows):
             errors=[index[sid,0,size]['mse_vs_paired_fp16'] for sid in ids]
             out.append(dict(variant=variant,prefetch_bytes=size,records=len(chosen),samples=len(ids),
                 median_ms=statistics.median(latencies),paired_speedup=statistics.median(speeds),
-                paired_speedup_ci95=list(bootstrap_median_ci(speeds,10000,.95,20260930)) if len(ids)>1 else None,
+                paired_speedup_ci95=list(metrics.bootstrap_median_ci(speeds,10000,.95,20260930)) if len(ids)>1 else None,
                 cv_failed_records=sum(r['summary']['cv_percent']>=3 for r in chosen),
                 median_mse=statistics.median(errors),mean_mse=statistics.mean(errors)))
     return out
