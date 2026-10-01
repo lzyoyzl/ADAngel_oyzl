@@ -71,13 +71,13 @@ def main():
     p.add_argument('--inner', type=int, default=100)
     p.add_argument('--all-modes', action='store_true')
     p.add_argument('--allow-reassociation',action='store_true',
-                   help='Opt in to candidate24-27/34-40 numerical policy; all others remain bitwise gated')
+                   help='Opt in to candidate24-27/34-40/51-54 numerical policy; all others remain bitwise gated')
     p.add_argument('--tunes', type=int, nargs='+', default=[-1,1,2,3])
     p.add_argument('--variants', nargs='+', choices=['o3','o7','o8'], default=['o3','o7','o8'])
     args = p.parse_args()
     if (args.output.exists() or not 1<=args.samples<=24 or args.rounds<1 or args.warmup<0 or args.repeats<2 or args.inner<2
         or -1 not in args.tunes or len(set(args.tunes))!=len(args.tunes)
-        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50)+(51,52)+(53,54) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
+        or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50)+(51,52)+(53,54)+(55,56) for t in args.tunes) or len(set(args.variants))!=len(args.variants)):
         p.error('fresh output, production control (-1), unique valid cases and positive repetitions required')
     if any(t in (43,44) for t in args.tunes) and not args.all_modes:
         p.error('fused conversion candidates43/44 require --all-modes; prepared-core has no source conversion')
@@ -87,7 +87,7 @@ def main():
         p.error('row-scale epilogue candidates51/52/53/54 are O3 only')
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
-    if any(t in (14,15) for t in args.tunes) and 'o3' in args.variants:
+    if any(t in (14,15,55,56) for t in args.tunes) and 'o3' in args.variants:
         p.error('asynchronous scale candidates are O7/O8 only')
     import torch
     from adangel import _sm80 as native

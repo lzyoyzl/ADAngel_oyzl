@@ -59,7 +59,7 @@ class StaticRingTests(unittest.TestCase):
         self.assertIn('case 48:return roof_config_for<42>(dual);',cfg)
         route=cfg[cfg.index('auto select_roof_kernel'):]
         self.assertLess(route.index('select_static_ring_kernel'),route.index('select_grouped_payload_kernel'))
-        self.assertIn('roof_tune<=52',(ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text())
+        self.assertIn('roof_tune<=56',(ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text())
 
     def test_validation_and_three_stage_drain(self):
         checks=runpy.run_path(str(ROOT/'scripts/audit_a100_o1.py'))['roof_pipeline_checks'](
@@ -69,7 +69,7 @@ class StaticRingTests(unittest.TestCase):
         self.assertTrue(checks and all(checks.values()))
         for name in ('benchmark_a100_roof_candidates.py','benchmark_a100_roof_trace.py',
                      'compare_roof_trace_candidates.py','roof_payload_validation.py'):
-            self.assertRegex((ROOT/'scripts'/name).read_text(),r'47,48,49,50(?:,51,52(?:,53,54)?)?\)')
+            self.assertRegex((ROOT/'scripts'/name).read_text(),r'47,48,49,50(?:,51,52(?:,53,54(?:,55,56)?)?)?\)')
         self.assertIn('"csrc/sm80/roof_static_ring.cu"',(ROOT/'setup.py').read_text())
 
 

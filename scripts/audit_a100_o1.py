@@ -29,12 +29,24 @@ def roof_scale_checks(symbol, instruction_counts):
 
 def roof_pipeline_checks(symbol, ptx, sass):
     """Require overlapping and draining waits in the same three-stage entry."""
-    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi(?:1[6-9]|23|31|33|42|46|48|50|52|54)EE',symbol):
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi(?:1[6-9]|23|31|33|42|46|48|50|52|54|56)EE',symbol):
         return {}
     return dict(pipeline_ptx_wait_one=bool(re.search(r'cp\.async\.wait_group\s+1\s*;',ptx)),
                 pipeline_ptx_drain=bool(re.search(r'cp\.async\.wait_group\s+0\s*;',ptx)),
                 pipeline_sass_wait_one=bool(re.search(r'DEPBAR\.LE\s+SB\d+,\s*0x1\b',sass)),
                 pipeline_sass_drain=bool(re.search(r'DEPBAR\.LE\s+SB\d+,\s*0x0\b',sass)))
+
+
+def roof_async_payload_checks(symbol, ptx, sass):
+    if not re.search(r'adangel_sm80_roof_candidateILb1ELb0ELi5[56]EE',symbol):
+        return {}
+    # These kernels have no other scalar global inputs: payload and both scale
+    # panels must all arrive through LDGSTS. Do not confuse LDG with LDGSTS.
+    return dict(async_scales_no_scalar_ldg=not bool(re.search(r'\bLDG(?:\.|\s)',sass)),
+                async_scales_no_scalar_sts=not bool(re.search(r'\bSTS(?:\.|\s)',sass)),
+                async_scales_ptx_commit='cp.async.commit_group' in ptx,
+                async_scales_ptx_wait='cp.async.wait_group' in ptx,
+                async_scales_cta_barrier=bool(re.search(r'\bBAR\.SYNC',sass)))
 
 
 def roof_reduction_checks(symbol, counts):
@@ -138,6 +150,7 @@ def main():
         if args.variant=='roof_candidate':
             checks.update(roof_scale_checks(symbol,instruction_counts))
             checks.update(roof_pipeline_checks(symbol,ptx,block))
+            checks.update(roof_async_payload_checks(symbol,ptx,block))
             checks.update(roof_reduction_checks(symbol,instruction_counts))
             checks.update(roof_paired_pipeline_checks(symbol,ptx,block))
         functions.append(dict(symbol=symbol,checks=checks,**audit_policy(checks,args.allow_spills),resource=resource,

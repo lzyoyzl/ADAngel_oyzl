@@ -39,12 +39,19 @@ void adangel_sm80_roof_candidate(
 }
 
 bool valid_roof_tune(int tune) {
-  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=54);
+  return (tune>=-1 && tune<=3) || (tune>=6 && tune<=56);
 }
 
 //43/44 are conversion-only variants of41/42, NOT new GEMM instantiations.
 bool roof_fused_payload(int tune) {return tune==43 || tune==44;}
-bool roof_grouped_payload(int tune) {return tune>=41 && tune<=54;}
+bool roof_grouped_payload(int tune) {return tune>=41 && tune<=56;}
+bool roof_async_payload(int tune) {return tune==55 || tune==56;}
+void check_roof_async_scale_alignment(int tune,const at::Tensor& as,const at::Tensor& ws) {
+  if(!roof_async_payload(tune)) return;
+  TORCH_CHECK(reinterpret_cast<uintptr_t>(as.data_ptr())%16==0 &&
+      reinterpret_cast<uintptr_t>(ws.data_ptr())%16==0,
+      "asynchronous G128 scale copies require 16-byte aligned scale pointers");
+}
 bool roof_row_scale_epilogue(int tune) {return tune>=51 && tune<=54;}
 bool roof_group_major_w_scale(int tune) {return tune==13 || tune==53 || tune==54;}
 // New intermediate is sum(P_g*W_scale_g), before multiplication by A_scale.
@@ -87,6 +94,13 @@ void roof_payload_metadata(py::dict& meta,int tune,int m,int n,int k) {
     meta["activation_conversion_kernels"]=2;
     meta["weight_conversion_kernels"]=3;
     meta["row_scale_layout_reference_tune"]=tune-2;
+  }
+  if(roof_async_payload(tune)) {
+    meta["scale_copy_async"]=true;
+    meta["scale_copy_transaction_bytes"]=16;
+    meta["scale_copy_alignment_bytes"]=16;
+    meta["scale_copy_buffering"]="same_ring_slot_as_g128_payload";
+    meta["async_scale_reference_tune"]=tune==55?41:42;
   }
   meta["activation_payload_reorder_traffic_bytes"]=packed && !fused?int64_t(2)*m*k:0;
   meta["weight_payload_reorder_traffic_bytes"]=packed && !fused?int64_t(n)*k:0;
@@ -190,6 +204,8 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
     case 52:return roof_config_for<42>(dual);
     case 53:return roof_config_for<41>(dual);
     case 54:return roof_config_for<42>(dual);
+    case 55:return roof_config_for<41>(dual);
+    case 56:return roof_config_for<42>(dual);
     case 6:return roof_config_for<6>(dual);
     case 7:return roof_config_for<7>(dual);
     case 3:return roof_config_for<3>(dual);
@@ -201,6 +217,10 @@ RoofLaunchConfig roof_config(int tune,bool dual) {
 
 auto select_roof_kernel(bool dual,bool fast,int tune) {
   TORCH_CHECK(tune>=0 && valid_roof_tune(tune),"invalid roof candidate");
+  if(roof_async_payload(tune)) {
+    TORCH_CHECK(dual && !fast,"asynchronous G128 FP32 scale candidate requires O7/O8");
+    return adangel_sm80_experiment::select_async_payload_kernel(tune);
+  }
   if(roof_row_scale_epilogue(tune)) {
     TORCH_CHECK(!dual,"row-scale epilogue candidate is O3 only");
     if(tune==53 || tune==54) return adangel_sm80_experiment::select_epilogue_scale_layout_kernel(tune);
@@ -266,7 +286,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   TORCH_CHECK(dual || variant=="o3","expected o3/o7/o8");
   TORCH_CHECK(!roof_row_scale_epilogue(tune) || !dual,"row-scale epilogue candidate is O3 only");
   TORCH_CHECK(tune!=13 || !dual,"group-major UE8M0 candidate is O3 only");
-  TORCH_CHECK((tune!=14 && tune!=15) || dual,"asynchronous FP32 scale candidate requires O7/O8");
+  TORCH_CHECK((tune!=14 && tune!=15 && !roof_async_payload(tune)) || dual,"asynchronous FP32 scale candidate requires O7/O8");
   TORCH_CHECK(valid_roof_tune(tune) && warmup>=0 && repeats>0,"invalid candidate/repetitions");
   TORCH_CHECK(!roof_fused_payload(tune),"candidate43/44 require source-format four-mode API; no conversion is performed by prepared-core API");
   for(const auto& t : {a,as,w,ws})
@@ -275,7 +295,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
       a.scalar_type()==at::kByte && w.scalar_type()==at::kByte,"packed contiguous uint8 required");
   int64_t m64=a.size(0)/2,n64=w.size(0),k64=a.size(1)*2;
   check_roof_fixed_shape(tune,m64,n64,k64);
-  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || (tune>=28 && tune<=54))?128:256;
+  const int required_k=((tune>=16 && tune<=19) || (tune>=22 && tune<=23) || (tune>=28 && tune<=56))?128:256;
   TORCH_CHECK(a.size(0)%2==0 && m64>0 && n64>0 && k64>0 && m64%64==0 && n64%128==0 && k64%required_k==0 &&
       m64*k64<=2147483647LL && n64*k64<=2147483647LL && m64*n64<=2147483647LL &&
       m64/64<=65535 && n64/128<=65535 && w.size(1)==a.size(1),"invalid aligned shape/index range");
@@ -310,6 +330,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   TORCH_CHECK(as.max().item<double>()*maxw*double(k)*128.0*8.0<=std::numeric_limits<float>::max(),
       "scale product may overflow output");
   auto y=at::empty({m,n},as.options());
+  check_roof_async_scale_alignment(tune,as,ws);
   auto stream=c10::cuda::getCurrentCUDAStream(a.get_device()).stream();
   auto launch_ws=roof_group_major_w_scale(tune) ? at::empty({g,n},ws.options()) : ws;
   if(roof_group_major_w_scale(tune)) roof_reorder_o3_scale(ws,launch_ws,n,g,stream);
@@ -369,7 +390,7 @@ py::dict benchmark_roof_candidate(std::string variant,int tune,at::Tensor a,at::
   meta["stream_n_slice"]=cfg.slice_n;meta["threads"]=cfg.threads;meta["launch_bounds_min_blocks"]=cfg.min_blocks;
   meta["cta_tile"]=std::vector<int>{64,cfg.n,cfg.k};meta["group_size"]=128;
   meta["pipeline_stages"]=cfg.stages;
-  const int warp_m=((tune>=20 && tune<=23) || (tune>=28 && tune<=54))?2:4;
+  const int warp_m=((tune>=20 && tune<=23) || (tune>=28 && tune<=56))?2:4;
   meta["warp_layout"]=std::vector<int>{warp_m,cfg.threads/(32*warp_m)};
   meta["accumulators_per_thread"]=64*cfg.n/cfg.threads;
   meta["fp32_accumulation_chains"]=(tune==24 || tune==26)?2:((tune==25 || tune==27)?4:1);

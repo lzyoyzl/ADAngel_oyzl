@@ -30,10 +30,12 @@ def compare(rows, reference, candidate, samples, rounds, variants, modes, allow_
     if len(index) != len(selected) or len(ids) != samples or set(index) != expected:
         raise ValueError("incomplete or duplicate sample/variant/mode/round/tune coverage")
     for r in selected:
+        if r['tune'] in (55,56) and not r.get('async_scale_metadata_verified'):
+            raise ValueError('missing asynchronous scale buffering verification')
         if r['tune'] in (53,54) and (not r.get('weight_scale_layout_bitwise_verified')
                                     or not r.get('bitwise_equal_row_scale_baseline')):
             raise ValueError('missing scale-layout/row-scale baseline bitwise verification')
-        if r['tune'] in (41,42,43,44,45,46,47,48,49,50,51,52,53,54) and not r.get('payload_layout_bitwise_verified'):
+        if r['tune'] in (41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56) and not r.get('payload_layout_bitwise_verified'):
             raise ValueError('missing bitwise G128 payload layout verification')
         if r['tune']==37 and not r.get('bitwise_equal_dynamic_tree'):
             raise ValueError('missing bitwise comparison against dynamic tree36')

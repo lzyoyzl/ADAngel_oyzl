@@ -45,7 +45,7 @@ def main():
     p.add_argument("--tunes", type=int, nargs="+", default=[-1, 0, 1, 2, 3])
     p.add_argument("--variants", nargs="+", choices=["o3", "o7", "o8"], default=["o3", "o7", "o8"])
     args = p.parse_args()
-    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52)+(53,54) for t in args.tunes):
+    if args.output.exists() or args.size < 256 or args.size % 256 or args.warmup < 0 or min(args.repeats, args.rounds) < 1 or any(t not in (-1,0,1,2,3,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52)+(53,54)+(55,56) for t in args.tunes):
         p.error("fresh output, tile alignment and valid repetitions/tunes required")
     if any(t in (32,33) for t in args.tunes) and args.size!=4096:
         p.error('fixed4096 candidates32/33 require --size 4096')
@@ -55,7 +55,7 @@ def main():
         p.error('row-scale epilogue candidates51/52/53/54 are O3 only')
     if 13 in args.tunes and args.variants != ['o3']:
         p.error('candidate13 is O3 only')
-    if any(t in (14,15) for t in args.tunes) and 'o3' in args.variants:
+    if any(t in (14,15,55,56) for t in args.tunes) and 'o3' in args.variants:
         p.error('asynchronous scale candidates are O7/O8 only')
     import torch
     from adangel import _sm80 as native
@@ -135,7 +135,7 @@ def main():
         rejected_shapes = []
         for variant in args.variants:
             shapes=[(64, 128, 256), (128, 256, 512), (64, 128, 768), (128, 128, 4096)]
-            if any(t in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52)+(53,54) for t in args.tunes):
+            if any(t in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52)+(53,54)+(55,56) for t in args.tunes):
                 shapes += [(64,128,128),(64,128,384),(64,128,640)]
             if any(t in (32,33) for t in args.tunes):
                 shapes += [(4096,4096,4096)]
@@ -158,7 +158,7 @@ def main():
                                         raise AssertionError('fixed shape candidate accepted unsupported shape')
                                     rejected_shapes.append(dict(variant=variant,tune=tune,shape=[m,n,k]))
                                 continue
-                            if k%256 and tune not in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52)+(53,54):
+                            if k%256 and tune not in (16,17,18,19,22,23,28,29,30,31,34,35,36,37,38,39,40,41,42,45,46,47,48,49,50)+(51,52)+(53,54)+(55,56):
                                 continue  # Only these kernels support odd G128 counts.
                             result = native._benchmark_roof_candidate(variant, tune, *values, 0, 1)
                             stream.synchronize()
@@ -202,7 +202,7 @@ def main():
                                 assert result['kernel']['threads']==256
                                 assert result['kernel']['warp_layout']==[4,2]
                                 assert result['kernel']['launch_bounds_min_blocks']==(1 if tune>=26 else 2)
-                            if tune in (14,15):
+                            if tune in (14,15,55,56):
                                 assert result['kernel']['scale_copy_async']
                                 assert result['kernel']['scale_copy_combined_panels']==(tune==15)
                                 assert not result['kernel']['activation_power2_fast_path']

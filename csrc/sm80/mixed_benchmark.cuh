@@ -81,6 +81,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     roof_a=at::empty({2,k/128,m,64},ca->packed.options());
     roof_w=at::empty({k/128,n,64},cw->packed.options());
   }
+  if(roof_async_payload(roof_tune)) check_roof_async_scale_alignment(roof_tune,ca->scale,cw->scale);
   auto y=at::empty({m,n},a.payload.options().dtype(at::kFloat));
   std::unique_ptr<AdangelFp16Runner> fp16_plan;
   if(fp16) fp16_plan=adangel_make_fp16_runner(ah,wh,y);
@@ -236,7 +237,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;meta["shared_memory_bytes"]=roof_cfg.smem;
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=52))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=56))?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);

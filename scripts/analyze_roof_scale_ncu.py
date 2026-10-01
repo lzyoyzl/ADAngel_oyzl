@@ -78,8 +78,10 @@ def validate_arithmetic_work(counts, tune, fast):
 
 def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False):
     allowed={'o3':(6,13,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o8':(6,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31)}
-    if variant not in allowed or tune not in allowed[variant] + (34,35,36,37,38,39,40,41,42,45,46,47,48,49,50,51,52,53,54):
+    if variant not in allowed or tune not in allowed[variant] + (34,35,36,37,38,39,40,41,42,45,46,47,48,49,50,51,52,53,54,55,56):
         raise ValueError('unsupported variant/tune profiling pair')
+    if tune in (55,56) and variant=='o3':
+        raise ValueError('asynchronous FP32 scale payload candidates require O7/O8')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
     if len(raw_rows)!=2:
         raise ValueError('expected units row and one kernel')
