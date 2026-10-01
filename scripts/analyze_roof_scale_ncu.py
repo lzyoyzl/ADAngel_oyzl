@@ -103,6 +103,8 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
             permitted='adangel_roof_scale_reuse_o3' if variant=='o3' else 'adangel_roof_scale_reuse_o78'
         if expected_symbol in ('adangel_roof_flat_address_o3','adangel_roof_flat_address_o78'):
             permitted='adangel_roof_flat_address_o3' if variant=='o3' else 'adangel_roof_flat_address_o78'
+        if expected_symbol in ('adangel_roof_fixed_dims_o3','adangel_roof_fixed_dims_o78'):
+            permitted='adangel_roof_fixed_dims_o3' if variant=='o3' else 'adangel_roof_fixed_dims_o78'
         if expected_symbol!=permitted or tune!=(54 if variant=='o3' else 59):
             raise ValueError('unexpected isolated probe math/identity')
         expected=expected_symbol
