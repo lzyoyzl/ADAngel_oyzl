@@ -49,5 +49,26 @@ class IntegerConversionTests(unittest.TestCase):
         setup=(ROOT/'setup.py').read_text()
         self.assertGreater(setup.index('csrc/sm80/roof_integer_conversion.cu'),setup.index('if target == "sm80":'))
 
+    def test_audit_rejects_missing_spill_and_f2i(self):
+        analyze=runpy.run_path(str(ROOT/'scripts/audit_integer_conversion_probe.py'))['analyze']
+        symbols=[f'adangel_sm80_integer_fixed_conversion_test{i}' for i in range(8)]
+        sass='\n'.join(f'Function : {s}\n IADD3 R1,R2,R3,R4;\n' for s in symbols)
+        resources='\n'.join(f'Function {s}: REG:20 STACK:0 LOCAL:0' for s in symbols)
+        self.assertTrue(analyze(sass,resources)['passed'])
+        self.assertFalse(analyze(sass.replace('IADD3','F2I',1),resources)['passed'])
+        self.assertFalse(analyze(sass,resources.replace('LOCAL:0','LOCAL:4',1))['passed'])
+        self.assertFalse(analyze(sass,'')['passed'])
+
+    def test_benchmark_scope_and_rotation(self):
+        import ast
+        text=(ROOT/'scripts/benchmark_integer_conversion_probe.py').read_text()
+        tree=ast.parse(text)
+        fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='order')
+        namespace={};exec(compile(ast.Module(body=[fn],type_ignores=[]),'rotation','exec'),namespace)
+        self.assertEqual([namespace['order']([0,1,2,3],0,0,r)[0] for r in range(4)],[0,1,2,3])
+        self.assertIn('gemm_performance_measured=False',text)
+        self.assertIn('output_bitwise_current_best=True',text)
+        self.assertIn("mse_vs_paired_fp16=mse(y,fp)",text)
+
 
 if __name__=='__main__': unittest.main()
