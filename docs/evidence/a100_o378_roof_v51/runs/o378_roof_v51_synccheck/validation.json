@@ -1,0 +1,3730 @@
+{
+  "passed": true,
+  "count": 75,
+  "checks": [
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "random",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 1.9551552832126617,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 1.7911195755004883e-05
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "random",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 1.9551552832126617,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 1.7911195755004883e-05
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "zero",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.619206577539444,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "zero",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.619206577539444,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "extrema",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.5984688177704811,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.00024056434631347656
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "extrema",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.5984688177704811,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.00024056434631347656
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "zero_scale",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.5923071876168251,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "zero_scale",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.5923071876168251,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "guard13",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.5814172327518463,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "guard13",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.5814172327518463,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "fallback14",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.6009340286254883,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "fallback14",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.6009340286254883,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "fallback15",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.6310995668172836,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "fallback15",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.6310995668172836,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        128
+      ],
+      "pattern": "subnormal",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "fp64_semantic_float",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 0,
+        "max_exponent_difference": 0,
+        "range_check_wall_ms": 0.7107695564627647,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 3.331609070301056,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 2.5088986149057746e-05
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 3.331609070301056,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 2.5088986149057746e-05
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2525422498583794,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2525422498583794,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "extrema",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2382250279188156,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0002431534230709076
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "extrema",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2382250279188156,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0002431534230709076
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_scale",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.3053808361291885,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_scale",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.3053808361291885,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "guard13",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 13,
+        "range_check_wall_ms": 1.2600142508745193,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0002142786979675293
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "guard13",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 13,
+        "range_check_wall_ms": 1.2600142508745193,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0002142786979675293
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "fallback14",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 128,
+        "max_exponent_difference": 14,
+        "range_check_wall_ms": 1.2591937556862831,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.00045943260192871094
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "fallback14",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 245,
+        "local_size_bytes": 0,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": true,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 2,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 67584
+      },
+      "executed_policy": 2,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 128,
+        "max_exponent_difference": 14,
+        "range_check_wall_ms": 1.2591937556862831,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.00045943260192871094
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "fallback15",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 128,
+        "max_exponent_difference": 15,
+        "range_check_wall_ms": 1.2446269392967224,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0009456872940063477
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "fallback15",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 245,
+        "local_size_bytes": 0,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": true,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 2,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 67584
+      },
+      "executed_policy": 2,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 128,
+        "max_exponent_difference": 15,
+        "range_check_wall_ms": 1.2446269392967224,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0009456872940063477
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "subnormal",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "fp64_semantic_float",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 1,
+        "range_check_wall_ms": 1.2675095349550247,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "random",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2385761365294456,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 4.1713718019309454e-05
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "random",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2385761365294456,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 4.1713718019309454e-05
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "zero",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2159431353211403,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "zero",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2159431353211403,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "extrema",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2299790978431702,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0004813745617866516
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "extrema",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2299790978431702,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0004813745617866516
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "zero_scale",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2083491310477257,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "zero_scale",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.2083491310477257,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "guard13",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 13,
+        "range_check_wall_ms": 1.2316526845097542,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.00023949146270751953
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "guard13",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 13,
+        "range_check_wall_ms": 1.2316526845097542,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.00023949146270751953
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "fallback14",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 128,
+        "max_exponent_difference": 14,
+        "range_check_wall_ms": 1.2450981885194778,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0004285573959350586
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "fallback14",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 245,
+        "local_size_bytes": 0,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": true,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 2,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 67584
+      },
+      "executed_policy": 2,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 128,
+        "max_exponent_difference": 14,
+        "range_check_wall_ms": 1.2450981885194778,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0004285573959350586
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "fallback15",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 128,
+        "max_exponent_difference": 15,
+        "range_check_wall_ms": 1.218307763338089,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0009188652038574219
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "fallback15",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 245,
+        "local_size_bytes": 0,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": true,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 2,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 67584
+      },
+      "executed_policy": 2,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 128,
+        "max_exponent_difference": 15,
+        "range_check_wall_ms": 1.218307763338089,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0009188652038574219
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "pattern": "subnormal",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "fp64_semantic_float",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 128,
+        "max_exponent_difference": 1,
+        "range_check_wall_ms": 1.251659356057644,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "random",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 3.3897170796990395,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 4.7924690079526044e-05
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "random",
+      "policy": 1,
+      "bitwise_equal_best": false,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 3.3897170796990395,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 1.52587890625e-05,
+      "max_abs_error_fp64": 4.7924690079526044e-05
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "zero",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.270725391805172,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "zero",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.270725391805172,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "extrema",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.5926770865917206,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0004828348755836487
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "extrema",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.5926770865917206,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0004828348755836487
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "zero_scale",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.5751542523503304,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "zero_scale",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.5751542523503304,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "guard13",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 13,
+        "range_check_wall_ms": 1.2699142098426819,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.000476837158203125
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "guard13",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 13,
+        "range_check_wall_ms": 1.2699142098426819,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.000476837158203125
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "fallback14",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 512,
+        "max_exponent_difference": 14,
+        "range_check_wall_ms": 1.266096718609333,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0009650588035583496
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "fallback14",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 245,
+        "local_size_bytes": 0,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": true,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 2,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 67584
+      },
+      "executed_policy": 2,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 512,
+        "max_exponent_difference": 14,
+        "range_check_wall_ms": 1.266096718609333,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0009650588035583496
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "fallback15",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 512,
+        "max_exponent_difference": 15,
+        "range_check_wall_ms": 1.2654662132263184,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.001916050910949707
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "fallback15",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 245,
+        "local_size_bytes": 0,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": true,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 2,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 67584
+      },
+      "executed_policy": 2,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 512,
+        "max_exponent_difference": 15,
+        "range_check_wall_ms": 1.2654662132263184,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.001916050910949707
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "pattern": "subnormal",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "fp64_semantic_float",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 512,
+        "max_exponent_difference": 1,
+        "range_check_wall_ms": 1.3205194845795631,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "random",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.4250138774514198,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.00019095659808954224
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "random",
+      "policy": 1,
+      "bitwise_equal_best": false,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.4250138774514198,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 9.1552734375e-05,
+      "max_abs_error_fp64": 0.00019095659808954224
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "zero",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.4801472425460815,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "zero",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.4801472425460815,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "extrema",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.4091450721025467,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.004249744350090623
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "extrema",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.4091450721025467,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.004249744350090623
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "zero_scale",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.4393813908100128,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "zero_scale",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 7,
+        "range_check_wall_ms": 1.4393813908100128,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "guard13",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 13,
+        "range_check_wall_ms": 1.4304239302873611,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0034284591674804688
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "guard13",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 13,
+        "range_check_wall_ms": 1.4304239302873611,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0034284591674804688
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "fallback14",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 14,
+        "range_check_wall_ms": 1.4145253226161003,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.007350921630859375
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "fallback14",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 245,
+        "local_size_bytes": 0,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": true,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 2,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 67584
+      },
+      "executed_policy": 2,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 14,
+        "range_check_wall_ms": 1.4145253226161003,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.007350921630859375
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "fallback15",
+      "policy": 0,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "active_warps_per_sm": 12,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 1,
+        "general_fallback": false,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 0,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 12,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 50688
+      },
+      "executed_policy": 0,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 15,
+        "range_check_wall_ms": 1.3843076303601265,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.015130996704101562
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "fallback15",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "tune54",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 245,
+        "local_size_bytes": 0,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": true,
+        "alignment_parameters_shared": false,
+        "pair_scale_shared": 2,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 67584
+      },
+      "executed_policy": 2,
+      "guard": {
+        "safe_all_pairs": false,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 15,
+        "range_check_wall_ms": 1.3843076303601265,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.015130996704101562
+    },
+    {
+      "variant": "o3",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "subnormal",
+      "policy": 1,
+      "bitwise_equal_best": true,
+      "best_reference": "fp64_semantic_float",
+      "finite_fp32": true,
+      "probe_resources": {
+        "registers_per_thread": 255,
+        "local_size_bytes": 64,
+        "threads": 128,
+        "active_blocks_per_sm": 2,
+        "active_warps_per_sm": 8,
+        "consumer_warp_layout": [
+          2,
+          2
+        ],
+        "accumulators_per_thread": 64,
+        "streamed_n_columns": 64,
+        "independent_n_atoms": 4,
+        "group_fusion": 2,
+        "general_fallback": false,
+        "alignment_parameters_shared": true,
+        "pair_scale_shared": 1,
+        "consumer_warps": 4,
+        "active_consumer_warps_per_sm": 8,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "shared_memory_bytes": 68608
+      },
+      "executed_policy": 1,
+      "guard": {
+        "safe_all_pairs": true,
+        "pairs_checked": 2048,
+        "max_exponent_difference": 1,
+        "range_check_wall_ms": 1.4295121654868126,
+        "scope": "one-time preparation, not Event GEMM latency"
+      },
+      "max_abs_difference_best": 0.0,
+      "max_abs_error_fp64": 0.0
+    }
+  ],
+  "guard_cache_checks": [
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "safe_then_unsafe_fallback": true,
+      "invalid_after_cached_guard_rejected": true,
+      "output_matches_fp64": true
+    },
+    {
+      "shape": [
+        64,
+        128,
+        384
+      ],
+      "safe_then_unsafe_fallback": true,
+      "invalid_after_cached_guard_rejected": true,
+      "output_matches_fp64": true
+    },
+    {
+      "shape": [
+        128,
+        256,
+        640
+      ],
+      "safe_then_unsafe_fallback": true,
+      "invalid_after_cached_guard_rejected": true,
+      "output_matches_fp64": true
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "safe_then_unsafe_fallback": true,
+      "invalid_after_cached_guard_rejected": true,
+      "output_matches_fp64": true
+    }
+  ],
+  "git_commit": "4859b98db4fc67768e43a8418bc2a94d4876e5f5",
+  "extension_sha256": "fe9c2b18d89787231bf988b704a29d2041edcfdad558c98acee3f5b2195b366f",
+  "cubins": {
+    "0": "4eb38223560062455191830e7a9add707cf2d288924fc9f35bec0904966304a0",
+    "1": "19c5e5da56e66bab6ddccb29fb3393b5721f212fc7291df6cfce5b38d13473d0"
+  },
+  "scope": "finite prepared-core checks, nondefault stream, not conversion or full experimental acceptance"
+}
