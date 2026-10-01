@@ -35,7 +35,7 @@ def pc_stall_summary(source_rows):
         samples=count(row[total_column])
         if sum(values.values())!=samples:
             raise ValueError('PC sampling reason/total mismatch')
-        match=re.match(r'\s*(?:@!?P(?:T|\d+)\s+)?([A-Z][A-Z0-9_]*)',row['Source'])
+        match=re.match(r'\s*(?:@!?U?P(?:T|\d+)\s+)?([A-Z][A-Z0-9_]*)',row['Source'])
         if not match: raise ValueError('unknown PC opcode')
         opcode=match[1]
         work=by_opcode.setdefault(opcode,{r:0 for r in reasons})
@@ -108,11 +108,11 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
     # NCU omits the local-sector column if this function has no local
     # instructions. Never interpret arbitrary missing metrics as measured0.
     local_key='L2 Theoretical Sectors Local'
-    no_local_opcodes=not any(re.match(r'\s*(?:@!?P(?:T|\d+)\s+)?(?:LDL|STL)(?:\.|\s)',row['Source']) for row in source_rows)
+    no_local_opcodes=not any(re.match(r'\s*(?:@!?U?P(?:T|\d+)\s+)?(?:LDL|STL)(?:\.|\s)',row['Source']) for row in source_rows)
     if missing_columns and (missing_columns!={local_key} or not no_local_opcodes):
         raise ValueError(f'missing required memory counters: {sorted(missing_columns)}')
     for row in source_rows:
-        match=re.match(r'\s*(?:@!?P(?:T|\d+)\s+)?([A-Z][A-Z0-9_]*)',row['Source'])
+        match=re.match(r'\s*(?:@!?U?P(?:T|\d+)\s+)?([A-Z][A-Z0-9_]*)',row['Source'])
         if not match: raise ValueError('unknown opcode')
         count=int(row['Instructions Executed'].replace(',',''))
         counts[match[1]]=counts.get(match[1],0)+count

@@ -11,6 +11,34 @@ EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v4/reports/o378_roof_v4'
 
 
 class RoofScaleNcuTests(unittest.TestCase):
+    def test_uniform_predication_preserves_accounting(self):
+        # Parser fixture only. Uniform-predicate instructions emitted in v31
+        # must be counted, never silently skipped or mistaken for an opcode.
+        raw=(EVIDENCE/'ncu_o7_t6_raw.csv').read_text()
+        lines=list(csv.reader(io.StringIO((EVIDENCE/'ncu_o7_t6_source_sass.csv').read_text())))
+        col=lines[1].index('Source')
+        expected=ANALYZE(raw,(EVIDENCE/'ncu_o7_t6_source_sass.csv').read_text(),6,'o7')
+        row=next(r for r in lines[2:] if not r[col].lstrip().startswith('@'))
+        original=row[col]
+        for predicate in ('@UP0','@!UP1','@UPT','@!P0'):
+            row[col]=predicate+' '+original
+            out=io.StringIO();csv.writer(out).writerows(lines)
+            actual=ANALYZE(raw,out.getvalue(),6,'o7')
+            self.assertEqual(actual['opcodes'],expected['opcodes'])
+            self.assertEqual(actual['source_memory_work'],expected['source_memory_work'])
+        row[col]='@XYZ '+original
+        out=io.StringIO();csv.writer(out).writerows(lines)
+        with self.assertRaisesRegex(ValueError,'unknown opcode'):
+            ANALYZE(raw,out.getvalue(),6,'o7')
+        path=ROOT/'docs/evidence/a100_o378_roof_v14/reports/o378_roof_v14/ncu_o7_t21_source_sass.csv'
+        rows=list(csv.DictReader(path.read_text().splitlines()[1:]))
+        before=MODULE['pc_stall_summary'](rows)
+        row=next(r for r in rows if not r['Source'].lstrip().startswith('@'))
+        row['Source']='@!UP1 '+row['Source']
+        after=MODULE['pc_stall_summary'](rows)
+        self.assertEqual(before['reason_samples'],after['reason_samples'])
+        self.assertEqual(before['samples_by_consumer_opcode'],after['samples_by_consumer_opcode'])
+
     def test_archived_pc_wait_evidence_is_reconciled_not_time_fraction(self):
         evidence=ROOT/'docs/evidence/a100_o378_roof_v14/reports/o378_roof_v14'
         for variant,tune,total,wait in (('o3',6,13548,3029),('o3',21,18486,7975),
