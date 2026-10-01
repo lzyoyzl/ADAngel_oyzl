@@ -8,7 +8,7 @@ def payload_reorder_bytes_for_stage(meta, mode, stage):
 
 
 def verify_grouped_payload(result, tune, natural_a, natural_w, natural_ws=None):
-    if tune not in (41,42,43,44,45,46,47,48,49,50)+(51,52)+(53,54)+(55,56)+(57,58):
+    if tune not in (41,42,43,44,45,46,47,48,49,50)+(51,52)+(53,54)+(55,56)+(57,58)+(59,60):
         return {}
     import torch
     m=natural_a.shape[0]//2
@@ -27,7 +27,7 @@ def verify_grouped_payload(result, tune, natural_a, natural_w, natural_ws=None):
     assert meta['payload_reorder_in_conversion'] and meta['payload_reorder_fused']==fused
     assert meta['activation_payload_reorder_traffic_bytes']==(0 if fused else 4*m*kbytes)
     assert meta['weight_payload_reorder_traffic_bytes']==(0 if fused else 2*n*kbytes)
-    assert meta['pipeline_stages']==(2 if tune in (41,43,45,47,49,51,53,55,57) else 3)
+    assert meta['pipeline_stages']==(2 if tune in (41,43,45,47,49,51,53,55,57,59) else 3)
     if fused:
         assert meta['gemm_tune']==tune-2 and meta['conversion_kernels_per_operand']==1
         assert meta['natural_payload_export']=='diagnostic_inverse_layout_after_timing'
@@ -57,15 +57,19 @@ def verify_grouped_payload(result, tune, natural_a, natural_w, natural_ws=None):
         assert meta['weight_scale_layout']=='group_major' and meta['weight_scale_reorder_bytes']==2*n*groups
         assert meta['conversion_kernels_per_operand'] is None
         assert meta['activation_conversion_kernels']==2 and meta['weight_conversion_kernels']==3
-    if tune in (55,56,57,58):
+    if tune in (55,56,57,58,59,60):
         assert meta['scale_copy_async'] and meta['scale_copy_transaction_bytes']==16
         assert meta['scale_copy_alignment_bytes']==16
         assert meta['scale_copy_buffering']=='same_ring_slot_as_g128_payload'
-        assert meta['async_scale_reference_tune']=={55:41,56:42,57:55,58:56}[tune]
+        assert meta['async_scale_reference_tune']=={55:41,56:42,57:55,58:56,59:55,60:56}[tune]
         assert not meta['scale_copy_combined_panels'] and not meta['fp32_reassociated']
         assert meta['conversion_kernels_per_operand']==2
         assert meta['cta_tile']==([32,128,128] if tune in (57,58) else [64,128,128])
         assert meta['warp_layout']==([1,4] if tune in (57,58) else [2,2])
+    if tune in (59,60):
+        assert meta['dimension_addressing']=='host_bounded_uint32'
+        assert meta['address_products_max']==2147483647
+        assert meta['accumulators_per_thread']==64 and meta['launch_bounds_min_blocks']==3
     return {'payload_layout_bitwise_verified':True,
-            **({'async_scale_metadata_verified':True} if tune in (55,56,57,58) else {}),
+            **({'async_scale_metadata_verified':True} if tune in (55,56,57,58,59,60) else {}),
             **({'weight_scale_layout_bitwise_verified':True} if tune in (53,54) else {})}

@@ -29,7 +29,7 @@ def roof_scale_checks(symbol, instruction_counts):
 
 def roof_pipeline_checks(symbol, ptx, sass):
     """Require overlapping and draining waits in the same three-stage entry."""
-    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi(?:1[6-9]|23|31|33|42|46|48|50|52|54|56|58)EE',symbol):
+    if not re.search(r'adangel_sm80_roof_candidateILb[01]ELb[01]ELi(?:1[6-9]|23|31|33|42|46|48|50|52|54|56|58|60)EE',symbol):
         return {}
     return dict(pipeline_ptx_wait_one=bool(re.search(r'cp\.async\.wait_group\s+1\s*;',ptx)),
                 pipeline_ptx_drain=bool(re.search(r'cp\.async\.wait_group\s+0\s*;',ptx)),
@@ -38,7 +38,7 @@ def roof_pipeline_checks(symbol, ptx, sass):
 
 
 def roof_async_payload_checks(symbol, ptx, sass):
-    if not re.search(r'adangel_sm80_roof_candidateILb1ELb0ELi5[5-8]EE',symbol):
+    if not re.search(r'adangel_sm80_roof_candidateILb1ELb0ELi(?:5[5-9]|60)EE',symbol):
         return {}
     # These kernels have no other scalar global inputs: payload and both scale
     # panels must all arrive through LDGSTS. Do not confuse LDG with LDGSTS.

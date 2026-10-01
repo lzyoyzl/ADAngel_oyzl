@@ -88,6 +88,7 @@ def extensions():
             "csrc/sm80/roof_epilogue_scale_layout.cu",
             "csrc/sm80/roof_async_payload.cu",
             "csrc/sm80/roof_m32_payload.cu",
+            "csrc/sm80/roof_unsigned_payload.cu",
             "csrc/sm80/roof_reduction.cu",
             "csrc/sm80/roof_reduction_budget.cu",
             "csrc/common/validation.cu",
