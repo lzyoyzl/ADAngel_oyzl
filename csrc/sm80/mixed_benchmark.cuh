@@ -34,7 +34,8 @@ py::dict convert_mixed_fused_payload(const py::dict& source) {
 
 py::dict benchmark_mixed(std::string variant,std::string mode,
     const py::dict& weight_source,const py::dict& activation_source,
-    int warmup,int repeats,int inner,std::string tile,std::string scale_layout,int roof_tune) {
+    int warmup,int repeats,int inner,std::string tile,std::string scale_layout,int roof_tune,
+    int conversion_impl) {
   TORCH_CHECK(variant=="o5" || variant=="o6" || variant=="o7" || variant=="o8" || variant=="o9" || variant=="o10","expected o5 through o10");
   const bool fp16=variant=="o5" || variant=="o6";
   const bool binary=variant=="o9" || variant=="o10";
@@ -55,6 +56,11 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   TORCH_CHECK(roof_tune!=13,"group-major UE8M0 candidate is O3 only");
   TORCH_CHECK(!roof_m32_payload(roof_tune),"M32 candidate57/58 is prepared-core only until performance screening passes");
   TORCH_CHECK(roof_tune!=60,"unsigned candidate60 remains prepared-core only; only59 passed repeated trace screening");
+  // Independent v35 conversion experiment on the already validated GEMM59.
+  // Existing callers retain0; no production dispatch or GEMM math changes.
+  TORCH_CHECK(conversion_impl>=0 && conversion_impl<=4,"conversion candidate must be0..4");
+  TORCH_CHECK(conversion_impl==0 || (roof_tune==59 && (variant=="o7" || variant=="o8")),
+      "conversion candidate requires explicit O7/O8 GEMM59");
   const MixedSource w(weight_source,!fp16),a(activation_source,!fp16);
   TORCH_CHECK((nv && w.kind==MixedKind::Nv4 && a.kind==MixedKind::Mx8) ||
       (!nv && w.kind==MixedKind::Hif4 && a.kind==MixedKind::Nv6),
@@ -64,6 +70,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   cudaDeviceProp prop;check(cudaGetDeviceProperties(&prop,a.payload.get_device()));
   TORCH_CHECK(prop.major==8 && prop.minor==0,"requires A100 SM80");
   const int m=a.rows,n=w.rows,k=a.k,tn=(tile=="64x128x256" || horner || wide || swizzle)?128:64;
+  TORCH_CHECK(conversion_impl<3 || k/128<=65535,"conversion candidate grid.y exceeds65535");
   check_roof_fixed_shape(roof_tune,m,n,k);
   const int tk=tile=="64x64x512"?512:(tn==64?128:256);
   TORCH_CHECK(m%64==0 && n%tn==0 && k%tk==0,"shape must be tile aligned");
@@ -103,12 +110,30 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     if(roof_tune>=0) check(cudaFuncSetAttribute(roof_kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(roof_cfg.smem)));
     else check(cudaFuncSetAttribute(kernel,cudaFuncAttributeMaxDynamicSharedMemorySize,int(smem)));
   }
+  auto convert_candidate=[&](const MixedSource& s,MixedConverted& d,at::Tensor& packed) {
+    //4: retain the measured faster v25 float-fused MX8 path, use the v34
+    // integer/tiled converter for NV4, HiF4 and NV6. No per-input autotuning.
+    const int impl=conversion_impl==4?(s.kind==MixedKind::Mx8?1:3):conversion_impl;
+    if(impl==1) {launch_mixed_fused_payload(s,d,packed,stream);return;}
+    using Kind=adangel_sm80_experiment::GroupedSourceKind;
+    const Kind kind=s.kind==MixedKind::Nv4?Kind::Nv4:(s.kind==MixedKind::Mx8?Kind::Mx8:
+        (s.kind==MixedKind::Hif4?Kind::Hif4:Kind::Nv6));
+    adangel_sm80_experiment::integer_mixed_fixed(kind,impl==3,
+        s.payload.data_ptr<uint8_t>(),s.scale.data_ptr<uint8_t>(),
+        s.tensor_scale.defined()?s.tensor_scale.data_ptr<float>():nullptr,
+        s.micro8.defined()?s.micro8.data_ptr<uint8_t>():nullptr,
+        s.micro4.defined()?s.micro4.data_ptr<uint8_t>():nullptr,
+        packed.data_ptr<uint8_t>(),d.scale.data_ptr<float>(),s.rows,s.k,stream);
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+  };
   auto cvw=[&]() {
+    if(conversion_impl) {convert_candidate(w,*cw,roof_w);return;}
     if(roof_fused_payload(roof_tune)) {launch_mixed_fused_payload(w,*cw,roof_w,stream);return;}
     if(fp16) launch_mixed_fp16(w,wh,stream);else if(binary) launch_mixed_bitplanes(w,*bw,stream);else launch_mixed_conversion(w,*cw,stream);
     if(roof_grouped_payload(roof_tune)) roof_pack_payload(cw->packed,roof_w,1,n,k,stream);
   };
   auto cva=[&]() {
+    if(conversion_impl) {convert_candidate(a,*ca,roof_a);return;}
     if(roof_fused_payload(roof_tune)) {launch_mixed_fused_payload(a,*ca,roof_a,stream);return;}
     if(fp16) launch_mixed_fp16(a,ah,stream);else if(binary) launch_mixed_bitplanes(a,*ba,stream);else launch_mixed_conversion(a,*ca,stream);
     if(roof_grouped_payload(roof_tune)) roof_pack_payload(ca->packed,roof_a,2,m,k,stream);
@@ -275,8 +300,18 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   meta["paired_fp16_baseline"]=nv?"o5":"o6";
   meta["weight_source_format"]=weight_source["format"];
   meta["activation_source_format"]=activation_source["format"];
+  meta["conversion_candidate"]=conversion_impl;
+  if(conversion_impl) {
+    meta["payload_reorder_fused"]=true;
+    meta["activation_payload_reorder_traffic_bytes"]=0;
+    meta["weight_payload_reorder_traffic_bytes"]=0;
+    meta["conversion_kernels_per_operand"]=1;
+    meta["weight_conversion_impl"]=conversion_impl==4?3:conversion_impl;
+    meta["activation_conversion_impl"]=conversion_impl==4?(nv?1:3):conversion_impl;
+    meta["gemm_tune"]=59;meta["gemm_math_changed"]=false;
+  }
   py::dict result;
-  if(roof_fused_payload(roof_tune)) {
+  if(roof_fused_payload(roof_tune) || conversion_impl) {
     // Validation exports only. All events have completed; neither the real
     // conversion nor GEMM needs a natural-layout intermediate.
     ca->packed=roof_a.permute({0,2,1,3}).contiguous().reshape({2*m,k/2});
@@ -297,7 +332,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   }
   result["conversion_scope"]=fp16?"source_format_to_fp16":(binary?"source_format_to_fixed_bitplanes":"source_format_to_fixed_only");
   if(roof_grouped_payload(roof_tune)) result["conversion_scope"]="source_format_to_fixed_then_g128_payload_reorder";
-  if(roof_fused_payload(roof_tune)) result["conversion_scope"]="source_format_to_fixed_g128_payload_fused";
+  if(roof_fused_payload(roof_tune) || conversion_impl) result["conversion_scope"]="source_format_to_fixed_g128_payload_fused";
   result["total_timing"]=compute?"single_execution_cuda_event":"sum_of_batched_stage_samples";
   result["timing_contract_version"]=2;
   result["timing_strategy"]="conversion_amortized_end_to_end_direct";

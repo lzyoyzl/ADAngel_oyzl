@@ -45,7 +45,10 @@ class IntegerConversionTests(unittest.TestCase):
         self.assertLess(host.index('std::vector<ConversionPair>'),host.index('for(int j=0;j<warmup'))
         self.assertLess(host.index('at::empty'),host.index('auto convert='))
         self.assertIn('/inner',host)
-        self.assertNotIn('integer_mixed_fixed',(ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text())
+        main=(ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text()
+        self.assertIn('conversion_impl==0 || (roof_tune==59',main)
+        self.assertIn('if(conversion_impl) {convert_candidate',main)
+        self.assertIn('py::arg("conversion_impl")=0',(ROOT/'csrc/sm80/o1_o3.cu').read_text())
         setup=(ROOT/'setup.py').read_text()
         self.assertGreater(setup.index('csrc/sm80/roof_integer_conversion.cu'),setup.index('if target == "sm80":'))
 
@@ -72,6 +75,23 @@ class IntegerConversionTests(unittest.TestCase):
         self.assertIn('gemm_performance_measured=False',text)
         self.assertIn('output_bitwise_current_best=True',text)
         self.assertIn("mse_vs_paired_fp16=mse(y,fp)",text)
+
+    def test_four_mode_opt_in_keeps_exact_gemm_and_default(self):
+        cu=(ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text()
+        self.assertIn('conversion_impl>=0 && conversion_impl<=4',cu)
+        self.assertIn('conversion_impl==0 || (roof_tune==59',cu)
+        self.assertIn('s.kind==MixedKind::Mx8?1:3',cu)
+        self.assertIn('conversion_impl<3 || k/128<=65535',cu)
+        self.assertIn('meta["gemm_tune"]=59;meta["gemm_math_changed"]=false',cu)
+        self.assertLess(cu.index('std::vector<Pair> weight_marks'),cu.index('for(int i=0;i<warmup'))
+        self.assertGreater(cu.index('ca->packed=roof_a.permute'),cu.index('measure_conversion(cva'))
+        self.assertIn('totals[j]=elapsed(e.start,e.end)',cu)
+        validator=(ROOT/'scripts/validate_conversion_pipeline.py').read_text()
+        self.assertIn('output\'].view(torch.int32)',validator)
+        self.assertIn('semantic_tolerance_passed=True',validator)
+        runner=(ROOT/'scripts/benchmark_conversion_pipeline.py').read_text()
+        self.assertIn("default=[0,4]",runner)
+        self.assertIn('mse_vs_current_best=0.',runner)
 
 
 if __name__=='__main__': unittest.main()
