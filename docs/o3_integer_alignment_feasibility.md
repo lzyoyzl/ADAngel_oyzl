@@ -60,6 +60,10 @@ finite FP32、24样本MSE、配对Event性能、spill/资源和内存同步安�
 
 O7/O8涉及非二次幂的多级scale，不能用本次O3覆盖率或公式直接证明其可行。
 
+后续获准的两组候选已完成v50：数值通过，但额外逐输出对齐/分支工作使性能退化，
+没有采用。详见[v50实际GPU测试与NCU](evidence/a100_o378_roof_v50/README.md)。
+下述范围检查自身仍只是CPU证据，不与后续GPU测试混为一谈。
+
 ## 4. 证据
 
 [逐样本范围结果](evidence/o3_integer_alignment_feasibility_v1/reports/o3_integer_alignment_feasibility_v1/feasibility.json)
