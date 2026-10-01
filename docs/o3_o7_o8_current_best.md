@@ -131,7 +131,8 @@ local理论sectors从4.06M降到2.10M，但数学指令数、LDSM和必要容量
 此前多链/树形方案增加寄存器或fragment重载，实测未胜出；没有证据就不继续扩大窗口。
 不重启已无收益的magic-bias。
 另有源格式payload整数化解码的CPU可行性探针：398种有限编码/微指数与原RNE参考完全一致。
-它只针对转换阶段、未改scale或GEMM，目前没有CUDA性能结果，不计入上述收益。
+v34已完成CUDA隔离转换复测：NVFP4/HiF4/FP6的目标布局融合分别提升转换吞吐132.30%/13.95%/19.80%；
+MXFP8仍以旧浮点融合最好，提升8.67%。24样本输出逐位一致，但尚不能把这些收益计入本报告的端到端表。
 跨G128改用INT32累加属于新的实现约束，尚未实施，需另行确认。
 
 ## 验证、限制与证据
@@ -158,6 +159,7 @@ O3新版四模式选定阶段的CV≥3%为0/24、8/24、1/24、17/24。
 - [v29：上一版行scale后移结果](evidence/a100_o378_roof_v29/README.md)
 - [v31：O7/O8上一最佳、四模式、MSE与NCU](evidence/a100_o378_roof_v31/README.md)
 - [v32：零spill的M32 tile为何更慢](evidence/a100_o378_roof_v32/README.md)
+- [v34：转换阶段的逐格式结果、MSE与证据](evidence/a100_o378_roof_v34/README.md)
 - [v33：O7/O8当前GEMM最佳、MSE、审计与NCU](evidence/a100_o378_roof_v33/README.md)
 - [每版收益和负结果](o3_o7_o8_iteration_summary.md)
 

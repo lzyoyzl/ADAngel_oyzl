@@ -1,0 +1,32 @@
+{
+  "git_commit": "0a22fc12bbea3667611513b3af7a0f86d08a5c44",
+  "binary_sha256": "605fd27299aa203f7fbcaaa309d509ceba0dcd01b2d4942c447cd7e9c46ffd36",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "prepared_manifest_sha256": null,
+  "raw_manifest_sha256": null,
+  "args": {
+    "output": "runs/o378_roof_v34_screen",
+    "synthetic": true,
+    "samples": 24,
+    "rounds": 3,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100,
+    "implementations": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "data": "data/prepared/llama2_7b_prefill_o0_o4",
+    "raw_data": "data/raw/llama2_7b_prefill",
+    "trace_config": "configs/trace/llama2_7b_prefill.yaml"
+  },
+  "scope": "standalone_conversion_probe",
+  "timing": "native_cuda_event_inner_amortized",
+  "gemm_performance_measured": false,
+  "formal_dispatch_changed": false,
+  "policy": "cyclic sample/format/round; shared GPU; no clock lock; no filtering"
+}
