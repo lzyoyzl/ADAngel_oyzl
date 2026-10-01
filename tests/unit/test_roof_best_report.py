@@ -6,7 +6,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
 EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v33'
-FOUR_EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v31'
+FOUR_EVIDENCE=EVIDENCE
 O3_EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v30'
 
 
@@ -53,7 +53,7 @@ class BestReportTest(unittest.TestCase):
 
     def test_fourmode_sources_and_no_default_promotion(self):
         doc=(ROOT/'docs/o3_o7_o8_current_best.md').read_text()
-        paths=(FOUR_EVIDENCE/'reports/o378_roof_v31/four24_56_vs42.json',
+        paths=(FOUR_EVIDENCE/'reports/o378_roof_v33_four/four24_59_vs56.json',
                O3_EVIDENCE/'reports/o378_roof_v30/four24_54_vs52.json')
         for path in paths:
             report=json.loads(path.read_text())

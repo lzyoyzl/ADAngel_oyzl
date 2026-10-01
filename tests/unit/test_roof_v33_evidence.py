@@ -78,4 +78,49 @@ class UnsignedEvidenceTests(unittest.TestCase):
                 self.assertEqual(r['max_ctas_per_sm_from_launch_limits'],3)
 
 
+@unittest.skipUnless((ROOT/'runs/o378_roof_v33_four24/summary.json').exists(),
+                     'completed four-mode archive not present')
+class UnsignedFourModeEvidenceTests(unittest.TestCase):
+    def load(self,path): return json.loads((ROOT/path).read_text())
+
+    def test_rebuild_codegen_and_non_target_regression(self):
+        prefix='reports/o378_roof_v33_four'
+        for name,count in (('production',12),('candidate',148)):
+            x=self.load(f'{prefix}/{name}_codegen.json')
+            self.assertTrue(x['passed']);self.assertEqual(len(x['unchanged']),count)
+        x=self.load(f'{prefix}/all_sm80_codegen.json')
+        self.assertFalse(x['passed']);self.assertEqual(len(x['changed']),3)
+        self.assertTrue(all('mixed_binary' in s for s in x['changed']))
+        x=self.load(f'{prefix}/audit/audit.json')
+        self.assertTrue(x['passed'])
+        self.assertEqual(x['binary_sha256'],
+            '02e6433d560f18344d8db2c1d5a46e6c9423837c5559f140cc0ba60af14a24c7')
+        reg=self.load('runs/o378_roof_v33_four_mixed_regression/validation.json')
+        self.assertTrue(reg['passed']);self.assertEqual(len(reg['binary_gemm_checks']),480)
+
+    def test_full_mode_statistics_and_timing_contract(self):
+        run='runs/o378_roof_v33_four24'
+        rows=[json.loads(l) for l in (ROOT/run/'results.jsonl').read_text().splitlines()]
+        self.assertEqual(len(rows),576)
+        modes=['conversion_only','compute_only','cold','steady_state']
+        self.assertEqual({r['mode'] for r in rows},set(modes))
+        for r in rows:
+            self.assertTrue(r['bitwise_equal_production']);self.assertEqual(r['mse_vs_production'],0)
+            self.assertEqual(len(r['raw_ms']),200)
+            self.assertEqual(r['conversion_inner_repeats'],100)
+            for name,inner in r['stage_timing_inner_repeats'].items():
+                self.assertEqual(inner,100 if 'conversion' in name or r['mode']=='conversion_only' else 1)
+            self.assertEqual(r['total_timing'],'sum_of_batched_stage_samples' if r['mode']=='conversion_only' else 'single_execution_cuda_event')
+            if r['tune']==59:
+                meta=r['kernel']
+                self.assertEqual(meta['activation_payload_reorder_traffic_bytes'],33554432)
+                self.assertEqual(meta['weight_payload_reorder_traffic_bytes'],16777216)
+                self.assertEqual(meta['pipeline_stages'],2)
+                self.assertEqual(meta['dimension_addressing'],'host_bounded_uint32')
+        compare=runpy.run_path(str(REPO/'scripts/compare_roof_trace_candidates.py'))['compare']
+        for ref in (-1,56):
+            x=self.load(f'reports/o378_roof_v33_four/four24_59_vs{ref}.json')
+            self.assertEqual(compare(rows,ref,59,24,1,['o7','o8'],modes),x['rows'])
+
+
 if __name__=='__main__': unittest.main()

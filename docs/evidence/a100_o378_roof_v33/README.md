@@ -60,16 +60,43 @@ mixed格式回归通过。148个候选的同function原生U4/S4与S4/S4及cp.asy
 O8同样趋势。PC采样显示wait/math仍占较多未发射样本；该占比不是运行时间占比。
 必要容量下界仍约0.220347ms@1410MHz，主要受MMA/I2F工作量约束，**不是已达到或保证可达**。
 
-## 当前晋级状态
+## 四模式复测已完成
 
-59确认GEMM小幅收益后，才启用四模式入口补测转换、cold和steady；60仍为prepared-core-only。
-转换逻辑和成本不改，不能将旧56的端到端结果冒充59的结果。
-本节将在四模式完成后补充结论，当前不切换正式默认。
+59确认GEMM小幅收益后，才启用四模式入口；60仍为prepared-core-only。
+另一次24样本、单轮、50/200/转换inner100，576条记录，全部输出逐位一致。
+对照为同轮56，转换逻辑不改。表中变化来自样本配对，不是总体median相除。
+
+|后端|模式|56 median ms|59 median ms|配对吞吐变化|描述性95%区间|
+|---|---|---:|---:|---:|---|
+|O7|Conversion-only|0.167488|0.167306|+0.21%，未确认|[0.99848,1.00288]|
+|O7|Compute-only|0.516608|0.514048|+0.20%，未确认|[0.99606,1.00595]|
+|O7|Cold|0.698880|**0.684032**|**+2.46%**|[1.01208,1.02954]|
+|O7|Steady-state|0.623616|**0.604928**|**+3.07%**|[1.00677,1.03603]|
+|O8|Conversion-only|0.151619|0.151849|−0.03%，未确认|[0.99747,1.00145]|
+|O8|Compute-only|0.530432|0.522240|+0.88%，未确认|[0.99886,1.01668]|
+|O8|Cold|0.680448|0.678912|+0.37%，未确认|[0.99092,1.00920]|
+|O8|Steady-state|0.624640|0.628736|−0.54%，未确认|[0.98463,1.00334]|
+
+O7本轮cold/steady有改善；O8尚未确认端到端收益。GEMM主结论使用上文五轮复测，
+不能跨run拼接median或把单轮的区间覆盖1隐瞒。正式默认不切换。
+相对同轮原正式，59的cold提升O7/O8为10.84%/9.63%，steady为15.59%/12.51%。
+但转换仍贵：同轮原正式为0.133839/0.117312ms，新版保留A/W payload重排成本。
+
+59四模式选定阶段CV≥3%数量（conversion/compute/cold/steady，分母各24）：
+O7 `0/8/2/14`，O8 `0/9/2/12`；O8 steady任一阶段CV≥3%为14/24。
+转换批量摊销、GEMM/端到端单次直接计时，不把stage median相加当total。
+
+四模式重编译后的12个旧正式及148个候选GEMM编码不变。
+另3个非目标mixed-binary函数codegen变化，完整mixed格式回归（含480项binary GEMM）通过。
+全范围codegen比较保留`passed=false`，不掩盖非目标变化。
+四模式入口源码`9e40eb931ef85d2da5f351aebe8bf616ee46cb4c`，binary SHA-256：
+`02e6433d560f18344d8db2c1d5a46e6c9423837c5559f140cc0ba60af14a24c7`。
 
 ## 可复核证据
 
 - 五轮主结果：`runs/o378_roof_v33_trace24_r5/{results.jsonl,summary.json,environment.json}`。
 - 配对统计：`reports/o378_roof_v33/trace24_r5_59_vs56.json`及`trace24_r5_59_vs-1.json`。
+- 四模式：`runs/o378_roof_v33_four24/`、`reports/o378_roof_v33_four/`及对应smoke/mixed回归。
 - 单轮和合成对照、GPU预检、保护检查、有限sanitizer、回归均在同目录保留。
 - NCU：6份raw/source-SASS CSV及`ncu_o7_analysis.json`、`ncu_o8_analysis.json`；
   原始.ncu-rep留在A100项目目录，不把它们误称为已纳入Git的CSV。
@@ -80,3 +107,5 @@ Compute/NCU binary SHA-256：
 `402c9ebd54670fef538389d7c72adea7d2f0abbec65c2185f92f071e1052690f`。
 101个文本证据由A100打包、SHA和成员路径/类型验证后提取；归档SHA-256：
 `08578f84908133111c7c314e8b2920fdc11780443abff5b8e5d77b304dc9754f`。
+四模式另25个文本文件，同样验证后提取，归档SHA-256：
+`53406858602300eeb1cd7fb0085ceade3ca49fef11262ef68ff93b7f4c61b740`。
