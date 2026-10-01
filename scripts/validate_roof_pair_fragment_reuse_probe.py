@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""Finite synthetic core checks for v52; not quantizer or performance validation."""
+import argparse
+import json
+from pathlib import Path
+import subprocess
+
+from benchmark_roof_pair_fragment_reuse_probe import Driver, ROOT
+from benchmark_a100_roof_candidates import group_major_scales
+from roof_reduction_validation import reference_fp64
+from roof_payload_validation import verify_grouped_payload
+from benchmark_a100_o1 import command
+
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--cubins',type=Path,required=True)
+    p.add_argument('--output',type=Path,required=True)
+    a=p.parse_args()
+    if a.output.exists() or not a.output.resolve().is_relative_to(ROOT):
+        p.error('fresh output inside repository required')
+    import torch
+    from adangel import _sm80 as native
+    from adangel.quantization.arbitrary_bits import split_int8_to_packed_int4
+    from adangel.trace.storage import sha256_file
+    from validate_a100_split_grouped import pack_q4
+    torch.set_num_threads(4);torch.cuda.init()
+    assert torch.cuda.get_device_capability()==(8,0)
+    a.output.mkdir(parents=True)
+    library=(a.output/'libroof_probe_driver.so').resolve()
+    with (a.output/'driver_build.log').open('w') as log:
+        subprocess.run(['g++','-O3','-std=c++17','-shared','-fPIC','-I/usr/local/cuda-12.8/include',
+            str(ROOT/'csrc/sm80/roof_producer_warp_driver.cpp'),'-lcuda','-o',str(library)],
+            stdout=log,stderr=subprocess.STDOUT,check=True)
+    cubins={i:(a.cubins/f'pair_fragment_reuse_{i}.cubin').resolve() for i in (0,1,2)}
+    codegen=json.loads((a.cubins/'codegen.json').read_text())
+    assert codegen['host_stream_mapping_passed']
+    audit=json.loads((a.cubins/'audit.json').read_text())
+    assert audit['passed'] and all(audit['control_encoded_sass_matches_best'].values())
+    for source in audit['sources']:
+        assert sha256_file(Path(source['file']))==source['sha256']
+    for i,path in cubins.items():
+        assert sha256_file(path)==codegen['variants'][str(i)]['cubin_sha256']
+    checks=[];guard_cache_checks=[]
+    for variant in ('o3',):
+        for m,n,k in ((64,128,128),(64,128,256),(64,128,384),(128,256,640),(64,128,4096)):
+            for pattern in ('random','zero','extrema','zero_scale','guard13','fallback14','fallback15','subnormal'):
+                torch.manual_seed(20261001+k)
+                low,high=(-32,32) if variant=='o8' else (-128,128)
+                act=torch.randint(low,high,(m,k),device='cuda',dtype=torch.int8)
+                weight=torch.randint(-8,8,(n,k),device='cuda',dtype=torch.int8)
+                if pattern=='zero': act.zero_();weight.zero_()
+                if pattern=='extrema':
+                    act[:,::2]=low;act[:,1::2]=high-1
+                    weight[:,::2]=-8;weight[:,1::2]=7
+                g=k//128
+                if variant=='o3':
+                    asc=torch.linspace(.001,.03,m,device='cuda')
+                    wsc=((torch.arange(n*g,device='cuda').reshape(n,g)*7)%13+116).byte()
+                    if pattern=='zero_scale': asc.zero_()
+                    if pattern in ('guard13','fallback14','fallback15'):
+                        delta={'guard13':13,'fallback14':14,'fallback15':15}[pattern]
+                        wsc.fill_(115);wsc[:,1::2]=115+delta
+                        act.fill_(-128);weight.fill_(-8)
+                    if pattern=='subnormal':
+                        wsc.zero_();wsc[:,1::2]=1
+                        asc.fill_(1.0)
+                    tune=54
+                else:
+                    def scales(rows,factor):
+                        row=torch.arange(rows,device='cuda')[:,None]
+                        group=torch.arange(g,device='cuda')[None,:]
+                        x=(1+(row*factor+group*29)%113/128)*torch.exp2(((row+3*group)%7-10).float())
+                        return group_major_scales(x)
+                    asc,wsc=scales(m,13),scales(n,17)
+                    if pattern=='zero_scale': asc[:,::2]=0;wsc[:,1::2]=0
+                    tune=59
+                values=(split_int8_to_packed_int4(act),asc,pack_q4(weight),wsc)
+                semantic=reference_fp64(variant,values)
+                stream=torch.cuda.Stream();stream.wait_stream(torch.cuda.current_stream())
+                with torch.cuda.stream(stream):
+                    # Existing tune54 intentionally rejects subnormal UE8M0.
+                    # Obtain/verify its packing with normal scales, then test
+                    # code0 only on the isolated candidate against FP64.
+                    reference_values=values if pattern!='subnormal' else (*values[:3],wsc.clamp_min(1))
+                    best=native._benchmark_roof_candidate(variant,tune,*reference_values,0,1)
+                    verify_grouped_payload(best,tune,reference_values[0],reference_values[2],reference_values[3])
+                    if pattern=='subnormal':
+                        best['converted_weight_scale']=wsc.T.contiguous()
+                        best['output']=semantic.float()
+                    driver=Driver(library,cubins,variant,best['kernel']['shared_memory_bytes'])
+                    try:
+                        for policy in ((1,2) if pattern=='subnormal' else (0,1,2)):
+                            ws=best['converted_weight_scale'] if variant=='o3' else wsc
+                            y,_=driver.run(policy,best,asc,ws,0,1)
+                            expected=3 if policy in (1,2) and pattern in ('fallback14','fallback15') and g>1 else policy
+                            assert driver.last_policy==expected
+                            torch.testing.assert_close(y.double(),semantic,rtol=1e-3,atol=1e-3)
+                            if pattern=='subnormal':
+                                torch.testing.assert_close(y,semantic.float(),rtol=1e-5,atol=0)
+                            checks.append(dict(variant=variant,shape=[m,n,k],pattern=pattern,policy=policy,
+                                bitwise_equal_best=bool(torch.equal(y.view(torch.int32),best['output'].view(torch.int32))),
+                                best_reference='fp64_semantic_float' if pattern=='subnormal' else 'tune54',
+                                finite_fp32=True,probe_resources=driver.resources[driver.last_policy],
+                                executed_policy=driver.last_policy,guard=driver.guard_metadata,
+                                max_abs_difference_best=(y-best['output']).abs().max().item(),
+                                max_abs_error_fp64=(y.double()-semantic).abs().max().item()))
+                        invalid_ws=torch.full_like(best['converted_weight_scale'],255)
+                        try:
+                            driver.run(1,best,asc,invalid_ws,0,1)
+                        except ValueError as error:
+                            assert 'code 255' in str(error)
+                        else:
+                            raise AssertionError('invalid UE8M0 must fail before launch')
+                        if pattern=='guard13' and g>1:
+                            # Exercise the SAME scale tensor after an in-place edit;
+                            # stale cached eligibility must not reach the fast kernel.
+                            ws=best['converted_weight_scale']
+                            for requested in (1,2):
+                                ws.fill_(115);ws[1::2].fill_(128)
+                                driver.run(requested,best,asc,ws,0,1)
+                                assert driver.last_policy==requested
+                                ws[1::2].fill_(130)  # 130-115=15, so now unsafe.
+                                changed=(values[0],values[1],values[2],ws.T.contiguous())
+                                ref_changed=reference_fp64('o3',changed)
+                                actual,_=driver.run(requested,best,asc,ws,0,1)
+                                assert driver.last_policy==3
+                                torch.testing.assert_close(actual.double(),ref_changed,rtol=1e-3,atol=1e-3)
+                                ws.fill_(255)
+                                try:
+                                    driver.run(requested,best,asc,ws,0,1)
+                                except ValueError as error:
+                                    assert 'code 255' in str(error)
+                                else:
+                                    raise AssertionError('mutated code255 must invalidate cached guard')
+                                guard_cache_checks.append(dict(shape=[m,n,k],requested_policy=requested,
+                                    safe_then_unsafe_fallback=True,invalid_after_cached_guard_rejected=True,
+                                    output_matches_fp64=True))
+                    finally: driver.close()
+                stream.synchronize()
+        print(variant,'checks complete',flush=True)
+    result=dict(passed=True,count=len(checks),checks=checks,guard_cache_checks=guard_cache_checks,
+        git_commit=command('git','rev-parse','HEAD'),extension_sha256=sha256_file(Path(native.__file__)),
+        cubins={str(i):sha256_file(path) for i,path in cubins.items()},
+        scope='finite prepared-core checks, nondefault stream, not conversion or full experimental acceptance')
+    (a.output/'validation.json').write_text(json.dumps(result,indent=2)+'\n')
+    print('checks:',len(checks),flush=True)
+
+
+if __name__=='__main__': main()
