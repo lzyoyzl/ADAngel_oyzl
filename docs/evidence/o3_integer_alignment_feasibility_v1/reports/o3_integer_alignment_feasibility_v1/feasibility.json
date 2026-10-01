@@ -1,0 +1,2393 @@
+{
+  "scope": "read_only_O3_integer_bound_feasibility_no_new_kernel_or_MSE_or_timing",
+  "input_policy": "existing_O3_G128_Q4_prepared_trace_unmodified",
+  "source_commit": "9089ecae657ca2ba5d7c96526e691caf3e24baea",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "source_trace": {
+    "manifest_file": "trace_manifest.json",
+    "manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+    "format": "adangel-raw-fp16-prefill-trace",
+    "dataset": {
+      "corpus_joiner": "\n\n",
+      "corpus_sha256": "aee724fa58bfbdeb3fc6803297fb6bab27b203d7c40b39ddef9b9770e5d52fe5",
+      "dataset": "Salesforce/wikitext",
+      "fingerprint": "5d4fb603254a7a5b",
+      "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+      "row_count": 36718,
+      "split": "train",
+      "subset": "wikitext-2-raw-v1"
+    },
+    "tokenization": {
+      "seed": 20250805,
+      "start_index": 2018830,
+      "sampled_tokens": 4095,
+      "prepend_bos": true,
+      "bos_token_id": 1,
+      "corpus_token_count": 2874558,
+      "input_ids_sha256": "ca182ac407072a7ff591bbedcdfe7de1bb5977ff70bae75c626deeb324dfae14"
+    },
+    "model": {
+      "artifact_sha256": {
+        "config.json": "8d9d4ff048003935b5bd4da8f0002e9cc4ea768a56089636a7141345b4627b3b",
+        "generation_config.json": "03ad60d1e261480774937329d6b1bcf5ea5db925360e59201f57476078bf6c44",
+        "model-00001-of-00003.safetensors": "f141ed9aef5938c0add75c40402fad4d1cea3b1b7bac72d5d67bfea03f790871",
+        "model-00002-of-00003.safetensors": "206a7c14919e274e319a72f664694190faa2a73cf0bb53c137811bab9890b2ef",
+        "model-00003-of-00003.safetensors": "23556eb8dde4a20617bec38e50711c68fd1fdcfae328ddb07d5325a0f5d4b2bf",
+        "model.safetensors.index.json": "091fdb60b8ee3713df38fd6f9849c3aa82d7eeeb5f6d224a77139543b1db8652",
+        "rev_sha.txt": "029980d49c642143a5aad1695101040b329b349f3cf6dbd24dca29b1e1de2e82",
+        "special_tokens_map.json": "6fa06efa2785e450051989a6f8fb4416b10149ded485ddd3f127a40734f5cfd0",
+        "tokenizer.json": "bf467c9e0f536bda271283c6ef85eb1a943e3196b621c8a912d64953b205df83",
+        "tokenizer.model": "9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+        "tokenizer_config.json": "49395378f13f1f88fa2b55e3c93f72b4e53032af94bd35b126d8b0594e52d309"
+      },
+      "configured_name": "meta-llama/Llama-2-7b-hf",
+      "hidden_size": 4096,
+      "local_directory_name": "llama-2-7b-hf",
+      "max_position_embeddings": 4096,
+      "model_type": "llama",
+      "num_attention_heads": 32,
+      "num_hidden_layers": 32,
+      "num_key_value_heads": 32
+    },
+    "runtime": {
+      "accelerate": "1.4.0",
+      "compute_capability": [
+        9,
+        0
+      ],
+      "cuda_available": true,
+      "datasets": "3.3.2",
+      "driver": "575.57.08",
+      "gpu": "NVIDIA H100 80GB HBM3",
+      "gpu_total_memory_bytes": 85017886720,
+      "platform": "Linux-5.4.0-200-generic-x86_64-with-glibc2.31",
+      "protobuf": "5.29.3",
+      "python": "3.10.20",
+      "pyyaml": "6.0.2",
+      "safetensors": "0.5.3",
+      "sentencepiece": "0.2.0",
+      "torch": "2.7.1+cu128",
+      "torch_cuda": "12.8",
+      "transformers": "4.49.0"
+    },
+    "inference": {
+      "attention_implementation": "sdpa",
+      "base_model_only": true,
+      "dtype": "fp16",
+      "local_files_only": true,
+      "use_cache": false
+    },
+    "environment_source": {
+      "commit": "80888257f8f1ac1a5cf84659dbfe84e36c60a45c",
+      "project": "tensor_hook"
+    }
+  },
+  "partial_bound": 131072,
+  "int32_max": 2147483647,
+  "fp32_exact_integer_bound": 16777216,
+  "assumptions": [
+    "UE8M0 decoded as 2**(code-127); reject255",
+    "original independent G128 scales; anchor is only an integer coordinate",
+    "integer shifts are mathematical nonnegative multiply-by-power2; C++ signed left-shift is not prescribed",
+    "int32-safe bound includes any prefix order by triangle inequality",
+    "FP32 reassociation, register pressure, new instructions, and fallback still require approval and GPU validation",
+    "coverage is per weight column/window, not all possible future inputs",
+    "O7/O8 non-power2 multi-level scales are outside this analysis"
+  ],
+  "samples": [
+    {
+      "sample_id": "layer_00_q_proj",
+      "file": "layer_00_q_proj.pt",
+      "sha256": "36577b8081adc9190b6b22a705a53ee39ef3e1d30c03823c5bde633819358c02",
+      "scale_code_min": 117,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 4325376,
+          "exponent_spread_histogram": {
+            "0": 27836,
+            "1": 29014,
+            "2": 7559,
+            "3": 1069,
+            "4": 54,
+            "5": 4
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 9043968,
+          "exponent_spread_histogram": {
+            "0": 3211,
+            "1": 15857,
+            "2": 10830,
+            "3": 2621,
+            "4": 239,
+            "5": 10
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 15335424,
+          "exponent_spread_histogram": {
+            "0": 282,
+            "1": 4380,
+            "2": 7901,
+            "3": 3365,
+            "4": 432,
+            "5": 24
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 3274,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 65404928,
+          "exponent_spread_histogram": {
+            "0": 10,
+            "1": 250,
+            "2": 1546,
+            "3": 1740,
+            "4": 493,
+            "5": 54,
+            "6": 3
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_00_k_proj",
+      "file": "layer_00_k_proj.pt",
+      "sha256": "27e59543d5d92a935d43447288a5e59943d219a2be3bbd46a3268dff63e015d2",
+      "scale_code_min": 116,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 31335,
+            "1": 29448,
+            "2": 4455,
+            "3": 294,
+            "4": 4
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 6553600,
+          "exponent_spread_histogram": {
+            "0": 4855,
+            "1": 19090,
+            "2": 7968,
+            "3": 822,
+            "4": 31,
+            "5": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 13762560,
+          "exponent_spread_histogram": {
+            "0": 554,
+            "1": 7236,
+            "2": 7242,
+            "3": 1284,
+            "4": 65,
+            "5": 3
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 3833,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 81657856,
+          "exponent_spread_histogram": {
+            "0": 14,
+            "1": 506,
+            "2": 2325,
+            "3": 1129,
+            "4": 117,
+            "5": 4,
+            "6": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_00_v_proj",
+      "file": "layer_00_v_proj.pt",
+      "sha256": "f05fdcfb21e82da9228ca063a1d02e7615e5aab59dfaa735bd4355a1f97b3fd8",
+      "scale_code_min": 118,
+      "scale_code_max": 122,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 655360,
+          "exponent_spread_histogram": {
+            "0": 56047,
+            "1": 9473,
+            "2": 16
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1441792,
+          "exponent_spread_histogram": {
+            "0": 23944,
+            "1": 8783,
+            "2": 41
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2752512,
+          "exponent_spread_histogram": {
+            "0": 9885,
+            "1": 6441,
+            "2": 58
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 10747904,
+          "exponent_spread_histogram": {
+            "0": 1196,
+            "1": 2787,
+            "2": 113
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_00_o_proj",
+      "file": "layer_00_o_proj.pt",
+      "sha256": "1d52f1d7340dcce609f42a3558db78d88be1a6660105ec1bc58e1cda775bb883",
+      "scale_code_min": 117,
+      "scale_code_max": 123,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 4325376,
+          "exponent_spread_histogram": {
+            "0": 28163,
+            "1": 31338,
+            "2": 5959,
+            "3": 69,
+            "4": 5,
+            "5": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 9830400,
+          "exponent_spread_histogram": {
+            "0": 5043,
+            "1": 17433,
+            "2": 10033,
+            "3": 240,
+            "4": 16,
+            "5": 2,
+            "6": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16383,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 19791872,
+          "exponent_spread_histogram": {
+            "0": 520,
+            "1": 6872,
+            "2": 8665,
+            "3": 302,
+            "4": 23,
+            "5": 1,
+            "6": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4063,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 57802752,
+          "exponent_spread_histogram": {
+            "1": 26,
+            "2": 3720,
+            "3": 333,
+            "4": 15,
+            "5": 1,
+            "6": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_06_q_proj",
+      "file": "layer_06_q_proj.pt",
+      "sha256": "e4166ee1a3d082a4414c32d917762c51e042b6356820419000cd18cc3c56a5a4",
+      "scale_code_min": 118,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 51959,
+            "1": 13156,
+            "2": 356,
+            "3": 59,
+            "4": 6
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3014656,
+          "exponent_spread_histogram": {
+            "0": 20486,
+            "1": 11674,
+            "2": 499,
+            "3": 96,
+            "4": 13
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 6946816,
+          "exponent_spread_histogram": {
+            "0": 7844,
+            "1": 7860,
+            "2": 523,
+            "3": 133,
+            "4": 22,
+            "5": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 15204352,
+          "exponent_spread_histogram": {
+            "0": 835,
+            "1": 2589,
+            "2": 479,
+            "3": 164,
+            "4": 26,
+            "5": 3
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_06_k_proj",
+      "file": "layer_06_k_proj.pt",
+      "sha256": "9c0b7b9a1fc02a798dc6f26e1d06298602a74f88a7c86d6c908f65f25525f503",
+      "scale_code_min": 118,
+      "scale_code_max": 123,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 51705,
+            "1": 13611,
+            "2": 207,
+            "3": 13
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 20280,
+            "1": 12058,
+            "2": 402,
+            "3": 28
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3801088,
+          "exponent_spread_histogram": {
+            "0": 7714,
+            "1": 8154,
+            "2": 451,
+            "3": 65
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 12976128,
+          "exponent_spread_histogram": {
+            "0": 855,
+            "1": 2836,
+            "2": 323,
+            "3": 80,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_06_v_proj",
+      "file": "layer_06_v_proj.pt",
+      "sha256": "7e20650637775e2363706f2ee65cad298dbd6a15e3a6378fd39b1f710f34721e",
+      "scale_code_min": 119,
+      "scale_code_max": 123,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 55293,
+            "1": 10198,
+            "2": 37,
+            "3": 6,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2621440,
+          "exponent_spread_histogram": {
+            "0": 23315,
+            "1": 9391,
+            "2": 53,
+            "3": 7,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3670016,
+          "exponent_spread_histogram": {
+            "0": 9433,
+            "1": 6863,
+            "2": 79,
+            "3": 7,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 9830400,
+          "exponent_spread_histogram": {
+            "0": 1185,
+            "1": 2777,
+            "2": 122,
+            "3": 10,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_06_o_proj",
+      "file": "layer_06_o_proj.pt",
+      "sha256": "870fd7fc23333e114084b7f22da371ead5afaf297da32a48e970b5f254e2ceb7",
+      "scale_code_min": 118,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 47064,
+            "1": 18328,
+            "2": 134,
+            "3": 10
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2752512,
+          "exponent_spread_histogram": {
+            "0": 15688,
+            "1": 16876,
+            "2": 190,
+            "3": 13,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 7471104,
+          "exponent_spread_histogram": {
+            "0": 4008,
+            "1": 12114,
+            "2": 245,
+            "3": 16,
+            "5": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 15335424,
+          "exponent_spread_histogram": {
+            "0": 3,
+            "1": 3784,
+            "2": 290,
+            "3": 16,
+            "4": 2,
+            "5": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_12_q_proj",
+      "file": "layer_12_q_proj.pt",
+      "sha256": "eba0e72a7b9a5902a81cf0e7f950d90bf22864d617ec12fdec7ecb36f04f5fc7",
+      "scale_code_min": 119,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 51943,
+            "1": 13510,
+            "2": 81,
+            "3": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1703936,
+          "exponent_spread_histogram": {
+            "0": 20527,
+            "1": 12088,
+            "2": 141,
+            "3": 12
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3670016,
+          "exponent_spread_histogram": {
+            "0": 7898,
+            "1": 8282,
+            "2": 182,
+            "3": 21,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 12976128,
+          "exponent_spread_histogram": {
+            "0": 921,
+            "1": 2951,
+            "2": 188,
+            "3": 35,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_12_k_proj",
+      "file": "layer_12_k_proj.pt",
+      "sha256": "e3e400669613b863fdbf7e795390f7ddb6da9ad78110d4bfa1311ee84e1cb18e",
+      "scale_code_min": 118,
+      "scale_code_max": 123,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 52098,
+            "1": 13309,
+            "2": 120,
+            "3": 9
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1966080,
+          "exponent_spread_histogram": {
+            "0": 20571,
+            "1": 11977,
+            "2": 199,
+            "3": 21
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3801088,
+          "exponent_spread_histogram": {
+            "0": 7764,
+            "1": 8336,
+            "2": 249,
+            "3": 35
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 12582912,
+          "exponent_spread_histogram": {
+            "0": 810,
+            "1": 3010,
+            "2": 228,
+            "3": 47,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_12_v_proj",
+      "file": "layer_12_v_proj.pt",
+      "sha256": "d466af070f71f6be1360e6480aab9d0ae6149bfb4b5cf102c42e3ee7b12dff72",
+      "scale_code_min": 119,
+      "scale_code_max": 123,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 56944,
+            "1": 8519,
+            "2": 67,
+            "3": 6
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1703936,
+          "exponent_spread_histogram": {
+            "0": 24752,
+            "1": 7892,
+            "2": 112,
+            "3": 12
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3801088,
+          "exponent_spread_histogram": {
+            "0": 10118,
+            "1": 6076,
+            "2": 171,
+            "3": 18,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 9043968,
+          "exponent_spread_histogram": {
+            "0": 1171,
+            "1": 2614,
+            "2": 287,
+            "3": 23,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_12_o_proj",
+      "file": "layer_12_o_proj.pt",
+      "sha256": "50cbc9b1657ec21085e0cd24fea5ff59eee67c8f0d77bea4a9afa37582d2091d",
+      "scale_code_min": 118,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 655360,
+          "exponent_spread_histogram": {
+            "0": 57247,
+            "1": 8198,
+            "2": 91
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 24968,
+            "1": 7564,
+            "2": 230,
+            "3": 6
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 4063232,
+          "exponent_spread_histogram": {
+            "0": 9612,
+            "1": 6351,
+            "2": 414,
+            "3": 7
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 14286848,
+          "exponent_spread_histogram": {
+            "0": 468,
+            "1": 2617,
+            "2": 1004,
+            "3": 7
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_18_q_proj",
+      "file": "layer_18_q_proj.pt",
+      "sha256": "2f77a952e4114b6c1141ad0f466a89fc1576c3a8ec33c42ccd4c399031f19828",
+      "scale_code_min": 118,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 48327,
+            "1": 17019,
+            "2": 172,
+            "3": 18
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3014656,
+          "exponent_spread_histogram": {
+            "0": 17206,
+            "1": 15236,
+            "2": 283,
+            "3": 40,
+            "4": 3
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 5111808,
+          "exponent_spread_histogram": {
+            "0": 5721,
+            "1": 10266,
+            "2": 322,
+            "3": 63,
+            "4": 12
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 12976128,
+          "exponent_spread_histogram": {
+            "0": 454,
+            "1": 3255,
+            "2": 297,
+            "3": 70,
+            "4": 20
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_18_k_proj",
+      "file": "layer_18_k_proj.pt",
+      "sha256": "fffe352aa553a4692986d25da973cabe056f34a22baf6ae98c7a713190ca3d78",
+      "scale_code_min": 118,
+      "scale_code_max": 123,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 49062,
+            "1": 16322,
+            "2": 142,
+            "3": 10
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2752512,
+          "exponent_spread_histogram": {
+            "0": 17819,
+            "1": 14704,
+            "2": 220,
+            "3": 23,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3801088,
+          "exponent_spread_histogram": {
+            "0": 6010,
+            "1": 10052,
+            "2": 283,
+            "3": 37,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 11665408,
+          "exponent_spread_histogram": {
+            "0": 484,
+            "1": 3318,
+            "2": 249,
+            "3": 43,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_18_v_proj",
+      "file": "layer_18_v_proj.pt",
+      "sha256": "fa4afdc36a126ebc70a6dbae3b691095620b9966513d120fd50ae999c2f3c7f7",
+      "scale_code_min": 119,
+      "scale_code_max": 122,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 655360,
+          "exponent_spread_histogram": {
+            "0": 58944,
+            "1": 6576,
+            "2": 16
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1703936,
+          "exponent_spread_histogram": {
+            "0": 26511,
+            "1": 6236,
+            "2": 20,
+            "3": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2752512,
+          "exponent_spread_histogram": {
+            "0": 11118,
+            "1": 5238,
+            "2": 26,
+            "3": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 9306112,
+          "exponent_spread_histogram": {
+            "0": 1327,
+            "1": 2704,
+            "2": 60,
+            "3": 5
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_18_o_proj",
+      "file": "layer_18_o_proj.pt",
+      "sha256": "ecc8c27b4f5d329d50782c3f94e2ccaf211c6b1003edb3eee5b4dac0c6178d74",
+      "scale_code_min": 118,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 60401,
+            "1": 5110,
+            "2": 20,
+            "3": 4,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3801088,
+          "exponent_spread_histogram": {
+            "0": 27711,
+            "1": 4970,
+            "2": 77,
+            "3": 9,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 4980736,
+          "exponent_spread_histogram": {
+            "0": 11764,
+            "1": 4484,
+            "2": 125,
+            "3": 10,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4095,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 17432576,
+          "exponent_spread_histogram": {
+            "0": 1132,
+            "1": 2709,
+            "2": 245,
+            "3": 9,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_24_q_proj",
+      "file": "layer_24_q_proj.pt",
+      "sha256": "97d4660616c29e9699d61ba8f1a11fae6012b1026cdb33f58ee55a955fca2b88",
+      "scale_code_min": 118,
+      "scale_code_max": 125,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 49312,
+            "1": 15978,
+            "2": 218,
+            "3": 27,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3014656,
+          "exponent_spread_histogram": {
+            "0": 18130,
+            "1": 14257,
+            "2": 340,
+            "3": 39,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 5111808,
+          "exponent_spread_histogram": {
+            "0": 6240,
+            "1": 9668,
+            "2": 404,
+            "3": 53,
+            "4": 19
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 13500416,
+          "exponent_spread_histogram": {
+            "0": 512,
+            "1": 3101,
+            "2": 399,
+            "3": 61,
+            "4": 23
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_24_k_proj",
+      "file": "layer_24_k_proj.pt",
+      "sha256": "70eec3d8831f019b19fed058db3bbbfd8479816bf6d5fbcd1f44186afec6d074",
+      "scale_code_min": 118,
+      "scale_code_max": 123,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 49009,
+            "1": 16248,
+            "2": 264,
+            "3": 15
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2752512,
+          "exponent_spread_histogram": {
+            "0": 17916,
+            "1": 14353,
+            "2": 456,
+            "3": 42,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 4849664,
+          "exponent_spread_histogram": {
+            "0": 6179,
+            "1": 9575,
+            "2": 562,
+            "3": 65,
+            "4": 3
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 11927552,
+          "exponent_spread_histogram": {
+            "0": 524,
+            "1": 3044,
+            "2": 459,
+            "3": 66,
+            "4": 3
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_24_v_proj",
+      "file": "layer_24_v_proj.pt",
+      "sha256": "01664a091537182ca759b5f3a30dc3b4c5e6ebdfd422e048a6ef57f646479e59",
+      "scale_code_min": 119,
+      "scale_code_max": 122,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 655360,
+          "exponent_spread_histogram": {
+            "0": 51921,
+            "1": 13614,
+            "2": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 917504,
+          "exponent_spread_histogram": {
+            "0": 20061,
+            "1": 12706,
+            "2": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 6806,
+            "1": 9575,
+            "2": 3
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 9568256,
+          "exponent_spread_histogram": {
+            "0": 423,
+            "1": 3664,
+            "2": 9
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_24_o_proj",
+      "file": "layer_24_o_proj.pt",
+      "sha256": "6cccc412b53c19238ab40eb22e854530a246e43ff88aad0b6128c15cfb67d556",
+      "scale_code_min": 118,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 53803,
+            "1": 11707,
+            "2": 21,
+            "3": 5
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3014656,
+          "exponent_spread_histogram": {
+            "0": 21613,
+            "1": 11101,
+            "2": 46,
+            "3": 7,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 4063232,
+          "exponent_spread_histogram": {
+            "0": 7210,
+            "1": 9111,
+            "2": 55,
+            "3": 7,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4095,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 17170432,
+          "exponent_spread_histogram": {
+            "0": 137,
+            "1": 3909,
+            "2": 43,
+            "3": 5,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_31_q_proj",
+      "file": "layer_31_q_proj.pt",
+      "sha256": "327724cf8e1f7e09d40bd0afc34f9952b43941bec16871c013f820c2cfe97943",
+      "scale_code_min": 118,
+      "scale_code_max": 124,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 44139,
+            "1": 20666,
+            "2": 677,
+            "3": 53,
+            "4": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3014656,
+          "exponent_spread_histogram": {
+            "0": 13508,
+            "1": 18073,
+            "2": 1081,
+            "3": 104,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 4325376,
+          "exponent_spread_histogram": {
+            "0": 3651,
+            "1": 11378,
+            "2": 1221,
+            "3": 132,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 13762560,
+          "exponent_spread_histogram": {
+            "0": 148,
+            "1": 2849,
+            "2": 941,
+            "3": 147,
+            "4": 11
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_31_k_proj",
+      "file": "layer_31_k_proj.pt",
+      "sha256": "12ac4891948272e666ee0da518fb417f8294b7aa7d5582a578079c341f075f2c",
+      "scale_code_min": 118,
+      "scale_code_max": 123,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2228224,
+          "exponent_spread_histogram": {
+            "0": 46470,
+            "1": 18512,
+            "2": 508,
+            "3": 44,
+            "4": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3276800,
+          "exponent_spread_histogram": {
+            "0": 15645,
+            "1": 16304,
+            "2": 733,
+            "3": 80,
+            "4": 6
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 4587520,
+          "exponent_spread_histogram": {
+            "0": 4883,
+            "1": 10517,
+            "2": 852,
+            "3": 122,
+            "4": 10
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 12976128,
+          "exponent_spread_histogram": {
+            "0": 317,
+            "1": 2956,
+            "2": 679,
+            "3": 133,
+            "4": 11
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_31_v_proj",
+      "file": "layer_31_v_proj.pt",
+      "sha256": "45ae753d03cbffc9755e0c99beabc9757efc75c0d83b5db4fa3c4b2e3c7916a4",
+      "scale_code_min": 119,
+      "scale_code_max": 123,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 49364,
+            "1": 16078,
+            "2": 53,
+            "3": 41
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1703936,
+          "exponent_spread_histogram": {
+            "0": 17892,
+            "1": 14766,
+            "2": 65,
+            "3": 45
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 2490368,
+          "exponent_spread_histogram": {
+            "0": 5562,
+            "1": 10704,
+            "2": 73,
+            "3": 45
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4096,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 9306112,
+          "exponent_spread_histogram": {
+            "0": 272,
+            "1": 3742,
+            "2": 58,
+            "3": 24
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    },
+    {
+      "sample_id": "layer_31_o_proj",
+      "file": "layer_31_o_proj.pt",
+      "sha256": "e29475fd33414783b07eca21a213314e3b4f49d926133a39dc2ec9f9d7efce4f",
+      "scale_code_min": 119,
+      "scale_code_max": 125,
+      "windows": [
+        {
+          "window_groups": 2,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 65536,
+          "int32_safe_windows": 65536,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 65536,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 1179648,
+          "exponent_spread_histogram": {
+            "0": 47003,
+            "1": 18236,
+            "2": 295,
+            "3": 2
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 4,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 32768,
+          "int32_safe_windows": 32768,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 32768,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 3014656,
+          "exponent_spread_histogram": {
+            "0": 16095,
+            "1": 16235,
+            "2": 430,
+            "3": 5,
+            "4": 3
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 8,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 16384,
+          "int32_safe_windows": 16384,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 16384,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 4587520,
+          "exponent_spread_histogram": {
+            "0": 3981,
+            "1": 11797,
+            "2": 592,
+            "3": 11,
+            "4": 3
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        },
+        {
+          "window_groups": 32,
+          "columns": 4096,
+          "groups": 32,
+          "windows": 4096,
+          "int32_safe_windows": 4096,
+          "int32_unsafe_windows": 0,
+          "int32_safe_fraction": 1.0,
+          "all_windows_safe_columns": 4096,
+          "exact_fp32_integer_bound_windows": 4094,
+          "zero_code_windows": 0,
+          "maximum_absolute_integer_bound": 19922944,
+          "exponent_spread_histogram": {
+            "0": 13,
+            "1": 3404,
+            "2": 667,
+            "3": 9,
+            "4": 2,
+            "5": 1
+          },
+          "note": "integer bound only; not FP32-output equality, MSE, speed, or kernel safety"
+        }
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "columns": 98304,
+      "windows": 1572864,
+      "int32_safe_windows": 1572864,
+      "int32_unsafe_windows": 0,
+      "all_windows_safe_columns": 98304,
+      "exact_fp32_integer_bound_windows": 1572864,
+      "zero_code_windows": 0,
+      "window_groups": 2,
+      "samples": 24,
+      "maximum_absolute_integer_bound": 4325376,
+      "int32_safe_fraction": 1.0,
+      "exponent_spread_histogram": {
+        "0": 1175389,
+        "1": 374168,
+        "2": 21469,
+        "3": 1756,
+        "4": 76,
+        "5": 6
+      }
+    },
+    {
+      "columns": 98304,
+      "windows": 786432,
+      "int32_safe_windows": 786432,
+      "int32_unsafe_windows": 0,
+      "all_windows_safe_columns": 98304,
+      "exact_fp32_integer_bound_windows": 786432,
+      "zero_code_windows": 0,
+      "window_groups": 4,
+      "samples": 24,
+      "maximum_absolute_integer_bound": 9830400,
+      "int32_safe_fraction": 1.0,
+      "exponent_spread_histogram": {
+        "0": 437747,
+        "1": 309624,
+        "2": 34450,
+        "3": 4273,
+        "4": 323,
+        "5": 14,
+        "6": 1
+      }
+    },
+    {
+      "columns": 98304,
+      "windows": 393216,
+      "int32_safe_windows": 393216,
+      "int32_unsafe_windows": 0,
+      "all_windows_safe_columns": 98304,
+      "exact_fp32_integer_bound_windows": 393215,
+      "zero_code_windows": 0,
+      "window_groups": 8,
+      "samples": 24,
+      "maximum_absolute_integer_bound": 19791872,
+      "int32_safe_fraction": 1.0,
+      "exponent_spread_histogram": {
+        "0": 154757,
+        "1": 201330,
+        "2": 30698,
+        "3": 5800,
+        "4": 599,
+        "5": 31,
+        "6": 1
+      }
+    },
+    {
+      "columns": 98304,
+      "windows": 98304,
+      "int32_safe_windows": 98304,
+      "int32_unsafe_windows": 0,
+      "all_windows_safe_columns": 98304,
+      "exact_fp32_integer_bound_windows": 97182,
+      "zero_code_windows": 0,
+      "window_groups": 32,
+      "samples": 24,
+      "maximum_absolute_integer_bound": 81657856,
+      "int32_safe_fraction": 1.0,
+      "exponent_spread_histogram": {
+        "0": 13211,
+        "1": 65402,
+        "2": 14731,
+        "3": 4156,
+        "4": 735,
+        "5": 64,
+        "6": 5
+      }
+    }
+  ]
+}
