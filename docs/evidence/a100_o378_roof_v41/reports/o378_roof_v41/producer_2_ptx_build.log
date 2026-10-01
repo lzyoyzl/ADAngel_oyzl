@@ -1,0 +1,9 @@
+csrc/sm80/o3_producer_warp_probe.cuh(145): warning #177-D: variable "packed_codes" was declared but never referenced
+      uint32_t packed_codes=0;
+               ^
+          detected during:
+            instantiation of "void <unnamed>::o3_row_scale_epilogue_experiment_v41::o3_prefetch<M,N,K,Fast,Cached,WN,StaticCopy,VectorScale,DualScale,GroupMajorScale,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(<unnamed>::o3_row_scale_epilogue_experiment_v41::O3AmpereConfig<M, N, K, Cached, WN, DualScale, Stages>::Storage &, int, int, const uint8_t *, const uint8_t *, const uint8_t *, int, int, const float *, int) [with M=64, N=128, K=128, Fast=false, Cached=false, WN=2, StaticCopy=true, VectorScale=false, DualScale=false, GroupMajorScale=true, PrebiasActivationScale=false, AsyncScale=false, CombinedScalePanels=false, Stages=3]" at line 191
+            instantiation of "void <unnamed>::o3_row_scale_epilogue_experiment_v41::o3_body<M,N,K,Fast,Cached,Magic,WN,Merge,StaticCopy,PhasePair,Stream,BoundedOperands,VectorStore,VectorScale,DualScale,GroupMajorScale,RoofTune,ActivationPower2,PrebiasActivationScale,AsyncScale,CombinedScalePanels,Stages>(const uint8_t *, const uint8_t *, const float *, const uint8_t *, float *, int, int, int) [with M=64, N=128, K=128, Fast=false, Cached=false, Magic=false, WN=2, Merge=false, StaticCopy=true, PhasePair=false, Stream=true, BoundedOperands=true, VectorStore=true, VectorScale=false, DualScale=false, GroupMajorScale=true, RoofTune=6, ActivationPower2=false, PrebiasActivationScale=false, AsyncScale=false, CombinedScalePanels=false, Stages=3]" at line 45 of csrc/sm80/roof_producer_warp_probe.cu
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
