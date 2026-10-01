@@ -1,5 +1,6 @@
 """Local contracts for v42; CUDA audit, safety and numerical tests are separate."""
 from pathlib import Path
+import json
 import runpy
 import sys
 import unittest
@@ -91,6 +92,31 @@ class PrefetchPositionTests(unittest.TestCase):
             summary(rows[:-1])
         with self.assertRaises(ValueError):
             summary(rows+[rows[0]])
+
+    def test_ncu_parser_fixture_and_launch_selection(self):
+        # Parser fixture only: reuse an archived control and rename its symbol.
+        # This is not new v42 profiling evidence.
+        root = ROOT / 'docs/evidence/a100_o378_roof_v41'
+        reports = root / 'reports/o378_roof_v41'
+        analyze = runpy.run_path(str(ROOT / 'scripts/profile_roof_prefetch_probe.py'))['analyze_profile']
+        saved = json.loads((reports / 'ncu/ncu_o3_analysis.json').read_text())
+        resources = saved['rows'][0]['probe_resources']
+        codegen = json.loads((reports / 'codegen.json').read_text())
+        static = codegen['variants']['0']['entries']['adangel_roof_producer_o3']
+        texts = [(reports / f'ncu/ncu_o3_p0_{suffix}.csv').read_text().replace(
+            'adangel_roof_producer_o3', 'adangel_roof_prefetch_o3') for suffix in ('raw', 'source_sass')]
+        result = analyze(*texts, 'o3', 0, resources, static)
+        self.assertEqual(result['opcodes'], saved['rows'][0]['opcodes'])
+        wrong = dict(static, instructions=static['instructions']+1)
+        with self.assertRaisesRegex(ValueError, 'fingerprint'):
+            analyze(*texts, 'o3', 0, resources, wrong)
+        with self.assertRaisesRegex(ValueError, 'resources'):
+            analyze(*texts, 'o3', 0, dict(resources, threads=160), static)
+        order = runpy.run_path(str(ROOT / 'scripts/benchmark_a100_roof_trace.py'))['measurement_order']
+        for candidate in (1, 2):
+            self.assertEqual(order([0, candidate], 0, 0, 0), [0, candidate])
+        source = (ROOT / 'scripts/profile_roof_prefetch_probe.py').read_text()
+        self.assertIn('skip=50 if policy==0 else 101', source)
 
 
 if __name__ == '__main__':
