@@ -1,0 +1,37 @@
+{
+  "command": [
+    "/usr/local/cuda-12.8/bin/nvcc",
+    "-std=c++17",
+    "-O3",
+    "-lineinfo",
+    "-gencode=arch=compute_80,code=sm_80",
+    "-Xcompiler=-fPIC",
+    "-shared",
+    "-Xptxas=-v",
+    "-Iinclude",
+    "-Icsrc/sm80",
+    "csrc/sm80/roof_vector_conversion_probe.cu",
+    "csrc/sm80/roof_fused_conversion.cu",
+    "csrc/sm80/roof_integer_conversion.cu",
+    "-o",
+    "reports/o378_roof_v53_build2/libvector_conversion_probe.so"
+  ],
+  "library": "reports/o378_roof_v53_build2/libvector_conversion_probe.so",
+  "library_sha256": "b7c47d2bc596cebf6e16bd75912f6ff142ddb6e4723bd066abf0e0e939cc563d",
+  "sources": [
+    {
+      "file": "csrc/sm80/roof_vector_conversion_probe.cu",
+      "sha256": "a5d0612073fb9d3734f7cda64d90c99257a4c4d104c3d0b2313ad533038fbc71"
+    },
+    {
+      "file": "csrc/sm80/roof_fused_conversion.cu",
+      "sha256": "5e16c5ab3d6ad27d80c5ea35667bcf26ff78e8a6b226885162454f6d07ec2f52"
+    },
+    {
+      "file": "csrc/sm80/roof_integer_conversion.cu",
+      "sha256": "b9da9e4db4afad251b44a12c88dac8e8bb6ec968ca6941d1580de541e4d920ff"
+    }
+  ],
+  "git_commit": "dcf0d3a01f1ea52f249088aaac8d58d468814c88",
+  "production_extension_changed": false
+}

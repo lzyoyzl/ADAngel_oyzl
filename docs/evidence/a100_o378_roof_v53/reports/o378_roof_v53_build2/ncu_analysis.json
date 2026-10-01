@@ -1,0 +1,337 @@
+{
+  "scope": "one real input; NCU full set; cold cache; unlocked; not Event timing",
+  "files": [
+    {
+      "file": "nvfp4_g128_p0_raw.csv",
+      "sha256": "4fc4ff4dea7e42fa1fd9b86a2f3489a20763cecda658b0e1aaef24b468115674"
+    },
+    {
+      "file": "nvfp4_g128_p0_source_sass.csv",
+      "sha256": "d245e84adde8aedf2d5abe76d170fb342bc357d03eceec6fb722ec8d6274d5a4"
+    },
+    {
+      "file": "nvfp4_g128_p2_raw.csv",
+      "sha256": "84627dce19402670ea4ce161085038d65207b39149ab45e3875fd9b4ce2c099f"
+    },
+    {
+      "file": "nvfp4_g128_p2_source_sass.csv",
+      "sha256": "b0e10f78ac836c5f08f6f5c07d9814d21bde3a4186fe66d8d52d47ab5ade0063"
+    },
+    {
+      "file": "mxfp8_e4m3_g128_p0_raw.csv",
+      "sha256": "340954469bc9f3fe24852785bc4833aa31d31027f84c30f410d1cd047dbe647e"
+    },
+    {
+      "file": "mxfp8_e4m3_g128_p0_source_sass.csv",
+      "sha256": "dd949aa1f6907e1a7bcdea728201e3e8e14f6edd66682fbfa5bd675b205a2626"
+    },
+    {
+      "file": "mxfp8_e4m3_g128_p2_raw.csv",
+      "sha256": "346a2b77247d3a171421c63dcdfd42ca6edef60164ef8cc6acfaf7b40997217c"
+    },
+    {
+      "file": "mxfp8_e4m3_g128_p2_source_sass.csv",
+      "sha256": "c103a894016a2104148427341e9d82a39fcab9f2c19d2d9017f5b5b4f2455c68"
+    },
+    {
+      "file": "hif4_g128_p0_raw.csv",
+      "sha256": "38cc0cc5cb6800dbcb8befdc856bc187ae4d6de95e63d482f8c02c7c55ea5570"
+    },
+    {
+      "file": "hif4_g128_p0_source_sass.csv",
+      "sha256": "1fad563f842ee4b517be1070edb94bda6f31ba6ebe586688acb0135e4aab17de"
+    },
+    {
+      "file": "hif4_g128_p2_raw.csv",
+      "sha256": "825d5344ec72f093828f8b896f0684382bd5aea0b2dbe0ddaf06f3945b6e0b61"
+    },
+    {
+      "file": "hif4_g128_p2_source_sass.csv",
+      "sha256": "1f650b683530d0c7171408e1f7b14576ba985e42603369956000b7076c935af6"
+    },
+    {
+      "file": "nvstyle_fp6_e2m3_g128_p0_raw.csv",
+      "sha256": "96d5bf700de584baea38f00cf198c4e6f1cb0e99eb9d59d26f8ea4fab22a631f"
+    },
+    {
+      "file": "nvstyle_fp6_e2m3_g128_p0_source_sass.csv",
+      "sha256": "74d2a6c2913df58e36672af3977ebbad71244a5cf7b1484a41f25b1d94c9221b"
+    },
+    {
+      "file": "nvstyle_fp6_e2m3_g128_p2_raw.csv",
+      "sha256": "52d2db9c4bc4ed263ada03930c9cc45f6235081ad9f510b496852a5bf34ea403"
+    },
+    {
+      "file": "nvstyle_fp6_e2m3_g128_p2_source_sass.csv",
+      "sha256": "69fc6463a4c37a8418d604204d80c2f8b715f561636de8ee7ccdf7d97362c1ba"
+    }
+  ],
+  "rows": [
+    {
+      "format": "nvfp4_g128",
+      "policy": 0,
+      "kernel_name": "void <unnamed>::adangel_sm80_integer_fixed_conversion<0, 1>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, const unsigned char *, unsigned char *, float *, int, int, int)",
+      "ncu_ms": 0.048608,
+      "dynamic_warp_instructions": 14417920,
+      "opcode_counts": {
+        "IMAD": 4194304,
+        "S2R": 786432,
+        "SHF": 1572864,
+        "LEA": 1179648,
+        "ISETP": 917504,
+        "EXIT": 655360,
+        "LOP3": 2359296,
+        "ULDC": 262144,
+        "IADD3": 655360,
+        "LDG": 524288,
+        "STG": 393216,
+        "PRMT": 393216,
+        "I2F": 131072,
+        "FMUL": 393216,
+        "BRA": 0,
+        "NOP": 0
+      },
+      "registers": 16.0,
+      "sm_throughput_pct": 49.347687,
+      "dram_throughput_pct": 11.926891,
+      "l1tex_throughput_pct": 16.69186,
+      "l2_throughput_pct": 19.460156,
+      "issue_active_pct": 52.166209,
+      "eligible_warps": 1.423901
+    },
+    {
+      "format": "nvfp4_g128",
+      "policy": 2,
+      "kernel_name": "void adangel_sm80_vector_fixed_conversion<0, 16>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, const unsigned char *, unsigned char *, float *, unsigned int, unsigned int)",
+      "ncu_ms": 0.018528,
+      "dynamic_warp_instructions": 5308416,
+      "opcode_counts": {
+        "IMAD": 1671168,
+        "S2R": 98304,
+        "SHF": 1015808,
+        "ISETP": 163840,
+        "EXIT": 98304,
+        "LOP3": 1736704,
+        "ULDC": 32768,
+        "LDG": 98304,
+        "PRMT": 65536,
+        "STG": 65536,
+        "IADD3": 32768,
+        "PLOP3": 65536,
+        "I2F": 32768,
+        "LEA": 32768,
+        "FMUL": 98304,
+        "BRA": 0,
+        "NOP": 0
+      },
+      "registers": 26.0,
+      "sm_throughput_pct": 56.351939,
+      "dram_throughput_pct": 30.62749,
+      "l1tex_throughput_pct": 14.736375,
+      "l2_throughput_pct": 40.556706,
+      "issue_active_pct": 56.645143,
+      "eligible_warps": 3.441253
+    },
+    {
+      "format": "mxfp8_e4m3_g128",
+      "policy": 0,
+      "kernel_name": "void <unnamed>::adangel_sm80_mixed_fused_g128_conversion<1>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, const unsigned char *, unsigned char *, float *, int, int, int)",
+      "ncu_ms": 0.074336,
+      "dynamic_warp_instructions": 34996224,
+      "opcode_counts": {
+        "IMAD": 10878976,
+        "S2R": 524288,
+        "ISETP": 3276800,
+        "EXIT": 655360,
+        "ULDC": 262144,
+        "IADD3": 2228224,
+        "LEA": 1966080,
+        "LDG": 655360,
+        "IABS": 1310720,
+        "SHF": 524288,
+        "I2F": 1048576,
+        "MUFU": 524288,
+        "F2I": 1048576,
+        "LOP3": 5373952,
+        "PRMT": 1572864,
+        "FMUL": 1703936,
+        "SEL": 655360,
+        "STG": 655360,
+        "FSEL": 131072,
+        "BRA": 0,
+        "NOP": 0
+      },
+      "registers": 20.0,
+      "sm_throughput_pct": 78.285892,
+      "dram_throughput_pct": 19.956339,
+      "l1tex_throughput_pct": 14.486477,
+      "l2_throughput_pct": 30.39403,
+      "issue_active_pct": 80.807259,
+      "eligible_warps": 4.61072
+    },
+    {
+      "format": "mxfp8_e4m3_g128",
+      "policy": 2,
+      "kernel_name": "void adangel_sm80_vector_fixed_conversion<1, 16>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, const unsigned char *, unsigned char *, float *, unsigned int, unsigned int)",
+      "ncu_ms": 0.028736,
+      "dynamic_warp_instructions": 12091392,
+      "opcode_counts": {
+        "IMAD": 3571712,
+        "S2R": 98304,
+        "SHF": 491520,
+        "ISETP": 360448,
+        "EXIT": 98304,
+        "LOP3": 3375104,
+        "ULDC": 32768,
+        "LDG": 65536,
+        "PLOP3": 524288,
+        "I2F": 524288,
+        "FMUL": 1605632,
+        "LEA": 524288,
+        "PRMT": 131072,
+        "F2I": 524288,
+        "STG": 98304,
+        "IADD3": 32768,
+        "FSEL": 32768,
+        "BRA": 0,
+        "NOP": 0
+      },
+      "registers": 32.0,
+      "sm_throughput_pct": 70.707778,
+      "dram_throughput_pct": 47.765889,
+      "l1tex_throughput_pct": 17.245511,
+      "l2_throughput_pct": 47.167492,
+      "issue_active_pct": 82.228515,
+      "eligible_warps": 4.393682
+    },
+    {
+      "format": "hif4_g128",
+      "policy": 0,
+      "kernel_name": "void <unnamed>::adangel_sm80_integer_fixed_conversion<2, 1>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, const unsigned char *, unsigned char *, float *, int, int, int)",
+      "ncu_ms": 0.056384000000000004,
+      "dynamic_warp_instructions": 21757952,
+      "opcode_counts": {
+        "IMAD": 4456448,
+        "S2R": 786432,
+        "SHF": 4194304,
+        "LEA": 3407872,
+        "ISETP": 1572864,
+        "EXIT": 655360,
+        "LOP3": 3932160,
+        "ULDC": 262144,
+        "IADD3": 1179648,
+        "LDG": 917504,
+        "STG": 393216,
+        "BRA": 0,
+        "NOP": 0
+      },
+      "registers": 16.0,
+      "sm_throughput_pct": 84.135722,
+      "dram_throughput_pct": 11.324766,
+      "l1tex_throughput_pct": 19.248435,
+      "l2_throughput_pct": 17.681907,
+      "issue_active_pct": 66.985377,
+      "eligible_warps": 2.703812
+    },
+    {
+      "format": "hif4_g128",
+      "policy": 2,
+      "kernel_name": "void adangel_sm80_vector_fixed_conversion<2, 16>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, const unsigned char *, unsigned char *, float *, unsigned int, unsigned int)",
+      "ncu_ms": 0.031904,
+      "dynamic_warp_instructions": 10878976,
+      "opcode_counts": {
+        "IMAD": 2523136,
+        "S2R": 98304,
+        "SHF": 2031616,
+        "ISETP": 1212416,
+        "EXIT": 98304,
+        "LOP3": 3342336,
+        "ULDC": 32768,
+        "LEA": 753664,
+        "IADD3": 327680,
+        "LDG": 327680,
+        "PRMT": 65536,
+        "STG": 65536,
+        "BRA": 0,
+        "NOP": 0
+      },
+      "registers": 30.0,
+      "sm_throughput_pct": 80.594427,
+      "dram_throughput_pct": 19.677274,
+      "l1tex_throughput_pct": 23.072299,
+      "l2_throughput_pct": 25.774903,
+      "issue_active_pct": 62.400372,
+      "eligible_warps": 5.732553
+    },
+    {
+      "format": "nvstyle_fp6_e2m3_g128",
+      "policy": 0,
+      "kernel_name": "void <unnamed>::adangel_sm80_integer_fixed_conversion<3, 1>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, const unsigned char *, unsigned char *, float *, int, int, int)",
+      "ncu_ms": 0.068896,
+      "dynamic_warp_instructions": 23250800,
+      "opcode_counts": {
+        "IMAD": 5242880,
+        "S2R": 786432,
+        "SHF": 1716700,
+        "LEA": 2109916,
+        "ISETP": 2228224,
+        "EXIT": 655360,
+        "LOP3": 4600284,
+        "ULDC": 262144,
+        "IADD3": 1441792,
+        "LDG": 786432,
+        "BSSY": 262144,
+        "SEL": 524288,
+        "BRA": 524288,
+        "BSYNC": 405980,
+        "STG": 655360,
+        "PRMT": 393216,
+        "I2F": 131072,
+        "FMUL": 524288,
+        "NOP": 0
+      },
+      "registers": 16.0,
+      "sm_throughput_pct": 62.558295,
+      "dram_throughput_pct": 21.561101,
+      "l1tex_throughput_pct": 16.983957,
+      "l2_throughput_pct": 28.003971,
+      "issue_active_pct": 58.642967,
+      "eligible_warps": 2.330832
+    },
+    {
+      "format": "nvstyle_fp6_e2m3_g128",
+      "policy": 2,
+      "kernel_name": "void adangel_sm80_vector_fixed_conversion<3, 16>(const unsigned char *, const unsigned char *, const float *, const unsigned char *, const unsigned char *, unsigned char *, float *, unsigned int, unsigned int)",
+      "ncu_ms": 0.039232,
+      "dynamic_warp_instructions": 14908568,
+      "opcode_counts": {
+        "IMAD": 3014656,
+        "S2R": 98304,
+        "SHF": 1777446,
+        "ISETP": 1638400,
+        "EXIT": 98304,
+        "LOP3": 4136742,
+        "ULDC": 32768,
+        "LDG": 98304,
+        "BSSY": 524288,
+        "BRA": 1048576,
+        "SEL": 524288,
+        "IADD3": 794406,
+        "BSYNC": 761638,
+        "STG": 98304,
+        "PLOP3": 65536,
+        "I2F": 32768,
+        "LEA": 32768,
+        "FMUL": 131072,
+        "NOP": 0
+      },
+      "registers": 19.0,
+      "sm_throughput_pct": 76.000765,
+      "dram_throughput_pct": 35.164858,
+      "l1tex_throughput_pct": 12.604322,
+      "l2_throughput_pct": 35.188354,
+      "issue_active_pct": 68.6102,
+      "eligible_warps": 4.75754
+    }
+  ]
+}

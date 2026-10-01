@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/zlouyang/ADAngel_oyzl/scripts/build_vector_conversion_probe.py", line 40, in <module>
+    main()
+  File "/home/zlouyang/ADAngel_oyzl/scripts/build_vector_conversion_probe.py", line 26, in main
+    subprocess.run(cmd, cwd=ROOT, stdout=out, stderr=subprocess.STDOUT, check=True)
+  File "/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/usr/local/cuda-12.8/bin/nvcc', '-std=c++17', '-O3', '-lineinfo', '-gencode=arch=compute_80,code=sm_80', '-Xcompiler=-fPIC', '-shared', '-Xptxas=-v', '-Icsrc/include', '-Icsrc/sm80', 'csrc/sm80/roof_vector_conversion_probe.cu', 'csrc/sm80/roof_fused_conversion.cu', 'csrc/sm80/roof_integer_conversion.cu', '-o', 'reports/o378_roof_v53/libvector_conversion_probe.so']' returned non-zero exit status 1.
