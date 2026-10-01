@@ -6,7 +6,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
 EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v24'
-O3_EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v29'
+O3_EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v30'
 
 
 @unittest.skipUnless((EVIDENCE/'runs/o378_roof_v24_trace24/summary.json').exists(),
@@ -36,8 +36,8 @@ class BestReportTest(unittest.TestCase):
 
     def test_new_o3_evidence_and_changed_rounding_are_reported(self):
         doc=(ROOT/'docs/o3_o7_o8_current_best.md').read_text()
-        for reference in (-1,41):
-            x=json.loads((O3_EVIDENCE/f'reports/o378_roof_v29/trace24_52_vs{reference}.json').read_text())['rows'][0]
+        for reference in (-1,52):
+            x=json.loads((O3_EVIDENCE/f'reports/o378_roof_v30/trace24_54_vs{reference}.json').read_text())['rows'][0]
             self.assertEqual((x['samples'],x['rounds']),(24,5))
             self.assertIn(f"{x['reference_median_ms']:.6f}",doc)
             self.assertIn(f"{x['candidate_median_ms']:.6f}",doc)
@@ -46,14 +46,14 @@ class BestReportTest(unittest.TestCase):
             self.assertIn(f'{statistics.median(mse):.15f}',doc)
             self.assertIn(f'{statistics.mean(mse):.15f}',doc)
             self.assertTrue(all(r['candidate_mse_vs_production']>0 for r in x['per_sample']))
-            self.assertIn(f"{x['cv']['52']['selected_stage_failed']}/120",doc)
-        self.assertIn('不能再声称新版O3与旧版逐位相同',doc)
-        self.assertIn('O3来自本轮v29，O7/O8沿用v24',doc)
+            self.assertIn(f"{x['cv']['54']['selected_stage_failed']}/120",doc)
+        self.assertIn('新版O3与原正式并非逐位相同，但与上一版52逐位相同',doc)
+        self.assertIn('O3来自本轮v30，O7/O8沿用v24',doc)
 
     def test_fourmode_sources_and_no_default_promotion(self):
         doc=(ROOT/'docs/o3_o7_o8_current_best.md').read_text()
         paths=(EVIDENCE/'reports/o378_roof_v24/o78_four24_t42_vs23.json',
-               O3_EVIDENCE/'reports/o378_roof_v29/four24_52_vs41.json')
+               O3_EVIDENCE/'reports/o378_roof_v30/four24_54_vs52.json')
         for path in paths:
             report=json.loads(path.read_text())
             for row in report['rows']:
