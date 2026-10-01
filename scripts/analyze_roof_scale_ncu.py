@@ -88,7 +88,8 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         raise ValueError('unsupported variant/tune profiling pair')
     if tune in (55,56,57,58,59,60,62) and variant=='o3':
         raise ValueError('asynchronous FP32 scale payload candidates require O7/O8')
-    if paired_integer and (variant!='o3' or tune!=54 or expected_symbol!='adangel_roof_pair_alignment_o3'):
+    if paired_integer and (variant!='o3' or tune!=54 or expected_symbol not in
+            ('adangel_roof_pair_alignment_o3','adangel_roof_pair_scale_shared_o3')):
         raise ValueError('paired integer accounting is restricted to the approved O3 probe')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
     if len(raw_rows)!=2:
@@ -121,7 +122,7 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
             permitted='adangel_roof_stream_width_o3' if variant=='o3' else 'adangel_roof_stream_width_o78'
         if expected_symbol in ('adangel_roof_b_lookahead_o3','adangel_roof_b_lookahead_o78'):
             permitted='adangel_roof_b_lookahead_o3' if variant=='o3' else 'adangel_roof_b_lookahead_o78'
-        if expected_symbol=='adangel_roof_pair_alignment_o3' and variant=='o3':
+        if expected_symbol in ('adangel_roof_pair_alignment_o3','adangel_roof_pair_scale_shared_o3') and variant=='o3':
             permitted=expected_symbol
         if expected_symbol!=permitted or tune!=(54 if variant=='o3' else 59):
             raise ValueError('unexpected isolated probe math/identity')
