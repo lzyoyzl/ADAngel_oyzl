@@ -30,6 +30,7 @@
 #include "roof_m32_payload_api.h"
 #include "roof_unsigned_payload_api.h"
 #include "roof_integer_conversion_api.h"
+#include "roof_o3_conversion_api.h"
 
 namespace py = pybind11;
 namespace {
@@ -202,11 +203,14 @@ template<class F> std::vector<float> batch(F f,int repeats,int inner,cudaStream_
 #include "mixed_conversion_probe.cuh"
 
 py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor as,
-    at::Tensor w,at::Tensor ws,int warmup,int repeats,int inner,std::string implementation,int roof_tune) {
+    at::Tensor w,at::Tensor ws,int warmup,int repeats,int inner,std::string implementation,int roof_tune,int conversion_impl) {
   TORCH_CHECK(variant=="o1"||variant=="o3","variant must be o1 or o3");
   TORCH_CHECK(mode=="conversion_only"||mode=="compute_only"||mode=="cold"||mode=="steady_state","invalid mode");
   TORCH_CHECK(warmup>=0&&repeats>0&&inner>0,"invalid repetitions");
   bool split=variant=="o3";
+  TORCH_CHECK(conversion_impl>=0 && conversion_impl<=2,"invalid O3 conversion candidate");
+  TORCH_CHECK(conversion_impl==0 || (split && roof_tune==54 && implementation=="production"),
+      "O3 conversion candidates require explicit GEMM54; formal defaults remain unchanged");
   const auto requested_implementation=implementation;
   TORCH_CHECK(valid_roof_tune(roof_tune) && (roof_tune<0 || (split && implementation=="production")),
       "roof candidate requires O3 production-compatible input path");
@@ -260,6 +264,12 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   TORCH_CHECK(a.dim()==2&&w.dim()==2&&as.dim()==1&&ws.dim()==2,"invalid ranks");
   TORCH_CHECK(a.scalar_type()==at::kChar&&as.scalar_type()==at::kFloat&&w.scalar_type()==at::kByte&&ws.scalar_type()==at::kByte,"invalid dtypes");
   TORCH_CHECK(a.is_contiguous()&&as.is_contiguous()&&w.is_contiguous()&&ws.is_contiguous(),"contiguous required");
+  if(conversion_impl) {
+    TORCH_CHECK(a.size(1)/128<=65535 && a.numel()<=std::numeric_limits<int>::max() &&
+        w.numel()<=std::numeric_limits<int>::max()/2,"conversion grid/index domain exceeded");
+    TORCH_CHECK(conversion_impl!=2 || (reinterpret_cast<uintptr_t>(a.data_ptr())%8==0 &&
+        reinterpret_cast<uintptr_t>(w.data_ptr())%4==0),"vector conversion requires A8/W4 byte alignment");
+  }
   int m=a.size(0),k=a.size(1),n=w.size(0),g=split?128:32;
   check_roof_fixed_shape(roof_tune,m,n,k);
   TORCH_CHECK(m>0&&n>0&&k>0&&m%TM==0&&n%TN==0&&k%(split?128:64)==0,"aligned M/N64 and K64(O1)/K128(O3) required");
@@ -428,6 +438,11 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(implementation=="swizzle_128x128_k128") o1_ampere_configure<128,128,128>();
   if(implementation=="swizzle_128x64_k64") o1_ampere_configure<128,64,64>();
   auto cvw=[&](){
+    if(conversion_impl) {
+      adangel_sm80_experiment::tiled_o3_conversion(false,conversion_impl==2,w.data_ptr<uint8_t>(),
+          ws.data_ptr<uint8_t>(),roof_w.data_ptr<uint8_t>(),roof_ws.data_ptr<uint8_t>(),n,k,stream);
+      C10_CUDA_KERNEL_LAUNCH_CHECK();return;
+    }
     if(roof_fused_payload(roof_tune)) {
       adangel_sm80_experiment::fused_o3_weight(w.data_ptr<uint8_t>(),roof_w.data_ptr<uint8_t>(),n,k,stream);
       C10_CUDA_KERNEL_LAUNCH_CHECK();return;
@@ -438,6 +453,11 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     if(roof_grouped_payload(roof_tune)) roof_pack_payload(wa,roof_w,1,n,k,stream);
   };
   auto cva=[&](){
+    if(conversion_impl) {
+      adangel_sm80_experiment::tiled_o3_conversion(true,conversion_impl==2,reinterpret_cast<const uint8_t*>(a.data_ptr()),
+          nullptr,roof_a.data_ptr<uint8_t>(),nullptr,m,k,stream);
+      C10_CUDA_KERNEL_LAUNCH_CHECK();return;
+    }
     if(roof_fused_payload(roof_tune)) {
       adangel_sm80_experiment::fused_o3_activation(a.data_ptr<int8_t>(),roof_a.data_ptr<uint8_t>(),m,k,stream);
       C10_CUDA_KERNEL_LAUNCH_CHECK();return;
@@ -675,8 +695,29 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
     meta["shared_memory_bytes"]=roof_smem;
     roof_payload_metadata(meta,roof_tune,m,n,k);
   }
+  if(roof_tune==54) {
+    meta["conversion_candidate"]=conversion_impl;
+    meta["gemm_math_changed"]=false;
+    meta["weight_conversion_kernels"]=conversion_impl?1:3;
+    meta["activation_conversion_kernels"]=conversion_impl?1:2;
+    if(conversion_impl) {
+      meta["conversion_kernels_per_operand"]=1;
+      meta["payload_reorder_fused"]=true;
+      meta["weight_payload_reorder_traffic_bytes"]=0;
+      meta["activation_payload_reorder_traffic_bytes"]=0;
+      meta["weight_scale_reorder_fused"]=true;
+      meta["conversion_vectorized"]=conversion_impl==2;
+    }
+  }
   py::dict r;r["output"]=out;r["timings_ms"]=timings;r["kernel"]=meta;
-  if(roof_fused_payload(roof_tune)) {
+  r["weight_cached"]=!weight;r["activation_prepared"]=!activation;
+  r["total_timing"]=compute?"single_execution_cuda_event":"sum_of_batched_stage_samples";
+  py::dict stage_inner;
+  if(weight) stage_inner["weight_conversion"]=inner;
+  if(activation) stage_inner["activation_conversion"]=inner;
+  if(compute) stage_inner["gemm"]=1;
+  stage_inner["total"]=compute?1:inner;r["stage_timing_inner_repeats"]=stage_inner;
+  if(roof_fused_payload(roof_tune) || conversion_impl) {
     // Optional diagnostic export only, AFTER all measured work. GEMM consumes
     // roof_a/roof_w directly and never requires these inverse-layout copies.
     aa=roof_a.permute({0,2,1,3}).contiguous().reshape({2*m,k/2});
@@ -711,6 +752,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
       py::arg("tile")="64x128x256",py::arg("scale_layout")="row_major",py::arg("roof_tune")=-1,
       py::arg("conversion_impl")=0);
   m.def("_benchmark_split_grouped",&benchmark_split_grouped,py::arg("a_split"),py::arg("a_scale"),py::arg("w_q4"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("tile")="64x128x256");
-  m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100,py::arg("implementation")="production",py::arg("roof_tune")=-1);
+  m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100,py::arg("implementation")="production",py::arg("roof_tune")=-1,py::arg("conversion_impl")=0);
   m.def("benchmark_o0",&adangel_benchmark_o0);
 }
