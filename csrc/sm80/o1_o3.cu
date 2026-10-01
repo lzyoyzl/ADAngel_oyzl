@@ -29,6 +29,7 @@
 #include "roof_async_payload_api.h"
 #include "roof_m32_payload_api.h"
 #include "roof_unsigned_payload_api.h"
+#include "roof_integer_conversion_api.h"
 
 namespace py = pybind11;
 namespace {
@@ -198,6 +199,7 @@ template<class F> std::vector<float> batch(F f,int repeats,int inner,cudaStream_
 #include "mixed_conversion.cuh"
 #include "mixed_bitplane.cuh"
 #include "mixed_benchmark.cuh"
+#include "mixed_conversion_probe.cuh"
 
 py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor as,
     at::Tensor w,at::Tensor ws,int warmup,int repeats,int inner,std::string implementation,int roof_tune) {
@@ -700,6 +702,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
   m.def("_convert_mixed_source",&convert_mixed_source,py::arg("source"),
       py::arg("scale_layout")="row_major");
   m.def("_convert_mixed_fused_payload",&convert_mixed_fused_payload,py::arg("source"));
+  m.def("_benchmark_mixed_conversion_probe",&benchmark_mixed_conversion_probe,
+      py::arg("source"),py::arg("implementation"),py::arg("warmup")=50,
+      py::arg("repeats")=200,py::arg("inner")=100);
   m.def("_benchmark_mixed",&benchmark_mixed,py::arg("variant"),py::arg("mode"),
       py::arg("weight_source"),py::arg("activation_source"),py::arg("warmup")=50,
       py::arg("repeats")=200,py::arg("conversion_inner_repeats")=100,
