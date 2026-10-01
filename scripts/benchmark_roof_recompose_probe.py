@@ -62,7 +62,7 @@ class Driver:
         return y,list(times)
 
 
-def summary(rows):
+def summary(rows,policies=(0,1,2)):
     from compare_roof_trace_candidates import metrics
     out=[]
     for variant in sorted({r['variant'] for r in rows}):
@@ -71,7 +71,9 @@ def summary(rows):
         if len(index)!=len(selected): raise ValueError('duplicate probe record')
         ids=sorted({r['sample_id'] for r in selected})
         rounds=sorted({r['round'] for r in selected})
-        expected={(sid,r,size) for sid in ids for r in rounds for size in (0,1,2)}
+        if tuple(policies) not in ((0,1),(0,1,2)):
+            raise ValueError('explicit control and tested policies required')
+        expected={(sid,r,size) for sid in ids for r in rounds for size in policies}
         if set(index)!=expected or rounds!=list(range(len(rounds))):
             raise ValueError('incomplete probe coverage')
         for sid in ids:
@@ -79,7 +81,7 @@ def summary(rows):
             if (any(not r['bitwise_equal_current_best'] or r['mse_vs_current_best']!=0 for r in group)
                     or len({(r['mse_vs_o0'],r['mse_vs_paired_fp16']) for r in group})!=1):
                 raise ValueError('bitwise or MSE regression')
-        for size in (0,1,2):
+        for size in policies:
             chosen=[r for r in selected if r['recompose_policy']==size]
             speeds=[statistics.median(index[sid,r,0]['summary']['median_ms']/index[sid,r,size]['summary']['median_ms'] for r in rounds) for sid in ids]
             latencies=[statistics.median(index[sid,r,size]['summary']['median_ms'] for r in rounds) for sid in ids]
@@ -104,8 +106,9 @@ def main():
     p.add_argument('--warmup',type=int,default=50)
     p.add_argument('--repeats',type=int,default=200)
     p.add_argument('--variants',nargs='+',choices=['o3','o7','o8'],default=['o3','o7','o8'])
+    p.add_argument('--policies',nargs='+',type=int,choices=[0,1,2],default=[0,1])
     args=p.parse_args()
-    if args.output.exists() or not args.output.resolve().is_relative_to(ROOT) or not 1<=args.samples<=24 or min(args.rounds,args.repeats)<1 or args.warmup<0 or len(set(args.variants))!=len(args.variants):
+    if args.output.exists() or not args.output.resolve().is_relative_to(ROOT) or not 1<=args.samples<=24 or min(args.rounds,args.repeats)<1 or args.warmup<0 or len(set(args.variants))!=len(args.variants) or tuple(args.policies) not in ((0,1),(0,1,2)):
         p.error('fresh repository output, valid coverage and distinct variants required')
     import torch
     from adangel import _sm80 as native
@@ -123,7 +126,7 @@ def main():
     assert audit['passed'] and all(audit['control_encoded_sass_matches_best'].values())
     for source in audit['sources']:
         assert sha256_file(Path(source['file']))==source['sha256']
-    cubins={s:(args.cubins/f'recompose_{s}.cubin').resolve() for s in (0,1,2)}
+    cubins={s:(args.cubins/f'recompose_{s}.cubin').resolve() for s in args.policies}
     for s,path in cubins.items(): assert sha256_file(path)==codegen['variants'][str(s)]['cubin_sha256']
     args.output.mkdir(parents=True)
     def save(name,value): (args.output/name).write_text(json.dumps(value,indent=2,allow_nan=False)+'\n')
@@ -174,7 +177,7 @@ def main():
                 for r in range(args.rounds):
                     append('gpu_snapshots.jsonl',dict(sample_id=x.sample_id,variant=variant,round=r,time=time.time(),
                         gpu=command('nvidia-smi','--query-gpu=clocks.sm,temperature.gpu,power.draw,utilization.gpu','--format=csv')))
-                    order=measurement_order([0,1,2],si,vi,r)
+                    order=measurement_order(args.policies,si,vi,r)
                     for size in order:
                         y,times=driver.run(size,best,values[1],scale,args.warmup,args.repeats)
                         row=dict(sample_id=x.sample_id,variant=variant,round=r,recompose_policy=size,execution_order=order,
@@ -185,9 +188,9 @@ def main():
                         rows.append(row);append('results.jsonl',row)
                 print(x.sample_id,variant,'complete',flush=True)
             finally: driver.close()
-    assert len(rows)==args.samples*len(args.variants)*args.rounds*3
+    assert len(rows)==args.samples*len(args.variants)*args.rounds*len(args.policies)
     save('summary.json',dict(correctness_passed=True,no_filtering=True,production_default_changed=False,
-        scope='internal_cubin_compute_only_screen',records=summary(rows)))
+        scope='internal_cubin_compute_only_screen',policies=args.policies,records=summary(rows,args.policies)))
 
 
 if __name__=='__main__': main()

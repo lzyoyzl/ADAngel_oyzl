@@ -7,6 +7,7 @@ from pathlib import Path
 
 from compare_a100_codegen import instructions
 from probe_roof_recompose_codegen import PATTERN, static_entries
+from audit_roof_l2_probe import text_entries
 
 
 def audit(directory,best_sass):
@@ -16,18 +17,24 @@ def audit(directory,best_sass):
     reference={('adangel_roof_recompose_o3' if 'ELi54EE' in symbol else 'adangel_roof_recompose_o78'):words
                for symbol,words in old.items()}
     control=instructions(payloads[0],PATTERN)
+    candidate1=instructions(payloads[1],PATTERN)
+    candidate2=instructions(payloads[2],PATTERN)
     if set(control)!=set(reference) or len(old)!=2:
         raise ValueError('missing or ambiguous best/control pair')
     exact={key:control[key]==reference[key] for key in control}
     rows=[]
+    texts=[text_entries(payload,PATTERN) for payload in payloads]
     for policy,payload in enumerate(payloads):
         words=instructions(payload,PATTERN)
         for symbol,details in static_entries(payload).items():
             rows.append(dict(policy=policy,symbol=symbol,**details,
-                encoded_identical_to_control=words[symbol]==control[symbol]))
+                encoded_identical_to_control=words[symbol]==control[symbol],
+                instruction_text_changes=sum(x!=y for x,y in zip(texts[0][symbol],texts[policy][symbol])),
+                opcode_counts_equal_control=details['opcode_counts']==static_entries(payloads[0])[symbol]['opcode_counts']))
     return dict(passed=all(exact.values()) and all(r['all_copies_bypass_l1'] and
         r['native_u4_s4'] and r['native_s4_s4'] and not r['int8_mma'] for r in rows),
         control_encoded_sass_matches_best=exact,entries=rows,
+        policy2_encoded_identical_to_policy1=candidate1==candidate2,
         scope='same-entry native INT4; exact control; candidate correctness still needs GPU checks',
         sources=[dict(file=str(p),sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for p in sources+[best_sass]])
 

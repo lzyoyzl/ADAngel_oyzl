@@ -60,6 +60,9 @@ class RecomposeTests(unittest.TestCase):
         self.assertTrue(all(r['cv_failed_records']==3 for r in aggregate(rows)))
         with self.assertRaises(ValueError): aggregate(rows[:-1])
         with self.assertRaises(ValueError): aggregate(rows+[rows[0]])
+        two=[r for r in rows if r['recompose_policy'] in (0,1)]
+        self.assertEqual([r['paired_speedup'] for r in aggregate(two,(0,1))],[1.0,.5])
+        with self.assertRaises(ValueError): aggregate(two)
 
 
 if __name__=='__main__': unittest.main()
