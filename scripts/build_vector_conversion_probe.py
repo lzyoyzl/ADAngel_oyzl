@@ -21,7 +21,7 @@ def main():
     binary = a.output / 'libvector_conversion_probe.so'
     cmd = ['/usr/local/cuda-12.8/bin/nvcc', '-std=c++17', '-O3', '-lineinfo',
            '-gencode=arch=compute_80,code=sm_80', '-Xcompiler=-fPIC', '-shared', '-Xptxas=-v',
-           '-Icsrc/include', '-Icsrc/sm80', *sources, '-o', str(binary)]
+           '-Iinclude', '-Icsrc/sm80', *sources, '-o', str(binary)]
     with (a.output / 'build.log').open('w') as out:
         subprocess.run(cmd, cwd=ROOT, stdout=out, stderr=subprocess.STDOUT, check=True)
     for suffix, mode in (('sass', '--dump-sass'), ('resources.txt', '--dump-resource-usage')):

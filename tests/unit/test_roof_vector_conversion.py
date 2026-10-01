@@ -41,6 +41,8 @@ class VectorConversionTests(unittest.TestCase):
         self.assertLess(cu.index('Events event;'),cu.index('for(int r=0;r<repeats'))
         self.assertNotIn('mma.sync',cu)
         self.assertNotIn('roof_vector_conversion_probe.cu',(ROOT/'setup.py').read_text())
+        self.assertTrue((ROOT/'include/adangel/data_types.cuh').is_file())
+        self.assertIn("'-Iinclude'",(ROOT/'scripts/build_vector_conversion_probe.py').read_text())
         host=(ROOT/'scripts/vector_conversion_probe.py').read_text()
         for guard in ('mf.validate_source(source)','int(source[\'scale\'].max()) > 252','effective scale overflow'):
             self.assertIn(guard,host)
