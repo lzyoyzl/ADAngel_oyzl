@@ -30,6 +30,7 @@
 #include "roof_m32_payload_api.h"
 #include "roof_unsigned_payload_api.h"
 #include "roof_integer_conversion_api.h"
+#include "roof_vector_conversion_api.h"
 #include "roof_o3_conversion_api.h"
 #include "roof_cache_policy_api.h"
 

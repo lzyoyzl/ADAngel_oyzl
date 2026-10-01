@@ -29,7 +29,8 @@ def main():
             subprocess.run(['/usr/local/cuda-12.8/bin/cuobjdump', mode, str(binary)],
                            cwd=ROOT, stdout=out, stderr=subprocess.STDOUT, check=True)
     receipt = dict(command=cmd, library=str(binary), library_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
-                   sources=[dict(file=s, sha256=hashlib.sha256((ROOT/s).read_bytes()).hexdigest()) for s in sources],
+                   sources=[dict(file=s, sha256=hashlib.sha256((ROOT/s).read_bytes()).hexdigest())
+                            for s in sources+['csrc/sm80/roof_vector_conversion_impl.cuh']],
                    git_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
                    production_extension_changed=False)
     (a.output / 'build.json').write_text(json.dumps(receipt, indent=2)+'\n')

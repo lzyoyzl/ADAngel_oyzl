@@ -78,7 +78,7 @@ class IntegerConversionTests(unittest.TestCase):
 
     def test_four_mode_opt_in_keeps_exact_gemm_and_default(self):
         cu=(ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text()
-        self.assertIn('conversion_impl>=0 && conversion_impl<=4',cu)
+        self.assertIn('conversion_impl>=0 && conversion_impl<=5',cu)
         self.assertIn('conversion_impl==0 || (roof_tune==59',cu)
         self.assertIn('s.kind==MixedKind::Mx8?1:3',cu)
         self.assertIn('conversion_impl<3 || k/128<=65535',cu)

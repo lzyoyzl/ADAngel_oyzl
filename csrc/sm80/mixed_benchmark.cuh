@@ -59,7 +59,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   TORCH_CHECK(roof_tune!=61 && roof_tune!=62,"cache candidates61/62 require prepared-core API");
   // Independent v35 conversion experiment on the already validated GEMM59.
   // Existing callers retain0; no production dispatch or GEMM math changes.
-  TORCH_CHECK(conversion_impl>=0 && conversion_impl<=4,"conversion candidate must be0..4");
+  TORCH_CHECK(conversion_impl>=0 && conversion_impl<=5,"conversion candidate must be0..5");
   TORCH_CHECK(conversion_impl==0 || (roof_tune==59 && (variant=="o7" || variant=="o8")),
       "conversion candidate requires explicit O7/O8 GEMM59");
   const MixedSource w(weight_source,!fp16),a(activation_source,!fp16);
@@ -72,6 +72,11 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   TORCH_CHECK(prop.major==8 && prop.minor==0,"requires A100 SM80");
   const int m=a.rows,n=w.rows,k=a.k,tn=(tile=="64x128x256" || horner || wide || swizzle)?128:64;
   TORCH_CHECK(conversion_impl<3 || k/128<=65535,"conversion candidate grid.y exceeds65535");
+  if(conversion_impl==5) {
+    TORCH_CHECK(reinterpret_cast<uintptr_t>(a.payload.data_ptr<uint8_t>())%16==0 &&
+        reinterpret_cast<uintptr_t>(w.payload.data_ptr<uint8_t>())%16==0,
+        "vector conversion requires16-byte aligned payloads");
+  }
   check_roof_fixed_shape(roof_tune,m,n,k);
   const int tk=tile=="64x64x512"?512:(tn==64?128:256);
   TORCH_CHECK(m%64==0 && n%tn==0 && k%tk==0,"shape must be tile aligned");
@@ -119,6 +124,15 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     using Kind=adangel_sm80_experiment::GroupedSourceKind;
     const Kind kind=s.kind==MixedKind::Nv4?Kind::Nv4:(s.kind==MixedKind::Mx8?Kind::Mx8:
         (s.kind==MixedKind::Hif4?Kind::Hif4:Kind::Nv6));
+    if(impl==5) {
+      adangel_sm80_experiment::vector_mixed_fixed(kind,
+          s.payload.data_ptr<uint8_t>(),s.scale.data_ptr<uint8_t>(),
+          s.tensor_scale.defined()?s.tensor_scale.data_ptr<float>():nullptr,
+          s.micro8.defined()?s.micro8.data_ptr<uint8_t>():nullptr,
+          s.micro4.defined()?s.micro4.data_ptr<uint8_t>():nullptr,
+          packed.data_ptr<uint8_t>(),d.scale.data_ptr<float>(),s.rows,s.k,stream);
+      C10_CUDA_KERNEL_LAUNCH_CHECK();return;
+    }
     adangel_sm80_experiment::integer_mixed_fixed(kind,impl==3,
         s.payload.data_ptr<uint8_t>(),s.scale.data_ptr<uint8_t>(),
         s.tensor_scale.defined()?s.tensor_scale.data_ptr<float>():nullptr,
@@ -309,6 +323,8 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["conversion_kernels_per_operand"]=1;
     meta["weight_conversion_impl"]=conversion_impl==4?3:conversion_impl;
     meta["activation_conversion_impl"]=conversion_impl==4?(nv?1:3):conversion_impl;
+    meta["conversion_vector_elements"]=conversion_impl==5?16:0;
+    if(conversion_impl==5) meta["conversion_kernel_symbol"]="adangel_sm80_vector_fixed_conversion";
     meta["gemm_tune"]=59;meta["gemm_math_changed"]=false;
   }
   py::dict result;

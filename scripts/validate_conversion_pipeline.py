@@ -60,7 +60,7 @@ def main():
                         validate_pair(out,base,mode,impl,2,2)
                         checks.append(dict(shape=[m,n,k],pattern=pattern,variant=variant,implementation=impl,
                             mode=mode,bitwise=True,semantic_tolerance_passed=True,mse_vs_previous=0.))
-    for impl,tune in ((-1,59),(5,59),(4,56),(4,-1)):
+    for impl,tune in ((-1,59),(6,59),(4,56),(4,-1)):
         try: native._benchmark_mixed('o8','compute_only',ws,acs,0,2,2,'64x128x256','group_major',tune,impl)
         except RuntimeError: rejects.append(dict(implementation=impl,tune=tune,rejected=True))
         else: raise AssertionError('unsupported conversion dispatch accepted')

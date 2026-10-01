@@ -90,6 +90,7 @@ def extensions():
             "csrc/sm80/roof_m32_payload.cu",
             "csrc/sm80/roof_unsigned_payload.cu",
             "csrc/sm80/roof_integer_conversion.cu",
+            "csrc/sm80/roof_vector_conversion.cu",
             "csrc/sm80/roof_o3_conversion.cu",
             "csrc/sm80/roof_cache_policy.cu",
             "csrc/sm80/roof_reduction.cu",
