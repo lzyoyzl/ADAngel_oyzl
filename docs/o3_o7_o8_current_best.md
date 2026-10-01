@@ -1,4 +1,4 @@
-# A100 O3 / O7 / O8：当前最佳结果（v31更新）
+# A100 O3 / O7 / O8：当前最佳结果（v32复核）
 
 ## 结论
 
@@ -112,9 +112,11 @@ O7/O8本轮已将scale供数接入cp.async流水线，后处理数学工作量�
 同binary NCU中，O7动态指令反而增加1.04%，但eligible warp从0.737增至0.785，
 not-issued long-scoreboard样本占比从14.86%降至6.38%。这与隐藏scale读取等待的解释一致，
 不能把样本占比当作耗时比例。IMMA/I2F/FMUL/FFMA仍各16.78M，寄存器及spill未减少。
-下一步考察M32/N128 tile：每线程最终accumulator从64降为32，
-争取更多驻留CTA；代价是CTA数加倍，payload请求约增加50%。
-本地编译零spill不代表A100上一定更快，该方向尚未计入最佳结果。
+v32已实测M32/N128 tile：每线程最终accumulator从64降为32，
+寄存器168降至128、零spill、可驻留CTA从3增至4，但24样本配对吞吐下降6.4%～7.7%。
+同binary NCU显示动态指令增加约20%、LDSM增加50%、shared wavefront增加约47%，
+M方向复用损失超过占用率收益。因此仍保留54/56为当前最佳，不以零spill作为优化目标。
+接下来只改host有界的地址计算类型，检查是否减少寻址指令；尚无上机收益结论。
 定点转换直接生成最终布局也可继续改进，但必须计入全部转换成本。
 不盲目增加树形归约窗口，不重启已无收益的magic-bias。
 跨G128改用INT32累加属于新的实现约束，尚未实施，需另行确认。
@@ -141,6 +143,7 @@ O7为0/24、10/24、3/24、12/24；O8为0/24、9/24、1/24、13/24。
 - [v30：O3当前结果、四模式、MSE、NCU与原始证据](evidence/a100_o378_roof_v30/README.md)
 - [v29：上一版行scale后移结果](evidence/a100_o378_roof_v29/README.md)
 - [v31：O7/O8当前最佳、四模式、MSE与NCU](evidence/a100_o378_roof_v31/README.md)
+- [v32：零spill的M32 tile为何更慢](evidence/a100_o378_roof_v32/README.md)
 - [每版收益和负结果](o3_o7_o8_iteration_summary.md)
 
 v30源码：`267362368335a4e66908a44a8a970328a51fe9d2`。
