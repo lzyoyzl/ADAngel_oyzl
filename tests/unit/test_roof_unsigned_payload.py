@@ -54,8 +54,12 @@ class UnsignedPayloadTests(unittest.TestCase):
         self.assertIn('case 60:return roof_config_for<42>(dual);',core)
         self.assertLess(core.index('if(roof_unsigned_payload(tune)) {',core.index('auto select_roof_kernel')),
                         core.index('if(roof_async_payload(tune)) {',core.index('auto select_roof_kernel')))
-        self.assertIn('TORCH_CHECK(!roof_unsigned_payload(roof_tune)',
-                      (ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text())
+        mixed=(ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text()
+        self.assertIn('TORCH_CHECK(roof_tune!=60',mixed)
+        self.assertIn('TORCH_CHECK(roof_tune!=59 || (int64_t(m)*k<=2147483647LL && int64_t(n)*k<=2147483647LL)',mixed)
+        self.assertIn('|| roof_tune==59)?2:4',mixed)
+        self.assertIn('args.all_modes and any(t in (57,58,60)',
+                      (ROOT/'scripts/benchmark_a100_roof_trace.py').read_text())
         tu=(ROOT/'csrc/sm80/roof_unsigned_payload.cu').read_text()
         self.assertIn('__launch_bounds__(128,3)',tu)
         self.assertIn('DualScale && !Fast && (Tune==59 || Tune==60)',tu)

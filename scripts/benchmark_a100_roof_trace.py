@@ -89,8 +89,8 @@ def main():
         p.error('candidate13 is O3 only')
     if (any(t in (14,15,55,56) for t in args.tunes) or any(t in (57,58,59,60) for t in args.tunes)) and 'o3' in args.variants:
         p.error('asynchronous scale candidates are O7/O8 only')
-    if args.all_modes and any(t in (57,58,59,60) for t in args.tunes):
-        p.error('M32/unsigned candidates57..60 are prepared-core only during screening')
+    if args.all_modes and any(t in (57,58,60) for t in args.tunes):
+        p.error('M32 candidates57/58 and unsigned60 remain prepared-core only;59 supports all modes')
     import torch
     from adangel import _sm80 as native
     from adangel.quantization import mixed_formats as mf

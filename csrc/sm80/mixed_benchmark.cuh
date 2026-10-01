@@ -54,7 +54,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
       "roof candidate requires O7/O8 group-major 64x128x256");
   TORCH_CHECK(roof_tune!=13,"group-major UE8M0 candidate is O3 only");
   TORCH_CHECK(!roof_m32_payload(roof_tune),"M32 candidate57/58 is prepared-core only until performance screening passes");
-  TORCH_CHECK(!roof_unsigned_payload(roof_tune),"unsigned candidate59/60 is prepared-core only until performance screening passes");
+  TORCH_CHECK(roof_tune!=60,"unsigned candidate60 remains prepared-core only; only59 passed repeated trace screening");
   const MixedSource w(weight_source,!fp16),a(activation_source,!fp16);
   TORCH_CHECK((nv && w.kind==MixedKind::Nv4 && a.kind==MixedKind::Mx8) ||
       (!nv && w.kind==MixedKind::Hif4 && a.kind==MixedKind::Nv6),
@@ -69,6 +69,10 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   TORCH_CHECK(m%64==0 && n%tn==0 && k%tk==0,"shape must be tile aligned");
   TORCH_CHECK(int64_t(m)*n<=2147483647LL && m/64<=65535 && n/tn<=65535,
       "output/grid outside supported range");
+  // Same domain as the prepared-core unsigned address proof. MixedSource
+  // already enforces each operand product; keep the candidate bound explicit.
+  TORCH_CHECK(roof_tune!=59 || (int64_t(m)*k<=2147483647LL && int64_t(n)*k<=2147483647LL),
+      "unsigned candidate requires host-bounded dimension products");
   // All allocations, Python source checks, scale guards and setup precede timing.
   std::unique_ptr<MixedConverted> cw,ca;
   std::unique_ptr<MixedBitplanes> bw,ba;
@@ -239,7 +243,7 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
     meta["cta_tile"]=std::vector<int>{64,roof_cfg.n,roof_cfg.k};meta["threads"]=roof_cfg.threads;
     meta["launch_bounds_min_blocks"]=roof_cfg.min_blocks;meta["shared_memory_bytes"]=roof_cfg.smem;
     meta["pipeline_stages"]=roof_cfg.stages;
-    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=56))?2:4;
+    const int warp_m=((roof_tune>=20 && roof_tune<=23) || (roof_tune>=28 && roof_tune<=56) || roof_tune==59)?2:4;
     meta["warp_layout"]=std::vector<int>{warp_m,roof_cfg.threads/(32*warp_m)};
     meta["accumulators_per_thread"]=64*roof_cfg.n/roof_cfg.threads;
     meta["fp32_accumulation_chains"]=(roof_tune==24 || roof_tune==26)?2:((roof_tune==25 || roof_tune==27)?4:1);
