@@ -1,6 +1,7 @@
 """v43 contracts; numerical equivalence still requires the GPU checks."""
 from pathlib import Path
 import runpy
+import json
 import sys
 import unittest
 
@@ -60,6 +61,22 @@ class ScaleReuseTests(unittest.TestCase):
             summary(rows[:-1])
         with self.assertRaises(ValueError):
             summary(rows+[rows[0]])
+
+    def test_profile_identity_and_static_fingerprint(self):
+        # Relabel a historical fixture for parser testing, never as new evidence.
+        report = ROOT / 'docs/evidence/a100_o378_roof_v42/reports/o378_roof_v42'
+        saved = json.loads((report / 'ncu_pos1/ncu_o3_analysis.json').read_text())
+        resources = saved['rows'][0]['probe_resources']
+        static = json.loads((report / 'codegen.json').read_text())['variants']['0']['entries']['adangel_roof_prefetch_o3']
+        texts = [(report / f'ncu_pos1/ncu_o3_p0_{suffix}.csv').read_text().replace(
+            'adangel_roof_prefetch_o3', 'adangel_roof_scale_reuse_o3') for suffix in ('raw', 'source_sass')]
+        analyze = runpy.run_path(str(ROOT / 'scripts/profile_roof_scale_reuse_probe.py'))['analyze_profile']
+        result = analyze(*texts, 'o3', 0, resources, static)
+        self.assertEqual(result['opcodes'], saved['rows'][0]['opcodes'])
+        with self.assertRaisesRegex(ValueError, 'fingerprint'):
+            analyze(*texts, 'o3', 0, resources, dict(static, instructions=static['instructions']+1))
+        with self.assertRaisesRegex(ValueError, 'resources'):
+            analyze(*texts, 'o3', 0, dict(resources, threads=160), static)
 
 
 if __name__ == '__main__':
