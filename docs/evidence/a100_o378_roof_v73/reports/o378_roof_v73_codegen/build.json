@@ -1,0 +1,32 @@
+{
+  "scope": "independent_row_fused_conversion_factor_metadata_no_GEMM_or_default_change",
+  "source_commit": "7cb5d7b8a2125dc808d35e91df51a6509ee0bc75",
+  "sources": {
+    "csrc/sm80/roof_o78_row_fused_prepare.cu": "46a0f6b3ff4059094fc762f2a58e75160ce115bc97f044bc2111f42f0e43b56e",
+    "csrc/sm80/roof_row_fused_conversion.cuh": "bf64d05bfa741d0c86a84c4f1dea38b8cdc75b1e060cf5314b53fe57b88e26ac",
+    "csrc/sm80/roof_o78_fused_prepare.cu": "3c59446cb983ee0cc9f9619f1ac34f8c5ee6be6abc8c8ff6a20fe1ced42953bc",
+    "csrc/sm80/roof_vector_norm_conversion.cuh": "8e5f61881f8b2eed27a16525eccd9624068cdddacdb09888bd720e666cdfc8a2",
+    "csrc/sm80/roof_o78_gpu_prepare.cu": "456f784f5ff2433a06bb7a47b4056b94ecddc9c3996950bc868d8a0d079b35fc",
+    "csrc/sm80/roof_vector_conversion_impl.cuh": "d1aad7ef5ec6ab2c9ab840eaf19fee8153f40a867338970e871e0cd93c4850cc",
+    "csrc/sm80/roof_fused_conversion_api.h": "8fffbaede2373d69b6d0ba741f9ddb19ac43d63ab1a2faa8ab96f805697504cd",
+    "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9"
+  },
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "-lineinfo",
+      "-arch=sm_80",
+      "-shared",
+      "-Xcompiler=-fPIC",
+      "-Xptxas=-v",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_row_fused_prepare.cu",
+      "-lcuda",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v73_codegen/libo78_gpu_prepare.so"
+    ]
+  ],
+  "driver_sha256": "0973712a07dd42954cb5443763846034449e82391c0c80880fa29e22a9ab7d34"
+}
