@@ -88,7 +88,7 @@ def validate_fullk_integer_work(counts):
             or counts.get('I2F') != outputs_per_warp
             or counts.get('FFMA', 0) != 0
             or counts.get('FMUL') != 2 * outputs_per_warp):
-        raise ValueError('expected guarded full-K O3: native INT4, final I2F and two final scale multiplications')
+        raise ValueError('expected guarded full-K work: native INT4, final I2F and two final scale multiplications')
 
 
 def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False, expected_symbol=None, paired_integer=False, fullk_integer=False):
@@ -100,9 +100,12 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
     if paired_integer and (variant!='o3' or tune!=54 or expected_symbol not in
             ('adangel_roof_pair_alignment_o3','adangel_roof_pair_scale_shared_o3','adangel_roof_pair_fragment_reuse_o3')):
         raise ValueError('paired integer accounting is restricted to the approved O3 probe')
-    if fullk_integer and (paired_integer or variant != 'o3' or tune != 54
-                         or expected_symbol != 'adangel_roof_fullk_integer_o3'):
-        raise ValueError('full-K accounting is restricted to the approved O3 probe')
+    fullk_identity = (variant, tune, expected_symbol)
+    approved_fullk = {('o3', 54, 'adangel_roof_fullk_integer_o3'),
+                     ('o7', 59, 'adangel_roof_o78_fullk_candidate'),
+                     ('o8', 59, 'adangel_roof_o78_fullk_candidate')}
+    if fullk_integer and (paired_integer or fullk_identity not in approved_fullk):
+        raise ValueError('full-K accounting is restricted to approved all-integer probes')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
     if len(raw_rows)!=2:
         raise ValueError('expected units row and one kernel')
@@ -137,6 +140,10 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         if expected_symbol in ('adangel_roof_pair_alignment_o3','adangel_roof_pair_scale_shared_o3','adangel_roof_pair_fragment_reuse_o3') and variant=='o3':
             permitted=expected_symbol
         if expected_symbol == 'adangel_roof_fullk_integer_o3' and variant == 'o3':
+            permitted=expected_symbol
+        if expected_symbol in ('adangel_roof_o78_fullk_control','adangel_roof_o78_fullk_candidate') and variant in ('o7','o8'):
+            if fullk_integer != (expected_symbol == 'adangel_roof_o78_fullk_candidate'):
+                raise ValueError('O7/O8 full-K symbol/accounting disagreement')
             permitted=expected_symbol
         if expected_symbol!=permitted or tune!=(54 if variant=='o3' else 59):
             raise ValueError('unexpected isolated probe math/identity')
