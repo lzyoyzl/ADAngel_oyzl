@@ -53,3 +53,44 @@ def test_compile_inputs_exist_and_old_default_untouched():
     for path in (ROOT/'csrc').rglob('*'):
         if path.is_file() and path.suffix in ('.cpp','.cu','.cuh','.h') and path.name!='roof_o78_coefficient_probe.cu':
             assert 'adangel_roof_o78_coefficient_' not in path.read_text(errors='replace'),path
+
+
+def test_dependency_analysis_tracks_register_versions():
+    from analyze_o78_coefficient_codegen import dependencies
+    text = [
+        'LDS R16, [R1]', 'LDS.64 R28, [R2]',
+        'IMMA.16864.U4.S4 R56, R68.ROW, R100.COL, RZ',
+        'IMMA.16864.S4.S4 R84, R80.ROW, R100.COL, RZ',
+        'IMAD R30, R16, R28, RZ',
+        'LEA R56, R84, R56, 0x4',
+        'IMAD R11, R56, R30, R11',
+        'IMAD R30, R57, R16, RZ',
+        'IMAD R12, R30, R29, R12',
+    ]
+    result = dependencies([(i * 16, t.split()[0], t) for i, t in enumerate(text)])
+    assert len(result['independent_coefficient_multiplies']) == 1
+    assert len(result['partial_first_multiplies']) == 1
+    assert len(result['coefficient_based_accumulator_updates']) == 1
+
+
+def test_both_runtime_policies_keep_candidate_gpu_preparation(monkeypatch):
+    from types import SimpleNamespace
+    import benchmark_o78_coefficient_probe as probe
+    calls = []
+    def call(*args):
+        calls.append(args)
+        for i in range(len(args[-1])):
+            args[-1][i] = 1.0
+        return 0
+    fake_torch = SimpleNamespace(cuda=SimpleNamespace(current_stream=lambda: SimpleNamespace(cuda_stream=7)))
+    monkeypatch.setitem(sys.modules, 'torch', fake_torch)
+    driver = object.__new__(probe.Driver)
+    driver.handles = {0: 11, 1: 12, 2: 13}
+    driver.lib = SimpleNamespace(roof_o78_gpu_benchmark=call)
+    case = SimpleNamespace(variant='o7', oracle={'status_flat': np.array([0])}, a_source=1,
+        w_source=2, state_pointers=3, m=64, n=128, a_multiplier=4.0, w_multiplier=1.0, state={'y': 'output'})
+    for policy in (0, 1, 2):
+        _, timings = driver.run(case, policy, 'compute_only', 5, 2, 100)
+        assert timings == {'gemm': [1.0, 1.0], 'total': [1.0, 1.0]}
+    assert [c[0] for c in calls] == [11, 12, 13]
+    assert [c[2] for c in calls] == [1, 1, 1]
