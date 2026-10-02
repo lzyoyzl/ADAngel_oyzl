@@ -82,7 +82,16 @@ def validate_paired_integer_work(counts):
         raise ValueError('expected native two-route work and half as many I2F/FFMA in safe paired O3')
 
 
-def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False, expected_symbol=None, paired_integer=False):
+def validate_fullk_integer_work(counts):
+    outputs_per_warp = 4096**2 // 32
+    if (counts.get('IMMA') != 16777216
+            or counts.get('I2F') != outputs_per_warp
+            or counts.get('FFMA', 0) != 0
+            or counts.get('FMUL') != 2 * outputs_per_warp):
+        raise ValueError('expected guarded full-K O3: native INT4, final I2F and two final scale multiplications')
+
+
+def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False, pc_sampling=False, expected_symbol=None, paired_integer=False, fullk_integer=False):
     allowed={'o3':(6,13,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o7':(6,11,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31),'o8':(6,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31)}
     if variant not in allowed or tune not in allowed[variant] + (34,35,36,37,38,39,40,41,42,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62):
         raise ValueError('unsupported variant/tune profiling pair')
@@ -91,6 +100,9 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
     if paired_integer and (variant!='o3' or tune!=54 or expected_symbol not in
             ('adangel_roof_pair_alignment_o3','adangel_roof_pair_scale_shared_o3','adangel_roof_pair_fragment_reuse_o3')):
         raise ValueError('paired integer accounting is restricted to the approved O3 probe')
+    if fullk_integer and (paired_integer or variant != 'o3' or tune != 54
+                         or expected_symbol != 'adangel_roof_fullk_integer_o3'):
+        raise ValueError('full-K accounting is restricted to the approved O3 probe')
     raw_rows=list(csv.DictReader(io.StringIO(raw_payload)))
     if len(raw_rows)!=2:
         raise ValueError('expected units row and one kernel')
@@ -123,6 +135,8 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         if expected_symbol in ('adangel_roof_b_lookahead_o3','adangel_roof_b_lookahead_o78'):
             permitted='adangel_roof_b_lookahead_o3' if variant=='o3' else 'adangel_roof_b_lookahead_o78'
         if expected_symbol in ('adangel_roof_pair_alignment_o3','adangel_roof_pair_scale_shared_o3','adangel_roof_pair_fragment_reuse_o3') and variant=='o3':
+            permitted=expected_symbol
+        if expected_symbol == 'adangel_roof_fullk_integer_o3' and variant == 'o3':
             permitted=expected_symbol
         if expected_symbol!=permitted or tune!=(54 if variant=='o3' else 59):
             raise ValueError('unexpected isolated probe math/identity')
@@ -175,7 +189,9 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         return metric(key)*factors[units[key]]
     if sum(counts.values())!=metric('smsp__inst_executed.sum','inst'):
         raise ValueError('raw/source dynamic instruction mismatch')
-    if paired_integer:
+    if fullk_integer:
+        validate_fullk_integer_work(counts)
+    elif paired_integer:
         # Full 4096^3, all real-trace pairs pass the exponent guard. This gate
         # cannot be used on fallback-pattern or incomplete-shape captures.
         validate_paired_integer_work(counts)
