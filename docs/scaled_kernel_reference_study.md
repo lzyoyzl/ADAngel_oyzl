@@ -16,6 +16,7 @@ O3 的 A scale 不随组变化，可在最后恢复；W scale 仍逐 G128 保留
 |CUTLASS SM90 FP8 blockwise scaling|独立临时 accumulator，按 scale 粒度提升/缩放到最终 accumulator|最适合对照 fragment 坐标、scale 广播、临时量生命周期|
 |QServe / OmniServe W4A8 per-group|带整数 scale/zero 的 INT4 权重先恢复成 INT8；再 INT8 MMA，最终恢复外层 scale|可借鉴多级 scale 分工与布局；不能直接替换两路原生 INT4|
 |Marlin grouped W4A16|组 scale 乘到解包后的 FP16 权重 fragment，再做 FP16 MMA|可参考 scale 与权重一起供数、寄存器双缓冲；数学路径不同|
+|Triton block-scaled matmul 教程|MXFP4/MXFP8/NVFP4 的 scale 随 payload 输入原生 scaled MMA|用于比较 scale 预排布；不是 A100 软件逐 G128 缩放的替代实现|
 
 逐张量/逐行列、仅在 epilogue 乘一次 scale 的 GEMM，不足以解释我们逐 G128 的开销。
 硬件原生 block-scaled MMA 又是另一类，不能将其 scale 成本直接当作 A100 软件缩放成本。
@@ -60,6 +61,27 @@ O3 的 A scale 不随组变化，可在最后恢复；W scale 仍逐 G128 保留
 其权重/scale 布局、shared→register 双缓冲、缩短片段存活时间值得参考。
 它主要面向 W4A16、小/中 batch；不能将其带宽型加速比外推到4096³的双INT4计算。
 该链接为研究时的 master，不作为项目构建依赖；采用代码前还须固定提交并保留许可。
+
+### 5. Triton：原生带 scale 格式的布局对照
+
+[官方 block-scaled matmul 教程](https://triton-lang.org/main/getting-started/tutorials/10-block-scaled-matmul.html)
+提供 MXFP4、MXFP8、NVFP4 的完整 kernel。它将自然二维 scale 预排为消费时连续的块布局，
+在主循环中加载 payload/scale，再交给 `tl.dot_scaled`；NVIDIA 路径依赖原生 block-scaled Tensor Core。
+可借鉴“按消费者访问顺序存放 scale”，但不能把其硬件缩放成本或指令直接移植到 A100。
+教程的格式与 scale 粒度不等于本项目的 G128 实验变体，不能为了使用它而改变我们的量化。
+
+## 从参考源码到候选的筛选口径
+
+|问题|在本项目中怎样核对|不能据此宣称什么|
+|scale 是否随 K 变化|检查 `S_A[row,g]`、`S_W[col,g]` 的实际索引与消费点|不能把仅 epilogue scale 的 GEMM 当成同类性能上界|
+|加载与计算是否重叠|对照 cp.async、stage 最后一次读取、barrier 与寄存器后处理|Hopper 的 TMA/WGMMA 方案不能原样用于 A100|
+|临时量是否过多|检查 partial、A/B、scale 的共同存活范围及编译寄存器/spill|源码数组少了，不等于实际寄存器或延迟一定减少|
+|已有优化是否重复|与当前 group-major、异步 scale、N64 流式片段等实现逐项比较|已经具备的技术不算新一轮优化收益|
+
+例如这轮独立 interleaved-merge 编译候选仅尝试缩短 partial 生命周期：
+四个独立 N atom 各用一组整数 fragment 先算 high、乘16、再算 low；保留原始两路 INT4、
+各 G128 scale 和 FP32 顺序。这是针对本项目的推导，不声称来自上述项目的同款实现。
+需要编译资源审计后才决定是否投入 GPU 测量；当前不因数学等价就宣称性能提升。
 
 ## 对下一轮的实际指导
 

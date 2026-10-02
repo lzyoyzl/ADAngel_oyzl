@@ -1,7 +1,7 @@
-import importlib.util
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -42,6 +42,25 @@ class InterleavedMergeTests(unittest.TestCase):
                 # Conservative bounds cover every 128-element dot and prefix.
                 self.assertLessEqual(abs(hi*w)*128*16 + abs(lo*w)*128, 253952)
         self.assertLess(253952, 2**31)
+
+    def test_both_policies_use_m64_launcher(self):
+        import benchmark_roof_interleaved_merge_probe as probe
+        class FakeDriver:
+            def __init__(self, library, cubins, variant, smem):
+                self.path=cubins[0]
+                self.resources={0:dict(m128=0,cta_tile=[64,128,128])}
+                self.closed=False
+            def run(self, index, *args):
+                self_index=index
+                return self.path,self_index,args
+            def close(self): self.closed=True
+        with patch.object(probe,'M128Driver',FakeDriver):
+            driver=probe.Driver('library',{0:'control',1:'candidate'},'o7',34304)
+            self.assertEqual(driver.run(1,'inputs'),('candidate',0,('inputs',)))
+            self.assertEqual(driver.resources[1]['cta_tile'],[64,128,128])
+            self.assertEqual(driver.resources[1]['partial_registers_per_four_n_atoms'],16)
+            driver.close()
+            self.assertEqual(driver.drivers,{})
 
 
 if __name__ == "__main__": unittest.main()
