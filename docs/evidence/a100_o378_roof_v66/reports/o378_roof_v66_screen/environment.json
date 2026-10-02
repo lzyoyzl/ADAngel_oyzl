@@ -1,0 +1,37 @@
+{
+  "source_commit": "58cc8b35fe7a2a374fe446673112dfab20f58747",
+  "torch": "2.7.1+cu128",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "cuda": "12.8",
+  "binary_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "libraries": [
+    {
+      "file": "reports/o378_roof_v66_build/policy_0/libconversion.so",
+      "sha256": "07d1ae71085c759ba581c4023029faeef3c24047db7437010ea0f4ea7e7bcf4c"
+    },
+    {
+      "file": "reports/o378_roof_v66_build/policy_1/libconversion.so",
+      "sha256": "c1226b92bd5e5b00abef4ea6c606a20b416f07edf611fa932f18f4d32d66d10a"
+    }
+  ],
+  "audit_sha256": "99b3a094b1ebc6e7d37259faba54930863a0468c759e0006fe33a4e1dd85d482",
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "args": {
+    "directory": "reports/o378_roof_v66_build",
+    "output": "reports/o378_roof_v66_screen",
+    "samples": 4,
+    "rounds": 3,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100,
+    "data": "data/prepared/llama2_7b_prefill_o0_o4",
+    "raw_data": "data/raw/llama2_7b_prefill",
+    "trace_config": "configs/trace/llama2_7b_prefill.yaml"
+  },
+  "scope": "only_FP6_activation_conversion_not_total_or_GEMM_or_E2E",
+  "timing": "single_stream_native_cuda_events_inner_amortized; alternate sample/round; shared GPU; unlocked; no filtering",
+  "gemm_tune": 59,
+  "conversion_vector_elements": 16,
+  "production_changed": false
+}
