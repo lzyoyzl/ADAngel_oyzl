@@ -40,6 +40,31 @@ def generated_header(source):
     return source
 
 
+def checked_cubins(directory):
+    """Bind runtime to the audited generated source and exact cubin hashes."""
+    result=json.loads((directory/'codegen.json').read_text())
+    if not result['control_comparison']['passed'] or not result['o78_sentinel']['passed']:
+        raise ValueError('control/sentinel audit failed')
+    for name,digest in result['sources'].items():
+        if hashlib.sha256((ROOT/name).read_bytes()).hexdigest()!=digest:
+            raise ValueError('probe source drift')
+    if (directory/'o3_factor_async_generated.cuh').read_text()!=generated_header(
+            (ROOT/'csrc/sm80/o3_fullk_integer_probe.cuh').read_text()):
+        raise ValueError('generated header drift')
+    paths={i:(directory/f'factor_async_{i}.cubin').resolve() for i in (0,1)}
+    for i,path in paths.items():
+        variant=result['variants'][str(i)]
+        if hashlib.sha256(path.read_bytes()).hexdigest()!=variant['cubin_sha256']:
+            raise ValueError('cubin hash mismatch')
+        entries=variant['entries']
+        if set(entries)!={'adangel_roof_fullk_integer_o3','adangel_roof_fullk_integer_o78'}:
+            raise ValueError('missing kernel audit')
+        if not all(e['native_u4_s4'] and e['native_s4_s4'] and
+                   e['all_copies_bypass_l1'] and not e['int8_mma'] for e in entries.values()):
+            raise ValueError('same-entry ISA audit failed')
+    return paths
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output', type=Path, required=True)

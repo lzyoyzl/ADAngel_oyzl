@@ -78,6 +78,7 @@ def main():
     p.add_argument('--repeats',type=int,default=200)
     p.add_argument('--variants',nargs='+',choices=['o3'],default=['o3'])
     p.add_argument('--policies',nargs='+',type=int,choices=[0,1],default=[0,1])
+    p.add_argument('--factor-async',action='store_true',help='v59 int32 factor metadata; isolated candidate only')
     args=p.parse_args()
     if args.output.exists() or not args.output.resolve().is_relative_to(ROOT) or not 1<=args.samples<=24 or min(args.rounds,args.repeats)<1 or args.warmup<0 or len(set(args.variants))!=len(args.variants) or not 2<=len(args.policies)<=3 or args.policies[0]!=0 or len(set(args.policies))!=len(args.policies):
         p.error('fresh repository output, valid coverage and distinct variants required')
@@ -92,13 +93,17 @@ def main():
     raw_manifest,rh=inspect_raw_inputs(args.raw_data,manifest,args.trace_config)
     raw_entries={r['sample_id']:r for r in raw_manifest['samples']}
     codegen=json.loads((args.cubins/'codegen.json').read_text())
-    assert codegen['host_stream_mapping_passed']
-    assert codegen['all_probe_copies_bypass_l1'] and codegen['native_int4_entries']
-    audit=json.loads((args.cubins/'audit.json').read_text())
-    assert audit['passed'] and all(audit['control_encoded_sass_matches_best'].values())
-    for source in audit['sources']:
-        assert sha256_file(Path(source['file']))==source['sha256']
-    cubins={s:(args.cubins/f'fullk_integer_{s}.cubin').resolve() for s in args.policies}
+    if args.factor_async:
+        from probe_roof_factor_async_codegen import checked_cubins
+        cubins=checked_cubins(args.cubins)
+    else:
+        assert codegen['host_stream_mapping_passed']
+        assert codegen['all_probe_copies_bypass_l1'] and codegen['native_int4_entries']
+        audit=json.loads((args.cubins/'audit.json').read_text())
+        assert audit['passed'] and all(audit['control_encoded_sass_matches_best'].values())
+        for source in audit['sources']:
+            assert sha256_file(Path(source['file']))==source['sha256']
+        cubins={s:(args.cubins/f'fullk_integer_{s}.cubin').resolve() for s in args.policies}
     for s,path in cubins.items(): assert sha256_file(path)==codegen['variants'][str(s)]['cubin_sha256']
     args.output.mkdir(parents=True)
     def save(name,value): (args.output/name).write_text(json.dumps(value,indent=2,allow_nan=False)+'\n')
@@ -144,7 +149,7 @@ def main():
             best=native._benchmark_roof_candidate(variant,tune,*values,0,1)
             payload=verify_grouped_payload(best,tune,values[0],values[2],values[3])
             scale=best['converted_weight_scale'] if variant=='o3' else values[3]
-            driver=Driver(library,cubins,variant,best['kernel']['shared_memory_bytes'])
+            driver=Driver(library,cubins,variant,best['kernel']['shared_memory_bytes'],factor_metadata=args.factor_async)
             try:
                 for r in range(args.rounds):
                     append('gpu_snapshots.jsonl',dict(sample_id=x.sample_id,variant=variant,round=r,time=time.time(),
@@ -153,6 +158,7 @@ def main():
                     for size in order:
                         y,times=driver.run(size,best,values[1],scale,args.warmup,args.repeats)
                         row=dict(sample_id=x.sample_id,variant=variant,round=r,fullk_integer=size,execution_order=order,
+                            factor_async=args.factor_async,
                             raw_ms=times,summary=stats(times),
                             finite_fp32=bool(torch.isfinite(y).all()),
                             output_close_current_best=bool(torch.allclose(y,best['output'],rtol=1e-3,atol=1e-3)),
@@ -168,6 +174,7 @@ def main():
             finally: driver.close()
     assert len(rows)==args.samples*len(args.variants)*args.rounds*len(args.policies)
     save('summary.json',dict(correctness_passed=True,no_filtering=True,production_default_changed=False,
+        factor_async=args.factor_async,
         scope='internal_cubin_compute_only_screen_guard_outside_interval_not_end_to_end',policies=args.policies,records=summary(rows,args.policies)))
 
 

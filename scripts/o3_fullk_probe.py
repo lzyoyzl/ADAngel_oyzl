@@ -27,8 +27,9 @@ def guard_columns(columns):
 
 
 class Driver:
-    def __init__(self, library, cubins, variant, smem):
+    def __init__(self, library, cubins, variant, smem, *, factor_metadata=False):
         assert variant == 'o3'
+        self.factor_metadata = factor_metadata
         self.lib = ct.CDLL(str(library))
         self.lib.roof_probe_error.restype = ct.c_char_p
         self.lib.roof_probe_open.argtypes = [ct.c_char_p,ct.c_char_p,ct.c_uint,ct.POINTER(ct.c_void_p)]
@@ -79,11 +80,20 @@ class Driver:
                 raise ValueError('isolated probe requires normal UE8M0 codes 1..254')
             meta=None
             if guard['safe']:
-                anchor=torch.tensor(anchors,dtype=torch.uint8,device=a.device).reshape(1,n)
-                meta=torch.cat((weight_scale,anchor),dim=0)
+                if self.factor_metadata:
+                    # Guard above proves all factors/products/prefixes fit INT32.
+                    # Prepare once per immutable W scale; never inside GEMM timing.
+                    rows=[[1 << (columns[col][group]-anchors[col]) for col in range(n)]
+                          for group in range(32)] + [anchors]
+                    meta=torch.tensor(rows,dtype=torch.int32,device=a.device)
+                else:
+                    anchor=torch.tensor(anchors,dtype=torch.uint8,device=a.device).reshape(1,n)
+                    meta=torch.cat((weight_scale,anchor),dim=0)
             # Metadata copy completion is deliberately included in preparation wall time.
             torch.cuda.current_stream().synchronize()
             guard.update(preparation_wall_ms=(time.perf_counter()-start)*1000,
+                metadata_layout='int32_factors_and_anchor_codes' if self.factor_metadata else 'uint8_scales_and_anchor_codes',
+                metadata_bytes=meta.numel()*meta.element_size() if meta is not None else 0,
                 scope='host guard and metadata preparation excluded from compute-only; not E2E')
             self.guard_cache[key]=(weight_scale,meta,guard) # Strong ref prevents allocator address reuse.
         _,meta,self.guard_metadata=self.guard_cache[key]

@@ -14,6 +14,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--cubins',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--factor-async',action='store_true')
     args=p.parse_args()
     if args.output.exists() or not args.output.resolve().is_relative_to(ROOT):
         p.error('fresh repository output required')
@@ -25,11 +26,15 @@ def main():
     torch.set_num_threads(4);torch.cuda.init()
     assert torch.cuda.get_device_capability()==(8,0)
     codegen=json.loads((args.cubins/'codegen.json').read_text())
-    audit=json.loads((args.cubins/'audit.json').read_text())
-    assert audit['passed'] and codegen['native_int4_entries'] and codegen['host_stream_mapping_passed']
-    for source in audit['sources']:
-        assert sha256_file(Path(source['file']))==source['sha256']
-    cubins={i:(args.cubins/f'fullk_integer_{i}.cubin').resolve() for i in (0,1)}
+    if args.factor_async:
+        from probe_roof_factor_async_codegen import checked_cubins
+        cubins=checked_cubins(args.cubins)
+    else:
+        audit=json.loads((args.cubins/'audit.json').read_text())
+        assert audit['passed'] and codegen['native_int4_entries'] and codegen['host_stream_mapping_passed']
+        for source in audit['sources']:
+            assert sha256_file(Path(source['file']))==source['sha256']
+        cubins={i:(args.cubins/f'fullk_integer_{i}.cubin').resolve() for i in (0,1)}
     for i,path in cubins.items(): assert sha256_file(path)==codegen['variants'][str(i)]['cubin_sha256']
     args.output.mkdir(parents=True)
     library=(args.output/'libroof_probe_driver.so').resolve()
@@ -61,12 +66,19 @@ def main():
                 best=native._benchmark_roof_candidate('o3',54,*values,0,1)
                 verify_grouped_payload(best,54,values[0],values[2],values[3])
                 ws=best['converted_weight_scale']
-                driver=Driver(library,cubins,'o3',50688)
+                driver=Driver(library,cubins,'o3',50688,factor_metadata=args.factor_async)
                 try:
                     for policy in (0,1):
                         y,_=driver.run(policy,best,asc,ws,0,1)
                         expected=policy if k==4096 and pattern!='unsafe' else 0
                         assert driver.last_policy==expected
+                        if args.factor_async and driver.guard_metadata['safe']:
+                            meta=next(iter(driver.guard_cache.values()))[1]
+                            anchors=ws.to(torch.int32).amin(dim=0)
+                            assert meta.dtype==torch.int32 and tuple(meta.shape)==(33,n)
+                            assert torch.equal(meta[-1],anchors)
+                            assert torch.equal(meta[:-1],torch.bitwise_left_shift(
+                                torch.ones_like(ws,dtype=torch.int32),ws.to(torch.int32)-anchors))
                         torch.testing.assert_close(y.double(),semantic,rtol=1e-3,atol=1e-3)
                         if expected==0:
                             assert torch.equal(y.view(torch.int32),best['output'].view(torch.int32))
@@ -88,9 +100,10 @@ def main():
                     else: raise AssertionError('invalid mutated scale must fail before launch')
                 finally: driver.close()
             stream.synchronize()
-    result=dict(passed=True,count=len(checks),checks=checks,cache_checks=cache_checks,
+    result=dict(passed=True,count=len(checks),checks=checks,cache_checks=cache_checks,factor_async=args.factor_async,
         git_commit=command('git','rev-parse','HEAD'),extension_sha256=sha256_file(Path(native.__file__)),
         cubins={str(i):sha256_file(path) for i,path in cubins.items()},
+        metadata_values_checked=args.factor_async,
         scope='isolated compute-core correctness; no performance or E2E claim')
     (args.output/'validation.json').write_text(json.dumps(result,indent=2)+'\n')
     print('passed checks:',len(checks),flush=True)
