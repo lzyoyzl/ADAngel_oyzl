@@ -54,7 +54,9 @@ def audit_payloads(sasses,resources):
                 instructions=len(all_words[policy][symbol])//2,
                 static_BRA=len(re.findall(r'\bBRA(?:\.|\s)',block)),
                 local_memory_sass=bool(re.search(r'\b(?:LDL|STL)(?:\.|\s)',block))))
-    passed=(len(targets)==2 and len(controls)==18 and all(same.values()) and len(rows)==4
+    # Six other vector entries + twelve mixed scalar entries + two O3
+    # conversion entries from the existing fused TU are all preserved.
+    passed=(len(targets)==2 and len(controls)==20 and all(same.values()) and len(rows)==4
         and set(all_words[0])==set(all_words[1]) and all(set(r['resources'])=={'REG','LOCAL','STACK'}
         and r['resources']['LOCAL']==0 and r['resources']['STACK']==0 and not r['local_memory_sass'] for r in rows))
     return dict(passed=passed,preserved_entries=same,targets=rows,
@@ -63,7 +65,22 @@ def audit_payloads(sasses,resources):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--reaudit',action='store_true',help='recheck existing SASS without rebuilding or overwriting initial audit')
     args=p.parse_args();out=args.output.resolve()
+    if args.reaudit:
+        if not out.is_relative_to(ROOT) or (out/'audit_rechecked.json').exists():p.error('repository build and fresh reaudit required')
+        original=(out/'audit.json').read_bytes();receipt=json.loads(original)
+        for build in receipt['builds']:
+            if hashlib.sha256(Path(build['library']).read_bytes()).hexdigest()!=build['sha256']:
+                raise ValueError('binary changed before reaudit')
+        receipt.update(audit_payloads([(out/f'policy_{i}/conversion.sass').read_text() for i in (0,1)],
+                                     [(out/f'policy_{i}/conversion.resources.txt').read_text() for i in (0,1)]))
+        receipt.update(original_audit_sha256=hashlib.sha256(original).hexdigest(),
+            reaudit_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip())
+        (out/'audit_rechecked.json').write_text(json.dumps(receipt,indent=2)+'\n')
+        print(json.dumps(dict(passed=receipt['passed'],preserved_entries=len(receipt['preserved_entries']),targets=receipt['targets']),indent=2))
+        if not receipt['passed']:raise SystemExit(1)
+        return
     if out.exists() or not out.is_relative_to(ROOT):p.error('fresh repository output required')
     cuda=Path('/usr/local/cuda-12.8/bin')
     version=subprocess.check_output([str(cuda/'nvcc'),'--version'],text=True)
