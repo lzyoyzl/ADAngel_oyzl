@@ -1,0 +1,165 @@
+[
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--version"
+    ],
+    "output": "ncu_version.txt"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--set",
+      "full",
+      "--cache-control",
+      "all",
+      "--clock-control",
+      "none",
+      "--kernel-name-base",
+      "function",
+      "--kernel-name",
+      "adangel_roof_o3_eight_chain_candidate",
+      "--launch-skip",
+      "50",
+      "--launch-count",
+      "1",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o3",
+      "/home/zlouyang/miniconda3/envs/adangel-a100/bin/python",
+      "scripts/profile_eight_chain_kernel.py",
+      "--variant",
+      "o3",
+      "--output",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o3"
+    ],
+    "output": "o3.log"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o3.ncu-rep",
+      "--csv",
+      "--page",
+      "raw"
+    ],
+    "output": "o3_raw.csv"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o3.ncu-rep",
+      "--csv",
+      "--page",
+      "source",
+      "--print-source",
+      "sass"
+    ],
+    "output": "o3_source_sass.csv"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--set",
+      "full",
+      "--cache-control",
+      "all",
+      "--clock-control",
+      "none",
+      "--kernel-name-base",
+      "function",
+      "--kernel-name",
+      "adangel_roof_o78_eight_chain_candidate",
+      "--launch-skip",
+      "50",
+      "--launch-count",
+      "1",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o7",
+      "/home/zlouyang/miniconda3/envs/adangel-a100/bin/python",
+      "scripts/profile_eight_chain_kernel.py",
+      "--variant",
+      "o7",
+      "--output",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o7"
+    ],
+    "output": "o7.log"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o7.ncu-rep",
+      "--csv",
+      "--page",
+      "raw"
+    ],
+    "output": "o7_raw.csv"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o7.ncu-rep",
+      "--csv",
+      "--page",
+      "source",
+      "--print-source",
+      "sass"
+    ],
+    "output": "o7_source_sass.csv"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--set",
+      "full",
+      "--cache-control",
+      "all",
+      "--clock-control",
+      "none",
+      "--kernel-name-base",
+      "function",
+      "--kernel-name",
+      "adangel_roof_o78_eight_chain_candidate",
+      "--launch-skip",
+      "50",
+      "--launch-count",
+      "1",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o8",
+      "/home/zlouyang/miniconda3/envs/adangel-a100/bin/python",
+      "scripts/profile_eight_chain_kernel.py",
+      "--variant",
+      "o8",
+      "--output",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o8"
+    ],
+    "output": "o8.log"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o8.ncu-rep",
+      "--csv",
+      "--page",
+      "raw"
+    ],
+    "output": "o8_raw.csv"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v80_ncu/o8.ncu-rep",
+      "--csv",
+      "--page",
+      "source",
+      "--print-source",
+      "sass"
+    ],
+    "output": "o8_source_sass.csv"
+  }
+]

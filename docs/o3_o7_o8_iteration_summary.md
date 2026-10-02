@@ -4,6 +4,31 @@
 默认未切换；共享、未锁频GPU，保留CV失败记录。以下“提升”指配对吞吐提升，
 正数更快、负数更慢；延迟降低使用 `1−1/speedup`，不要与吞吐提升混称。
 
+## v81：修复metadata搬运热点，但无确认加速
+
+由v80定位的A-factor半warp搬运改为完整warp：A为32线程×8B、W为另一warp×16B。
+相同768B/CTA/G128、数学、v73准备、CTA和流水线；原生两路INT4及同entry异步搬运审计通过。
+四样本三轮，O7控制→候选 **0.446976→0.444928ms，配对+0.57%**；
+O8 **0.439552→0.443904ms，配对−0.57%**，两者区间均未确认正收益。
+48条输出对v67/v78逐位一致，MSE不变；64+12项有限GPU验证及mem/sync/race通过。
+CV≥3%的控制/候选各为12/11条（每后端各12条），原样保留。
+没有新conversion/Cold/steady结果，不扩大24样本、不切默认，最佳仍O3 v79、O7/O8 v78+v73。
+
+单样本O7 NCU：source shared excessive **6,422,528→0**，source shared wavefronts
+38,141,952→30,801,920，但动态指令105,521,152→106,823,680，必要MMA和168regs/3CTA不变。
+NCU Duration0.392800→0.393408ms不是配对Event加速比。减少一个派生访存指标未缩短关键路径，
+停止此候选，不再围绕metadata copy/cache位置扫描。
+[v81原始结果、MSE、NCU与安全证据](evidence/a100_o378_roof_v81/README.md)
+
+## v80：当前最佳kernel的NCU和静态MMA链分析
+
+O3 v79、O7/O8 v78各一个真实4096³样本，50次预热后`--set full`，精确symbol及cubin指纹核对。
+每G12864条MMA形成16条逻辑链，最多8条已开始未结束；此静态次序不是硬件在途数。
+Eligible warp约0.58/0.75/0.75，寄存器168、驻留3CTA；必要MMA容量下界仍约0.220347ms。
+O7/O8所有6,422,528个source shared excessive wavefronts来自两处A-factor LDGSTS，
+不是LDSM或普通LDS；据此只测试v81一个候选。本轮无新Event性能或默认更改。
+[v80原始NCU及依赖链证据](evidence/a100_o378_roof_v80_ncu/README.md)
+
 ## v79：迁移八链到O3三阶段路径，小幅正收益
 
 保持v61全K整数guard/factor、三阶段cp.async、转换2和CTA64×128×128；仅改partial调度。

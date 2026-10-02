@@ -20,6 +20,11 @@
 带 scale 的开源实现主要帮助我们辨认哪些开销可以前移/复用、哪些量化语义不能省略；
 是否有效仍以本项目的指令审计、MSE、安全性与配对计时为准。
 
+后续NCU驱动的v81再次说明这一点：完整warp搬运A/W因子消除了目标excessive wavefronts，
+但四样本O7/O8配对吞吐仅+0.57%/−0.57%，两者区间均未确认收益，已停止。
+它是针对本项目实测热点的修改，不是新开源kernel移植，也不能用计数器改善替代延迟证据。
+[v81结果](evidence/a100_o378_roof_v81/README.md)
+
 [v54 转换证据](evidence/a100_o378_roof_v54/README.md)、
 [v64 分段 copy 负结果](evidence/a100_o378_roof_v64/README.md)、
 [v67 缓存 GEMM 证据](evidence/a100_o378_roof_v67/README.md)、
