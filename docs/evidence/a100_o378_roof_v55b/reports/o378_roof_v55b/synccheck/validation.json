@@ -1,0 +1,1435 @@
+{
+  "passed": true,
+  "count": 36,
+  "checks": [
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "random",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 2.3678330762777478e-07,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.7840946093201637,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "random",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 2.3678330762777478e-07,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.7840946093201637,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "zero",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.1514527723193169,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "zero",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.1514527723193169,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "extrema",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 1.5093362890183926e-05,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.1325469240546227,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "extrema",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 1.5093362890183926e-05,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.1325469240546227,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "zero_scale",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.1356333270668983,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "zero_scale",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.1356333270668983,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "wide_safe",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0002225637435913086,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 540934144,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 12,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.5796525403857231,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "wide_safe",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0002225637435913086,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 540934144,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 12,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.5796525403857231,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "unsafe",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0018531084060668945,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 4299030528,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 15,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.1383676901459694,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "pattern": "unsafe",
+      "policy": 1,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0018531084060668945,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 4299030528,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 15,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.1383676901459694,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "random",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 3.742761691682972e-07,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.9579604268074036,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "random",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 3.742761691682972e-07,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.9579604268074036,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "zero",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.943083480000496,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "zero",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.943083480000496,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "extrema",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 1.52587890625e-05,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.9000424072146416,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "extrema",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 1.52587890625e-05,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.9000424072146416,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "zero_scale",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.905381679534912,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "zero_scale",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 27000832,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 4,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.905381679534912,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "wide_safe",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0002415180206298828,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 540934144,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 12,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.8520429730415344,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "wide_safe",
+      "policy": 1,
+      "executed_policy": 1,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0002415180206298828,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 40,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 32,
+        "accumulator_dtype": "int32"
+      },
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 540934144,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 12,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.8520429730415344,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "unsafe",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0019506216049194336,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 4299030528,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 15,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.6799801960587502,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "pattern": "unsafe",
+      "policy": 1,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0019506216049194336,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 4299030528,
+        "columns": 256,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 15,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 1.6799801960587502,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 1.1862721294164658e-07,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 1179648,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 3,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.24795345962047577,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "random",
+      "policy": 1,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 1.1862721294164658e-07,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 1179648,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 3,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.24795345962047577,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 1179648,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 3,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.2465108409523964,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero",
+      "policy": 1,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 1179648,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 3,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.2465108409523964,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "extrema",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 1.6689300537109375e-06,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 1179648,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 3,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.24760328233242035,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "extrema",
+      "policy": 1,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 1.6689300537109375e-06,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 1179648,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 3,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.24760328233242035,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_scale",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 1179648,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 3,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.24801306426525116,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "zero_scale",
+      "policy": 1,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 1179648,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 3,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.24801306426525116,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "wide_safe",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.00023949146270751953,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 537001984,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 12,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.256149098277092,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "wide_safe",
+      "policy": 1,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.00023949146270751953,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 537001984,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 12,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.256149098277092,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "unsafe",
+      "policy": 0,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0018913745880126953,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 4295098368,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 15,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.38159359246492386,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    },
+    {
+      "shape": [
+        64,
+        128,
+        256
+      ],
+      "pattern": "unsafe",
+      "policy": 1,
+      "executed_policy": 0,
+      "finite_fp32": true,
+      "max_abs_error_fp64": 0.0018913745880126953,
+      "max_abs_difference_best": 0.0,
+      "resources": {
+        "registers_per_thread": 168,
+        "local_size_bytes": 16,
+        "threads": 128,
+        "active_blocks_per_sm": 3,
+        "shared_memory_bytes": 50688,
+        "cta_tile": [
+          64,
+          128,
+          128
+        ],
+        "pipeline_stages": 3,
+        "group_fusion": 1,
+        "accumulator_dtype": "float32"
+      },
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 4295098368,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": false,
+        "max_exponent_difference": 15,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix",
+        "preparation_wall_ms": 0.38159359246492386,
+        "scope": "host guard and metadata preparation excluded from compute-only; not E2E"
+      }
+    }
+  ],
+  "cache_checks": [
+    {
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "mutation_forces_fallback": true
+    },
+    {
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "mutation_forces_fallback": true
+    }
+  ],
+  "git_commit": "504a2251e05155ed06c3ffaab6804e5429357786",
+  "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "cubins": {
+    "0": "7e0baa26362aab2455d36728d8c09441f11ece2ff0d8d5435f0ee9e53c09225f",
+    "1": "44e9be433f1cd03d56ef4c29a22424a0865ee19f82ecd38e0387951b906b9761"
+  },
+  "scope": "isolated compute-core correctness; no performance or E2E claim"
+}
