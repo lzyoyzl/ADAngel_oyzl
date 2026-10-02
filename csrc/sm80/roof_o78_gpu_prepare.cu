@@ -47,7 +47,10 @@ template<int Kind> __device__ void row(
     const int factor=(!bad && !overflow && mant)?int(uint64_t(mant)<<delta):0;
     const unsigned bs=__float_as_uint(multiplier),be=(bs>>23)&255;
     const int newexp=int(be)+amin;
-    const bool basebad=(bs>>31) || be==0 || be==255 || newexp<=0 || newexp>=255;
+    // float(INT32_MAX) may round to 2^31: activation base <2^97 protects
+    // the first epilogue multiplication even for that extremal integer.
+    const bool basebad=(bs>>31) || be==0 || be==255 || newexp<=0 || newexp>=255 ||
+                       (activation && newexp>223);
     unsigned v=bad?2u:(overflow || basebad?1u:0u);v=warp_max(v);
     if(lane==0) {
       verdict=int(v);status[r]=v;
@@ -102,25 +105,33 @@ ROW_ENTRY(adangel_o78_prepare_e6m2,2)
 
 extern "C" __global__ __launch_bounds__(128) void adangel_o78_prepare_cta_guard(
     const uint64_t* an,const uint64_t* wn,const int32_t* am,const int32_t* wm,
-    const uint32_t* ast,const uint32_t* wst,uint32_t* result,int m,int n) {
+    const uint32_t* ast,const uint32_t* wst,const float* ab,const float* wb,
+    uint32_t* result,int m,int n) {
   __shared__ uint64_t as[4],ws[4];
-  __shared__ unsigned af[4],wf[4],st[4];
+  __shared__ unsigned af[4],wf[4],st[4],ae[4],we[4];
   const int t=threadIdx.x,lane=t&31,warp=t>>5;
   const int r=blockIdx.y*64+t,c=blockIdx.x*128+t;
   uint64_t a=t<64?an[r]:0,w=wn[c];
   unsigned ax=t<64?unsigned(am[r]):0,wx=unsigned(wm[c]);
   unsigned s=max(t<64?ast[r]:0,wst[c]);
+  unsigned axexp=t<64?((__float_as_uint(ab[r])>>23)&255):0;
+  unsigned wxexp=(__float_as_uint(wb[c])>>23)&255;
   for(int d=16;d;d>>=1) {
     a=max(a,__shfl_down_sync(0xffffffff,a,d));w=max(w,__shfl_down_sync(0xffffffff,w,d));
     ax=max(ax,__shfl_down_sync(0xffffffff,ax,d));wx=max(wx,__shfl_down_sync(0xffffffff,wx,d));
     s=max(s,__shfl_down_sync(0xffffffff,s,d));
+    axexp=max(axexp,__shfl_down_sync(0xffffffff,axexp,d));
+    wxexp=max(wxexp,__shfl_down_sync(0xffffffff,wxexp,d));
   }
-  if(lane==0) {as[warp]=a;ws[warp]=w;af[warp]=ax;wf[warp]=wx;st[warp]=s;}
+  if(lane==0) {as[warp]=a;ws[warp]=w;af[warp]=ax;wf[warp]=wx;st[warp]=s;ae[warp]=axexp;we[warp]=wxexp;}
   __syncthreads();
   if(t==0) {
-    a=w=0;ax=wx=s=0;
-    for(int i=0;i<4;++i) {a=max(a,as[i]);w=max(w,ws[i]);ax=max(ax,af[i]);wx=max(wx,wf[i]);s=max(s,st[i]);}
-    if(s==0 && (uint64_t(ax)*wx>INT32_MAX || (w && a>o78_prepare::Bound/w))) s=1;
+    a=w=0;ax=wx=s=axexp=wxexp=0;
+    for(int i=0;i<4;++i) {a=max(a,as[i]);w=max(w,ws[i]);ax=max(ax,af[i]);wx=max(wx,wf[i]);s=max(s,st[i]);axexp=max(axexp,ae[i]);wxexp=max(wxexp,we[i]);}
+    // Positive bases have significands <2; exponent sum<=94 ensures that
+    // multiplying either signed INT32 extremum by both bases stays finite.
+    if(s==0 && (uint64_t(ax)*wx>INT32_MAX || (w && a>o78_prepare::Bound/w) ||
+                int(axexp)+int(wxexp)-254>94)) s=1;
     result[blockIdx.y*(n/128)+blockIdx.x]=s;
   }
 }
@@ -178,6 +189,7 @@ struct Online {
       reinterpret_cast<const uint64_t*>(v[8]),reinterpret_cast<const uint64_t*>(v[9]),
       reinterpret_cast<const int32_t*>(v[10]),reinterpret_cast<const int32_t*>(v[11]),
       reinterpret_cast<const uint32_t*>(v[12]),reinterpret_cast<const uint32_t*>(v[13]),
+      reinterpret_cast<const float*>(v[6]),reinterpret_cast<const float*>(v[7]),
       reinterpret_cast<uint32_t*>(v[14]),m,n);
   }
 };
@@ -242,7 +254,8 @@ extern "C" int roof_o78_gpu_benchmark(void* handle,int variant,int candidate,int
       if(mode==0) times[3*repeats+i]=times[i]+times[repeats+i];
       else {
         check(cuEventElapsedTime(times+2*repeats+i,main_events.handles[3*i+1],main_events.handles[3*i+2]));
-        check(cuEventElapsedTime(times+3*repeats+i,main_events.handles[3*i],main_events.handles[3*i+2]));
+        if(mode==1) times[3*repeats+i]=times[2*repeats+i];
+        else check(cuEventElapsedTime(times+3*repeats+i,main_events.handles[3*i],main_events.handles[3*i+2]));
       }
     }
     return 0;
