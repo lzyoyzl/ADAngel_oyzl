@@ -124,14 +124,16 @@ def validate(driver):
     for variant in ('o7','o8'):
         ak,wk = ('ue8m0','e4m3') if variant=='o7' else ('e4m3','e6m2')
         for pattern in ('random','zero','extrema','zero_scale'):
-            m,n,k = 64,128,4096; torch.manual_seed(20261002)
+            m,n = (128,256) if pattern in ('extrema','zero_scale') else (64,128)
+            k=4096; torch.manual_seed(20261002)
             al,wl = (112,6) if variant=='o7' else (30,7)
             aq = torch.randint(-al,al+1,(m,k),device='cuda',dtype=torch.int8)
             wq = torch.randint(-wl,wl+1,(n,k),device='cuda',dtype=torch.int8)
             if pattern=='zero': aq.zero_();wq.zero_()
             if pattern=='extrema': aq[:,::2]=-al;aq[:,1::2]=al;wq[:,::2]=-wl;wq[:,1::2]=wl
-            ac = (np.arange(m*32).reshape(m,32)%4+(121 if variant=='o7' else 48)).astype(np.uint8)
-            wc = (np.arange(n*32).reshape(n,32)%4+(48 if variant=='o7' else 192)).astype(np.uint8)
+            group=np.arange(32)[None,:]
+            ac = ((np.arange(m)[:,None]+3*group)%4+(121 if variant=='o7' else 48)).astype(np.uint8)
+            wc = ((3*np.arange(n)[:,None]+group)%4+(48 if variant=='o7' else 192)).astype(np.uint8)
             if pattern=='zero_scale':
                 (wc if variant=='o7' else ac)[:,::2]=0
             am,wm = (4,.75) if variant=='o7' else (.75/4,1)
