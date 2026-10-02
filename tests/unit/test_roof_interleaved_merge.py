@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import sys
 import unittest
 from unittest.mock import patch
@@ -61,6 +62,74 @@ class InterleavedMergeTests(unittest.TestCase):
             self.assertEqual(driver.resources[1]['partial_registers_per_four_n_atoms'],16)
             driver.close()
             self.assertEqual(driver.drivers,{})
+
+
+class InterleavedMergeEvidenceTests(unittest.TestCase):
+    root=ROOT/'docs/evidence/a100_o378_roof_v63'
+
+    def test_same_control_and_native_isa(self):
+        from compare_a100_codegen import compare
+        from probe_roof_fullk_integer_codegen import static_entries
+        directory=self.root/'reports/o378_roof_v63'
+        result=json.loads((directory/'codegen.json').read_text())
+        previous=ROOT/'docs/evidence/a100_o378_roof_v57/reports/o378_roof_v57/m128_64.sass'
+        self.assertTrue(compare(previous.read_text(),(directory/'interleaved_merge_0.sass').read_text(),
+                                r'^adangel_roof_m128_(?:o3|o78)$')['passed'])
+        for policy in (0,1):
+            text=(directory/f'interleaved_merge_{policy}.sass').read_text()
+            entries=static_entries(text,r'^adangel_roof_m128_(?:o3|o78)$',
+                                   {'adangel_roof_m128_o3','adangel_roof_m128_o78'})
+            self.assertEqual(entries,result['variants'][str(policy)]['entries'])
+            for info in entries.values():
+                self.assertTrue(info['native_u4_s4'] and info['native_s4_s4'] and info['all_copies_bypass_l1'])
+                self.assertFalse(info['int8_mma'])
+                self.assertEqual(info['opcode_counts']['IMMA'],64)
+                self.assertEqual(info['opcode_counts']['LDSM'],16)
+            for family,name in HEADERS.items():
+                source=(ROOT/'csrc/sm80'/name).read_text()
+                emitted=(directory/f'policy_{policy}/{family}_m128_generated.cuh').read_text()
+                self.assertEqual(emitted,generated_header(source,policy))
+
+    def test_raw_pairs_mse_and_cv(self):
+        from benchmark_roof_interleaved_merge_probe import summary
+        from benchmark_a100_o1 import stats
+        directory=self.root/'runs/o378_roof_v63_screen'
+        rows=[json.loads(s) for s in (directory/'results.jsonl').read_text().splitlines()]
+        saved=json.loads((directory/'summary.json').read_text())
+        self.assertEqual(len(rows),72)
+        self.assertEqual(summary(rows),saved['records'])
+        self.assertFalse(saved['production_default_changed'])
+        self.assertEqual({r['sample_id'] for r in rows},{f'layer_00_{p}_proj' for p in ('q','k','v','o')})
+        for row in rows:
+            self.assertEqual(len(row['raw_ms']),200)
+            for key,value in stats(row['raw_ms']).items():
+                # Python/NumPy builds differ at ~1e-16 in the CPU CV reduction.
+                self.assertAlmostEqual(value,row['summary'][key],places=12)
+            self.assertTrue(row['bitwise_equal_current_best'])
+            self.assertEqual(row['mse_vs_current_best'],0)
+            self.assertEqual(row['probe_resources']['cta_tile'],[64,128,128])
+            self.assertEqual(row['probe_resources']['registers_per_thread'],168)
+            self.assertEqual(row['probe_resources']['active_blocks_per_sm'],3)
+        for bad in (rows[:-1],rows+[rows[0]]):
+            with self.assertRaises(ValueError): summary(bad)
+
+    def test_scoped_safety_and_binary_provenance(self):
+        directory=self.root/'reports/o378_roof_v63'
+        codegen=json.loads((directory/'codegen.json').read_text())
+        for name in ('preflight','memcheck','synccheck','racecheck','screen'):
+            run=self.root/f'runs/o378_roof_v63_{name}'
+            check=json.loads((run/'validation.json').read_text())
+            self.assertTrue(check['passed']);self.assertEqual(len(check['checks']),96)
+            for row in check['checks']:
+                self.assertTrue(row['bitwise_equal_best'] and row['finite_fp32'])
+            env=json.loads((run/'environment.json').read_text())
+            self.assertEqual(env['extension_sha256'],'94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462')
+            for policy in (0,1):
+                self.assertEqual(env['cubins'][str(policy)],codegen['variants'][str(policy)]['cubin_sha256'])
+            if name in ('memcheck','synccheck','racecheck'):
+                text=(directory/f'{name}.log').read_text()
+                self.assertIn('0 errors',text)
+                if name=='racecheck':self.assertIn('0 warnings',text)
 
 
 if __name__ == "__main__": unittest.main()

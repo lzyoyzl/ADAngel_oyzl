@@ -1,0 +1,46 @@
+{
+  "git_commit": "8dea07cbcaf28ae8ea4ed7741bdf9f56acb062ac",
+  "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "cubins": {
+    "0": "bbeb7e8ea5a0d2941c8b00c5f94bb15958e19c83e14076708433113b8d7d0432",
+    "1": "b26095125a0846a277d5d75b2ee6f8119e6923aede9406e7c032fb276edfbb38"
+  },
+  "driver_sha256": "0ec8ae8965574626070dd2e7e4f378f98945bf9a61034bd498e64245cc6bfde3",
+  "driver_build_command": [
+    "g++",
+    "-O3",
+    "-std=c++17",
+    "-shared",
+    "-fPIC",
+    "-I/usr/local/cuda-12.8/include",
+    "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_m128_driver.cpp",
+    "-lcuda",
+    "-o",
+    "/home/zlouyang/ADAngel_oyzl/runs/o378_roof_v63_screen/libroof_probe_driver.so"
+  ],
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "device": "NVIDIA A100-PCIE-40GB",
+  "args": {
+    "cubins": "reports/o378_roof_v63",
+    "output": "runs/o378_roof_v63_screen",
+    "validate_only": false,
+    "data": "data/prepared/llama2_7b_prefill_o0_o4",
+    "raw_data": "data/raw/llama2_7b_prefill",
+    "trace_config": "configs/trace/llama2_7b_prefill.yaml",
+    "samples": 4,
+    "rounds": 3,
+    "warmup": 50,
+    "repeats": 200,
+    "variants": [
+      "o3",
+      "o7",
+      "o8"
+    ]
+  },
+  "scope": "isolated_prepared_core_compute_only_not_conversion_or_four_mode_acceptance",
+  "policy": "unlocked shared GPU; cyclic paired order; no filtering",
+  "timing": "native_driver_single_launch_CUDA_Event_allocation_outside_interval",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0"
+}

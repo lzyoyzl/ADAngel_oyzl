@@ -4,6 +4,15 @@
 默认未切换；共享、未锁频GPU，保留CV失败记录。以下“提升”指配对吞吐提升，
 正数更快、负数更慢；延迟降低使用 `1−1/speedup`，不要与吞吐提升混称。
 
+## v63：交错high→low复用partial，未采纳
+
+一个独立候选：四个N atom交错、各用同一INT32 fragment完成high×16+low；
+O3 spill12→0字节，O7/O8 spill8→4字节，但REG仍168、驻留CTA仍3。
+4真实样本×3轮，O3/O7/O8配对GEMM吞吐分别**−6.24% / −1.64% / −1.35%**。
+72条输出/MSE逐位不变，96项预检及mem/sync/race通过；CV失败全部保留。
+不扩大24样本或四模式，不改最佳/默认，不再沿此减少partial独立性的方向扫描。
+[v63原始结果与限制](evidence/a100_o378_roof_v63/README.md)
+
 ## v62：完整四模式计时集成，成本不再遗漏
 
 复用v61 GEMM与向量转换2，新增guard/factor计入W转换和Cold；不是新的GEMM指令版本。

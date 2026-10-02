@@ -18,6 +18,12 @@ v54两次向量转换四模式复测已完成；主要实现工作回到下述GE
 
 ## 1. 最新证据带来的约束
 
+v63将四个N atom各自的low/high partial合成一个fragment，交错执行以保留部分ILP。
+虽然O3消除spill、O7/O8的spill减半，但REG/驻留CTA不变，四样本配对吞吐反而
+−6.24%/−1.64%/−1.35%。输出/MSE不变；停止该候选，不把资源改善当性能改善。
+进一步限制partial生命周期时，必须同时保留足够独立MMA链，不能只追求更少寄存器数组。
+[v63结果](evidence/a100_o378_roof_v63/README.md)
+
 v62已完成v61完整四模式集成：GEMM+4.02%、steady+6.22%，conversion−7.07%，
 Cold+2.03%但区间跨1；输出/MSE不变，仍有较多CV失败。新增guard成本已计W转换/Cold，
 不直接宣称全部端到端胜出，不切换默认。[v62证据](evidence/a100_o378_roof_v62/README.md)
