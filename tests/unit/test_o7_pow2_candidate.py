@@ -1,5 +1,8 @@
 """v71 exact-integer arithmetic and isolation contracts; no GPU claims."""
 from pathlib import Path
+import hashlib
+import json
+import sys
 
 import numpy as np
 
@@ -51,3 +54,26 @@ def test_no_formal_binding_or_default_edit():
         if path.is_file() and path.suffix in ('.cu','.cuh','.cpp','.h') and path.name not in {
             'roof_o7_pow2_probe.cu','o7_fullk_pow2_probe.cuh'}:
             assert 'adangel_roof_o7_pow2_' not in path.read_text(errors='replace'),path
+
+
+def test_archived_codegen_and_loop_analysis_reproduce():
+    sys.path.insert(0,str(ROOT/'scripts'))
+    from analyze_o7_pow2_codegen import fullk_loops
+    evidence = ROOT/'docs/evidence/a100_o378_roof_v71/reports/o378_roof_v71_codegen'
+    saved = json.loads((evidence/'codegen.json').read_text())
+    assert saved['coordinate_mapping_passed']
+    assert saved['control_opcode_counts_match_v67'] and saved['control_instruction_count_match_v67']
+    assert not saved['production_default_changed']
+    for name,sha in saved['sources'].items():
+        assert hashlib.sha256((ROOT/name).read_bytes()).hexdigest()==sha,name
+    assert hashlib.sha256((evidence/'o7_pow2.cubin').read_bytes()).hexdigest()==saved['cubin_sha256']
+    rows = fullk_loops((evidence/'o7_pow2.sass').read_text())
+    assert rows == json.loads((evidence/'loop_analysis.json').read_text())['rows']
+    by = {r['symbol'].rsplit('_',1)[1]:r for r in rows}
+    assert (by['control']['instructions'],by['candidate']['instructions'])==(378,453)
+    assert not by['control']['mainloop_local_loads']
+    assert len(by['candidate']['mainloop_local_loads'])==4
+    for r in rows:
+        ops=r['opcode_counts']
+        assert ops['IMMA.16864.U4.S4']==ops['IMMA.16864.S4.S4']==32
+        assert ops['LDSM.16.M88.4']==16
