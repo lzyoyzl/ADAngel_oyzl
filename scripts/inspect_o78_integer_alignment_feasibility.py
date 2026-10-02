@@ -3,7 +3,8 @@
 
 Keep source payloads/quantization untouched. Factor the common FP32 tensor
 scale in REAL arithmetic only: the existing kernel's FP32 rounding points are
-not preserved. A passing integer bound is necessary, not performance/MSE proof.
+not preserved. Passing is sufficient for integer range safety, not a necessary
+condition for actual inputs to be safe and not performance/MSE proof.
 """
 import argparse
 import hashlib

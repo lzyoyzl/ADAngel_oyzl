@@ -1,0 +1,582 @@
+{
+  "scope": "read_only_scale_feasibility_no_new_kernel_no_MSE_or_performance_claim",
+  "source_commit": "3378ca3685bf917357804f2a2a4e60c5db5dad08",
+  "script_sha256": "164a714569a39ed6d546299ada20426bc781fd1ece21aa6c280a6a4edd87d04e",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "torch_version": "2.7.1+cu128",
+  "inspection_wall_seconds": 7.970911329612136,
+  "summary": [
+    {
+      "variant": "o7",
+      "anchor": "tight_output_anchor",
+      "samples": 4,
+      "outputs": 67108864,
+      "int32_safe_outputs": 65566783,
+      "int32_safe_fraction": 0.9770212024450302,
+      "all_outputs_safe_samples": 0
+    },
+    {
+      "variant": "o7",
+      "anchor": "separable_row_column_anchor",
+      "samples": 4,
+      "outputs": 67108864,
+      "int32_safe_outputs": 63998791,
+      "int32_safe_fraction": 0.9536563009023666,
+      "all_outputs_safe_samples": 0
+    },
+    {
+      "variant": "o8",
+      "anchor": "tight_output_anchor",
+      "samples": 4,
+      "outputs": 67108864,
+      "int32_safe_outputs": 63704551,
+      "int32_safe_fraction": 0.9492717832326889,
+      "all_outputs_safe_samples": 0
+    },
+    {
+      "variant": "o8",
+      "anchor": "separable_row_column_anchor",
+      "samples": 4,
+      "outputs": 67108864,
+      "int32_safe_outputs": 58746790,
+      "int32_safe_fraction": 0.8753953874111176,
+      "all_outputs_safe_samples": 0
+    }
+  ],
+  "samples": [
+    {
+      "variant": "o7",
+      "partial_bound": 86016,
+      "source_k_groups": 32,
+      "anchors": {
+        "tight_output_anchor": {
+          "int32_safe_outputs": 15745522,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 786,
+          "maximum_capped_bound_lower_bound": 34282106880,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9385062456130981,
+          "int32_unsafe_bound_outputs": 1031694
+        },
+        "separable_row_column_anchor": {
+          "int32_safe_outputs": 14811324,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 7146,
+          "maximum_capped_bound_lower_bound": 55533649920,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.8828237056732178,
+          "int32_unsafe_bound_outputs": 1965892
+        }
+      },
+      "exponent_spread_histogram": {
+        "3": 3,
+        "4": 716,
+        "5": 32949,
+        "6": 381849,
+        "7": 1772145,
+        "8": 3855338,
+        "9": 4537354,
+        "10": 3425265,
+        "11": 1862347,
+        "12": 670060,
+        "13": 177391,
+        "14": 48494,
+        "15": 12617,
+        "16": 688
+      },
+      "semantics": "worst-case reachable-payload triangle bound; failure is NOT observed arithmetic overflow",
+      "common_real_factor": "4*T_W",
+      "sample_id": "layer_00_q_proj",
+      "raw_file": "layer_00_q_proj.pt",
+      "raw_sha256": "a9e1422977df2ddc8193c5a5535f25f2d0eb71a415a4bb60adbff25e4d6ecd48",
+      "activation_format": "mxfp8_e4m3_g128",
+      "weight_format": "nvfp4_g128",
+      "activation_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "94f0c40b1dbe396aae0b1cff7fe3077d5dc169dd8649ce0cbf6703d9fde70645"
+      },
+      "weight_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "4a79d57af963abe90d6a1161ac674b43cc131997f57f7dd8c0ee0d041c2ba772"
+      },
+      "tensor_scale": 0.00028773717349395156
+    },
+    {
+      "variant": "o8",
+      "partial_bound": 26880,
+      "source_k_groups": 32,
+      "anchors": {
+        "tight_output_anchor": {
+          "int32_safe_outputs": 14593342,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 60400730880,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.8698309659957886,
+          "int32_unsafe_bound_outputs": 2183874
+        },
+        "separable_row_column_anchor": {
+          "int32_safe_outputs": 11680271,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 235,
+          "maximum_capped_bound_lower_bound": 62866997760,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.6961984038352966,
+          "int32_unsafe_bound_outputs": 5096945
+        }
+      },
+      "exponent_spread_histogram": {
+        "4": 149,
+        "5": 6394,
+        "6": 106969,
+        "7": 691259,
+        "8": 2155223,
+        "9": 3786621,
+        "10": 4069318,
+        "11": 3054047,
+        "12": 1739307,
+        "13": 803888,
+        "14": 276269,
+        "15": 73582,
+        "16": 13367,
+        "17": 823
+      },
+      "semantics": "worst-case reachable-payload triangle bound; failure is NOT observed arithmetic overflow",
+      "common_real_factor": "T_A/4",
+      "sample_id": "layer_00_q_proj",
+      "raw_file": "layer_00_q_proj.pt",
+      "raw_sha256": "a9e1422977df2ddc8193c5a5535f25f2d0eb71a415a4bb60adbff25e4d6ecd48",
+      "activation_format": "nvstyle_fp6_e2m3_g128",
+      "weight_format": "hif4_g128",
+      "activation_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "4fae6668c9923a1ed8af0c2ae222786e21424ef5806730dd218a556c2ff36d6b"
+      },
+      "weight_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "247360bbda06e897b23a5a65d09bfec209efc4ae596f59d90fe9d5ee9d4fa0c4"
+      },
+      "tensor_scale": 0.00147995725274086
+    },
+    {
+      "variant": "o7",
+      "partial_bound": 86016,
+      "source_k_groups": 32,
+      "anchors": {
+        "tight_output_anchor": {
+          "int32_safe_outputs": 16367467,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 294,
+          "maximum_capped_bound_lower_bound": 24220299264,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9755770564079285,
+          "int32_unsafe_bound_outputs": 409749
+        },
+        "separable_row_column_anchor": {
+          "int32_safe_outputs": 16016133,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 1176,
+          "maximum_capped_bound_lower_bound": 32778633216,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9546359181404114,
+          "int32_unsafe_bound_outputs": 761083
+        }
+      },
+      "exponent_spread_histogram": {
+        "3": 1,
+        "4": 1651,
+        "5": 64215,
+        "6": 675058,
+        "7": 2642833,
+        "8": 4721302,
+        "9": 4569670,
+        "10": 2726366,
+        "11": 1015630,
+        "12": 262375,
+        "13": 77807,
+        "14": 17068,
+        "15": 2946,
+        "16": 294
+      },
+      "semantics": "worst-case reachable-payload triangle bound; failure is NOT observed arithmetic overflow",
+      "common_real_factor": "4*T_W",
+      "sample_id": "layer_00_k_proj",
+      "raw_file": "layer_00_k_proj.pt",
+      "raw_sha256": "5561cfe34c849d5e0ebddeb6062563a869b34b3f0a453d31679c77c90e0b64dd",
+      "activation_format": "mxfp8_e4m3_g128",
+      "weight_format": "nvfp4_g128",
+      "activation_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "94f0c40b1dbe396aae0b1cff7fe3077d5dc169dd8649ce0cbf6703d9fde70645"
+      },
+      "weight_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "16bc1c4db5b3b3d45f883278ffc6aa2ee15b85a84790ae44d24dd18b59941665"
+      },
+      "tensor_scale": 0.00030372256878763437
+    },
+    {
+      "variant": "o8",
+      "partial_bound": 26880,
+      "source_k_groups": 32,
+      "anchors": {
+        "tight_output_anchor": {
+          "int32_safe_outputs": 15819105,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 37642832640,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9428921341896057,
+          "int32_unsafe_bound_outputs": 958111
+        },
+        "separable_row_column_anchor": {
+          "int32_safe_outputs": 14047051,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 51199787520,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.8372694849967957,
+          "int32_unsafe_bound_outputs": 2730165
+        }
+      },
+      "exponent_spread_histogram": {
+        "4": 233,
+        "5": 12321,
+        "6": 192961,
+        "7": 1115708,
+        "8": 3000123,
+        "9": 4409866,
+        "10": 3926820,
+        "11": 2434849,
+        "12": 1141755,
+        "13": 412425,
+        "14": 112743,
+        "15": 16402,
+        "16": 932,
+        "17": 78
+      },
+      "semantics": "worst-case reachable-payload triangle bound; failure is NOT observed arithmetic overflow",
+      "common_real_factor": "T_A/4",
+      "sample_id": "layer_00_k_proj",
+      "raw_file": "layer_00_k_proj.pt",
+      "raw_sha256": "5561cfe34c849d5e0ebddeb6062563a869b34b3f0a453d31679c77c90e0b64dd",
+      "activation_format": "nvstyle_fp6_e2m3_g128",
+      "weight_format": "hif4_g128",
+      "activation_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "4fae6668c9923a1ed8af0c2ae222786e21424ef5806730dd218a556c2ff36d6b"
+      },
+      "weight_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "4423ada0d8a038cad9860483046d637d7b64d4008564f999a3d12f2004ee715e"
+      },
+      "tensor_scale": 0.00147995725274086
+    },
+    {
+      "variant": "o7",
+      "partial_bound": 86016,
+      "source_k_groups": 32,
+      "anchors": {
+        "tight_output_anchor": {
+          "int32_safe_outputs": 16679308,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 4820594688,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.994164228439331,
+          "int32_unsafe_bound_outputs": 97908
+        },
+        "separable_row_column_anchor": {
+          "int32_safe_outputs": 16402422,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 5628370944,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9776605367660522,
+          "int32_unsafe_bound_outputs": 374794
+        }
+      },
+      "exponent_spread_histogram": {
+        "3": 196,
+        "4": 16880,
+        "5": 384810,
+        "6": 2123346,
+        "7": 4894615,
+        "8": 5237863,
+        "9": 3008520,
+        "10": 906120,
+        "11": 138469,
+        "12": 55323,
+        "13": 11074
+      },
+      "semantics": "worst-case reachable-payload triangle bound; failure is NOT observed arithmetic overflow",
+      "common_real_factor": "4*T_W",
+      "sample_id": "layer_00_v_proj",
+      "raw_file": "layer_00_v_proj.pt",
+      "raw_sha256": "eadb207706d87f74b2055455cac329f0b91bb25b3824c72a93cc228c322c58a4",
+      "activation_format": "mxfp8_e4m3_g128",
+      "weight_format": "nvfp4_g128",
+      "activation_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "94f0c40b1dbe396aae0b1cff7fe3077d5dc169dd8649ce0cbf6703d9fde70645"
+      },
+      "weight_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "4a577e2124102ea59b8cff1de2a8e6e407d52a428a313ddcd69549ba93711c30"
+      },
+      "tensor_scale": 5.013602276449092e-05
+    },
+    {
+      "variant": "o8",
+      "partial_bound": 26880,
+      "source_k_groups": 32,
+      "anchors": {
+        "tight_output_anchor": {
+          "int32_safe_outputs": 16526411,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 5503975680,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9850508570671082,
+          "int32_unsafe_bound_outputs": 250805
+        },
+        "separable_row_column_anchor": {
+          "int32_safe_outputs": 16344000,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 6411578880,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9741783142089844,
+          "int32_unsafe_bound_outputs": 433216
+        }
+      },
+      "exponent_spread_histogram": {
+        "3": 34,
+        "4": 2837,
+        "5": 73340,
+        "6": 754444,
+        "7": 2827625,
+        "8": 4655591,
+        "9": 4325782,
+        "10": 2635397,
+        "11": 1102000,
+        "12": 333321,
+        "13": 66230,
+        "14": 615
+      },
+      "semantics": "worst-case reachable-payload triangle bound; failure is NOT observed arithmetic overflow",
+      "common_real_factor": "T_A/4",
+      "sample_id": "layer_00_v_proj",
+      "raw_file": "layer_00_v_proj.pt",
+      "raw_sha256": "eadb207706d87f74b2055455cac329f0b91bb25b3824c72a93cc228c322c58a4",
+      "activation_format": "nvstyle_fp6_e2m3_g128",
+      "weight_format": "hif4_g128",
+      "activation_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "4fae6668c9923a1ed8af0c2ae222786e21424ef5806730dd218a556c2ff36d6b"
+      },
+      "weight_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "fad381c04207739598fe406f775820ed143cac59dadbb11e1f2bfeb99ec140af"
+      },
+      "tensor_scale": 0.00147995725274086
+    },
+    {
+      "variant": "o7",
+      "partial_bound": 86016,
+      "source_k_groups": 32,
+      "anchors": {
+        "tight_output_anchor": {
+          "int32_safe_outputs": 16774486,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 4114919424,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9998372793197632,
+          "int32_unsafe_bound_outputs": 2730
+        },
+        "separable_row_column_anchor": {
+          "int32_safe_outputs": 16768912,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 11545411584,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9995050430297852,
+          "int32_unsafe_bound_outputs": 8304
+        }
+      },
+      "exponent_spread_histogram": {
+        "3": 67,
+        "4": 22380,
+        "5": 708777,
+        "6": 2819419,
+        "7": 5249386,
+        "8": 5295835,
+        "9": 2327112,
+        "10": 333508,
+        "11": 18821,
+        "12": 1911
+      },
+      "semantics": "worst-case reachable-payload triangle bound; failure is NOT observed arithmetic overflow",
+      "common_real_factor": "4*T_W",
+      "sample_id": "layer_00_o_proj",
+      "raw_file": "layer_00_o_proj.pt",
+      "raw_sha256": "5d54a481175e12b79b37761b8de48da6cc0aef403d918415d1357484ae3e2ad5",
+      "activation_format": "mxfp8_e4m3_g128",
+      "weight_format": "nvfp4_g128",
+      "activation_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "ef9ae0046e89578d226500803887b12c0bbb4b51c4f89aa6eebf933b799d295e"
+      },
+      "weight_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "4a7705eda0b5f18c07037bb79f87aaa5d2486e8d03359447398eee98b411fa19"
+      },
+      "tensor_scale": 0.0001678466796875
+    },
+    {
+      "variant": "o8",
+      "partial_bound": 26880,
+      "source_k_groups": 32,
+      "anchors": {
+        "tight_output_anchor": {
+          "int32_safe_outputs": 16765693,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 9212609280,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9993131756782532,
+          "int32_unsafe_bound_outputs": 11523
+        },
+        "separable_row_column_anchor": {
+          "int32_safe_outputs": 16675468,
+          "nonzero_outputs": 16777216,
+          "safe_with_bound_at_most_2pow24": 0,
+          "clipped_terms": 0,
+          "maximum_capped_bound_lower_bound": 12555970560,
+          "outputs": 16777216,
+          "int32_safe_fraction": 0.9939353466033936,
+          "int32_unsafe_bound_outputs": 101748
+        }
+      },
+      "exponent_spread_histogram": {
+        "3": 4,
+        "4": 1024,
+        "5": 50086,
+        "6": 650660,
+        "7": 2872642,
+        "8": 5300207,
+        "9": 4570540,
+        "10": 2477093,
+        "11": 733033,
+        "12": 112782,
+        "13": 8848,
+        "14": 296,
+        "15": 1
+      },
+      "semantics": "worst-case reachable-payload triangle bound; failure is NOT observed arithmetic overflow",
+      "common_real_factor": "T_A/4",
+      "sample_id": "layer_00_o_proj",
+      "raw_file": "layer_00_o_proj.pt",
+      "raw_sha256": "5d54a481175e12b79b37761b8de48da6cc0aef403d918415d1357484ae3e2ad5",
+      "activation_format": "nvstyle_fp6_e2m3_g128",
+      "weight_format": "hif4_g128",
+      "activation_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "0984c0d663ef59716bd2694516660e20b95bbf772d64c3f7f627e1f8034ef609"
+      },
+      "weight_scale_identity": {
+        "shape": [
+          4096,
+          32
+        ],
+        "dtype": "torch.uint8",
+        "sha256": "640cb158959d9b639c64953a7fae510a7c309524cae80aef95e63aa5fde683f6"
+      },
+      "tensor_scale": 0.00037405831972137094
+    }
+  ],
+  "caveats": [
+    "source-format REAL scale factorization, NOT existing FP32 scale bitwise identity",
+    "bound failure means no data-independent INT32 guarantee; actual partials may be smaller",
+    "passing bound is NOT MSE, safety, throughput, or end-to-end validation",
+    "no CUDA source, extension, prepared trace, quantization payload, or default changed"
+  ]
+}
