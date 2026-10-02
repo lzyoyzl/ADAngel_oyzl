@@ -1,0 +1,26 @@
+{
+  "git_commit": "d8b4fba2e0f8c0d1986a18b840fb22ae794387e2",
+  "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "args": {
+    "output": "runs/o378_roof_v62_synccheck",
+    "samples": 4,
+    "rounds": 1,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100,
+    "validate_only": true,
+    "gemm_cubins": "reports/o378_roof_v59",
+    "device_cubin_dir": "reports/o378_roof_v61",
+    "prep_build": "runs/o378_roof_v60_screen/build"
+  },
+  "policy": "unlocked shared GPU; cyclic paired order; all raw samples retained",
+  "production_default_changed": false,
+  "scope": "complete four-mode GPU timing from existing INT8/MXFP4-G128 inputs; initial source quantization excluded",
+  "timing_contract_version": 2,
+  "conversion_source": "unmodified roof_o3_conversion.cu, vectorized=true",
+  "guard_cost": "candidate weight conversion includes GPU factor/status preparation; cached outside compute/steady",
+  "host_preflight": "normal-scale/finite-row checks and post-batch status validation are outside GPU Event timing"
+}

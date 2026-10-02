@@ -14,7 +14,7 @@ from benchmark_integer_conversion_probe import order
 def summarize(rows):
     keys={(r['sample_id'],r['round'],r['mode'],r['implementation']) for r in rows}
     ids={r['sample_id'] for r in rows};rounds={r['round'] for r in rows}
-    if len(keys)!=len(rows) or keys!={(s,i,m,p) for s in ids for i in rounds for m in MODES for p in (0,1)}:
+    if not rows or len(keys)!=len(rows) or keys!={(s,i,m,p) for s in ids for i in rounds for m in MODES for p in (0,1)}:
         raise ValueError('incomplete or duplicate paired four-mode records')
     if any(not r['bitwise_equal_current_best'] or not r['payload_bitwise'] for r in rows):
         raise ValueError('trace correctness regression')
