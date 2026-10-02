@@ -168,9 +168,13 @@ def summarize(rows, modes):
     return result
 
 
-def main():
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--gpu-build', type=Path, default=Path('reports/o378_roof_v69_codegen'))
+def main(*, driver_cls=Driver, default_gpu_build=Path('reports/o378_roof_v69_codegen'),
+         labels=('v67_fullK_same_v69_preparation', 'v72_coefficient_first_same_v69_preparation'),
+         experiment='coefficient_first', banner='COEFFICIENT',
+         contract=fused.timing_contract, description=__doc__):
+    """Shared paired protocol; defaults preserve the original v72 experiment."""
+    p = argparse.ArgumentParser(description=description)
+    p.add_argument('--gpu-build', type=Path, default=default_gpu_build)
     p.add_argument('--baseline', type=Path, default=Path('reports/o378_roof_v67_codegen'))
     p.add_argument('--cubins', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
@@ -201,7 +205,7 @@ def main():
     assert torch.cuda.get_device_capability() == (8, 0)
     context_anchor = torch.empty(1, device='cuda')
     library, build = base.checked_gpu_build(args.gpu_build)
-    driver = Driver(library, args.baseline, args.cubins)
+    driver = driver_cls(library, args.baseline, args.cubins)
     args.output.mkdir(parents=True)
     modes = base.MODES if args.full_modes else ('compute_only',)
     def save(name, obj):
@@ -212,7 +216,7 @@ def main():
     try:
         save('validation.json', validate(driver))
         if args.validate_only:
-            print('COEFFICIENT VALIDATION PASSED', flush=True)
+            print(banner + ' VALIDATION PASSED', flush=True)
             return
         manifest, mh = inspect_inputs(args.data)
         raw, rh = inspect_raw_inputs(args.raw_data, manifest, args.trace_config)
@@ -221,7 +225,7 @@ def main():
             extension_sha256=sha256_file(Path(native.__file__)), codegen=driver.codegen, gpu_preparation_build=build,
             resources=driver.resources, torch=torch.__version__, cuda=torch.version.cuda, gpu=torch.cuda.get_device_name(),
             prepared_manifest_sha256=mh, raw_manifest_sha256=rh, production_default_changed=False,
-            control='v67_fullK_same_v69_preparation', candidate='v72_coefficient_first_same_v69_preparation',
+            control=labels[0], candidate=labels[1],
             source_quantization='original_FP16_direct_source_quantization_excluded',
             timing_scope='all_four_modes' if args.full_modes else 'cached_compute_only_not_E2E', no_filtering=True,
             args={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}))
@@ -270,13 +274,13 @@ def main():
                                 finite_fp32=True, bitwise_equal_v67=True, MSE_regression_passed=True,
                                 mse_vs_paired_fp16=error, paired_fp16=mf.PAIRED_BASELINE[variant],
                                 mse_vs_v67=mse(output, expected), max_abs_vs_v67=(output - expected).abs().max().item(),
-                                resources=driver.resources[policy], **fused.timing_contract(mode, args.inner))
+                                resources=driver.resources[policy], **contract(mode, args.inner))
                             rows.append(row); append('results.jsonl', row)
                 print(entry['sample_id'], variant, 'paired complete', flush=True)
-            save('summary.json', dict(scope='coefficient_first_paired_' + ('four_modes' if args.full_modes else 'cached_GEMM'),
+            save('summary.json', dict(scope=experiment + '_paired_' + ('four_modes' if args.full_modes else 'cached_GEMM'),
                 production_default_changed=False, no_filtering=True, records=summarize(rows, modes)))
         assert sha256_file(args.data / 'manifest.json') == mh and sha256_file(args.raw_data / 'trace_manifest.json') == rh
-        print('COEFFICIENT PAIRED TEST PASSED', flush=True)
+        print(banner + ' PAIRED TEST PASSED', flush=True)
     finally:
         driver.close()
 

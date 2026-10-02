@@ -49,3 +49,26 @@ def test_reordered_integer_dot_matches_original_for_negatives_and_extrema():
         merged=(high0+high1)*16+low0+low1
         assert np.array_equal(merged,np.sum(a*w,axis=1))
         assert np.all(np.abs((high0+high1)*16)<=131072)
+
+
+def test_mma_accumulator_count_restricts_to_exact_integer_entry():
+    from benchmark_o78_eight_chain_probe import merged_mma_counts
+    lines=['Function : target']
+    for i in range(64):
+        kind='S4' if i<32 else 'U4'
+        c='RZ' if i<16 else 'R8'
+        lines.append(f'/*{16*i:04x}*/ IMMA.16864.{kind}.S4 R8, R0.ROW, R4.COL, {c} ;')
+    lines+=['Function : other','/*0000*/ IMMA.16864.U4.S4 R8, R0.ROW, R4.COL, RZ ;']
+    live=dict(loops=[dict(kind='integer',begin_pc='0x0',end_pc='0x3f0')])
+    assert merged_mma_counts('\n'.join(lines),live,'target')==dict(u4_total=32,u4_zero_c=0,s4_total=32,s4_zero_c=16)
+    with pytest.raises(ValueError):merged_mma_counts('\n'.join(lines),live,'other')
+
+
+def test_timing_contract_preserves_same_online_preparation_and_four_modes():
+    from benchmark_o78_eight_chain_probe import timing_contract
+    for mode in ('conversion_only','compute_only','cold','steady_state'):
+        result=timing_contract(mode,100)
+        assert result['preparation_implementation']=='row_fused_conversion_factor_metadata'
+        assert not result['gemm_cufunction_identical_between_policies']
+        assert result['weight_cached']==(mode in ('compute_only','steady_state'))
+        assert result['stage_timing_inner_repeats']['total']==(100 if mode=='conversion_only' else 1)
