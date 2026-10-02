@@ -59,6 +59,42 @@ GPU仅用INT64计算每G128的未加权整数平方和；解码、加权及范�
 - 尚未实现新的O7/O8整数GEMM；没有新ISA、sanitizer、MSE或四模式性能结果，不能声称获得加速。
 - 现有完整最佳组合、O3独立v62结果和正式默认均不变。O7/O8扩大整数累加范围的候选等待用户确认。
 
+## 补充：在线guard与指令工作预算（仍未实现候选）
+
+从已归档数据重新分析，无新GPU运行。对每行/列取严格向上整数平方根
+`R=ceil(sqrt(norm2))`，CTA用`max(R_A)*max(R_W)<=INT32_MAX`及factor乘积界判断。
+该判定比原平方和乘积界只会更保守；48个case实测**没有新增回退CTA**，仍只有O8的12个。
+原平方和最大37位，向上平方根最大367,307；当前数据可用UINT64保存norm及根的乘积。
+这不是对任意新输入的范围保证，实际GPU准备仍须检测溢出/非法编码并回退或拒绝。
+普通浮点`sqrt`后转整数不自动满足向上界，不能直接代替此处的精确整数证明。
+
+|假设的准备方式|新增逻辑工作|计时要求|
+|---|---|---|
+|另开activation检查pass|至少额外读取16 MiB定点activation payload，再准备factor/norm等|计入在线转换、Cold和steady，不是免费检查|
+|与现有activation转换融合|避免再读payload；若输出逐G128 UINT64平方和，则写1 MiB、后续归约再读1 MiB|仍需跨G128行归约、CTA判定及新增寄存器工作|
+|静态W准备|factor面板512 KiB、行元数据64 KiB/operand的拟议布局|Cold付费，按权重版本缓存；不能跨修改复用旧证明|
+
+上述是选定布局的逻辑字节数，**不是实测DRAM流量或延迟**。A的factor面板同样为512 KiB，
+2048个CTA的4字节flags为8 KiB；保留原scale用于回退时须同时保留相应旧buffer。
+现有向量转换每线程16元素，CTA覆盖同一G128的32行；它不能在没有跨CTA归约的情况下
+直接得到该行全部32组的norm。因而“融合转换”不等于自动零成本完成guard。
+
+已有O7/O8 tune59单样本NCU各为116,285,440条动态warp指令；逐组I2F/FMUL/FFMA各16,777,216条。
+在假设每次“转换+scale相乘+FMA”三条工作变成“整数factor相乘+整数MAD”两条的简化模型中，
+可减少16,777,216条，约**14.43%**；尚未扣除最终524,288条I2F、epilogue scale和其他新增工作。
+这是源码工作预算，**不是候选SASS、严格性能上界或预计提速百分比**。
+两路IMMA仍为16,777,216条，MMA必要容量下界并未降低。
+O3已有全K实测也表明整数处理与spill可能抵消I2F减少，不能据此承诺O7/O8接近0.220347ms。
+
+因此若获准，先做一个编译/小样本门槛：检查实际整数指令、寄存器、spill与准备成本，
+有明确配对收益再扩大24样本；不提前投入多版guard或tile扫描。
+[逐样本guard与工作预算JSON](guard_cost.json)由下列命令生成，新增3项CPU回归逐项复算：
+
+```bash
+python scripts/analyze_o78_integer_guard_cost.py --output reports/o78_guard_cost_check.json
+python -m unittest discover -s tests/unit -p test_o78_integer_guard_cost.py -v
+```
+
 ## 证据与复现
 
 采集脚本提交：`44879ebb34bdb56dc448a3f26ccd2774987b1f3c`。
