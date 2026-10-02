@@ -102,6 +102,9 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         raise ValueError('paired integer accounting is restricted to the approved O3 probe')
     fullk_identity = (variant, tune, expected_symbol)
     approved_fullk = {('o3', 54, 'adangel_roof_fullk_integer_o3'),
+                     ('o3', 54, 'adangel_roof_o3_eight_chain_candidate'),
+                     ('o7', 59, 'adangel_roof_o78_eight_chain_candidate'),
+                     ('o8', 59, 'adangel_roof_o78_eight_chain_candidate'),
                      ('o7', 59, 'adangel_roof_o78_fullk_candidate'),
                      ('o8', 59, 'adangel_roof_o78_fullk_candidate')}
     if fullk_integer and (paired_integer or fullk_identity not in approved_fullk):
@@ -140,6 +143,10 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         if expected_symbol in ('adangel_roof_pair_alignment_o3','adangel_roof_pair_scale_shared_o3','adangel_roof_pair_fragment_reuse_o3') and variant=='o3':
             permitted=expected_symbol
         if expected_symbol == 'adangel_roof_fullk_integer_o3' and variant == 'o3':
+            permitted=expected_symbol
+        if expected_symbol == ('adangel_roof_o3_eight_chain_candidate' if variant=='o3' else 'adangel_roof_o78_eight_chain_candidate'):
+            if not fullk_integer:
+                raise ValueError('eight-chain accounting requires full-K integer work')
             permitted=expected_symbol
         if expected_symbol in ('adangel_roof_o78_fullk_control','adangel_roof_o78_fullk_candidate') and variant in ('o7','o8'):
             if fullk_integer != (expected_symbol == 'adangel_roof_o78_fullk_candidate'):
