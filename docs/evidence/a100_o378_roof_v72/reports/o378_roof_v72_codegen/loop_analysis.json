@@ -1,0 +1,895 @@
+{
+  "scope": "static_def_use_and_loop_work_not_dynamic_NCU_or_latency",
+  "rows": [
+    {
+      "symbol": "adangel_roof_o78_coefficient_candidate",
+      "start_pc": "0xab0",
+      "backedge_pc": "0x21f0",
+      "instructions": 373,
+      "opcode_counts": {
+        "UIADD3": 1,
+        "DEPBAR.LE": 1,
+        "UISETP.GT.U32.AND": 1,
+        "USHF.L.U32": 8,
+        "BAR.SYNC.DEFER_BLOCKING": 1,
+        "PLOP3.LUT": 2,
+        "ULOP3.LUT": 6,
+        "BRA": 2,
+        "LDL": 4,
+        "ULDC.64": 1,
+        "UIMAD": 2,
+        "IMAD.U32": 2,
+        "S2R": 1,
+        "ISETP.GT.U32.AND": 1,
+        "IMAD": 146,
+        "IADD3": 16,
+        "IADD3.X": 9,
+        "LEA": 51,
+        "LEA.HI.X": 2,
+        "LDS": 7,
+        "LDGSTS.E.BYPASS.128": 10,
+        "IMAD.X": 1,
+        "LOP3.LUT": 2,
+        "SHF.L.U32": 2,
+        "LDGDEPBAR": 1,
+        "LDSM.16.M88.4": 16,
+        "UISETP.NE.AND": 1,
+        "LDS.64": 8,
+        "IMMA.16864.U4.S4": 32,
+        "IMMA.16864.S4.S4": 32,
+        "NOP": 2,
+        "UMOV": 1,
+        "CALL.REL.NOINC": 1
+      },
+      "mainloop_local_loads": [
+        {
+          "pc": "0xb50",
+          "instruction": "LDL R28, [R1]"
+        },
+        {
+          "pc": "0xb70",
+          "instruction": "LDL R30, [R1+0x4]"
+        },
+        {
+          "pc": "0xbb0",
+          "instruction": "LDL R42, [R1+0xc]"
+        },
+        {
+          "pc": "0xbe0",
+          "instruction": "LDL R38, [R1+0x8]"
+        }
+      ],
+      "mainloop_local_stores": [],
+      "dependency_counts": {
+        "independent_coefficient_multiplies": 64,
+        "partial_first_multiplies": 0,
+        "coefficient_based_accumulator_updates": 64
+      },
+      "independent_coefficient_multiplies": [
+        {
+          "pc": "0x1120",
+          "instruction": "IMAD R30, R16, R28, RZ"
+        },
+        {
+          "pc": "0x11c0",
+          "instruction": "IMAD R30, R16, R29, RZ"
+        },
+        {
+          "pc": "0x1210",
+          "instruction": "IMAD R30, R28, R15, RZ"
+        },
+        {
+          "pc": "0x1240",
+          "instruction": "IMAD R30, R15, R29, RZ"
+        },
+        {
+          "pc": "0x1270",
+          "instruction": "IMAD R30, R16.reuse, R34.reuse, RZ"
+        },
+        {
+          "pc": "0x1290",
+          "instruction": "IMAD R44, R15, R34, RZ"
+        },
+        {
+          "pc": "0x12d0",
+          "instruction": "IMAD R31, R16, R35, RZ"
+        },
+        {
+          "pc": "0x1340",
+          "instruction": "IMAD R45, R15, R35, RZ"
+        },
+        {
+          "pc": "0x13c0",
+          "instruction": "IMAD R36, R16, R32, RZ"
+        },
+        {
+          "pc": "0x13f0",
+          "instruction": "IMAD R36, R16.reuse, R33, RZ"
+        },
+        {
+          "pc": "0x1400",
+          "instruction": "IMAD R45, R16, R31, RZ"
+        },
+        {
+          "pc": "0x1420",
+          "instruction": "IMAD R36, R15, R32, RZ"
+        },
+        {
+          "pc": "0x1440",
+          "instruction": "IMAD R93, R15, R31, RZ"
+        },
+        {
+          "pc": "0x1470",
+          "instruction": "IMAD R37, R15, R33, RZ"
+        },
+        {
+          "pc": "0x14c0",
+          "instruction": "IMAD R36, R16, R30, RZ"
+        },
+        {
+          "pc": "0x1510",
+          "instruction": "IMAD R44, R15, R30, RZ"
+        },
+        {
+          "pc": "0x15f0",
+          "instruction": "IMAD R40, R28, R104, RZ"
+        },
+        {
+          "pc": "0x1630",
+          "instruction": "IMAD R36, R104, R29, RZ"
+        },
+        {
+          "pc": "0x1650",
+          "instruction": "IMAD R36, R34, R104, RZ"
+        },
+        {
+          "pc": "0x16b0",
+          "instruction": "IMAD R37, R104, R35, RZ"
+        },
+        {
+          "pc": "0x16d0",
+          "instruction": "IMAD R36, R32, R104, RZ"
+        },
+        {
+          "pc": "0x1720",
+          "instruction": "IMAD R37, R104, R33, RZ"
+        },
+        {
+          "pc": "0x1750",
+          "instruction": "IMAD R36, R30, R104, RZ"
+        },
+        {
+          "pc": "0x17b0",
+          "instruction": "IMAD R28, R28, R96, RZ"
+        },
+        {
+          "pc": "0x17f0",
+          "instruction": "IMAD R37, R104, R31, RZ"
+        },
+        {
+          "pc": "0x1850",
+          "instruction": "IMAD R29, R96, R29, RZ"
+        },
+        {
+          "pc": "0x1860",
+          "instruction": "IMAD R34, R34, R96, RZ"
+        },
+        {
+          "pc": "0x18a0",
+          "instruction": "IMAD R35, R96, R35, RZ"
+        },
+        {
+          "pc": "0x18c0",
+          "instruction": "IMAD R32, R32, R96, RZ"
+        },
+        {
+          "pc": "0x1920",
+          "instruction": "IMAD R33, R96, R33, RZ"
+        },
+        {
+          "pc": "0x1c30",
+          "instruction": "IMAD R39, R30, R96, RZ"
+        },
+        {
+          "pc": "0x1c50",
+          "instruction": "IMAD R30, R96, R31, RZ"
+        },
+        {
+          "pc": "0x1d50",
+          "instruction": "IMAD R32, R16, R37.reuse, RZ"
+        },
+        {
+          "pc": "0x1d70",
+          "instruction": "IMAD R33, R15, R36, RZ"
+        },
+        {
+          "pc": "0x1d90",
+          "instruction": "IMAD R32, R15, R37, RZ"
+        },
+        {
+          "pc": "0x1de0",
+          "instruction": "IMAD R53, R16, R36.reuse, RZ"
+        },
+        {
+          "pc": "0x1e00",
+          "instruction": "IMAD R52, R104, R36.reuse, RZ"
+        },
+        {
+          "pc": "0x1e10",
+          "instruction": "IMAD R36, R96, R36, RZ"
+        },
+        {
+          "pc": "0x1e30",
+          "instruction": "IMAD R54, R104, R37, RZ"
+        },
+        {
+          "pc": "0x1e50",
+          "instruction": "IMAD R45, R96, R37, RZ"
+        },
+        {
+          "pc": "0x1e60",
+          "instruction": "IMAD R36, R16, R39, RZ"
+        },
+        {
+          "pc": "0x1e70",
+          "instruction": "IMAD R37, R15, R38, RZ"
+        },
+        {
+          "pc": "0x1ea0",
+          "instruction": "IMAD R36, R104, R38, RZ"
+        },
+        {
+          "pc": "0x1eb0",
+          "instruction": "IMAD R37, R104, R39, RZ"
+        },
+        {
+          "pc": "0x1ef0",
+          "instruction": "IMAD R53, R16, R38, RZ"
+        },
+        {
+          "pc": "0x1f20",
+          "instruction": "IMAD R38, R96, R38, RZ"
+        },
+        {
+          "pc": "0x1f40",
+          "instruction": "IMAD R36, R16.reuse, R31, RZ"
+        },
+        {
+          "pc": "0x1f50",
+          "instruction": "IMAD R37, R16, R30, RZ"
+        },
+        {
+          "pc": "0x1f90",
+          "instruction": "IMAD R44, R15, R39, RZ"
+        },
+        {
+          "pc": "0x1fa0",
+          "instruction": "IMAD R38, R15, R31, RZ"
+        },
+        {
+          "pc": "0x1fc0",
+          "instruction": "IMAD R29, R104, R31, RZ"
+        },
+        {
+          "pc": "0x1fd0",
+          "instruction": "IMAD R39, R96, R39, RZ"
+        },
+        {
+          "pc": "0x1fe0",
+          "instruction": "IMAD R28, R104, R30, RZ"
+        },
+        {
+          "pc": "0x1ff0",
+          "instruction": "IMAD R31, R96, R31, RZ"
+        },
+        {
+          "pc": "0x2040",
+          "instruction": "IMAD R39, R15, R30, RZ"
+        },
+        {
+          "pc": "0x2050",
+          "instruction": "IMAD R29, R16, R32, RZ"
+        },
+        {
+          "pc": "0x2060",
+          "instruction": "IMAD R31, R15.reuse, R32.reuse, RZ"
+        },
+        {
+          "pc": "0x2070",
+          "instruction": "IMAD R28, R104, R32, RZ"
+        },
+        {
+          "pc": "0x2080",
+          "instruction": "IMAD R16, R16, R33.reuse, RZ"
+        },
+        {
+          "pc": "0x2090",
+          "instruction": "IMAD R15, R15, R33.reuse, RZ"
+        },
+        {
+          "pc": "0x20a0",
+          "instruction": "IMAD R104, R104, R33, RZ"
+        },
+        {
+          "pc": "0x20c0",
+          "instruction": "IMAD R30, R96.reuse, R30, RZ"
+        },
+        {
+          "pc": "0x20d0",
+          "instruction": "IMAD R32, R96.reuse, R32, RZ"
+        },
+        {
+          "pc": "0x20e0",
+          "instruction": "IMAD R33, R96, R33, RZ"
+        }
+      ],
+      "partial_first_multiplies": [],
+      "coefficient_based_accumulator_updates": [
+        {
+          "pc": "0x11a0",
+          "instruction": "IMAD R11, R56, R30, R11"
+        },
+        {
+          "pc": "0x11f0",
+          "instruction": "IMAD R10, R57, R30, R10"
+        },
+        {
+          "pc": "0x1220",
+          "instruction": "IMAD R9, R58, R30, R9"
+        },
+        {
+          "pc": "0x1260",
+          "instruction": "IMAD R8, R59, R30, R8"
+        },
+        {
+          "pc": "0x12b0",
+          "instruction": "IMAD R106, R31, R30, R106"
+        },
+        {
+          "pc": "0x1300",
+          "instruction": "IMAD R107, R30, R31, R107"
+        },
+        {
+          "pc": "0x1320",
+          "instruction": "IMAD R108, R45, R44, R108"
+        },
+        {
+          "pc": "0x1370",
+          "instruction": "IMAD R109, R44, R45, R109"
+        },
+        {
+          "pc": "0x13e0",
+          "instruction": "IMAD R114, R47, R36, R114"
+        },
+        {
+          "pc": "0x1410",
+          "instruction": "IMAD R115, R40, R36, R115"
+        },
+        {
+          "pc": "0x1450",
+          "instruction": "IMAD R116, R37, R36, R116"
+        },
+        {
+          "pc": "0x14b0",
+          "instruction": "IMAD R117, R36, R37, R117"
+        },
+        {
+          "pc": "0x14d0",
+          "instruction": "IMAD R123, R44, R45, R123"
+        },
+        {
+          "pc": "0x14f0",
+          "instruction": "IMAD R122, R39, R36, R122"
+        },
+        {
+          "pc": "0x1520",
+          "instruction": "IMAD R125, R92, R93, R125"
+        },
+        {
+          "pc": "0x1530",
+          "instruction": "IMAD R124, R45, R44, R124"
+        },
+        {
+          "pc": "0x1610",
+          "instruction": "IMAD R5, R36, R40, R5"
+        },
+        {
+          "pc": "0x1640",
+          "instruction": "IMAD R4, R37, R36, R4"
+        },
+        {
+          "pc": "0x1680",
+          "instruction": "IMAD R110, R37, R36, R110"
+        },
+        {
+          "pc": "0x16c0",
+          "instruction": "IMAD R111, R36, R37, R111"
+        },
+        {
+          "pc": "0x1700",
+          "instruction": "IMAD R118, R37, R36, R118"
+        },
+        {
+          "pc": "0x1740",
+          "instruction": "IMAD R119, R36, R37, R119"
+        },
+        {
+          "pc": "0x17d0",
+          "instruction": "IMAD R126, R37, R36, R126"
+        },
+        {
+          "pc": "0x1810",
+          "instruction": "IMAD R17, R38, R28, R17"
+        },
+        {
+          "pc": "0x1830",
+          "instruction": "IMAD R127, R36, R37, R127"
+        },
+        {
+          "pc": "0x1880",
+          "instruction": "IMAD R105, R28, R29, R105"
+        },
+        {
+          "pc": "0x18d0",
+          "instruction": "IMAD R112, R29, R34, R112"
+        },
+        {
+          "pc": "0x18f0",
+          "instruction": "IMAD R113, R28, R35, R113"
+        },
+        {
+          "pc": "0x1930",
+          "instruction": "IMAD R120, R29, R32, R120"
+        },
+        {
+          "pc": "0x1950",
+          "instruction": "IMAD R121, R28, R33, R121"
+        },
+        {
+          "pc": "0x1c60",
+          "instruction": "IMAD R128, R102, R39, R128"
+        },
+        {
+          "pc": "0x1c80",
+          "instruction": "IMAD R129, R103, R30, R129"
+        },
+        {
+          "pc": "0x1d80",
+          "instruction": "IMAD R131, R99, R32, R131"
+        },
+        {
+          "pc": "0x1da0",
+          "instruction": "IMAD R132, R98, R33, R132"
+        },
+        {
+          "pc": "0x1db0",
+          "instruction": "IMAD R133, R97, R32, R133"
+        },
+        {
+          "pc": "0x1e40",
+          "instruction": "IMAD R136, R45, R36, R136"
+        },
+        {
+          "pc": "0x1e80",
+          "instruction": "IMAD R139, R93, R36, R139"
+        },
+        {
+          "pc": "0x1e90",
+          "instruction": "IMAD R140, R94, R37, R140"
+        },
+        {
+          "pc": "0x1ed0",
+          "instruction": "IMAD R130, R100, R53, R130"
+        },
+        {
+          "pc": "0x1f10",
+          "instruction": "IMAD R142, R47, R36, R142"
+        },
+        {
+          "pc": "0x1f30",
+          "instruction": "IMAD R143, R40, R37, R143"
+        },
+        {
+          "pc": "0x1f60",
+          "instruction": "IMAD R135, R44, R54, R135"
+        },
+        {
+          "pc": "0x1f70",
+          "instruction": "IMAD R144, R51, R38, R144"
+        },
+        {
+          "pc": "0x1f80",
+          "instruction": "IMAD R147, R29, R36, R147"
+        },
+        {
+          "pc": "0x1fb0",
+          "instruction": "IMAD R146, R28, R37, R146"
+        },
+        {
+          "pc": "0x2000",
+          "instruction": "IMAD R145, R42, R39, R145"
+        },
+        {
+          "pc": "0x2010",
+          "instruction": "IMAD R150, R41, R28, R150"
+        },
+        {
+          "pc": "0x2020",
+          "instruction": "IMAD R151, R50, R29, R151"
+        },
+        {
+          "pc": "0x2030",
+          "instruction": "IMAD R153, R56, R31, R153"
+        },
+        {
+          "pc": "0x20f0",
+          "instruction": "IMAD R134, R49, R52, R134"
+        },
+        {
+          "pc": "0x2100",
+          "instruction": "IMAD R138, R92, R53, R138"
+        },
+        {
+          "pc": "0x2110",
+          "instruction": "IMAD R137, R46, R45, R137"
+        },
+        {
+          "pc": "0x2120",
+          "instruction": "IMAD R141, R95, R44, R141"
+        },
+        {
+          "pc": "0x2130",
+          "instruction": "IMAD R148, R76, R39, R148"
+        },
+        {
+          "pc": "0x2140",
+          "instruction": "IMAD R149, R77, R38, R149"
+        },
+        {
+          "pc": "0x2150",
+          "instruction": "IMAD R152, R43, R30, R152"
+        },
+        {
+          "pc": "0x2160",
+          "instruction": "IMAD R154, R68, R29, R154"
+        },
+        {
+          "pc": "0x2170",
+          "instruction": "IMAD R155, R69, R16, R155"
+        },
+        {
+          "pc": "0x2180",
+          "instruction": "IMAD R156, R70, R31, R156"
+        },
+        {
+          "pc": "0x2190",
+          "instruction": "IMAD R157, R48, R15, R157"
+        },
+        {
+          "pc": "0x21a0",
+          "instruction": "IMAD R158, R35, R28, R158"
+        },
+        {
+          "pc": "0x21b0",
+          "instruction": "IMAD R159, R34, R104, R159"
+        },
+        {
+          "pc": "0x21c0",
+          "instruction": "IMAD R160, R55, R32, R160"
+        },
+        {
+          "pc": "0x21d0",
+          "instruction": "IMAD R161, R58, R33, R161"
+        }
+      ]
+    },
+    {
+      "symbol": "adangel_roof_o78_coefficient_control",
+      "start_pc": "0xa70",
+      "backedge_pc": "0x2200",
+      "instructions": 378,
+      "opcode_counts": {
+        "UIADD3": 1,
+        "DEPBAR.LE": 1,
+        "UISETP.GT.U32.AND": 1,
+        "USHF.L.U32": 8,
+        "BAR.SYNC.DEFER_BLOCKING": 1,
+        "PLOP3.LUT": 2,
+        "ULOP3.LUT": 6,
+        "BRA": 2,
+        "S2R": 2,
+        "ULDC.64": 1,
+        "UIMAD": 2,
+        "IADD3": 20,
+        "LEA": 46,
+        "IMAD.X": 3,
+        "IADD3.X": 7,
+        "LEA.HI.X": 2,
+        "IMAD.SHL.U32": 1,
+        "ISETP.GT.U32.AND": 1,
+        "SHF.L.U32": 2,
+        "LOP3.LUT": 7,
+        "LDS": 7,
+        "LDGSTS.E.BYPASS.128": 10,
+        "SHF.R.U32.HI": 2,
+        "MOV": 1,
+        "IMAD": 150,
+        "LDGDEPBAR": 1,
+        "LDSM.16.M88.4": 16,
+        "UISETP.NE.AND": 1,
+        "IMMA.16864.U4.S4": 32,
+        "LDS.64": 8,
+        "IMMA.16864.S4.S4": 32,
+        "UMOV": 1,
+        "CALL.REL.NOINC": 1
+      },
+      "mainloop_local_loads": [],
+      "mainloop_local_stores": [],
+      "dependency_counts": {
+        "independent_coefficient_multiplies": 0,
+        "partial_first_multiplies": 64,
+        "coefficient_based_accumulator_updates": 0
+      },
+      "independent_coefficient_multiplies": [],
+      "partial_first_multiplies": [
+        {
+          "pc": "0x11e0",
+          "instruction": "IMAD R41, R66, R18, RZ"
+        },
+        {
+          "pc": "0x11f0",
+          "instruction": "IMAD R64, R64, R19, RZ"
+        },
+        {
+          "pc": "0x1270",
+          "instruction": "IMAD R41, R54, R16, RZ"
+        },
+        {
+          "pc": "0x1290",
+          "instruction": "IMAD R52, R52, R17, RZ"
+        },
+        {
+          "pc": "0x12f0",
+          "instruction": "IMAD R55, R16, R55, RZ"
+        },
+        {
+          "pc": "0x1300",
+          "instruction": "IMAD R52, R19, R52, RZ"
+        },
+        {
+          "pc": "0x13a0",
+          "instruction": "IMAD R34, R18, R67, RZ"
+        },
+        {
+          "pc": "0x13b0",
+          "instruction": "IMAD R65, R18, R65, RZ"
+        },
+        {
+          "pc": "0x13c0",
+          "instruction": "IMAD R44, R17, R44, RZ"
+        },
+        {
+          "pc": "0x1400",
+          "instruction": "IMAD R32, R19, R32, RZ"
+        },
+        {
+          "pc": "0x1470",
+          "instruction": "IMAD R36, R17.reuse, R36, RZ"
+        },
+        {
+          "pc": "0x1480",
+          "instruction": "IMAD R38, R16, R38, RZ"
+        },
+        {
+          "pc": "0x1490",
+          "instruction": "IMAD R35, R18, R35, RZ"
+        },
+        {
+          "pc": "0x14a0",
+          "instruction": "IMAD R32, R17, R32, RZ"
+        },
+        {
+          "pc": "0x1560",
+          "instruction": "IMAD R28, R19, R28, RZ"
+        },
+        {
+          "pc": "0x1590",
+          "instruction": "IMAD R28, R16, R39, RZ"
+        },
+        {
+          "pc": "0x1620",
+          "instruction": "IMAD R52, R19, R52, RZ"
+        },
+        {
+          "pc": "0x1640",
+          "instruction": "IMAD R41, R18.reuse, R41, RZ"
+        },
+        {
+          "pc": "0x1650",
+          "instruction": "IMAD R55, R18, R55, RZ"
+        },
+        {
+          "pc": "0x16a0",
+          "instruction": "IMAD R29, R16.reuse, R29, RZ"
+        },
+        {
+          "pc": "0x16c0",
+          "instruction": "IMAD R92, R17.reuse, R92, RZ"
+        },
+        {
+          "pc": "0x16e0",
+          "instruction": "IMAD R64, R17, R64, RZ"
+        },
+        {
+          "pc": "0x16f0",
+          "instruction": "IMAD R95, R16, R95, RZ"
+        },
+        {
+          "pc": "0x1750",
+          "instruction": "IMAD R52, R19, R52, RZ"
+        },
+        {
+          "pc": "0x1840",
+          "instruction": "IMAD R32, R19, R32, RZ"
+        },
+        {
+          "pc": "0x1860",
+          "instruction": "IMAD R34, R18, R34, RZ"
+        },
+        {
+          "pc": "0x1890",
+          "instruction": "IMAD R106, R19, R106, RZ"
+        },
+        {
+          "pc": "0x18b0",
+          "instruction": "IMAD R99, R18, R99, RZ"
+        },
+        {
+          "pc": "0x1940",
+          "instruction": "IMAD R28, R17, R28, RZ"
+        },
+        {
+          "pc": "0x1950",
+          "instruction": "IMAD R30, R16, R30, RZ"
+        },
+        {
+          "pc": "0x19c0",
+          "instruction": "IMAD R96, R16, R96, RZ"
+        },
+        {
+          "pc": "0x19d0",
+          "instruction": "IMAD R98, R17, R98, RZ"
+        },
+        {
+          "pc": "0x1a60",
+          "instruction": "IMAD R88, R19, R88, RZ"
+        },
+        {
+          "pc": "0x1a70",
+          "instruction": "IMAD R89, R19, R89, RZ"
+        },
+        {
+          "pc": "0x1a80",
+          "instruction": "IMAD R90, R18.reuse, R90, RZ"
+        },
+        {
+          "pc": "0x1aa0",
+          "instruction": "IMAD R91, R18, R91, RZ"
+        },
+        {
+          "pc": "0x1b40",
+          "instruction": "IMAD R92, R19.reuse, R92, RZ"
+        },
+        {
+          "pc": "0x1b60",
+          "instruction": "IMAD R93, R19, R93, RZ"
+        },
+        {
+          "pc": "0x1b70",
+          "instruction": "IMAD R94, R18.reuse, R94, RZ"
+        },
+        {
+          "pc": "0x1b80",
+          "instruction": "IMAD R95, R18, R95, RZ"
+        },
+        {
+          "pc": "0x1bf0",
+          "instruction": "IMAD R80, R19, R80, RZ"
+        },
+        {
+          "pc": "0x1c00",
+          "instruction": "IMAD R81, R19, R81, RZ"
+        },
+        {
+          "pc": "0x1c10",
+          "instruction": "IMAD R82, R18.reuse, R82, RZ"
+        },
+        {
+          "pc": "0x1c20",
+          "instruction": "IMAD R83, R18, R83, RZ"
+        },
+        {
+          "pc": "0x1c90",
+          "instruction": "IMAD R48, R19.reuse, R48, RZ"
+        },
+        {
+          "pc": "0x1ca0",
+          "instruction": "IMAD R49, R19, R49, RZ"
+        },
+        {
+          "pc": "0x1cb0",
+          "instruction": "IMAD R50, R18, R50, RZ"
+        },
+        {
+          "pc": "0x1df0",
+          "instruction": "IMAD R39, R16, R39, RZ"
+        },
+        {
+          "pc": "0x1e30",
+          "instruction": "IMAD R34, R18, R51, RZ"
+        },
+        {
+          "pc": "0x1e60",
+          "instruction": "IMAD R43, R16, R43, RZ"
+        },
+        {
+          "pc": "0x1eb0",
+          "instruction": "IMAD R41, R16.reuse, R41, RZ"
+        },
+        {
+          "pc": "0x1ed0",
+          "instruction": "IMAD R35, R16.reuse, R35, RZ"
+        },
+        {
+          "pc": "0x1ef0",
+          "instruction": "IMAD R47, R16, R47, RZ"
+        },
+        {
+          "pc": "0x1f30",
+          "instruction": "IMAD R40, R17, R40, RZ"
+        },
+        {
+          "pc": "0x1f50",
+          "instruction": "IMAD R37, R16, R37, RZ"
+        },
+        {
+          "pc": "0x1f60",
+          "instruction": "IMAD R59, R16, R59, RZ"
+        },
+        {
+          "pc": "0x1f70",
+          "instruction": "IMAD R56, R17.reuse, R56, RZ"
+        },
+        {
+          "pc": "0x1f80",
+          "instruction": "IMAD R36, R17.reuse, R36, RZ"
+        },
+        {
+          "pc": "0x1f90",
+          "instruction": "IMAD R38, R17.reuse, R38, RZ"
+        },
+        {
+          "pc": "0x1fa0",
+          "instruction": "IMAD R64, R17.reuse, R64, RZ"
+        },
+        {
+          "pc": "0x1fb0",
+          "instruction": "IMAD R42, R17, R42, RZ"
+        },
+        {
+          "pc": "0x1fc0",
+          "instruction": "IMAD R45, R17.reuse, R72, RZ"
+        },
+        {
+          "pc": "0x1fd0",
+          "instruction": "IMAD R44, R17, R44, RZ"
+        },
+        {
+          "pc": "0x1fe0",
+          "instruction": "IMAD R16, R16, R75, RZ"
+        }
+      ],
+      "coefficient_based_accumulator_updates": []
+    }
+  ]
+}
