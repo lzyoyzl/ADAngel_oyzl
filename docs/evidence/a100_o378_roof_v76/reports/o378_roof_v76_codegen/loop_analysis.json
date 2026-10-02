@@ -1,0 +1,394 @@
+{
+  "scope": "static_same_entry_mainloop_cost_not_performance_or_dynamic_traffic",
+  "entries": [
+    {
+      "symbol": "adangel_roof_o7_factor_table_candidate",
+      "loops": [
+        {
+          "kind": "original_integer",
+          "begin_pc": "0x1360",
+          "backedge_pc": "0x2d30",
+          "instructions": 414,
+          "opcodes": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "BSSY": 1,
+            "BSYNC": 1,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 15,
+            "IADD3.X": 6,
+            "IMAD": 163,
+            "IMAD.IADD": 6,
+            "IMAD.MOV.U32": 1,
+            "IMAD.SHL.U32": 5,
+            "IMAD.X": 4,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 3,
+            "ISETP.NE.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDL": 10,
+            "LDL.LU": 7,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 38,
+            "LEA.HI": 1,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 10,
+            "MOV": 1,
+            "NOP": 10,
+            "S2R": 3,
+            "SHF.L.U32": 5,
+            "SHF.R.U32.HI": 2,
+            "STL": 7,
+            "WARPSYNC": 1
+          },
+          "imma": 64,
+          "imad_family": 179,
+          "scalar_shared_loads": 15,
+          "scalar_shared_stores": 0,
+          "local_loads": [
+            {
+              "pc": "0x1360",
+              "instruction": "LDL R15, [R1+0x44]"
+            },
+            {
+              "pc": "0x1370",
+              "instruction": "LDL R14, [R1+0x3c]"
+            },
+            {
+              "pc": "0x1450",
+              "instruction": "LDL R32, [R1+0x20]"
+            },
+            {
+              "pc": "0x1460",
+              "instruction": "LDL R39, [R1+0x1c]"
+            },
+            {
+              "pc": "0x1470",
+              "instruction": "LDL R38, [R1+0x2c]"
+            },
+            {
+              "pc": "0x1480",
+              "instruction": "LDL R16, [R1+0x28]"
+            },
+            {
+              "pc": "0x1490",
+              "instruction": "LDL R45, [R1+0x34]"
+            },
+            {
+              "pc": "0x14a0",
+              "instruction": "LDL R47, [R1+0x30]"
+            },
+            {
+              "pc": "0x18c0",
+              "instruction": "LDL R15, [R1+0x40]"
+            },
+            {
+              "pc": "0x18d0",
+              "instruction": "LDL R14, [R1+0x38]"
+            },
+            {
+              "pc": "0x1e60",
+              "instruction": "LDL.LU R117, [R1+0x18]"
+            },
+            {
+              "pc": "0x1ed0",
+              "instruction": "LDL.LU R118, [R1+0x14]"
+            },
+            {
+              "pc": "0x1f20",
+              "instruction": "LDL.LU R119, [R1+0x10]"
+            },
+            {
+              "pc": "0x2040",
+              "instruction": "LDL.LU R134, [R1+0xc]"
+            },
+            {
+              "pc": "0x2110",
+              "instruction": "LDL.LU R112, [R1+0x8]"
+            },
+            {
+              "pc": "0x2170",
+              "instruction": "LDL.LU R113, [R1+0x4]"
+            },
+            {
+              "pc": "0x21f0",
+              "instruction": "LDL.LU R114, [R1]"
+            }
+          ],
+          "local_stores": [
+            {
+              "pc": "0x2af0",
+              "instruction": "STL [R1+0x4], R113"
+            },
+            {
+              "pc": "0x2b40",
+              "instruction": "STL [R1+0xc], R134"
+            },
+            {
+              "pc": "0x2b70",
+              "instruction": "STL [R1], R114"
+            },
+            {
+              "pc": "0x2ba0",
+              "instruction": "STL [R1+0x14], R118"
+            },
+            {
+              "pc": "0x2be0",
+              "instruction": "STL [R1+0x8], R112"
+            },
+            {
+              "pc": "0x2c10",
+              "instruction": "STL [R1+0x10], R119"
+            },
+            {
+              "pc": "0x2c40",
+              "instruction": "STL [R1+0x18], R117"
+            }
+          ]
+        },
+        {
+          "kind": "factor_table",
+          "begin_pc": "0x5810",
+          "backedge_pc": "0x6fd0",
+          "instructions": 381,
+          "opcodes": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 3,
+            "BSSY": 2,
+            "BSYNC": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "FLO.U32": 1,
+            "IADD3": 16,
+            "IADD3.X": 6,
+            "IMAD": 95,
+            "IMAD.IADD": 6,
+            "IMAD.MOV.U32": 2,
+            "IMAD.SHL.U32": 5,
+            "IMAD.WIDE.U32": 2,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 2,
+            "ISETP.NE.AND": 1,
+            "LDG.E": 2,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 8,
+            "LDL": 4,
+            "LDS": 7,
+            "LDS.64": 32,
+            "LDSM.16.M88.4": 16,
+            "LEA": 52,
+            "LEA.HI": 1,
+            "LOP3.LUT": 11,
+            "MOV": 2,
+            "S2R": 5,
+            "SHF.L.U32": 14,
+            "SHF.R.U32.HI": 2,
+            "STS": 11,
+            "WARPSYNC": 1
+          },
+          "imma": 64,
+          "imad_family": 112,
+          "scalar_shared_loads": 39,
+          "scalar_shared_stores": 11,
+          "local_loads": [
+            {
+              "pc": "0x5e10",
+              "instruction": "LDL R20, [R1+0x8]"
+            },
+            {
+              "pc": "0x5e20",
+              "instruction": "LDL R17, [R1+0xc]"
+            },
+            {
+              "pc": "0x5e30",
+              "instruction": "LDL R5, [R1+0x4]"
+            },
+            {
+              "pc": "0x5e40",
+              "instruction": "LDL R16, [R1]"
+            }
+          ],
+          "local_stores": []
+        },
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x9b40",
+          "backedge_pc": "0xb690",
+          "instructions": 438,
+          "opcodes": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "FFMA": 64,
+            "FMUL": 64,
+            "I2F": 64,
+            "IADD3": 18,
+            "IADD3.X": 6,
+            "IMAD": 24,
+            "IMAD.IADD": 3,
+            "IMAD.SHL.U32": 4,
+            "IMAD.X": 4,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GE.U32.AND": 2,
+            "ISETP.GT.U32.AND": 2,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDL": 6,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 46,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 8,
+            "MOV": 1,
+            "S2R": 1,
+            "SHF.L.U32": 8
+          },
+          "imma": 64,
+          "imad_family": 35,
+          "scalar_shared_loads": 15,
+          "scalar_shared_stores": 0,
+          "local_loads": [
+            {
+              "pc": "0x9b40",
+              "instruction": "LDL R3, [R1+0x14]"
+            },
+            {
+              "pc": "0x9b50",
+              "instruction": "LDL R2, [R1+0xc]"
+            },
+            {
+              "pc": "0x9c10",
+              "instruction": "LDL R50, [R1+0x4]"
+            },
+            {
+              "pc": "0x9c20",
+              "instruction": "LDL R46, [R1]"
+            },
+            {
+              "pc": "0xa020",
+              "instruction": "LDL R3, [R1+0x10]"
+            },
+            {
+              "pc": "0xa030",
+              "instruction": "LDL R2, [R1+0x8]"
+            }
+          ],
+          "local_stores": []
+        }
+      ]
+    },
+    {
+      "symbol": "adangel_roof_o78_fullk_candidate",
+      "loops": [
+        {
+          "kind": "original_integer",
+          "begin_pc": "0xa70",
+          "backedge_pc": "0x2200",
+          "instructions": 378,
+          "opcodes": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 20,
+            "IADD3.X": 7,
+            "IMAD": 150,
+            "IMAD.SHL.U32": 1,
+            "IMAD.X": 3,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 46,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 7,
+            "MOV": 1,
+            "PLOP3.LUT": 2,
+            "S2R": 2,
+            "SHF.L.U32": 2,
+            "SHF.R.U32.HI": 2,
+            "UIADD3": 1,
+            "UIMAD": 2,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULOP3.LUT": 6,
+            "UMOV": 1,
+            "USHF.L.U32": 8
+          },
+          "imma": 64,
+          "imad_family": 154,
+          "scalar_shared_loads": 15,
+          "scalar_shared_stores": 0,
+          "local_loads": [],
+          "local_stores": []
+        },
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x4c10",
+          "backedge_pc": "0x6730",
+          "instructions": 435,
+          "opcodes": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "FFMA": 64,
+            "FMUL": 64,
+            "I2F": 64,
+            "IADD3": 17,
+            "IADD3.X": 8,
+            "IMAD": 19,
+            "IMAD.IADD": 4,
+            "IMAD.MOV.U32": 1,
+            "IMAD.SHL.U32": 1,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GE.U32.AND": 2,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDL": 2,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 51,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 9,
+            "S2R": 2,
+            "SHF.L.U32": 12
+          },
+          "imma": 64,
+          "imad_family": 27,
+          "scalar_shared_loads": 15,
+          "scalar_shared_stores": 0,
+          "local_loads": [
+            {
+              "pc": "0x4c10",
+              "instruction": "LDL R3, [R1+0x4]"
+            },
+            {
+              "pc": "0x50d0",
+              "instruction": "LDL R3, [R1]"
+            }
+          ],
+          "local_stores": []
+        }
+      ]
+    }
+  ]
+}

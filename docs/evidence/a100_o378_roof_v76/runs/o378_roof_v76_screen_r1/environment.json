@@ -1,0 +1,1055 @@
+{
+  "git_commit": "abd6b596be6529b0e1d2b4a3372c65458aa46cff",
+  "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "codegen": {
+    "v67": {
+      "scope": "isolated_compile_and_static_audit_not_runtime_acceptance",
+      "source_commit": "dcff70ec950fcd66389c14b7a6629570cd75dbda",
+      "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+      "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+      "sources": {
+        "csrc/sm80/o78_fullk_integer_probe.cuh": "8e7e2bd5718fa7bf637a67abbd89347ebe99863c81daf1da03e962b1174e11cc",
+        "csrc/sm80/roof_o78_fullk_probe.cu": "c463d24d9e17ae7972fa1fdd4b6f7543e64268e4bcae66b3b457d81afdb6d19e",
+        "csrc/sm80/o78_unsigned_payload_candidate.cuh": "899819e7d2eeb19acdca23cb9326846d8c674763fc57bc62e58a8cf8ee830a25",
+        "csrc/sm80/roof_o78_fullk_driver.cpp": "36422a6e0d37269ee0a324c53a3488c874bbee1b4c490da2e3b7b59628a5cd0b",
+        "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9"
+      },
+      "commands": [
+        [
+          "/usr/local/cuda-12.8/bin/nvcc",
+          "-O3",
+          "-std=c++17",
+          "--expt-relaxed-constexpr",
+          "-lineinfo",
+          "-arch=sm_80",
+          "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+          "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+          "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_fullk_probe.cu",
+          "-cubin",
+          "-o",
+          "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v67_codegen/o78_fullk.cubin",
+          "-Xptxas=-v"
+        ],
+        [
+          "/usr/local/cuda-12.8/bin/nvcc",
+          "-O3",
+          "-std=c++17",
+          "--expt-relaxed-constexpr",
+          "-lineinfo",
+          "-arch=sm_80",
+          "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+          "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+          "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_fullk_probe.cu",
+          "-ptx",
+          "-o",
+          "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v67_codegen/o78_fullk.ptx"
+        ],
+        [
+          "/usr/local/cuda-12.8/bin/cuobjdump",
+          "--dump-sass",
+          "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v67_codegen/o78_fullk.cubin"
+        ],
+        [
+          "/usr/local/cuda-12.8/bin/cuobjdump",
+          "--dump-resource-usage",
+          "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v67_codegen/o78_fullk.cubin"
+        ],
+        [
+          "g++",
+          "-O3",
+          "-std=c++17",
+          "-shared",
+          "-fPIC",
+          "-I/usr/local/cuda-12.8/include",
+          "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_fullk_driver.cpp",
+          "-lcuda",
+          "-o",
+          "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v67_codegen/libo78_fullk_driver.so"
+        ]
+      ],
+      "entries": {
+        "adangel_roof_o78_fullk_candidate": {
+          "instructions": 1944,
+          "opcode_counts": {
+            "MOV": 8,
+            "S2R": 12,
+            "ULDC": 7,
+            "USHF": 13,
+            "IADD3": 212,
+            "ULEA": 1,
+            "IMAD": 353,
+            "LDG": 21,
+            "ISETP": 74,
+            "EXIT": 5,
+            "SHF": 44,
+            "LOP3": 142,
+            "LEA": 128,
+            "BRA": 7,
+            "UIMAD": 4,
+            "LDGSTS": 40,
+            "CS2R": 63,
+            "UMOV": 2,
+            "LDGDEPBAR": 4,
+            "UIADD3": 1,
+            "DEPBAR": 2,
+            "UISETP": 2,
+            "BAR": 2,
+            "PLOP3": 2,
+            "ULOP3": 6,
+            "LDS": 33,
+            "LDSM": 32,
+            "IMMA": 128,
+            "CALL": 2,
+            "I2F": 128,
+            "FMUL": 192,
+            "STG": 192,
+            "STL": 2,
+            "LDL": 2,
+            "FFMA": 64,
+            "NOP;": 14
+          },
+          "copies": [
+            "LDGSTS.E.BYPASS.128 [R15+0x200], [R10.64] ;",
+            "LDGSTS.E.BYPASS.128 [R15+0x2200], [R2.64] ;",
+            "LDGSTS.E.BYPASS.128 [R4+0x200], [R20.64] ;",
+            "LDGSTS.E.BYPASS.128 [R4+0x2200], [R6.64] ;",
+            "LDGSTS.E.BYPASS.128 [R15+0x4200], [R24.64] ;",
+            "LDGSTS.E.BYPASS.128 [R4+0x4200], [R22.64] ;",
+            "LDGSTS.E.BYPASS.128 [R30+0x4200], [R26.64] ;",
+            "LDGSTS.E.BYPASS.128 [R29+0x4200], [R100.64] ;",
+            "@!P2 LDGSTS.E.BYPASS.128 [R28], [R2.64] ;",
+            "@!P3 LDGSTS.E.BYPASS.128 [R28+0x8200], [R8.64] ;",
+            "LDGSTS.E.BYPASS.128 [R35+0x200], [R28.64] ;",
+            "LDGSTS.E.BYPASS.128 [R35+0x2200], [R32.64] ;",
+            "LDGSTS.E.BYPASS.128 [R37+0x200], [R28.64] ;",
+            "LDGSTS.E.BYPASS.128 [R37+0x2200], [R30.64] ;",
+            "LDGSTS.E.BYPASS.128 [R39+0x4200], [R32.64] ;",
+            "LDGSTS.E.BYPASS.128 [R41+0x4200], [R28.64] ;",
+            "LDGSTS.E.BYPASS.128 [R43+0x4200], [R30.64] ;",
+            "LDGSTS.E.BYPASS.128 [R37+0x4200], [R28.64] ;",
+            "@!P2 LDGSTS.E.BYPASS.128 [R33], [R18.64] ;",
+            "@!P0 LDGSTS.E.BYPASS.128 [R35+0x8200], [R16.64] ;",
+            "LDGSTS.E.BYPASS.128 [R15+0x200], [R2.64] ;",
+            "LDGSTS.E.BYPASS.128 [R15+0x2200], [R6.64] ;",
+            "LDGSTS.E.BYPASS.128 [R157+0x200], [R146.64] ;",
+            "LDGSTS.E.BYPASS.128 [R157+0x2200], [R8.64] ;",
+            "LDGSTS.E.BYPASS.128 [R15+0x4200], [R154.64] ;",
+            "LDGSTS.E.BYPASS.128 [R157+0x4200], [R152.64] ;",
+            "LDGSTS.E.BYPASS.128 [R159+0x4200], [R150.64] ;",
+            "LDGSTS.E.BYPASS.128 [R158+0x4200], [R148.64] ;",
+            "@!P0 LDGSTS.E.BYPASS.128 [R48], [R2.64] ;",
+            "@!P1 LDGSTS.E.BYPASS.128 [R48+0x8200], [R4.64] ;",
+            "LDGSTS.E.BYPASS.128 [R57+0x200], [R46.64] ;",
+            "LDGSTS.E.BYPASS.128 [R57+0x2200], [R48.64] ;",
+            "LDGSTS.E.BYPASS.128 [R59+0x200], [R50.64] ;",
+            "LDGSTS.E.BYPASS.128 [R59+0x2200], [R52.64] ;",
+            "LDGSTS.E.BYPASS.128 [R61+0x4200], [R54.64] ;",
+            "LDGSTS.E.BYPASS.128 [R63+0x4200], [R46.64] ;",
+            "LDGSTS.E.BYPASS.128 [R53+0x4200], [R48.64] ;",
+            "LDGSTS.E.BYPASS.128 [R59+0x4200], [R50.64] ;",
+            "@!P0 LDGSTS.E.BYPASS.128 [R57], [R44.64] ;",
+            "@!P1 LDGSTS.E.BYPASS.128 [R3+0x8200], [R4.64] ;"
+          ],
+          "all_copies_bypass_l1": true,
+          "native_u4_s4": true,
+          "native_s4_s4": true,
+          "int8_mma": false
+        },
+        "adangel_roof_o78_fullk_control": {
+          "instructions": 880,
+          "opcode_counts": {
+            "IMAD": 139,
+            "S2R": 2,
+            "S2UR": 1,
+            "ULDC": 3,
+            "IADD3": 88,
+            "USHF": 3,
+            "CS2R": 32,
+            "UIMAD": 1,
+            "ISETP": 37,
+            "SHF": 21,
+            "LOP3": 75,
+            "LEA": 44,
+            "STL": 1,
+            "LDGSTS": 20,
+            "LDGDEPBAR": 2,
+            "BRA": 4,
+            "MOV": 4,
+            "DEPBAR": 1,
+            "BAR": 1,
+            "LDL": 1,
+            "LDS": 15,
+            "LDSM": 16,
+            "IMMA": 64,
+            "FMUL": 64,
+            "I2F": 64,
+            "FFMA": 64,
+            "CALL": 1,
+            "STG": 96,
+            "EXIT": 2,
+            "NOP;": 14
+          },
+          "copies": [
+            "LDGSTS.E.BYPASS.128 [R143+0x200], [R16.64] ;",
+            "LDGSTS.E.BYPASS.128 [R143+0x2200], [R2.64] ;",
+            "LDGSTS.E.BYPASS.128 [R142+0x200], [R164.64] ;",
+            "LDGSTS.E.BYPASS.128 [R142+0x2200], [R4.64] ;",
+            "LDGSTS.E.BYPASS.128 [R143+0x4200], [R162.64] ;",
+            "LDGSTS.E.BYPASS.128 [R142+0x4200], [R160.64] ;",
+            "LDGSTS.E.BYPASS.128 [R140+0x4200], [R158.64] ;",
+            "LDGSTS.E.BYPASS.128 [R139+0x4200], [R156.64] ;",
+            "@!P0 LDGSTS.E.BYPASS.128 [R55], [R6.64] ;",
+            "@!P1 LDGSTS.E.BYPASS.128 [R55+0x8200], [R8.64] ;",
+            "LDGSTS.E.BYPASS.128 [R71+0x200], [R58.64] ;",
+            "LDGSTS.E.BYPASS.128 [R71+0x2200], [R60.64] ;",
+            "LDGSTS.E.BYPASS.128 [R73+0x200], [R62.64] ;",
+            "LDGSTS.E.BYPASS.128 [R73+0x2200], [R64.64] ;",
+            "LDGSTS.E.BYPASS.128 [R75+0x4200], [R66.64] ;",
+            "LDGSTS.E.BYPASS.128 [R77+0x4200], [R58.64] ;",
+            "LDGSTS.E.BYPASS.128 [R65+0x4200], [R60.64] ;",
+            "LDGSTS.E.BYPASS.128 [R69+0x4200], [R62.64] ;",
+            "@!P0 LDGSTS.E.BYPASS.128 [R59], [R54.64] ;",
+            "@!P1 LDGSTS.E.BYPASS.128 [R71+0x8200], [R52.64] ;"
+          ],
+          "all_copies_bypass_l1": true,
+          "native_u4_s4": true,
+          "native_s4_s4": true,
+          "int8_mma": false
+        }
+      },
+      "cubin_sha256": "e10004af910b2148020b1d55789886ad542f86cd798ab2450e2569c9f1a5e30a",
+      "driver_sha256": "05a7c8f809b17c19110e75f5cfa236a271cecb454cb7bea273b251df5f6b2d9e"
+    },
+    "v76": {
+      "build": {
+        "scope": "isolated_compile_gate_not_runtime_performance_or_MSE",
+        "source_commit": "96dfa85256e49aa8730be83d86f409fb44532508",
+        "sources": {
+          "csrc/sm80/o78_fullk_integer_probe.cuh": "8e7e2bd5718fa7bf637a67abbd89347ebe99863c81daf1da03e962b1174e11cc",
+          "csrc/sm80/o78_unsigned_payload_candidate.cuh": "899819e7d2eeb19acdca23cb9326846d8c674763fc57bc62e58a8cf8ee830a25",
+          "csrc/sm80/roof_o78_fullk_driver.cpp": "36422a6e0d37269ee0a324c53a3488c874bbee1b4c490da2e3b7b59628a5cd0b",
+          "csrc/sm80/roof_o78_fullk_probe.cu": "c463d24d9e17ae7972fa1fdd4b6f7543e64268e4bcae66b3b457d81afdb6d19e",
+          "csrc/sm80/roof_o7_factor_table_probe.cu": "f3f31bb54b8177ba07c8360bb4f29c5ea6ff9ad0b8d8fa4b44521bb0e60efb8a",
+          "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9",
+          "scripts/probe_o7_factor_table_codegen.py": "6ec0f16a9c73230c9d1f1381edca2316f1104445f57d8774e959868344fce9bf"
+        },
+        "generated_header_sha256": "1334e2d1a8913d65ff84a4be014262c1eea1521987424db5f3636e77604d1fcf",
+        "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+        "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+        "control_original_cubin_sha256": "e10004af910b2148020b1d55789886ad542f86cd798ab2450e2569c9f1a5e30a",
+        "shared_bytes": 43520,
+        "table_rows": 10,
+        "exact_factor_guard": "power_of_two_positive_and_less_than_1024",
+        "default_changed": false,
+        "commands": [
+          [
+            "/usr/local/cuda-12.8/bin/nvcc",
+            "-O3",
+            "-std=c++17",
+            "--expt-relaxed-constexpr",
+            "-lineinfo",
+            "-arch=sm_80",
+            "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+            "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+            "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v76_codegen",
+            "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o7_factor_table_probe.cu",
+            "-cubin",
+            "-o",
+            "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v76_codegen/o7_factor_table.cubin",
+            "-Xptxas=-v"
+          ],
+          [
+            "/usr/local/cuda-12.8/bin/nvcc",
+            "-O3",
+            "-std=c++17",
+            "--expt-relaxed-constexpr",
+            "-lineinfo",
+            "-arch=sm_80",
+            "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+            "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+            "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v76_codegen",
+            "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o7_factor_table_probe.cu",
+            "-ptx",
+            "-o",
+            "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v76_codegen/o7_factor_table.ptx"
+          ],
+          [
+            "/usr/local/cuda-12.8/bin/cuobjdump",
+            "--dump-sass",
+            "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v76_codegen/o7_factor_table.cubin"
+          ],
+          [
+            "/usr/local/cuda-12.8/bin/cuobjdump",
+            "--dump-resource-usage",
+            "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v76_codegen/o7_factor_table.cubin"
+          ],
+          [
+            "/usr/local/cuda-12.8/bin/nvdisasm",
+            "--print-code",
+            "--life-range-mode",
+            "count",
+            "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v76_codegen/o7_factor_table.cubin"
+          ]
+        ],
+        "entries": {
+          "adangel_roof_o7_factor_table_candidate": {
+            "instructions": 3208,
+            "opcode_counts": {
+              "MOV": 16,
+              "S2R": 18,
+              "ULDC": 4,
+              "IMAD": 626,
+              "USHF": 4,
+              "IADD3": 340,
+              "ULEA": 1,
+              "LDG": 51,
+              "ISETP": 128,
+              "EXIT": 7,
+              "BRA": 19,
+              "BSSY": 7,
+              "IMNMX": 1,
+              "LEA": 183,
+              "LOP3": 238,
+              "SHF": 96,
+              "SEL": 7,
+              "PLOP3": 1,
+              "BSYNC": 7,
+              "BAR": 4,
+              "STL": 35,
+              "B2R": 1,
+              "LDS": 78,
+              "LDGSTS": 56,
+              "CS2R": 90,
+              "LDGDEPBAR": 6,
+              "LDL": 29,
+              "DEPBAR": 3,
+              "WARPSYNC": 2,
+              "LDSM": 48,
+              "IMMA": 192,
+              "NOP": 10,
+              "CALL": 3,
+              "I2F": 192,
+              "FMUL": 320,
+              "STG": 288,
+              "FLO": 2,
+              "STS": 22,
+              "UIMAD": 1,
+              "FFMA": 64,
+              "NOP;": 8
+            },
+            "copies": [
+              "LDGSTS.E.BYPASS.128 [R0+0x200], [R18.64] ;",
+              "LDGSTS.E.BYPASS.128 [R0+0x2200], [R4.64] ;",
+              "LDGSTS.E.BYPASS.128 [R3+0x200], [R20.64] ;",
+              "LDGSTS.E.BYPASS.128 [R3+0x2200], [R6.64] ;",
+              "LDGSTS.E.BYPASS.128 [R0+0x4200], [R22.64] ;",
+              "LDGSTS.E.BYPASS.128 [R3+0x4200], [R24.64] ;",
+              "LDGSTS.E.BYPASS.128 [R32+0x4200], [R26.64] ;",
+              "LDGSTS.E.BYPASS.128 [R30+0x4200], [R28.64] ;",
+              "@!P1 LDGSTS.E.BYPASS.128 [R13], [R4.64] ;",
+              "@!P0 LDGSTS.E.BYPASS.128 [R13+0x8200], [R8.64] ;",
+              "LDGSTS.E.BYPASS.128 [R39+0x200], [R34.64] ;",
+              "LDGSTS.E.BYPASS.128 [R39+0x2200], [R32.64] ;",
+              "LDGSTS.E.BYPASS.128 [R41+0x200], [R34.64] ;",
+              "LDGSTS.E.BYPASS.128 [R41+0x2200], [R36.64] ;",
+              "LDGSTS.E.BYPASS.128 [R39+0x4200], [R32.64] ;",
+              "LDGSTS.E.BYPASS.128 [R43+0x4200], [R34.64] ;",
+              "LDGSTS.E.BYPASS.128 [R45+0x4200], [R32.64] ;",
+              "LDGSTS.E.BYPASS.128 [R41+0x4200], [R36.64] ;",
+              "@!P1 LDGSTS.E.BYPASS.128 [R31], [R16.64] ;",
+              "@!P0 LDGSTS.E.BYPASS.128 [R39+0x8200], [R14.64] ;",
+              "LDGSTS.E.BYPASS.128 [R0+0x200], [R8.64] ;",
+              "LDGSTS.E.BYPASS.128 [R0+0x2200], [R8.64] ;",
+              "LDGSTS.E.BYPASS.128 [R3+0x200], [R22.64] ;",
+              "LDGSTS.E.BYPASS.128 [R3+0x2200], [R10.64] ;",
+              "LDGSTS.E.BYPASS.128 [R0+0x4200], [R24.64] ;",
+              "LDGSTS.E.BYPASS.128 [R3+0x4200], [R26.64] ;",
+              "LDGSTS.E.BYPASS.128 [R164+0x4200], [R28.64] ;",
+              "LDGSTS.E.BYPASS.128 [R163+0x4200], [R30.64] ;",
+              "LDGSTS.E.BYPASS.128 [R37+0x200], [R16.64] ;",
+              "LDGSTS.E.BYPASS.128 [R37+0x2200], [R14.64] ;",
+              "LDGSTS.E.BYPASS.128 [R39+0x200], [R20.64] ;",
+              "LDGSTS.E.BYPASS.128 [R39+0x2200], [R16.64] ;",
+              "LDGSTS.E.BYPASS.128 [R37+0x4200], [R14.64] ;",
+              "LDGSTS.E.BYPASS.128 [R41+0x4200], [R20.64] ;",
+              "LDGSTS.E.BYPASS.128 [R43+0x4200], [R14.64] ;",
+              "LDGSTS.E.BYPASS.128 [R47+0x4200], [R16.64] ;",
+              "LDGSTS.E.BYPASS.128 [R155+0x200], [R144.64] ;",
+              "LDGSTS.E.BYPASS.128 [R155+0x2200], [R8.64] ;",
+              "LDGSTS.E.BYPASS.128 [R156+0x200], [R142.64] ;",
+              "LDGSTS.E.BYPASS.128 [R156+0x2200], [R10.64] ;",
+              "LDGSTS.E.BYPASS.128 [R155+0x4200], [R152.64] ;",
+              "LDGSTS.E.BYPASS.128 [R156+0x4200], [R150.64] ;",
+              "LDGSTS.E.BYPASS.128 [R163+0x4200], [R148.64] ;",
+              "LDGSTS.E.BYPASS.128 [R162+0x4200], [R146.64] ;",
+              "@!P1 LDGSTS.E.BYPASS.128 [R47], [R2.64] ;",
+              "@!P0 LDGSTS.E.BYPASS.128 [R47+0x8200], [R6.64] ;",
+              "LDGSTS.E.BYPASS.128 [R61+0x200], [R48.64] ;",
+              "LDGSTS.E.BYPASS.128 [R61+0x2200], [R50.64] ;",
+              "LDGSTS.E.BYPASS.128 [R63+0x200], [R52.64] ;",
+              "LDGSTS.E.BYPASS.128 [R63+0x2200], [R54.64] ;",
+              "LDGSTS.E.BYPASS.128 [R61+0x4200], [R56.64] ;",
+              "LDGSTS.E.BYPASS.128 [R65+0x4200], [R48.64] ;",
+              "LDGSTS.E.BYPASS.128 [R59+0x4200], [R50.64] ;",
+              "LDGSTS.E.BYPASS.128 [R63+0x4200], [R52.64] ;",
+              "@!P1 LDGSTS.E.BYPASS.128 [R55], [R2.64] ;",
+              "@!P0 LDGSTS.E.BYPASS.128 [R57+0x8200], [R46.64] ;"
+            ],
+            "all_copies_bypass_l1": true,
+            "native_u4_s4": true,
+            "native_s4_s4": true,
+            "int8_mma": false
+          },
+          "adangel_roof_o78_fullk_candidate": {
+            "instructions": 1944,
+            "opcode_counts": {
+              "MOV": 8,
+              "S2R": 12,
+              "ULDC": 7,
+              "USHF": 13,
+              "IADD3": 212,
+              "ULEA": 1,
+              "IMAD": 353,
+              "LDG": 21,
+              "ISETP": 74,
+              "EXIT": 5,
+              "SHF": 44,
+              "LOP3": 142,
+              "LEA": 128,
+              "BRA": 7,
+              "UIMAD": 4,
+              "LDGSTS": 40,
+              "CS2R": 63,
+              "UMOV": 2,
+              "LDGDEPBAR": 4,
+              "UIADD3": 1,
+              "DEPBAR": 2,
+              "UISETP": 2,
+              "BAR": 2,
+              "PLOP3": 2,
+              "ULOP3": 6,
+              "LDS": 33,
+              "LDSM": 32,
+              "IMMA": 128,
+              "CALL": 2,
+              "I2F": 128,
+              "FMUL": 192,
+              "STG": 192,
+              "STL": 2,
+              "LDL": 2,
+              "FFMA": 64,
+              "NOP;": 14
+            },
+            "copies": [
+              "LDGSTS.E.BYPASS.128 [R15+0x200], [R10.64] ;",
+              "LDGSTS.E.BYPASS.128 [R15+0x2200], [R2.64] ;",
+              "LDGSTS.E.BYPASS.128 [R4+0x200], [R20.64] ;",
+              "LDGSTS.E.BYPASS.128 [R4+0x2200], [R6.64] ;",
+              "LDGSTS.E.BYPASS.128 [R15+0x4200], [R24.64] ;",
+              "LDGSTS.E.BYPASS.128 [R4+0x4200], [R22.64] ;",
+              "LDGSTS.E.BYPASS.128 [R30+0x4200], [R26.64] ;",
+              "LDGSTS.E.BYPASS.128 [R29+0x4200], [R100.64] ;",
+              "@!P2 LDGSTS.E.BYPASS.128 [R28], [R2.64] ;",
+              "@!P3 LDGSTS.E.BYPASS.128 [R28+0x8200], [R8.64] ;",
+              "LDGSTS.E.BYPASS.128 [R35+0x200], [R28.64] ;",
+              "LDGSTS.E.BYPASS.128 [R35+0x2200], [R32.64] ;",
+              "LDGSTS.E.BYPASS.128 [R37+0x200], [R28.64] ;",
+              "LDGSTS.E.BYPASS.128 [R37+0x2200], [R30.64] ;",
+              "LDGSTS.E.BYPASS.128 [R39+0x4200], [R32.64] ;",
+              "LDGSTS.E.BYPASS.128 [R41+0x4200], [R28.64] ;",
+              "LDGSTS.E.BYPASS.128 [R43+0x4200], [R30.64] ;",
+              "LDGSTS.E.BYPASS.128 [R37+0x4200], [R28.64] ;",
+              "@!P2 LDGSTS.E.BYPASS.128 [R33], [R18.64] ;",
+              "@!P0 LDGSTS.E.BYPASS.128 [R35+0x8200], [R16.64] ;",
+              "LDGSTS.E.BYPASS.128 [R15+0x200], [R2.64] ;",
+              "LDGSTS.E.BYPASS.128 [R15+0x2200], [R6.64] ;",
+              "LDGSTS.E.BYPASS.128 [R157+0x200], [R146.64] ;",
+              "LDGSTS.E.BYPASS.128 [R157+0x2200], [R8.64] ;",
+              "LDGSTS.E.BYPASS.128 [R15+0x4200], [R154.64] ;",
+              "LDGSTS.E.BYPASS.128 [R157+0x4200], [R152.64] ;",
+              "LDGSTS.E.BYPASS.128 [R159+0x4200], [R150.64] ;",
+              "LDGSTS.E.BYPASS.128 [R158+0x4200], [R148.64] ;",
+              "@!P0 LDGSTS.E.BYPASS.128 [R48], [R2.64] ;",
+              "@!P1 LDGSTS.E.BYPASS.128 [R48+0x8200], [R4.64] ;",
+              "LDGSTS.E.BYPASS.128 [R57+0x200], [R46.64] ;",
+              "LDGSTS.E.BYPASS.128 [R57+0x2200], [R48.64] ;",
+              "LDGSTS.E.BYPASS.128 [R59+0x200], [R50.64] ;",
+              "LDGSTS.E.BYPASS.128 [R59+0x2200], [R52.64] ;",
+              "LDGSTS.E.BYPASS.128 [R61+0x4200], [R54.64] ;",
+              "LDGSTS.E.BYPASS.128 [R63+0x4200], [R46.64] ;",
+              "LDGSTS.E.BYPASS.128 [R53+0x4200], [R48.64] ;",
+              "LDGSTS.E.BYPASS.128 [R59+0x4200], [R50.64] ;",
+              "@!P0 LDGSTS.E.BYPASS.128 [R57], [R44.64] ;",
+              "@!P1 LDGSTS.E.BYPASS.128 [R3+0x8200], [R4.64] ;"
+            ],
+            "all_copies_bypass_l1": true,
+            "native_u4_s4": true,
+            "native_s4_s4": true,
+            "int8_mma": false
+          },
+          "adangel_roof_o78_fullk_control": {
+            "instructions": 880,
+            "opcode_counts": {
+              "IMAD": 139,
+              "S2R": 2,
+              "S2UR": 1,
+              "ULDC": 3,
+              "IADD3": 88,
+              "USHF": 3,
+              "CS2R": 32,
+              "UIMAD": 1,
+              "ISETP": 37,
+              "SHF": 21,
+              "LOP3": 75,
+              "LEA": 44,
+              "STL": 1,
+              "LDGSTS": 20,
+              "LDGDEPBAR": 2,
+              "BRA": 4,
+              "MOV": 4,
+              "DEPBAR": 1,
+              "BAR": 1,
+              "LDL": 1,
+              "LDS": 15,
+              "LDSM": 16,
+              "IMMA": 64,
+              "FMUL": 64,
+              "I2F": 64,
+              "FFMA": 64,
+              "CALL": 1,
+              "STG": 96,
+              "EXIT": 2,
+              "NOP;": 14
+            },
+            "copies": [
+              "LDGSTS.E.BYPASS.128 [R143+0x200], [R16.64] ;",
+              "LDGSTS.E.BYPASS.128 [R143+0x2200], [R2.64] ;",
+              "LDGSTS.E.BYPASS.128 [R142+0x200], [R164.64] ;",
+              "LDGSTS.E.BYPASS.128 [R142+0x2200], [R4.64] ;",
+              "LDGSTS.E.BYPASS.128 [R143+0x4200], [R162.64] ;",
+              "LDGSTS.E.BYPASS.128 [R142+0x4200], [R160.64] ;",
+              "LDGSTS.E.BYPASS.128 [R140+0x4200], [R158.64] ;",
+              "LDGSTS.E.BYPASS.128 [R139+0x4200], [R156.64] ;",
+              "@!P0 LDGSTS.E.BYPASS.128 [R55], [R6.64] ;",
+              "@!P1 LDGSTS.E.BYPASS.128 [R55+0x8200], [R8.64] ;",
+              "LDGSTS.E.BYPASS.128 [R71+0x200], [R58.64] ;",
+              "LDGSTS.E.BYPASS.128 [R71+0x2200], [R60.64] ;",
+              "LDGSTS.E.BYPASS.128 [R73+0x200], [R62.64] ;",
+              "LDGSTS.E.BYPASS.128 [R73+0x2200], [R64.64] ;",
+              "LDGSTS.E.BYPASS.128 [R75+0x4200], [R66.64] ;",
+              "LDGSTS.E.BYPASS.128 [R77+0x4200], [R58.64] ;",
+              "LDGSTS.E.BYPASS.128 [R65+0x4200], [R60.64] ;",
+              "LDGSTS.E.BYPASS.128 [R69+0x4200], [R62.64] ;",
+              "@!P0 LDGSTS.E.BYPASS.128 [R59], [R54.64] ;",
+              "@!P1 LDGSTS.E.BYPASS.128 [R71+0x8200], [R52.64] ;"
+            ],
+            "all_copies_bypass_l1": true,
+            "native_u4_s4": true,
+            "native_s4_s4": true,
+            "int8_mma": false
+          }
+        },
+        "cubin_sha256": "49f0f6c637e17dca53c17f9c9d1c70b42023fd42a5598aeed3546662f42de3b1",
+        "control_opcode_counts_match_v67": true,
+        "control_instruction_count_match_v67": true
+      },
+      "loop_analysis": {
+        "scope": "static_same_entry_mainloop_cost_not_performance_or_dynamic_traffic",
+        "entries": [
+          {
+            "symbol": "adangel_roof_o7_factor_table_candidate",
+            "loops": [
+              {
+                "kind": "original_integer",
+                "begin_pc": "0x1360",
+                "backedge_pc": "0x2d30",
+                "instructions": 414,
+                "opcodes": {
+                  "BAR.SYNC.DEFER_BLOCKING": 1,
+                  "BRA": 2,
+                  "BSSY": 1,
+                  "BSYNC": 1,
+                  "CALL.REL.NOINC": 1,
+                  "DEPBAR.LE": 1,
+                  "IADD3": 15,
+                  "IADD3.X": 6,
+                  "IMAD": 163,
+                  "IMAD.IADD": 6,
+                  "IMAD.MOV.U32": 1,
+                  "IMAD.SHL.U32": 5,
+                  "IMAD.X": 4,
+                  "IMMA.16864.S4.S4": 32,
+                  "IMMA.16864.U4.S4": 32,
+                  "ISETP.GT.U32.AND": 3,
+                  "ISETP.NE.AND": 1,
+                  "LDGDEPBAR": 1,
+                  "LDGSTS.E.BYPASS.128": 10,
+                  "LDL": 10,
+                  "LDL.LU": 7,
+                  "LDS": 7,
+                  "LDS.64": 8,
+                  "LDSM.16.M88.4": 16,
+                  "LEA": 38,
+                  "LEA.HI": 1,
+                  "LEA.HI.X": 2,
+                  "LOP3.LUT": 10,
+                  "MOV": 1,
+                  "NOP": 10,
+                  "S2R": 3,
+                  "SHF.L.U32": 5,
+                  "SHF.R.U32.HI": 2,
+                  "STL": 7,
+                  "WARPSYNC": 1
+                },
+                "imma": 64,
+                "imad_family": 179,
+                "scalar_shared_loads": 15,
+                "scalar_shared_stores": 0,
+                "local_loads": [
+                  {
+                    "pc": "0x1360",
+                    "instruction": "LDL R15, [R1+0x44]"
+                  },
+                  {
+                    "pc": "0x1370",
+                    "instruction": "LDL R14, [R1+0x3c]"
+                  },
+                  {
+                    "pc": "0x1450",
+                    "instruction": "LDL R32, [R1+0x20]"
+                  },
+                  {
+                    "pc": "0x1460",
+                    "instruction": "LDL R39, [R1+0x1c]"
+                  },
+                  {
+                    "pc": "0x1470",
+                    "instruction": "LDL R38, [R1+0x2c]"
+                  },
+                  {
+                    "pc": "0x1480",
+                    "instruction": "LDL R16, [R1+0x28]"
+                  },
+                  {
+                    "pc": "0x1490",
+                    "instruction": "LDL R45, [R1+0x34]"
+                  },
+                  {
+                    "pc": "0x14a0",
+                    "instruction": "LDL R47, [R1+0x30]"
+                  },
+                  {
+                    "pc": "0x18c0",
+                    "instruction": "LDL R15, [R1+0x40]"
+                  },
+                  {
+                    "pc": "0x18d0",
+                    "instruction": "LDL R14, [R1+0x38]"
+                  },
+                  {
+                    "pc": "0x1e60",
+                    "instruction": "LDL.LU R117, [R1+0x18]"
+                  },
+                  {
+                    "pc": "0x1ed0",
+                    "instruction": "LDL.LU R118, [R1+0x14]"
+                  },
+                  {
+                    "pc": "0x1f20",
+                    "instruction": "LDL.LU R119, [R1+0x10]"
+                  },
+                  {
+                    "pc": "0x2040",
+                    "instruction": "LDL.LU R134, [R1+0xc]"
+                  },
+                  {
+                    "pc": "0x2110",
+                    "instruction": "LDL.LU R112, [R1+0x8]"
+                  },
+                  {
+                    "pc": "0x2170",
+                    "instruction": "LDL.LU R113, [R1+0x4]"
+                  },
+                  {
+                    "pc": "0x21f0",
+                    "instruction": "LDL.LU R114, [R1]"
+                  }
+                ],
+                "local_stores": [
+                  {
+                    "pc": "0x2af0",
+                    "instruction": "STL [R1+0x4], R113"
+                  },
+                  {
+                    "pc": "0x2b40",
+                    "instruction": "STL [R1+0xc], R134"
+                  },
+                  {
+                    "pc": "0x2b70",
+                    "instruction": "STL [R1], R114"
+                  },
+                  {
+                    "pc": "0x2ba0",
+                    "instruction": "STL [R1+0x14], R118"
+                  },
+                  {
+                    "pc": "0x2be0",
+                    "instruction": "STL [R1+0x8], R112"
+                  },
+                  {
+                    "pc": "0x2c10",
+                    "instruction": "STL [R1+0x10], R119"
+                  },
+                  {
+                    "pc": "0x2c40",
+                    "instruction": "STL [R1+0x18], R117"
+                  }
+                ]
+              },
+              {
+                "kind": "factor_table",
+                "begin_pc": "0x5810",
+                "backedge_pc": "0x6fd0",
+                "instructions": 381,
+                "opcodes": {
+                  "BAR.SYNC.DEFER_BLOCKING": 1,
+                  "BRA": 3,
+                  "BSSY": 2,
+                  "BSYNC": 2,
+                  "CALL.REL.NOINC": 1,
+                  "DEPBAR.LE": 1,
+                  "FLO.U32": 1,
+                  "IADD3": 16,
+                  "IADD3.X": 6,
+                  "IMAD": 95,
+                  "IMAD.IADD": 6,
+                  "IMAD.MOV.U32": 2,
+                  "IMAD.SHL.U32": 5,
+                  "IMAD.WIDE.U32": 2,
+                  "IMAD.X": 2,
+                  "IMMA.16864.S4.S4": 32,
+                  "IMMA.16864.U4.S4": 32,
+                  "ISETP.GT.U32.AND": 2,
+                  "ISETP.NE.AND": 1,
+                  "LDG.E": 2,
+                  "LDGDEPBAR": 1,
+                  "LDGSTS.E.BYPASS.128": 8,
+                  "LDL": 4,
+                  "LDS": 7,
+                  "LDS.64": 32,
+                  "LDSM.16.M88.4": 16,
+                  "LEA": 52,
+                  "LEA.HI": 1,
+                  "LOP3.LUT": 11,
+                  "MOV": 2,
+                  "S2R": 5,
+                  "SHF.L.U32": 14,
+                  "SHF.R.U32.HI": 2,
+                  "STS": 11,
+                  "WARPSYNC": 1
+                },
+                "imma": 64,
+                "imad_family": 112,
+                "scalar_shared_loads": 39,
+                "scalar_shared_stores": 11,
+                "local_loads": [
+                  {
+                    "pc": "0x5e10",
+                    "instruction": "LDL R20, [R1+0x8]"
+                  },
+                  {
+                    "pc": "0x5e20",
+                    "instruction": "LDL R17, [R1+0xc]"
+                  },
+                  {
+                    "pc": "0x5e30",
+                    "instruction": "LDL R5, [R1+0x4]"
+                  },
+                  {
+                    "pc": "0x5e40",
+                    "instruction": "LDL R16, [R1]"
+                  }
+                ],
+                "local_stores": []
+              },
+              {
+                "kind": "fp32_fallback",
+                "begin_pc": "0x9b40",
+                "backedge_pc": "0xb690",
+                "instructions": 438,
+                "opcodes": {
+                  "BAR.SYNC.DEFER_BLOCKING": 1,
+                  "BRA": 2,
+                  "CALL.REL.NOINC": 1,
+                  "DEPBAR.LE": 1,
+                  "FFMA": 64,
+                  "FMUL": 64,
+                  "I2F": 64,
+                  "IADD3": 18,
+                  "IADD3.X": 6,
+                  "IMAD": 24,
+                  "IMAD.IADD": 3,
+                  "IMAD.SHL.U32": 4,
+                  "IMAD.X": 4,
+                  "IMMA.16864.S4.S4": 32,
+                  "IMMA.16864.U4.S4": 32,
+                  "ISETP.GE.U32.AND": 2,
+                  "ISETP.GT.U32.AND": 2,
+                  "LDGDEPBAR": 1,
+                  "LDGSTS.E.BYPASS.128": 10,
+                  "LDL": 6,
+                  "LDS": 7,
+                  "LDS.64": 8,
+                  "LDSM.16.M88.4": 16,
+                  "LEA": 46,
+                  "LEA.HI.X": 2,
+                  "LOP3.LUT": 8,
+                  "MOV": 1,
+                  "S2R": 1,
+                  "SHF.L.U32": 8
+                },
+                "imma": 64,
+                "imad_family": 35,
+                "scalar_shared_loads": 15,
+                "scalar_shared_stores": 0,
+                "local_loads": [
+                  {
+                    "pc": "0x9b40",
+                    "instruction": "LDL R3, [R1+0x14]"
+                  },
+                  {
+                    "pc": "0x9b50",
+                    "instruction": "LDL R2, [R1+0xc]"
+                  },
+                  {
+                    "pc": "0x9c10",
+                    "instruction": "LDL R50, [R1+0x4]"
+                  },
+                  {
+                    "pc": "0x9c20",
+                    "instruction": "LDL R46, [R1]"
+                  },
+                  {
+                    "pc": "0xa020",
+                    "instruction": "LDL R3, [R1+0x10]"
+                  },
+                  {
+                    "pc": "0xa030",
+                    "instruction": "LDL R2, [R1+0x8]"
+                  }
+                ],
+                "local_stores": []
+              }
+            ]
+          },
+          {
+            "symbol": "adangel_roof_o78_fullk_candidate",
+            "loops": [
+              {
+                "kind": "original_integer",
+                "begin_pc": "0xa70",
+                "backedge_pc": "0x2200",
+                "instructions": 378,
+                "opcodes": {
+                  "BAR.SYNC.DEFER_BLOCKING": 1,
+                  "BRA": 2,
+                  "CALL.REL.NOINC": 1,
+                  "DEPBAR.LE": 1,
+                  "IADD3": 20,
+                  "IADD3.X": 7,
+                  "IMAD": 150,
+                  "IMAD.SHL.U32": 1,
+                  "IMAD.X": 3,
+                  "IMMA.16864.S4.S4": 32,
+                  "IMMA.16864.U4.S4": 32,
+                  "ISETP.GT.U32.AND": 1,
+                  "LDGDEPBAR": 1,
+                  "LDGSTS.E.BYPASS.128": 10,
+                  "LDS": 7,
+                  "LDS.64": 8,
+                  "LDSM.16.M88.4": 16,
+                  "LEA": 46,
+                  "LEA.HI.X": 2,
+                  "LOP3.LUT": 7,
+                  "MOV": 1,
+                  "PLOP3.LUT": 2,
+                  "S2R": 2,
+                  "SHF.L.U32": 2,
+                  "SHF.R.U32.HI": 2,
+                  "UIADD3": 1,
+                  "UIMAD": 2,
+                  "UISETP.GT.U32.AND": 1,
+                  "UISETP.NE.AND": 1,
+                  "ULDC.64": 1,
+                  "ULOP3.LUT": 6,
+                  "UMOV": 1,
+                  "USHF.L.U32": 8
+                },
+                "imma": 64,
+                "imad_family": 154,
+                "scalar_shared_loads": 15,
+                "scalar_shared_stores": 0,
+                "local_loads": [],
+                "local_stores": []
+              },
+              {
+                "kind": "fp32_fallback",
+                "begin_pc": "0x4c10",
+                "backedge_pc": "0x6730",
+                "instructions": 435,
+                "opcodes": {
+                  "BAR.SYNC.DEFER_BLOCKING": 1,
+                  "BRA": 2,
+                  "CALL.REL.NOINC": 1,
+                  "DEPBAR.LE": 1,
+                  "FFMA": 64,
+                  "FMUL": 64,
+                  "I2F": 64,
+                  "IADD3": 17,
+                  "IADD3.X": 8,
+                  "IMAD": 19,
+                  "IMAD.IADD": 4,
+                  "IMAD.MOV.U32": 1,
+                  "IMAD.SHL.U32": 1,
+                  "IMAD.X": 2,
+                  "IMMA.16864.S4.S4": 32,
+                  "IMMA.16864.U4.S4": 32,
+                  "ISETP.GE.U32.AND": 2,
+                  "LDGDEPBAR": 1,
+                  "LDGSTS.E.BYPASS.128": 10,
+                  "LDL": 2,
+                  "LDS": 7,
+                  "LDS.64": 8,
+                  "LDSM.16.M88.4": 16,
+                  "LEA": 51,
+                  "LEA.HI.X": 2,
+                  "LOP3.LUT": 9,
+                  "S2R": 2,
+                  "SHF.L.U32": 12
+                },
+                "imma": 64,
+                "imad_family": 27,
+                "scalar_shared_loads": 15,
+                "scalar_shared_stores": 0,
+                "local_loads": [
+                  {
+                    "pc": "0x4c10",
+                    "instruction": "LDL R3, [R1+0x4]"
+                  },
+                  {
+                    "pc": "0x50d0",
+                    "instruction": "LDL R3, [R1]"
+                  }
+                ],
+                "local_stores": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "gpu_preparation_build": {
+    "scope": "independent_row_fused_conversion_factor_metadata_no_GEMM_or_default_change",
+    "source_commit": "7cb5d7b8a2125dc808d35e91df51a6509ee0bc75",
+    "sources": {
+      "csrc/sm80/roof_o78_row_fused_prepare.cu": "46a0f6b3ff4059094fc762f2a58e75160ce115bc97f044bc2111f42f0e43b56e",
+      "csrc/sm80/roof_row_fused_conversion.cuh": "bf64d05bfa741d0c86a84c4f1dea38b8cdc75b1e060cf5314b53fe57b88e26ac",
+      "csrc/sm80/roof_o78_fused_prepare.cu": "3c59446cb983ee0cc9f9619f1ac34f8c5ee6be6abc8c8ff6a20fe1ced42953bc",
+      "csrc/sm80/roof_vector_norm_conversion.cuh": "8e5f61881f8b2eed27a16525eccd9624068cdddacdb09888bd720e666cdfc8a2",
+      "csrc/sm80/roof_o78_gpu_prepare.cu": "456f784f5ff2433a06bb7a47b4056b94ecddc9c3996950bc868d8a0d079b35fc",
+      "csrc/sm80/roof_vector_conversion_impl.cuh": "d1aad7ef5ec6ab2c9ab840eaf19fee8153f40a867338970e871e0cd93c4850cc",
+      "csrc/sm80/roof_fused_conversion_api.h": "8fffbaede2373d69b6d0ba741f9ddb19ac43d63ab1a2faa8ab96f805697504cd",
+      "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9"
+    },
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+    "commands": [
+      [
+        "/usr/local/cuda-12.8/bin/nvcc",
+        "-O3",
+        "-std=c++17",
+        "-lineinfo",
+        "-arch=sm_80",
+        "-shared",
+        "-Xcompiler=-fPIC",
+        "-Xptxas=-v",
+        "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_row_fused_prepare.cu",
+        "-lcuda",
+        "-o",
+        "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v73_codegen/libo78_gpu_prepare.so"
+      ]
+    ],
+    "driver_sha256": "0973712a07dd42954cb5443763846034449e82391c0c80880fa29e22a9ab7d34"
+  },
+  "resources": {
+    "0": {
+      "registers_per_thread": 168,
+      "local_size_bytes": 8,
+      "threads": 128,
+      "active_blocks_per_sm": 3,
+      "shared_memory_bytes": 34304,
+      "cta_tile": [
+        64,
+        128,
+        128
+      ],
+      "pipeline_stages": 2,
+      "kernel_symbol": "adangel_roof_o78_fullk_candidate"
+    },
+    "1": {
+      "registers_per_thread": 168,
+      "local_size_bytes": 72,
+      "threads": 128,
+      "active_blocks_per_sm": 3,
+      "shared_memory_bytes": 43520,
+      "cta_tile": [
+        64,
+        128,
+        128
+      ],
+      "pipeline_stages": 2,
+      "kernel_symbol": "adangel_roof_o7_factor_table_candidate"
+    },
+    "2": {
+      "registers_per_thread": 168,
+      "local_size_bytes": 8,
+      "threads": 128,
+      "active_blocks_per_sm": 3,
+      "shared_memory_bytes": 34304,
+      "cta_tile": [
+        64,
+        128,
+        128
+      ],
+      "pipeline_stages": 2,
+      "kernel_symbol": "adangel_roof_o78_fullk_candidate"
+    }
+  },
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+  "production_default_changed": false,
+  "control": "v67_fullK_v73_preparation",
+  "candidate": "v76_CTA_factor_table_v73_preparation",
+  "source_quantization": "original_FP16_direct_source_quantization_excluded",
+  "timing_scope": "cached_compute_only_not_E2E",
+  "no_filtering": true,
+  "args": {
+    "gpu_build": "reports/o378_roof_v73_codegen",
+    "baseline": "reports/o378_roof_v67_codegen",
+    "cubins": "reports/o378_roof_v76_codegen",
+    "output": "runs/o378_roof_v76_screen_r1",
+    "samples": 4,
+    "rounds": 3,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100,
+    "full_modes": false,
+    "validate_only": false,
+    "data": "data/prepared/llama2_7b_prefill_o0_o4",
+    "raw_data": "data/raw/llama2_7b_prefill",
+    "trace_config": "configs/trace/llama2_7b_prefill.yaml"
+  }
+}
