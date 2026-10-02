@@ -10,6 +10,7 @@ import subprocess
 
 from analyze_o3_mma_lowering import SASS_FUNCTION, SASS_INSTRUCTION, split_sections
 from benchmark_a100_o1 import stats
+from inspect_eight_chain_schedule import trace
 
 ROOT=Path(__file__).resolve().parents[1]
 SYMBOLS=('adangel_capacity_signed','adangel_capacity_unsigned','adangel_capacity_merged')
@@ -23,8 +24,8 @@ def audit(sass):
         counts=Counter(op for _,op,_ in ops)
         signed=counts['IMMA.16864.S4.S4'];unsigned=counts['IMMA.16864.U4.S4']
         if (signed,unsigned)!=((64,0),(0,64),(32,32))[mode]:raise ValueError('wrong native MMA work')
-        if any(counts[op] for op in counts if op.startswith(('LDL','STL','LDSM')) or '.S8' in op or '.U8' in op):
-            raise ValueError('unexpected local/fragment work or INT8 lowering')
+        if any(counts[op] for op in counts if op.startswith('LDSM') or '.S8' in op or '.U8' in op):
+            raise ValueError('unexpected fragment work or INT8 lowering')
         loops=[]
         for pc,opcode,args in ops:
             if opcode!='BRA':continue
@@ -34,8 +35,17 @@ def audit(sass):
                 if sum(op.startswith('IMMA.') for op in selected)==64:
                     loops.append(dict(begin=hex(int(target[1],16)),end=hex(pc),instructions=len(selected)))
         if len(loops)!=1:raise ValueError('one runtime group loop containing exactly64 MMA required')
-        result[symbol]=dict(opcode_counts=dict(sorted(counts.items())),loop=loops[0],
-                           native_signed=signed,native_unsigned=unsigned)
+        loop=loops[0]
+        if any(op.startswith(('LDL','STL','LDG','LDS','STS','STG'))
+               for pc,op,_ in ops if int(loop['begin'],16)<=pc<=int(loop['end'],16)):
+            raise ValueError('MMA issue loop contains memory access')
+        result[symbol]=dict(opcode_counts=dict(sorted(counts.items())),loop=loop,
+            native_signed=signed,native_unsigned=unsigned,
+            cold_local_instructions=sum(count for op,count in counts.items() if op.startswith(('LDL','STL'))),
+            hot_loop_memory_instructions=0)
+        if mode==2:
+            live=dict(loops=[dict(kind='integer',begin_pc=loop['begin'],end_pc=loop['end'])])
+            result[symbol]['merged_chain_trace']=trace(sass,symbol,live)
     return result
 
 
@@ -87,7 +97,7 @@ def main():
         rows=[json.loads(line) for line in (out/'results.jsonl').read_text().splitlines()]
         summary=dict(scope=receipt['scope'],records=summarize(rows),production_default_changed=False,
             no_filtering=True,original_experiment_MSE_measured=False,
-            note='256-group instruction diagnostic normalized by8; excludes real payload supply, scale, accumulator and output work. Not a new strict lower bound or a speedup over any GEMM.')
+            note='256-group instruction diagnostic normalized by8; includes checksum and small setup/epilogue, but excludes real payload supply, scale, accumulator and output work. Homogeneous-mode cross-slice scheduling is not constrained. Not a strict lower bound or a speedup over any GEMM.')
         (out/'summary.json').write_text(json.dumps(summary,indent=2,allow_nan=False)+'\n')
         (out/'codegen.json').write_text(json.dumps(receipt,indent=2)+'\n')
         print(json.dumps(summary,indent=2),flush=True)

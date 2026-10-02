@@ -10,8 +10,17 @@ from probe_a100_mma_issue_capacity import audit, summarize, SYMBOLS
 
 
 def fake_sass():
+    from test_eight_chain_schedule import fixture
     blocks=[]
     for mode,symbol in enumerate(SYMBOLS):
+        if mode==2:
+            merged,_=fixture()
+            # Use actual signed/signed/unsigned/unsigned C/D dependencies.
+            lines=merged.split('Function : exact_suffix')[0].strip().splitlines()
+            pc=(len(lines)-1)*16
+            lines.append(f'/*{pc:04x}*/ @P0 BRA 0x0 ;')
+            blocks.append('\n'.join(lines).replace('Function : exact','Function : '+symbol))
+            continue
         body=[f'Function : {symbol}']
         for i in range(64):
             kind='U4' if mode==1 or (mode==2 and i>=32) else 'S4'
@@ -25,6 +34,7 @@ def test_exact_native_shape_types_and_single_loop():
     result=audit(fake_sass())
     assert result[SYMBOLS[2]]['native_signed']==result[SYMBOLS[2]]['native_unsigned']==32
     assert result[SYMBOLS[0]]['loop']['instructions']==65
+    assert result[SYMBOLS[2]]['merged_chain_trace']['peak_started_not_finished_chains']==8
     for text in (fake_sass().replace('S4.S4','S8.S8',1),fake_sass().replace('BRA 0x0','BRA 0x1000',1)):
         with pytest.raises(ValueError):audit(text)
 
@@ -44,7 +54,7 @@ def test_operation_count_is_physical_not_effective_gemm_tops():
 
 def test_no_binding_default_or_trace_claim():
     text=(ROOT/'csrc/sm80/mma_issue_capacity_probe.cu').read_text()
-    assert 'resident!=3 || attr.localSizeBytes!=0' in text
+    assert 'resident!=3 || attr.localSizeBytes>8' in text
     assert 'if(prop.major!=8 || prop.minor!=0 || prop.multiProcessorCount!=108)' in text
     assert 'for(int groups:{1,32})' in text
     assert 'for(int slice=0;slice<2;++slice)' in text
