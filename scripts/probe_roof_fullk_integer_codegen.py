@@ -17,13 +17,15 @@ ROOT = Path(__file__).resolve().parents[1]
 PATTERN = r'^adangel_roof_fullk_integer_(?:o3|o78)$'
 
 
-def static_entries(sass):
+def static_entries(sass, pattern=PATTERN, expected_symbols=None):
+    if expected_symbols is None:
+        expected_symbols={'adangel_roof_fullk_integer_o3','adangel_roof_fullk_integer_o78'}
     entries = {}
     for block in re.split(r'(?=Function\s*:\s*)', sass):
         if not block.startswith('Function'):
             continue
         symbol = block.splitlines()[0].split(':', 1)[1].strip()
-        if not re.fullmatch(PATTERN, symbol):
+        if not re.fullmatch(pattern, symbol):
             continue
         if symbol in entries:
             raise ValueError('duplicate probe entry')
@@ -43,7 +45,7 @@ def static_entries(sass):
             native_u4_s4=any(re.search(r'\bIMMA[^;]*\.U4\.S4', s) for s in text),
             native_s4_s4=any(re.search(r'\bIMMA[^;]*\.S4\.S4', s) for s in text),
             int8_mma=any(re.search(r'\bIMMA[^;]*\.[SU]8\.', s) for s in text))
-    if set(entries) != {'adangel_roof_fullk_integer_o3', 'adangel_roof_fullk_integer_o78'}:
+    if set(entries) != set(expected_symbols):
         raise ValueError('missing probe entry')
     return entries
 
