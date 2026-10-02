@@ -99,7 +99,8 @@ def prepare(a_codes,w_codes,aq,wq,variant,tensor_scale):
         activation_kind=ak,weight_kind=wk,
         activation_base_multiplier=4 if variant=='o7' else np.float32(tensor_scale)/4,
         weight_base_multiplier=np.float32(tensor_scale) if variant=='o7' else 1)
-    metadata['cuda'] = tuple(torch.from_numpy(metadata[name]).to(aq.device) for name in (
+    metadata['cuda'] = tuple(torch.from_numpy(metadata[name]).to(aq.device,
+        dtype=torch.int32 if name=='status_flat' else None) for name in (
         'activation_factors','weight_factors','activation_bases','weight_bases','status_flat'))
     torch.cuda.current_stream().synchronize()
     metadata['preparation_wall_ms'] = (time.perf_counter()-start)*1000
@@ -204,6 +205,8 @@ def main():
     from adangel.trace.prepare import _load_and_validate_raw
     torch.cuda.init();torch.set_num_threads(4);torch.backends.cuda.matmul.allow_tf32=False
     assert torch.cuda.get_device_capability()==(8,0)
+    # Driver API needs a current context; lazy CUDA init alone is insufficient.
+    torch.empty(1,device='cuda')
     codegen = checked(a.cubins); a.output.mkdir(parents=True)
     def save(name,value): (a.output/name).write_text(json.dumps(value,indent=2,allow_nan=False)+'\n')
     def append(name,value):
