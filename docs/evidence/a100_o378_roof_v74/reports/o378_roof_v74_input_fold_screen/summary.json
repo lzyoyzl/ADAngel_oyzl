@@ -1,0 +1,385 @@
+{
+  "scope": "exact_input_factor_folding_feasibility_not_new_kernel_timing_or_MSE",
+  "source_commit": "12167353b765b5b030df1773a12f5e7346d9ca48",
+  "script_sha256": "c7a8a6dc593552ccdfb8db17efc27deda6599945bc91841678b22697839d727c",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "torch": "2.7.1+cu128",
+  "samples": [
+    {
+      "sample_id": "layer_00_q_proj",
+      "variant": "o7",
+      "raw_sha256": "a9e1422977df2ddc8193c5a5535f25f2d0eb71a415a4bb60adbff25e4d6ecd48",
+      "a": {
+        "target_bits": 8,
+        "tile_rows": 64,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 64,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "11": 1,
+          "12": 166,
+          "13": 2493,
+          "14": 1251,
+          "15": 87,
+          "17": 98
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_q_proj_o7_a.json",
+        "sha256": "b547de0b3bed06a63231ac5ff5de047dd9a8c4c3c0d7281af661fa95ac3088db"
+      },
+      "w": {
+        "target_bits": 4,
+        "tile_rows": 128,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 32,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "8": 50,
+          "9": 831,
+          "10": 2096,
+          "11": 965,
+          "12": 147,
+          "13": 7
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_q_proj_o7_w.json",
+        "sha256": "c462a3076043f29cd989b9592bd842288497d4aaaac473694aef705dff522efd"
+      },
+      "ctas_fitting_both_operands": 0
+    },
+    {
+      "sample_id": "layer_00_q_proj",
+      "variant": "o8",
+      "raw_sha256": "a9e1422977df2ddc8193c5a5535f25f2d0eb71a415a4bb60adbff25e4d6ecd48",
+      "a": {
+        "target_bits": 8,
+        "tile_rows": 64,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 64,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "13": 52,
+          "14": 693,
+          "15": 1840,
+          "16": 1268,
+          "17": 145,
+          "18": 98
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_q_proj_o8_a.json",
+        "sha256": "0ea9174e47a35d9fe1c25d68a46014658fa4f22e8d0f474413ab0598c1151fba"
+      },
+      "w": {
+        "target_bits": 4,
+        "tile_rows": 128,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 32,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "7": 24,
+          "8": 582,
+          "9": 2068,
+          "10": 1204,
+          "11": 203,
+          "12": 15
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_q_proj_o8_w.json",
+        "sha256": "f8fc5ec431b3c5b7415c3ae36e37dfc0736890046875c015db7e491b632d9817"
+      },
+      "ctas_fitting_both_operands": 0
+    },
+    {
+      "sample_id": "layer_00_k_proj",
+      "variant": "o7",
+      "raw_sha256": "5561cfe34c849d5e0ebddeb6062563a869b34b3f0a453d31679c77c90e0b64dd",
+      "a": {
+        "target_bits": 8,
+        "tile_rows": 64,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 64,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "11": 1,
+          "12": 166,
+          "13": 2493,
+          "14": 1251,
+          "15": 87,
+          "17": 98
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_k_proj_o7_a.json",
+        "sha256": "b547de0b3bed06a63231ac5ff5de047dd9a8c4c3c0d7281af661fa95ac3088db"
+      },
+      "w": {
+        "target_bits": 4,
+        "tile_rows": 128,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 32,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "8": 120,
+          "9": 1490,
+          "10": 2043,
+          "11": 412,
+          "12": 31
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_k_proj_o7_w.json",
+        "sha256": "533ae32933fe49353301cdcec831c7b913b8d1299e55edeffa018f4049126ae7"
+      },
+      "ctas_fitting_both_operands": 0
+    },
+    {
+      "sample_id": "layer_00_k_proj",
+      "variant": "o8",
+      "raw_sha256": "5561cfe34c849d5e0ebddeb6062563a869b34b3f0a453d31679c77c90e0b64dd",
+      "a": {
+        "target_bits": 8,
+        "tile_rows": 64,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 64,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "13": 52,
+          "14": 693,
+          "15": 1840,
+          "16": 1268,
+          "17": 145,
+          "18": 98
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_k_proj_o8_a.json",
+        "sha256": "0ea9174e47a35d9fe1c25d68a46014658fa4f22e8d0f474413ab0598c1151fba"
+      },
+      "w": {
+        "target_bits": 4,
+        "tile_rows": 128,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 32,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "7": 80,
+          "8": 1088,
+          "9": 2291,
+          "10": 596,
+          "11": 39,
+          "12": 2
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_k_proj_o8_w.json",
+        "sha256": "6f3e255a42f42025728ad1c3e9d610bb21073246f1593b0d2d8db3df84f819d1"
+      },
+      "ctas_fitting_both_operands": 0
+    },
+    {
+      "sample_id": "layer_00_v_proj",
+      "variant": "o7",
+      "raw_sha256": "eadb207706d87f74b2055455cac329f0b91bb25b3824c72a93cc228c322c58a4",
+      "a": {
+        "target_bits": 8,
+        "tile_rows": 64,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 64,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "11": 1,
+          "12": 166,
+          "13": 2493,
+          "14": 1251,
+          "15": 87,
+          "17": 98
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_v_proj_o7_a.json",
+        "sha256": "b547de0b3bed06a63231ac5ff5de047dd9a8c4c3c0d7281af661fa95ac3088db"
+      },
+      "w": {
+        "target_bits": 4,
+        "tile_rows": 128,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 32,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "8": 1693,
+          "9": 2399,
+          "10": 4
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_v_proj_o7_w.json",
+        "sha256": "38fda54449aaf8e59ea826ce3b6347dc00a4fd855865cc65059091fe447a071f"
+      },
+      "ctas_fitting_both_operands": 0
+    },
+    {
+      "sample_id": "layer_00_v_proj",
+      "variant": "o8",
+      "raw_sha256": "eadb207706d87f74b2055455cac329f0b91bb25b3824c72a93cc228c322c58a4",
+      "a": {
+        "target_bits": 8,
+        "tile_rows": 64,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 64,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "13": 52,
+          "14": 693,
+          "15": 1840,
+          "16": 1268,
+          "17": 145,
+          "18": 98
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_v_proj_o8_a.json",
+        "sha256": "0ea9174e47a35d9fe1c25d68a46014658fa4f22e8d0f474413ab0598c1151fba"
+      },
+      "w": {
+        "target_bits": 4,
+        "tile_rows": 128,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 32,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "7": 2245,
+          "8": 1844,
+          "9": 7
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_v_proj_o8_w.json",
+        "sha256": "c334d482d2b5ef631d39b0d734b7103b0b72b178f49340d09e146550766b5167"
+      },
+      "ctas_fitting_both_operands": 0
+    },
+    {
+      "sample_id": "layer_00_o_proj",
+      "variant": "o7",
+      "raw_sha256": "5d54a481175e12b79b37761b8de48da6cc0aef403d918415d1357484ae3e2ad5",
+      "a": {
+        "target_bits": 8,
+        "tile_rows": 64,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 64,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "11": 9,
+          "12": 1265,
+          "13": 2779,
+          "14": 43
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_o_proj_o7_a.json",
+        "sha256": "0e727e94f4a668a929603addd0cbfd274e7959da768839aae55faa4a9d949c99"
+      },
+      "w": {
+        "target_bits": 4,
+        "tile_rows": 128,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 32,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "8": 25,
+          "9": 1469,
+          "10": 2548,
+          "11": 47,
+          "12": 6,
+          "13": 1
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_o_proj_o7_w.json",
+        "sha256": "25f127106d19402649266d9af2753e35625f910738aa30c154c7b2bfebb5fec5"
+      },
+      "ctas_fitting_both_operands": 0
+    },
+    {
+      "sample_id": "layer_00_o_proj",
+      "variant": "o8",
+      "raw_sha256": "5d54a481175e12b79b37761b8de48da6cc0aef403d918415d1357484ae3e2ad5",
+      "a": {
+        "target_bits": 8,
+        "tile_rows": 64,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 64,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "13": 91,
+          "14": 3115,
+          "15": 793,
+          "16": 93,
+          "17": 4
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_o_proj_o8_a.json",
+        "sha256": "0ea6bee59323bcc5280f638d42dfdc32d34410c6750f78697f5a0d9584a4c2ef"
+      },
+      "w": {
+        "target_bits": 4,
+        "tile_rows": 128,
+        "fitting_rows": 0,
+        "total_rows": 4096,
+        "fitting_row_fraction": 0.0,
+        "fitting_tiles": 0,
+        "total_tiles": 32,
+        "fitting_tile_fraction": 0.0,
+        "minimum_signed_bits_histogram": {
+          "7": 3,
+          "8": 583,
+          "9": 3311,
+          "10": 190,
+          "11": 8,
+          "12": 1
+        },
+        "interpretation": "optimistic_exact_input_range_gate_not_runtime_or_performance_acceptance",
+        "file": "layer_00_o_proj_o8_w.json",
+        "sha256": "f2f09c8ce186d43859dbf59c6c19511a5f34f1a59202f5e3f682e6644b5749bb"
+      },
+      "ctas_fitting_both_operands": 0
+    }
+  ]
+}
