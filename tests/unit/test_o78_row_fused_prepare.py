@@ -59,3 +59,19 @@ def test_runtime_switches_preparation_but_not_gemm(monkeypatch):
     for policy in (0,1,2):driver.run(case,policy,'compute_only',5,2,100)
     assert [c[0] for c in calls]==[11,11,11]
     assert [c[2] for c in calls]==[0,1,0]
+
+
+def test_timing_metadata_distinguishes_fused_candidate():
+    import benchmark_o78_row_fused as probe
+    for mode in probe.base.MODES:
+        control=probe.timing_contract(mode,100,0)
+        candidate=probe.timing_contract(mode,100,1)
+        assert control['preparation_implementation']=='fused_conversion_group_squares_then_metadata'
+        assert candidate['preparation_implementation']=='row_fused_conversion_factor_metadata'
+        assert control['group_squares_read_for_metadata'] and not candidate['group_squares_read_for_metadata']
+        assert (control['weight_preparation_launches'],candidate['weight_preparation_launches'])==(2,1)
+        assert (control['activation_preparation_launches'],candidate['activation_preparation_launches'])==(3,2)
+        for key,value in probe.base.timing_contract(mode,100).items():
+            assert control[key]==candidate[key]==value
+        assert control['gemm_cufunction_identical_between_policies']
+        assert candidate['gemm_cufunction_identical_between_policies']

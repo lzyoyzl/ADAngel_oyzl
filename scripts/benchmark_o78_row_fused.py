@@ -16,6 +16,23 @@ from benchmark_o78_coefficient_probe import validate, summarize
 base, ROOT = fused.base, fused.base.ROOT
 
 
+def timing_contract(mode, inner, policy):
+    if policy not in (0, 1, 2):
+        raise ValueError('invalid row-fusion policy')
+    result = fused.timing_contract(mode, inner)
+    candidate = policy == 1
+    result.update(
+        preparation_implementation=('row_fused_conversion_factor_metadata' if candidate
+                                    else 'fused_conversion_group_squares_then_metadata'),
+        group_squares_read_for_metadata=not candidate,
+        group_squares_global_write_retained=True,
+        weight_preparation_launches=1 if candidate else 2,
+        activation_preparation_launches=2 if candidate else 3,
+        gemm_cufunction_identical_between_policies=True,
+    )
+    return result
+
+
 class Driver(fused.Driver):
     def __init__(self, library, baseline):
         super().__init__(library, baseline)
@@ -154,7 +171,7 @@ def main():
                                 finite_fp32=True, bitwise_equal_v67=True, MSE_regression_passed=True,
                                 mse_vs_paired_fp16=error, paired_fp16=mf.PAIRED_BASELINE[variant],
                                 mse_vs_v67=mse(output, expected), max_abs_vs_v67=(output - expected).abs().max().item(),
-                                resources=driver.resources[policy], **fused.timing_contract(mode, args.inner))
+                                resources=driver.resources[policy], **timing_contract(mode, args.inner, policy))
                             rows.append(row); append('results.jsonl', row)
                 print(entry['sample_id'], variant, 'paired complete', flush=True)
             save('summary.json', dict(scope='row_conversion_metadata_fusion_paired_' + ('four_modes' if args.full_modes else 'cached_GEMM'),
