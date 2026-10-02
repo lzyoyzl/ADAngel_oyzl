@@ -35,7 +35,9 @@ class Driver(OriginalDriver):
         result = super().prepare(case)
         for name, reference in case.group_squares_reference.items():
             assert np.array_equal(case.state[name].cpu().numpy(),reference),name
-        result.update(group_squares_exact=True, preparation_implementation="fused_conversion_group_squares_then_metadata")
+        # Implementation identity belongs to timing_contract(); validation
+        # combines both dictionaries as keyword arguments, so keep keys disjoint.
+        result.update(group_squares_exact=True)
         return result
 
 
