@@ -1,0 +1,69 @@
+{
+  "scope": "native_MMA_capacity_diagnostic_not_GEMM_or_MSE_or_attainable_kernel_peak",
+  "records": [
+    {
+      "mode": 0,
+      "symbol": "adangel_capacity_signed",
+      "statistics": {
+        "count": 200,
+        "median_ms": 1.79200006,
+        "mean_ms": 1.7973913985499999,
+        "cv_percent": 0.43266241005664896,
+        "min_ms": 1.78995204,
+        "max_ms": 1.80940795,
+        "p5_ms": 1.79097605,
+        "p95_ms": 1.80838394,
+        "iqr_ms": 0.016383999999999954
+      },
+      "dynamic_mma_work": 134217728,
+      "physical_int4_ops": 2199023255552,
+      "measured_physical_tops": 1227.133472055799,
+      "normalized_32_group_ms": 0.2240000075,
+      "cv_passed": true
+    },
+    {
+      "mode": 1,
+      "symbol": "adangel_capacity_unsigned",
+      "statistics": {
+        "count": 200,
+        "median_ms": 1.79200006,
+        "mean_ms": 1.79737603955,
+        "cv_percent": 0.4339871801050224,
+        "min_ms": 1.78995204,
+        "max_ms": 1.81350398,
+        "p5_ms": 1.79097605,
+        "p95_ms": 1.80838394,
+        "iqr_ms": 0.016383999999999954
+      },
+      "dynamic_mma_work": 134217728,
+      "physical_int4_ops": 2199023255552,
+      "measured_physical_tops": 1227.133472055799,
+      "normalized_32_group_ms": 0.2240000075,
+      "cv_passed": true
+    },
+    {
+      "mode": 2,
+      "symbol": "adangel_capacity_merged",
+      "statistics": {
+        "count": 200,
+        "median_ms": 2.0223999,
+        "mean_ms": 2.02888698935,
+        "cv_percent": 0.45464282147204427,
+        "min_ms": 2.02035189,
+        "max_ms": 2.04185605,
+        "p5_ms": 2.02035189,
+        "p95_ms": 2.04185605,
+        "iqr_ms": 0.01945615000000034
+      },
+      "dynamic_mma_work": 134217728,
+      "physical_int4_ops": 2199023255552,
+      "measured_physical_tops": 1087.3335464227428,
+      "normalized_32_group_ms": 0.2527999875,
+      "cv_passed": true
+    }
+  ],
+  "production_default_changed": false,
+  "no_filtering": true,
+  "original_experiment_MSE_measured": false,
+  "note": "256-group instruction diagnostic normalized by8; includes checksum and small setup/epilogue, but excludes real payload supply, scale, accumulator and output work. Homogeneous-mode cross-slice scheduling is not constrained. Not a strict lower bound or a speedup over any GEMM."
+}

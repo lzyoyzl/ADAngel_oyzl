@@ -4,6 +4,17 @@
 默认未切换；共享、未锁频GPU，保留CV失败记录。以下“提升”指配对吞吐提升，
 正数更快、负数更慢；延迟降低使用 `1−1/speedup`，不要与吞吐提升混称。
 
+## v82：三CTA原生MMA容量诊断，不是新GEMM成绩
+
+相同2048 CTA/128线程，shared padding限制3 CTA/SM，三模式各50预热/200次Event。
+S4、U4单路各1227.13物理TOPS；合并high×16+low为1087.33 TOPS，CV均<0.46%。
+24项checksum通过，NCU核对134,217,728条动态MMA、2,199,023,255,552次INT4运算、无INT8。
+合并路径只有循环外8B指针spill，主循环无访存；其40regs和编译后的5条未完成链不等同于真实168regs/8链。
+按32组工作量折算0.2240/0.2528ms仅供容量诊断，不是4096³ GEMM或新的可达上界。
+没有新MSE/conversion/Cold/steady、没有原kernel加速；最佳v79/v78+v73与默认不变。
+后续不凭occupancy/issue百分比扫描配置，应检查真实供数/后处理与MMA衔接。
+[v82证据](evidence/a100_o378_roof_v82/README.md)
+
 ## v81：修复metadata搬运热点，但无确认加速
 
 由v80定位的A-factor半warp搬运改为完整warp：A为32线程×8B、W为另一warp×16B。

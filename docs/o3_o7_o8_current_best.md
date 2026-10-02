@@ -2,6 +2,12 @@
 
 ## 结论
 
+**v82容量诊断未产生新GEMM最佳。** 在最多3 CTA/SM下，单路S4/U4测到1227.13物理TOPS，
+双路合并诊断1087.33 TOPS；NCU硬件INT4工作量与源码/SASS一致。
+诊断不包含真实payload/scale/完整accumulator，且编译调度不同，不能当作真实kernel有效上界或加速。
+它否定了“仅有3 CTA就不可能充分使用Tensor Core”的判断；正式最佳及MSE仍以下述v79/v78为准。
+[v82原始Event、NCU与适用边界](evidence/a100_o378_roof_v82/README.md)。
+
 **v80/v81复核后，最佳版本没有变化。** v80定位O7/O8半warp scale因子搬运热点，
 v81消除了该处excessive wavefronts，但四样本三轮GEMM配对O7 +0.57%、O8 −0.57%，
 两者区间均未确认收益。输出逐位一致、MSE及有限安全审计通过，仍有CV失败；
