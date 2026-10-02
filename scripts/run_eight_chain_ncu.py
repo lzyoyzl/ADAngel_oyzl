@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 from analyze_roof_scale_ncu import analyze
-from profile_eight_chain_kernel import ROOT, SYMBOLS
+from profile_eight_chain_kernel import ROOT, SYMBOLS, kernel_symbol
 
 
 def normalized_counts(counts):
@@ -25,7 +25,7 @@ def normalized_counts(counts):
 
 
 def analyze_capture(raw, source, receipt):
-    variant = receipt['variant']; symbol = SYMBOLS[variant]
+    variant = receipt['variant']; symbol = kernel_symbol(variant,receipt.get('metadata_copy_candidate',False))
     if receipt['expected_kernel'] != symbol or not receipt['numerical_checks_passed'] or not receipt['bitwise_previous_fullk']:
         raise ValueError('identity/correctness receipt mismatch')
     guard = receipt['guard']
@@ -56,8 +56,11 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--analyze-only',action='store_true')
+    p.add_argument('--variants',nargs='+',choices=tuple(SYMBOLS),default=list(SYMBOLS))
+    p.add_argument('--metadata-copy-candidate',action='store_true')
     a = p.parse_args(); out = a.output.resolve()
-    if not out.is_relative_to(ROOT) or (out.exists() and not a.analyze_only):
+    if (not out.is_relative_to(ROOT) or (out.exists() and not a.analyze_only)
+            or len(set(a.variants))!=len(a.variants) or (a.metadata_copy_candidate and 'o3' in a.variants)):
         p.error('fresh repository output required for collection')
     if not a.analyze_only:
         out.mkdir(parents=True)
@@ -68,26 +71,28 @@ def main():
             with (out/name).open('w') as f:
                 subprocess.run(cmd,cwd=ROOT,stdout=f,stderr=subprocess.STDOUT,check=True)
         run([ncu,'--version'],'ncu_version.txt')
-        for variant,symbol in SYMBOLS.items():
+        for variant in a.variants:
+            symbol=kernel_symbol(variant,a.metadata_copy_candidate)
             prefix = out/variant
             run([ncu,'--set','full','--cache-control','all','--clock-control','none',
                  '--kernel-name-base','function','--kernel-name',symbol,'--launch-skip','50','--launch-count','1',
                  '-o',str(prefix),sys.executable,'scripts/profile_eight_chain_kernel.py',
-                 '--variant',variant,'--output',str(prefix)],variant+'.log')
+                 '--variant',variant,'--output',str(prefix)] +
+                 (['--metadata-copy-candidate'] if a.metadata_copy_candidate else []),variant+'.log')
             for suffix,page in (('raw','raw'),('source_sass','source')):
                 cmd=[ncu,'--import',str(prefix)+'.ncu-rep','--csv','--page',page]
                 if page=='source': cmd+=['--print-source','sass']
                 run(cmd,f'{variant}_{suffix}.csv')
             print(variant,'captured',flush=True)
     rows=[]; hashes={}
-    for variant in SYMBOLS:
+    for variant in a.variants:
         paths=[out/f'{variant}_{suffix}.csv' for suffix in ('raw','source_sass')]
         receipt=out/variant/'receipt.json'
         rows.append(analyze_capture(*(f.read_text(encoding='utf-8-sig') for f in paths),json.loads(receipt.read_text())))
         hashes.update({str(f.relative_to(out)):hashlib.sha256(f.read_bytes()).hexdigest() for f in [*paths,receipt]})
     (out/'analysis.json').write_text(json.dumps(dict(scope='existing_best_NCU_diagnostic_not_new_speedup',
         rows=rows,input_sha256=hashes,new_performance_result=False,production_default_changed=False),indent=2,allow_nan=False)+'\n')
-    print('THREE BEST-KERNEL NCU CAPTURES AND IDENTITY/WORK CHECKS PASSED',flush=True)
+    print(f'{len(rows)} NCU CAPTURES AND IDENTITY/WORK CHECKS PASSED',flush=True)
 
 
 if __name__=='__main__': main()

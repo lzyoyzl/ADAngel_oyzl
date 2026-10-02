@@ -15,12 +15,19 @@ SYMBOLS = {'o3': 'adangel_roof_o3_eight_chain_candidate',
            'o8': 'adangel_roof_o78_eight_chain_candidate'}
 
 
+def kernel_symbol(variant, metadata_copy_candidate=False):
+    if variant not in SYMBOLS or (metadata_copy_candidate and variant=='o3'):
+        raise ValueError('unsupported profile variant/candidate')
+    return 'adangel_roof_o78_warp_metadata_candidate' if metadata_copy_candidate else SYMBOLS[variant]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--variant', choices=tuple(SYMBOLS), required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--metadata-copy-candidate', action='store_true')
     a = parser.parse_args()
-    if a.output.exists() or not a.output.resolve().is_relative_to(ROOT):
+    if a.output.exists() or not a.output.resolve().is_relative_to(ROOT) or (a.metadata_copy_candidate and a.variant=='o3'):
         parser.error('fresh repository output required')
     import torch
     from adangel import _sm80 as native
@@ -45,7 +52,8 @@ def main():
     verify_raw_prepared(x, (raw['activation_fp16'], raw['weight_fp16']))
     a.output.mkdir(parents=True)
     receipt = dict(scope='one_sample_best_kernel_NCU_not_Event_performance_or_new_candidate',
-        variant=a.variant, expected_kernel=SYMBOLS[a.variant], sample_id=e['sample_id'], shape=[4096]*3,
+        variant=a.variant, expected_kernel=kernel_symbol(a.variant,a.metadata_copy_candidate),
+        metadata_copy_candidate=a.metadata_copy_candidate, sample_id=e['sample_id'], shape=[4096]*3,
         filtered_launch_skip=50, filtered_launch_count=1, raw_manifest_sha256=rh,
         prepared_manifest_sha256=mh, raw_sample_sha256=re['sha256'], prepared_sample_sha256=e['sha256'],
         git_commit=command('git','rev-parse','HEAD'), extension_sha256=sha256_file(Path(native.__file__)),
@@ -76,6 +84,9 @@ def main():
         from benchmark_o78_fused_prepare import Case
         from benchmark_o78_fullk_gpu_prepare import checked_gpu_build
         directory = ROOT/'reports/o378_roof_v78_codegen'
+        if a.metadata_copy_candidate:
+            from benchmark_o78_warp_metadata import Driver
+            directory = ROOT/'reports/o378_roof_v81_codegen'
         library, preparation = checked_gpu_build(ROOT/'reports/o378_roof_v73_codegen')
         driver = Driver(library, ROOT/'reports/o378_roof_v67_codegen', directory)
         try:

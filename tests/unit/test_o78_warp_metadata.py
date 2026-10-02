@@ -34,3 +34,11 @@ def test_eight_byte_copy_uses_supported_ca_and_memory_clobber():
     assert ':"memory"' in src
     assert 'if(flag==1u)' in src and 'O78::o3_body' in src
     assert '__launch_bounds__(128,3)' in src
+
+
+def test_profile_selection_does_not_change_original_symbol():
+    from profile_eight_chain_kernel import kernel_symbol, SYMBOLS
+    for v in SYMBOLS: assert kernel_symbol(v)==SYMBOLS[v]
+    for v in ('o7','o8'): assert kernel_symbol(v,True)=='adangel_roof_o78_warp_metadata_candidate'
+    with pytest.raises(ValueError): kernel_symbol('o3',True)
+    with pytest.raises(ValueError): kernel_symbol('unknown')
