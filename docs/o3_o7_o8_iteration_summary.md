@@ -16,6 +16,7 @@ CV≥3%的控制/候选各为12/11条（每后端各12条），原样保留。
 
 单样本O7 NCU：source shared excessive **6,422,528→0**，source shared wavefronts
 38,141,952→30,801,920，但动态指令105,521,152→106,823,680，必要MMA和168regs/3CTA不变。
+原始硬件L1/TEX服务下界反而0.182582→0.188704ms，不能将source派生计数下降等同于总硬件工作减少。
 NCU Duration0.392800→0.393408ms不是配对Event加速比。减少一个派生访存指标未缩短关键路径，
 停止此候选，不再围绕metadata copy/cache位置扫描。
 [v81原始结果、MSE、NCU与安全证据](evidence/a100_o378_roof_v81/README.md)

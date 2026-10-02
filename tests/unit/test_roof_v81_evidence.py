@@ -126,3 +126,9 @@ def test_ncu_recompute_proves_less_metadata_work_not_event_speedup():
     assert row['opcodes']['IMMA'] == 16777216 and row['opcodes']['LDSM'] == 4194304
     assert row['mse_vs_previous_fullk'] == 0
     assert row['optimistic_fixed_work_lower_bound_ms'] == pytest.approx(.22034693984764905)
+    old_file = ROOT / 'docs/evidence/a100_o378_roof_v80_ncu/reports/o378_roof_v80_ncu/analysis.json'
+    old = next(r for r in json.loads(old_file.read_text())['rows'] if r['variant'] == 'o7')
+    # Source-derived excessive work disappearing is not the same as lower
+    # measured hardware L1/shared service work. Do not infer a speedup from it.
+    for key in ('l1tex_data_wavefront_capacity', 'shared_wavefront_subset'):
+        assert row['resource_service_lower_bounds_ms_at_1410'][key] > old['resource_service_lower_bounds_ms_at_1410'][key]

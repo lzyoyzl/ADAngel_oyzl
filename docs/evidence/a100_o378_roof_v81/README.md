@@ -73,6 +73,8 @@ symbol、cubin、静态指纹、动态工作和输出均核对；2048个CTA全�
 |Source shared wavefronts|38,141,952|30,801,920|
 |Source shared excessive wavefronts|6,422,528|0|
 |Source global excessive sectors|3,663,610|0|
+|原始L1/TEX wavefront容量服务下界 ms @1410MHz|0.182582|0.188704|
+|原始shared wavefront子集服务下界 ms @1410MHz|0.164753|0.170767|
 |动态warp指令|105,521,152|106,823,680|
 |动态IMMA / LDSM|16,777,216 / 4,194,304|相同|
 |Eligible warps / scheduler|0.747220|0.767502|
@@ -81,7 +83,9 @@ symbol、cubin、静态指纹、动态工作和输出均核对；2048个CTA全�
 |动态LDL / STL|0 / 0|0 / 0|
 
 Source派生wavefront/sector不是DRAM字节，也不同于容量模型使用的原始硬件计数器。
-这次消除了已定位的额外搬运工作，却增加约1.23%的动态指令，必要MMA、168寄存器、
+这次消除了目标source派生excessive计数，但原始硬件wavefront计数推导的L1/TEX服务需求
+反而增加约3.35%，不能声称总shared/L1硬件工作量下降。表中的服务下界不是可相加的实测耗时，
+也不能据此精确分配性能变化的原因。动态指令增加约1.23%，必要MMA、168寄存器、
 3CTA驻留限制未变。因此不能用一个计数器变好证明关键路径变短；继续微调同类metadata
 copy没有足够收益依据。约0.220347ms的理想MMA容量下界不变，未接近目标。
 
