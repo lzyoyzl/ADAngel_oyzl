@@ -1,0 +1,29 @@
+{
+  "git_commit": "6572b9092d2006f33c212a622e4066a708700706",
+  "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "production_default_changed": false,
+  "args": {
+    "output": "runs/o378_roof_v79_four24",
+    "codegen": "reports/o378_roof_v79_codegen",
+    "samples": 24,
+    "rounds": 1,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100,
+    "modes": [
+      "conversion_only",
+      "compute_only",
+      "cold",
+      "steady_state"
+    ],
+    "validate_only": false
+  },
+  "policy": "unlocked shared GPU, cyclic pair order, all raw samples retained",
+  "timing_contract_version": 2,
+  "scope": "O3 v61 vs v79, identical conversion2 and online GPU guard; initial source quantization excluded",
+  "guard_cost": "both: weight conversion includes factors/status; cached outside compute/steady",
+  "host_preflight": "same normal-scale/finite-row preflight and post-batch status outside GPU Event timing"
+}
