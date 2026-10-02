@@ -203,6 +203,8 @@ def main():
     import torch
     from adangel import _sm80 as native
     from adangel.quantization import mixed_formats as mf
+    from adangel.quantization.arbitrary_bits import split_int8_to_packed_int4
+    from validate_a100_split_grouped import pack_q4
     from adangel.trace.storage import load_prepared,sha256_file
     from adangel.trace.prepare import _load_and_validate_raw
     torch.cuda.init();torch.set_num_threads(4);torch.backends.cuda.matmul.allow_tf32=False
@@ -242,7 +244,16 @@ def main():
                 values=(*base['converted_activation'],*base['converted_weight'])
                 best=native._benchmark_roof_candidate(variant,59,*values,0,1)
                 payload=verify_grouped_payload(best,59,values[0],values[2],values[3])
-                aq,_=mf.to_fixed_reference(asrc);wq,_=mf.to_fixed_reference(wsrc)
+                aq,asc_reference=mf.to_fixed_reference(asrc)
+                wq,wsc_reference=mf.to_fixed_reference(wsrc)
+                # The range proof must bound the ACTUAL native integer payload,
+                # not merely an assumed equivalent Python quantizer.
+                assert torch.equal(values[0],split_int8_to_packed_int4(aq))
+                assert torch.equal(values[2],pack_q4(wq))
+                assert torch.equal(values[1].view(torch.int32),asc_reference.view(torch.int32))
+                assert torch.equal(values[3].view(torch.int32),wsc_reference.view(torch.int32))
+                append('payload_proof.jsonl',dict(sample_id=x.sample_id,variant=variant,
+                    raw_sha256=re['sha256'],native_integer_payload_and_scales_match_reference_bitwise=True))
                 tensor_scale=float((wsrc if variant=='o7' else asrc)['tensor_scale'].item())
                 meta=prepare(asrc['scale'].cpu().numpy(),wsrc['scale'].cpu().numpy(),aq,wq,variant,tensor_scale)
                 baseline_mse=mse(best['output'],paired)
