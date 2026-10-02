@@ -131,14 +131,21 @@ __device__ __forceinline__ void body(const uint8_t* a,const uint8_t* w,
     return __fmul_rn(__fmul_rn(float(acc(i)),decode(code)),
         as[blockIdx.y*64+cute::get<0>(p)]);
   };
+  // Finish all reads/conversions before any output store. Otherwise y may
+  // alias scale pointers in compiler analysis, preventing reuse of scale loads.
+  // Reuse the SAME 32-bit register slots: after this point acc holds FP32 bits,
+  // not integers. These are bitcasts, never a numerical float-to-int conversion.
+  o1_static_for<0,decltype(cute::size(acc))::value>([&](auto i) {
+    acc(i)=__float_as_int(final_value(i));
+  });
   o1_static_for<0,decltype(cute::size(acc))::value/2>([&](auto pair) {
     auto i=pair*cute::_2{};auto p=coords(i),q=coords(i+cute::_1{});
     int offset=(blockIdx.y*64+cute::get<0>(p))*n+blockIdx.x*128+cute::get<1>(p);
     if(cute::get<0>(p)==cute::get<0>(q) && cute::get<1>(q)==cute::get<1>(p)+1 && (offset&1)==0)
-      *reinterpret_cast<float2*>(y+offset)=make_float2(final_value(i),final_value(i+cute::_1{}));
+      *reinterpret_cast<float2*>(y+offset)=make_float2(__int_as_float(acc(i)),__int_as_float(acc(i+cute::_1{})));
     else {
-      y[offset]=final_value(i);
-      y[(blockIdx.y*64+cute::get<0>(q))*n+blockIdx.x*128+cute::get<1>(q)]=final_value(i+cute::_1{});
+      y[offset]=__int_as_float(acc(i));
+      y[(blockIdx.y*64+cute::get<0>(q))*n+blockIdx.x*128+cute::get<1>(q)]=__int_as_float(acc(i+cute::_1{}));
     }
   });
 }

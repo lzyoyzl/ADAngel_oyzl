@@ -33,6 +33,7 @@ class FullKTests(unittest.TestCase):
         self.assertNotIn('make_fragment_like<float>',source)
         self.assertNotIn('__fmaf_rn',source)
         self.assertIn('partial*s.factor[slot][col]',source)
+        self.assertIn('acc(i)=__float_as_int(final_value(i));',source)
         self.assertNotIn('fullk_integer', (ROOT/'setup.py').read_text())
 
 
