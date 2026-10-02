@@ -2,6 +2,11 @@
 
 ## 结论
 
+v70补充当前O7/O8全K路径的NCU诊断：IMAD增加约2.89倍，总指令仅减少10.42%；
+eligible warp仍约0.76，整数热路径没有动态local访问，不能把静态8B spill当作主因。
+MMA必要容量下界仍0.220347ms；下一步只评估O7幂二A factor的等价移位是否值得。
+这不是新的性能版本，下面v69四模式和最佳候选不变。[v70诊断](evidence/a100_o378_roof_v70_ncu/README.md)
+
 v69将组平方和融合到向量转换，避免在线范围检查重读packed payload。
 24样本四模式：O7/O8 cached GEMM配对吞吐 **+6.74%/+7.01%**，
 Cold **+0.90%/+1.34%**，steady **+2.19%/+2.88%**，相对本轮tune59+conversion5。
