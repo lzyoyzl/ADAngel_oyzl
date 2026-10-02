@@ -63,3 +63,10 @@ def test_incomplete_or_unsigned_start_rejected():
         sass, live = fixture(mutation=mutation)
         with pytest.raises(ValueError):
             trace(sass, 'exact', live)
+
+
+def test_nop_spelling_aliases_are_summed_not_overwritten():
+    from run_eight_chain_ncu import normalized_counts
+    result = normalized_counts({'NOP': 2, 'NOP;': 7, 'IMMA': 64})
+    assert result == {'NOP': 9, 'IMMA': 64}
+    assert sum(result.values()) == 73

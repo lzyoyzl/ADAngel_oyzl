@@ -15,6 +15,15 @@ from analyze_roof_scale_ncu import analyze
 from profile_eight_chain_kernel import ROOT, SYMBOLS
 
 
+def normalized_counts(counts):
+    # cuobjdump sometimes spells operand-less NOP as both NOP and NOP;.
+    # Sum aliases, never overwrite one count with a dict comprehension.
+    result = Counter()
+    for opcode, count in counts.items():
+        result[opcode.rstrip(';')] += count
+    return result
+
+
 def analyze_capture(raw, source, receipt):
     variant = receipt['variant']; symbol = SYMBOLS[variant]
     if receipt['expected_kernel'] != symbol or not receipt['numerical_checks_passed'] or not receipt['bitwise_previous_fullk']:
@@ -36,7 +45,7 @@ def analyze_capture(raw, source, receipt):
         if not match: raise ValueError('unknown source opcode')
         actual[match[1]] += 1
     expected = entries[symbol]
-    if actual != Counter({op.rstrip(';'):n for op,n in expected['opcode_counts'].items()}) or sum(actual.values()) != expected['instructions']:
+    if actual != normalized_counts(expected['opcode_counts']) or sum(actual.values()) != expected['instructions']:
         raise ValueError('profile source does not match audited cubin')
     result.update(static_fingerprint_verified=True,mse_vs_paired_fp16=receipt['mse_vs_paired_fp16'],
                   mse_vs_previous_fullk=receipt['mse_vs_previous_fullk'])
