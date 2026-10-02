@@ -19,7 +19,7 @@ from roof_payload_validation import verify_grouped_payload
 from roof_reduction_validation import reference_fp64
 
 
-def checked_cubins(directory):
+def checked_cubins(directory, *, transform=generated_header, stem_prefix='interleaved_merge'):
     x = json.loads((directory/'codegen.json').read_text())
     if not x['control_comparison']['passed']:
         raise ValueError('control SASS differs from best54/59')
@@ -33,9 +33,9 @@ def checked_cubins(directory):
             source=ROOT/'csrc/sm80'/name
             generated=directory/entry['generated']
             if (digest(source)!=entry['source_sha256'] or digest(generated)!=entry['generated_sha256'] or
-                generated.read_text()!=generated_header(source.read_text(),policy)):
+                generated.read_text()!=transform(source.read_text(),policy)):
                 raise ValueError('generated source drift')
-        path=(directory/f'interleaved_merge_{policy}.cubin').resolve()
+        path=(directory/f'{stem_prefix}_{policy}.cubin').resolve()
         v=x['variants'][str(policy)]
         if digest(path)!=v['cubin_sha256']:
             raise ValueError('cubin drift')
@@ -69,14 +69,14 @@ class Driver:
         self.drivers.clear()
 
 
-def summary(rows):
+def summary(rows, policy_key='interleaved_merge'):
     # Identical pairing/bootstrap/MSE gates, with an explicitly renamed key.
-    result=m128_summary([dict(r,m128=r['interleaved_merge']) for r in rows])
-    for row in result: row['interleaved_merge']=row.pop('m128')
+    result=m128_summary([dict(r,m128=r[policy_key]) for r in rows])
+    for row in result: row[policy_key]=row.pop('m128')
     return result
 
 
-def validate(library,cubins,variants):
+def validate(library,cubins,variants,driver_factory=Driver):
     import torch
     from adangel import _sm80 as native
     from adangel.quantization.arbitrary_bits import split_int8_to_packed_int4
@@ -114,7 +114,7 @@ def validate(library,cubins,variants):
                 with torch.cuda.stream(stream):
                     best=native._benchmark_roof_candidate(variant,tune,*values,0,1)
                     verify_grouped_payload(best,tune,values[0],values[2],values[3])
-                    driver=Driver(library,cubins,variant,best['kernel']['shared_memory_bytes'])
+                    driver=driver_factory(library,cubins,variant,best['kernel']['shared_memory_bytes'])
                     try:
                         for policy in (0,1):
                             ws=best['converted_weight_scale'] if variant=='o3' else wsc
@@ -130,8 +130,9 @@ def validate(library,cubins,variants):
                 scope='prepared_core_small_MN_variable_K_including4096_nondefault_stream')
 
 
-def main():
-    p=argparse.ArgumentParser(description=__doc__)
+def main(*, cubin_checker=checked_cubins, driver_factory=Driver,
+         policy_key='interleaved_merge', description=__doc__):
+    p=argparse.ArgumentParser(description=description)
     p.add_argument('--cubins',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--validate-only',action='store_true')
@@ -154,7 +155,7 @@ def main():
     from adangel.trace.prepare import _load_and_validate_raw
     torch.cuda.init();torch.set_num_threads(4);torch.backends.cuda.matmul.allow_tf32=False
     assert torch.cuda.get_device_capability()==(8,0)
-    cubins=checked_cubins(args.cubins)
+    cubins=cubin_checker(args.cubins)
     args.output.mkdir(parents=True)
     def save(name,value): (args.output/name).write_text(json.dumps(value,indent=2,allow_nan=False)+'\n')
     def append(name,value):
@@ -170,9 +171,9 @@ def main():
         args={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
         scope='isolated_prepared_core_compute_only_not_conversion_or_four_mode_acceptance',
         policy='unlocked shared GPU; cyclic paired order; no filtering',
-        timing='native_driver_single_launch_CUDA_Event_allocation_outside_interval')
+        timing='native_driver_single_launch_CUDA_Event_allocation_outside_interval',policy_key=policy_key)
     save('environment.json',env)
-    save('validation.json',validate(library,cubins,args.variants))
+    save('validation.json',validate(library,cubins,args.variants,driver_factory))
     if args.validate_only: return
     manifest,mh=inspect_inputs(args.data)
     raw_manifest,rh=inspect_raw_inputs(args.raw_data,manifest,args.trace_config)
@@ -204,7 +205,7 @@ def main():
             best=native._benchmark_roof_candidate(variant,tune,*values,0,1)
             payload=verify_grouped_payload(best,tune,values[0],values[2],values[3])
             scale=best['converted_weight_scale'] if variant=='o3' else values[3]
-            driver=Driver(library,cubins,variant,best['kernel']['shared_memory_bytes'])
+            driver=driver_factory(library,cubins,variant,best['kernel']['shared_memory_bytes'])
             try:
                 for r in range(args.rounds):
                     append('gpu_snapshots.jsonl',dict(sample_id=x.sample_id,variant=variant,round=r,time=time.time(),
@@ -212,18 +213,19 @@ def main():
                     order=measurement_order((0,1),si,vi,r)
                     for policy in order:
                         y,times=driver.run(policy,best,values[1],scale,args.warmup,args.repeats)
-                        row=dict(sample_id=x.sample_id,variant=variant,round=r,interleaved_merge=policy,execution_order=order,
+                        row=dict(sample_id=x.sample_id,variant=variant,round=r,execution_order=order,
                             raw_ms=times,summary=stats(times),bitwise_equal_current_best=True,reference_tune=tune,
                             mse_vs_current_best=0.0,mse_vs_paired_fp16=mse(y,paired),mse_vs_o0=mse(y,o0),paired_fp16=ref,
                             reference_kernel=dict(best['kernel']),probe_resources=driver.resources[policy],**payload,
                             probe_symbol='adangel_roof_m128_o3' if variant=='o3' else 'adangel_roof_m128_o78')
+                        row[policy_key]=policy
                         rows.append(row);append('results.jsonl',row)
                 print(x.sample_id,variant,'paired measurement complete',flush=True)
             finally: driver.close()
     assert len(rows)==args.samples*len(args.variants)*args.rounds*2
     save('summary.json',dict(correctness_passed=True,no_filtering=True,production_default_changed=False,
-        scope='internal_cubin_compute_only_screen',records=summary(rows)))
-    print(json.dumps(summary(rows),indent=2),flush=True)
+        scope='internal_cubin_compute_only_screen',records=summary(rows,policy_key)))
+    print(json.dumps(summary(rows,policy_key),indent=2),flush=True)
 
 
 if __name__=='__main__': main()

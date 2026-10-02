@@ -68,8 +68,8 @@ def generated_header(source, policy):
     return source.replace(old, "                const int partial=pl(vi);")
 
 
-def main():
-    p = argparse.ArgumentParser(description=__doc__)
+def main(*, transform=generated_header, stem_prefix="interleaved_merge", description=__doc__):
+    p = argparse.ArgumentParser(description=description)
     p.add_argument("--output", type=Path, required=True)
     args = p.parse_args()
     out = args.output.resolve()
@@ -98,11 +98,11 @@ def main():
         for family, name in HEADERS.items():
             src = ROOT / "csrc/sm80" / name
             target = generated / f"{family}_m128_generated.cuh"
-            target.write_text(generated_header(src.read_text(), policy))
+            target.write_text(transform(src.read_text(), policy))
             result["generated_headers"][f"{family}_{policy}"] = dict(
                 source=str(src.relative_to(ROOT)), source_sha256=hashlib.sha256(src.read_bytes()).hexdigest(),
                 generated=str(target.relative_to(out)), generated_sha256=hashlib.sha256(target.read_bytes()).hexdigest())
-        stem = f"interleaved_merge_{policy}"
+        stem = f"{stem_prefix}_{policy}"
         cmd = [str(cuda/"nvcc"), "-O3", "-std=c++17", "--expt-relaxed-constexpr", "-lineinfo", "-arch=sm_80",
                "-DADANGEL_PROBE_M=64", "-I"+str(cutlass/"include"), "-I"+str(generated), str(wrapper)]
         cubin = out / f"{stem}.cubin"
@@ -123,7 +123,7 @@ def main():
         result["variants"][str(policy)] = dict(cubin_sha256=hashlib.sha256(cubin.read_bytes()).hexdigest(), entries=entries,
             cta_tile=[64,128,128], threads=128, shared_memory={"o3":50688,"o78":34304})
     previous = ROOT/"docs/evidence/a100_o378_roof_v57/reports/o378_roof_v57/m128_64.sass"
-    result["control_comparison"] = compare(previous.read_text(), (out/"interleaved_merge_0.sass").read_text(), r"^adangel_roof_m128_(?:o3|o78)$")
+    result["control_comparison"] = compare(previous.read_text(), (out/f"{stem_prefix}_0.sass").read_text(), r"^adangel_roof_m128_(?:o3|o78)$")
     (out/"codegen.json").write_text(json.dumps(result, indent=2)+"\n")
     if not result["control_comparison"]["passed"]:
         raise SystemExit("control differs from current best SASS")
