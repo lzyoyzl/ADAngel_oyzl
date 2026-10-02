@@ -81,9 +81,11 @@ class Driver(row_fused.Driver):
             raise
 
     def run(self, case, policy, mode, warmup, repeats, inner):
+        if policy not in self.handles or mode not in base.MODES:
+            raise ValueError('invalid factor-table test policy/mode')
+        if np.any(case.oracle['status_flat'] == 2):
+            raise ValueError('invalid source must not expose an unwritten output')
         import torch
-        if policy not in self.handles or mode not in base.MODES or np.any(case.oracle['status_flat'] == 2):
-            raise ValueError('invalid input/policy/mode')
         values = (ct.c_float * (4 * repeats))()
         # SAME row-fused preparation for all policies; 0 and2 share the v67 CUfunction.
         self.check(self.lib.roof_o78_gpu_benchmark(self.handles[policy], int(case.variant[1:]), 1,

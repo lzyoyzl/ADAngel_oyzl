@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -7,7 +8,23 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 sys.path.insert(0, str(ROOT / 'python'))
-from benchmark_o7_factor_table import table_coverage, timing_contract, summarize
+from benchmark_o7_factor_table import Driver, table_coverage, timing_contract, summarize
+
+
+def test_invalid_source_rejected_before_torch_or_gpu_call():
+    driver = Driver.__new__(Driver)
+    driver.handles = {0: None, 1: None, 2: None}
+    case = SimpleNamespace(oracle={'status_flat': np.array([0, 2], dtype=np.uint32)})
+    with pytest.raises(ValueError, match='invalid source'):
+        driver.run(case, 1, 'compute_only', 0, 1, 2)
+
+
+@pytest.mark.parametrize('policy,mode', [(3, 'compute_only'), (1, 'invalid')])
+def test_invalid_request_rejected_before_case_access(policy, mode):
+    driver = Driver.__new__(Driver)
+    driver.handles = {0: None, 1: None, 2: None}
+    with pytest.raises(ValueError, match='policy/mode'):
+        driver.run(None, policy, mode, 0, 1, 2)
 
 
 def test_exact_cta_table_selection_not_whole_matrix_fallback():
