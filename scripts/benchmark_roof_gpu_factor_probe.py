@@ -115,6 +115,8 @@ def main():
     from adangel.trace.prepare import _load_and_validate_raw
     torch.cuda.init();torch.set_num_threads(4);torch.backends.cuda.matmul.allow_tf32=False
     assert torch.cuda.get_device_capability()==(8,0)
+    # Lazy initialization may not make the primary context current on this thread.
+    context_anchor=torch.empty(1,device='cuda')
     args.output.mkdir(parents=True)
     def save(name,obj):(args.output/name).write_text(json.dumps(obj,indent=2,allow_nan=False)+'\n')
     def append(name,obj):

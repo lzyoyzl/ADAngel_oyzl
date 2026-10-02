@@ -52,7 +52,10 @@ class Pipeline(Driver):
     def __init__(self,library,prep,cubins):
         super().__init__(library,cubins,'o3',50688,factor_metadata=True)
         self.prep=ct.c_void_p()
-        self.check(self.lib.roof_probe_open(str(prep).encode(),b'adangel_roof_factor_prepare',0,ct.byref(self.prep)))
+        try:
+            self.check(self.lib.roof_probe_open(str(prep).encode(),b'adangel_roof_factor_prepare',0,ct.byref(self.prep)))
+        except Exception:
+            self.close();raise
         self.lib.roof_gpu_factor_benchmark.argtypes=([ct.c_void_p]*3+[ct.c_uint64]*7+
             [ct.c_int]*7+[ct.c_void_p,ct.POINTER(ct.c_float),ct.POINTER(ct.c_int)])
 
