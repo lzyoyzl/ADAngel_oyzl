@@ -6,7 +6,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
 EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v33'
-FOUR_EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v35'
+FOUR_EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v54'
 O3_EVIDENCE=ROOT/'docs/evidence/a100_o378_roof_v30'
 
 
@@ -63,21 +63,21 @@ class BestReportTest(unittest.TestCase):
             if row['implementation']==2:
                 self.assertIn(f"{(row['paired_speedup']-1)*100:.2f}%",doc)
         self.assertIn('O3为v36，同一个GEMM54',doc)
-        # Latest conversion/end-to-end results use the v35 same-GEMM 0/4 pair,
-        # not the older v33 comparison between GEMM candidates 56 and 59.
-        latest=json.loads((FOUR_EVIDENCE/'runs/o378_roof_v35_four24/summary.json').read_text())
+        # Use independent confirmation, not the smaller of the two v54 runs.
+        # GEMM remains59; conversion4 is the previous best and5 is vector16.
+        latest=json.loads((FOUR_EVIDENCE/'runs/o378_roof_v54_confirm24/summary.json').read_text())
         self.assertEqual(len(latest),16)
-        self.assertEqual({r['implementation'] for r in latest},{0,4})
+        self.assertEqual({r['implementation'] for r in latest},{4,5})
         for row in latest:
             self.assertEqual(row['samples'],24)
             self.assertEqual(row['records'],24)
             self.assertIn(f"{row['median_ms']:.6f}",doc)
-            if row['implementation']==4 and row['mode']!='compute_only':
+            if row['implementation']==5 and row['mode']!='compute_only':
                 self.assertIn(f"{(row['paired_speedup']-1)*100:.2f}%",doc)
-        self.assertIn('O7/O8为最新v35',doc)
+        self.assertIn('O7/O8为v54独立确认',doc)
         self.assertIn('GEMM机器码完全相同',doc)
         self.assertIn('正式默认尚未切换',doc)
-        self.assertIn('另外的24样本、单轮四模式测量',doc)
+        self.assertIn('另外的24样本四模式测量',doc)
         self.assertIn('不等同于严格全阶段CV<3%',doc)
         self.assertNotIn('待完成',doc)
 
