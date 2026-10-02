@@ -1,0 +1,33 @@
+{
+  "git_commit": "0b3f729b9936b6fe16d922bafcf76fa6d032ae9a",
+  "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "gemm_cubins": {
+    "0": "d56c78e25a29253201dfdc951e071e65d43572743bdcf81ed78707dede9a2cef",
+    "1": "931657ff36911bd44a2b04ad5a4d150d79655e0ca081c5356ee706704d771bb2"
+  },
+  "args": {
+    "output": "runs/o378_roof_v60_screen",
+    "gemm_cubins": "reports/o378_roof_v59",
+    "use_build": null,
+    "validate_only": false,
+    "samples": 4,
+    "rounds": 3,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100
+  },
+  "driver_sha256": "da65b0fc131f69892dc97b4360aeca181c91418b008640bd0e46ac1a04dc8847",
+  "preparation_cubin_sha256": "02f7fb647bcdec0dcb0a017da24be293d960093ead148ccae6b07083874f34e2",
+  "scope": "prepared-payload core: conversion/packing absent; NOT full Cold or steady-state",
+  "timing": {
+    "control_compute": "one control GEMM",
+    "cached_compute": "guard/prep outside Event, one v59 GEMM",
+    "prepare_decide_compute": "one Event around prepare, DtoH verdict, stream sync, host decision and GEMM",
+    "prepare_gpu_only": "kernel repeated inner times in one Event / inner, verdict outside"
+  },
+  "policy": "unlocked GPU, cyclic order, all raw values retained",
+  "production_default_changed": false
+}

@@ -1,0 +1,63 @@
+{
+  "git_commit": "0b3f729b9936b6fe16d922bafcf76fa6d032ae9a",
+  "sources": {
+    "csrc/sm80/roof_factor_prepare_probe.cu": "b43029a76197efbd284b9c086a0405dc756eaf3be3604b805bb3f8e6b29870f1",
+    "csrc/sm80/roof_gpu_factor_driver.cpp": "0b7cb6fb4e44343bd69d37abcd5cfc44fe31da72e1829017bdacd7ea418bbfb9",
+    "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9"
+  },
+  "gemm_cubins": {
+    "0": "d56c78e25a29253201dfdc951e071e65d43572743bdcf81ed78707dede9a2cef",
+    "1": "931657ff36911bd44a2b04ad5a4d150d79655e0ca081c5356ee706704d771bb2"
+  },
+  "preparation_cubin_sha256": "02f7fb647bcdec0dcb0a017da24be293d960093ead148ccae6b07083874f34e2",
+  "driver_sha256": "da65b0fc131f69892dc97b4360aeca181c91418b008640bd0e46ac1a04dc8847",
+  "commands": [
+    [
+      [
+        "/usr/local/cuda-12.8/bin/nvcc",
+        "-O3",
+        "-std=c++17",
+        "-lineinfo",
+        "-arch=sm_80",
+        "-cubin",
+        "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_factor_prepare_probe.cu",
+        "-o",
+        "/home/zlouyang/ADAngel_oyzl/runs/o378_roof_v60_screen/build/factor_prepare.cubin",
+        "-Xptxas=-v"
+      ],
+      "build.log"
+    ],
+    [
+      [
+        "/usr/local/cuda-12.8/bin/cuobjdump",
+        "--dump-sass",
+        "/home/zlouyang/ADAngel_oyzl/runs/o378_roof_v60_screen/build/factor_prepare.cubin"
+      ],
+      "prepare.sass"
+    ],
+    [
+      [
+        "/usr/local/cuda-12.8/bin/cuobjdump",
+        "--dump-resource-usage",
+        "/home/zlouyang/ADAngel_oyzl/runs/o378_roof_v60_screen/build/factor_prepare.cubin"
+      ],
+      "resources.txt"
+    ],
+    [
+      [
+        "g++",
+        "-O3",
+        "-std=c++17",
+        "-shared",
+        "-fPIC",
+        "-I/usr/local/cuda-12.8/include",
+        "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_gpu_factor_driver.cpp",
+        "-lcuda",
+        "-o",
+        "/home/zlouyang/ADAngel_oyzl/runs/o378_roof_v60_screen/build/libgpu_factor_driver.so"
+      ],
+      "driver_build.log"
+    ]
+  ],
+  "scope": "preparation_only_new_code; v59_control_and_candidate_GEMM_unchanged"
+}
