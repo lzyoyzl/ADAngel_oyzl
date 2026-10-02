@@ -7,6 +7,7 @@ points are not preserved. Passing this gate is NOT MSE/performance acceptance.
 """
 import argparse
 from bisect import bisect_right
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -78,6 +79,39 @@ def inspect_norms(a,w,tile_m=64,tile_n=128):
         guard_unsafe_cta_coordinates=unsafe_coordinates)
 
 
+def export_norm_evidence(source,output):
+    """Publish all row/column norms without duplicating 32-group statistics.
+
+    Full group-level files remain on A100 and in the transfer archive. Retain
+    the one rejected sample in full so its weighted norms can be independently
+    rebuilt, not merely rechecked against the already-produced norms.
+    """
+    source=source.resolve();output=output.resolve()
+    if not source.is_relative_to(ROOT) or not output.is_relative_to(ROOT) or output.exists():
+        raise ValueError('repository input and fresh repository output required')
+    raw=(source/'summary.json').read_bytes();result=json.loads(raw)
+    output.mkdir(parents=True)
+    for entry in result['samples']:
+        if Path(entry['file']).name!=entry['file']: raise ValueError('unsafe source filename')
+        content=(source/entry['file']).read_bytes()
+        if hashlib.sha256(content).hexdigest()!=entry['sha256']: raise ValueError('source evidence hash mismatch')
+        case=json.loads(content)
+        keep_groups=not entry['all_outputs_guaranteed_safe']
+        if not keep_groups:
+            for side in ('a','w'):
+                case[side].pop('scale_codes');case[side].pop('group_sum_squares')
+        case['group_statistics_retained']=keep_groups
+        encoded=(json.dumps(case,separators=(',',':'),allow_nan=False)+'\n').encode()
+        (output/entry['file']).write_bytes(encoded)
+        entry['full_source_sha256']=entry['sha256']
+        entry['sha256']=hashlib.sha256(encoded).hexdigest()
+    result['evidence_export']=dict(original_directory=source.name,
+        original_summary_sha256=hashlib.sha256(raw).hexdigest(),
+        retained='all per-row norms/anchors/factor bounds; full groups for rejected samples',
+        exporter_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
+    (output/'summary.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--data',type=Path,default=Path('data/prepared/llama2_7b_prefill_o0_o4'))
@@ -85,9 +119,13 @@ def main():
     p.add_argument('--trace-config',type=Path,default=Path('configs/trace/llama2_7b_prefill.yaml'))
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--samples',type=int,choices=(4,24),default=4)
+    p.add_argument('--export-from',type=Path,help='export existing evidence; no GPU or new inspection')
     args=p.parse_args()
     if args.output.exists() or not args.output.resolve().is_relative_to(ROOT):
         p.error('fresh repository output required')
+    if args.export_from:
+        export_norm_evidence(args.export_from,args.output)
+        return
     import torch
     from adangel.quantization import mixed_formats as mf
     from adangel.trace.prepare import _load_and_validate_raw

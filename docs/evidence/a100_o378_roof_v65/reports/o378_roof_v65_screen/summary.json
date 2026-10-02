@@ -1,0 +1,236 @@
+{
+  "scope": "read_only_payload_range_feasibility_not_CUDA_MSE_or_performance_acceptance",
+  "source_commit": "44879ebb34bdb56dc448a3f26ccd2774987b1f3c",
+  "script_sha256": "933f244485bf25a8458fcd4b4b820d80d9658486c591a91c5c691dedde2875ff",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+  "torch": "2.7.1+cu128",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "wall_seconds": 5.876592324115336,
+  "summary": [
+    {
+      "variant": "o7",
+      "samples": 4,
+      "int32_norm_safe_fraction": 1.0,
+      "all_outputs_safe_samples": 4,
+      "guard_safe_cta_fraction": 1.0,
+      "coefficient_safe_samples": 4,
+      "maximum_coefficient_bound": 294912
+    },
+    {
+      "variant": "o8",
+      "samples": 4,
+      "int32_norm_safe_fraction": 1.0,
+      "all_outputs_safe_samples": 4,
+      "guard_safe_cta_fraction": 1.0,
+      "coefficient_safe_samples": 4,
+      "maximum_coefficient_bound": 917504
+    }
+  ],
+  "samples": [
+    {
+      "sample_id": "layer_00_q_proj",
+      "variant": "o7",
+      "file": "layer_00_q_proj_o7.json",
+      "sha256": "32f95ecb3f7e4da80403c6b087906f1a15aaa450173df4c5a3638453fca74da2",
+      "outputs": 16777216,
+      "int32_norm_safe_outputs": 16777216,
+      "int32_norm_safe_fraction": 1.0,
+      "bound_at_most_2pow24_outputs": 9762606,
+      "maximum_norm_product": 221630672967946255,
+      "maximum_coefficient_bound": 294912,
+      "coefficient_int32_safe": true,
+      "all_outputs_guaranteed_safe": true,
+      "cta_tile_mn": [
+        64,
+        128
+      ],
+      "ctas": 2048,
+      "guard_safe_ctas": 2048,
+      "guard_safe_cta_fraction": 1.0,
+      "guard_safe_cta_outputs": 16777216,
+      "guard_unsafe_cta_coordinates": [],
+      "full_source_sha256": "77a32d7ab825cf075aab70d7c328206cf1c55ddf470bc551411ed0fdb5a4d125"
+    },
+    {
+      "sample_id": "layer_00_q_proj",
+      "variant": "o8",
+      "file": "layer_00_q_proj_o8.json",
+      "sha256": "b277ca2717921dc3770ffb690e9aa38657317cdf5dd46edff3e16cbcfca39e1b",
+      "outputs": 16777216,
+      "int32_norm_safe_outputs": 16777216,
+      "int32_norm_safe_fraction": 1.0,
+      "bound_at_most_2pow24_outputs": 1831837,
+      "maximum_norm_product": 474754339385817179,
+      "maximum_coefficient_bound": 917504,
+      "coefficient_int32_safe": true,
+      "all_outputs_guaranteed_safe": true,
+      "cta_tile_mn": [
+        64,
+        128
+      ],
+      "ctas": 2048,
+      "guard_safe_ctas": 2048,
+      "guard_safe_cta_fraction": 1.0,
+      "guard_safe_cta_outputs": 16777216,
+      "guard_unsafe_cta_coordinates": [],
+      "full_source_sha256": "5e54d2018084e43ec7fead845a34a67d915ee475144b97e62e58c9348b5b2c6f"
+    },
+    {
+      "sample_id": "layer_00_k_proj",
+      "variant": "o7",
+      "file": "layer_00_k_proj_o7.json",
+      "sha256": "b017fb01eae1b410d21676b3e0eb48299a8c00ad88e7d7f8357bdfa8725a256c",
+      "outputs": 16777216,
+      "int32_norm_safe_outputs": 16777216,
+      "int32_norm_safe_fraction": 1.0,
+      "bound_at_most_2pow24_outputs": 11072346,
+      "maximum_norm_product": 137591094836080150,
+      "maximum_coefficient_bound": 147456,
+      "coefficient_int32_safe": true,
+      "all_outputs_guaranteed_safe": true,
+      "cta_tile_mn": [
+        64,
+        128
+      ],
+      "ctas": 2048,
+      "guard_safe_ctas": 2048,
+      "guard_safe_cta_fraction": 1.0,
+      "guard_safe_cta_outputs": 16777216,
+      "guard_unsafe_cta_coordinates": [],
+      "full_source_sha256": "78e25505b66ab361900e59dad47bad914d7c9b44eb40fbbf11d2e79b86152ee3"
+    },
+    {
+      "sample_id": "layer_00_k_proj",
+      "variant": "o8",
+      "file": "layer_00_k_proj_o8.json",
+      "sha256": "cd709533d379165fa952ccf7adebc7ac7e349a7916cdb2a75d1f56951514422a",
+      "outputs": 16777216,
+      "int32_norm_safe_outputs": 16777216,
+      "int32_norm_safe_fraction": 1.0,
+      "bound_at_most_2pow24_outputs": 2303828,
+      "maximum_norm_product": 386905340241040881,
+      "maximum_coefficient_bound": 688128,
+      "coefficient_int32_safe": true,
+      "all_outputs_guaranteed_safe": true,
+      "cta_tile_mn": [
+        64,
+        128
+      ],
+      "ctas": 2048,
+      "guard_safe_ctas": 2048,
+      "guard_safe_cta_fraction": 1.0,
+      "guard_safe_cta_outputs": 16777216,
+      "guard_unsafe_cta_coordinates": [],
+      "full_source_sha256": "febd79d0c442b505a3317b3a460377a95fda4d6cc2c37ba4f182ad4c370bc536"
+    },
+    {
+      "sample_id": "layer_00_v_proj",
+      "variant": "o7",
+      "file": "layer_00_v_proj_o7.json",
+      "sha256": "d2b502483166adfafd0adafd192d7c2e36a99fcaf1e870fe04902943be605652",
+      "outputs": 16777216,
+      "int32_norm_safe_outputs": 16777216,
+      "int32_norm_safe_fraction": 1.0,
+      "bound_at_most_2pow24_outputs": 8961100,
+      "maximum_norm_product": 49664923693833915,
+      "maximum_coefficient_bound": 24576,
+      "coefficient_int32_safe": true,
+      "all_outputs_guaranteed_safe": true,
+      "cta_tile_mn": [
+        64,
+        128
+      ],
+      "ctas": 2048,
+      "guard_safe_ctas": 2048,
+      "guard_safe_cta_fraction": 1.0,
+      "guard_safe_cta_outputs": 16777216,
+      "guard_unsafe_cta_coordinates": [],
+      "full_source_sha256": "b2a1645e851c202aad99d6e3a93fee667c1ad6276e778b1d6e4a529451ad2857"
+    },
+    {
+      "sample_id": "layer_00_v_proj",
+      "variant": "o8",
+      "file": "layer_00_v_proj_o8.json",
+      "sha256": "dd4ae4d476643b031d7022745f4d2ec979ec41630fd7acfa3f08b410272fabb1",
+      "outputs": 16777216,
+      "int32_norm_safe_outputs": 16777216,
+      "int32_norm_safe_fraction": 1.0,
+      "bound_at_most_2pow24_outputs": 1725623,
+      "maximum_norm_product": 92190470638628115,
+      "maximum_coefficient_bound": 114688,
+      "coefficient_int32_safe": true,
+      "all_outputs_guaranteed_safe": true,
+      "cta_tile_mn": [
+        64,
+        128
+      ],
+      "ctas": 2048,
+      "guard_safe_ctas": 2048,
+      "guard_safe_cta_fraction": 1.0,
+      "guard_safe_cta_outputs": 16777216,
+      "guard_unsafe_cta_coordinates": [],
+      "full_source_sha256": "1c095fd29cbc5e01d615e6de71304f5abf1b729099ab3cbe3dbaa9b085c6fe70"
+    },
+    {
+      "sample_id": "layer_00_o_proj",
+      "variant": "o7",
+      "file": "layer_00_o_proj_o7.json",
+      "sha256": "b208fd01222ff46d5c670776592bea6c343e77d04e118a107d7135f294ae3721",
+      "outputs": 16777216,
+      "int32_norm_safe_outputs": 16777216,
+      "int32_norm_safe_fraction": 1.0,
+      "bound_at_most_2pow24_outputs": 6147016,
+      "maximum_norm_product": 99375399745158789,
+      "maximum_coefficient_bound": 36864,
+      "coefficient_int32_safe": true,
+      "all_outputs_guaranteed_safe": true,
+      "cta_tile_mn": [
+        64,
+        128
+      ],
+      "ctas": 2048,
+      "guard_safe_ctas": 2048,
+      "guard_safe_cta_fraction": 1.0,
+      "guard_safe_cta_outputs": 16777216,
+      "guard_unsafe_cta_coordinates": [],
+      "full_source_sha256": "d947fc703c192160315f7e06bcbcc2bbd96dc8ce7aec672986ed0f4646b88728"
+    },
+    {
+      "sample_id": "layer_00_o_proj",
+      "variant": "o8",
+      "file": "layer_00_o_proj_o8.json",
+      "sha256": "81881e72a25c9dc54b0de7fd98369be11690b36be2d7907811b7cd0b0dcbe18a",
+      "outputs": 16777216,
+      "int32_norm_safe_outputs": 16777216,
+      "int32_norm_safe_fraction": 1.0,
+      "bound_at_most_2pow24_outputs": 462689,
+      "maximum_norm_product": 202147935824849536,
+      "maximum_coefficient_bound": 245760,
+      "coefficient_int32_safe": true,
+      "all_outputs_guaranteed_safe": true,
+      "cta_tile_mn": [
+        64,
+        128
+      ],
+      "ctas": 2048,
+      "guard_safe_ctas": 2048,
+      "guard_safe_cta_fraction": 1.0,
+      "guard_safe_cta_outputs": 16777216,
+      "guard_unsafe_cta_coordinates": [],
+      "full_source_sha256": "c4a5ea32cf92a04c84c99288629d5aa5cc932d4ed4eea1b1cc6178bc480b04a9"
+    }
+  ],
+  "caveats": [
+    "source scales factored in real arithmetic, not existing FP32 rounding identity",
+    "failure of sufficient bound is NOT observed arithmetic overflow",
+    "no new kernel, performance measurement, MSE result, default or quantization change",
+    "activation-dependent guard must be paid online; no timing claim for this Python oracle"
+  ],
+  "evidence_export": {
+    "original_directory": "o378_roof_v65_screen",
+    "original_summary_sha256": "e3ca6f92c3257ab97d119b9d6cca6fff00928e4563ef15c69b46abb81a9d4557",
+    "retained": "all per-row norms/anchors/factor bounds; full groups for rejected samples",
+    "exporter_sha256": "5b497fa0904c58a0802fc0d348d15d3ed6df7e07c6b94cc8b40361681ff962d2"
+  }
+}

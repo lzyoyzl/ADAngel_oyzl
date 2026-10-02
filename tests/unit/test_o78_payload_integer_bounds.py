@@ -1,11 +1,14 @@
 from pathlib import Path
+import hashlib
+import json
 import random
 import sys
+import tempfile
 import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
-from inspect_o78_payload_integer_bounds import weighted_norms,inspect_norms,INT32_MAX
+from inspect_o78_payload_integer_bounds import weighted_norms,inspect_norms,export_norm_evidence,INT32_MAX
 from inspect_o78_integer_alignment_feasibility import dyadic
 
 
@@ -64,3 +67,61 @@ class PayloadBoundTests(unittest.TestCase):
     def test_invalid_input(self):
         for c,s,k in (([],[],'ue8m0'),([[255]],[[1]],'ue8m0'),([[1]],[[1,2]],'e4m3'),([[1]],[[-1]],'e4m3')):
             with self.assertRaises(ValueError): weighted_norms(c,s,k)
+
+    def test_export_preserves_hashes_and_rejects_tampering(self):
+        with tempfile.TemporaryDirectory(dir=ROOT/'tmp') as temporary:
+            base=Path(temporary);source=base/'source';source.mkdir()
+            side=dict(norm2=[3],anchors=[0],factor_max=[1],scale_codes=[[127]],
+                      group_sum_squares=[[3]])
+            case=dict(a=side,w=side)
+            content=json.dumps(case).encode();digest=hashlib.sha256(content).hexdigest()
+            (source/'case.json').write_bytes(content)
+            summary=dict(samples=[dict(file='case.json',sha256=digest,
+                                      all_outputs_guaranteed_safe=True)])
+            (source/'summary.json').write_text(json.dumps(summary))
+            export_norm_evidence(source,base/'export')
+            got=json.loads((base/'export/case.json').read_text())
+            self.assertEqual(got['a']['norm2'],[3])
+            self.assertNotIn('scale_codes',got['a'])
+            manifest=json.loads((base/'export/summary.json').read_text())
+            self.assertEqual(manifest['samples'][0]['full_source_sha256'],digest)
+            self.assertEqual(manifest['samples'][0]['sha256'],
+                hashlib.sha256((base/'export/case.json').read_bytes()).hexdigest())
+            with self.assertRaises(ValueError): export_norm_evidence(source,base/'export')
+            (source/'case.json').write_text('{}')
+            with self.assertRaises(ValueError): export_norm_evidence(source,base/'tampered')
+
+    def test_committed_evidence_all_counts_and_exceptional_groups(self):
+        evidence=ROOT/'docs/evidence/a100_o378_roof_v65/reports'
+        first={}
+        for suffix,expected in (('screen',4),('trace24',24)):
+            path=evidence/f'o378_roof_v65_{suffix}'
+            manifest=json.loads((path/'summary.json').read_text())
+            self.assertEqual(len(manifest['samples']),expected*2)
+            totals={v:dict(unsafe=0,unsafe_ctas=0,safe_samples=0) for v in ('o7','o8')}
+            for entry in manifest['samples']:
+                content=(path/entry['file']).read_bytes()
+                self.assertEqual(hashlib.sha256(content).hexdigest(),entry['sha256'])
+                case=json.loads(content)
+                stats=inspect_norms(case['a'],case['w'])
+                self.assertEqual(stats,case['stats'])
+                for key,value in stats.items(): self.assertEqual(entry[key],value)
+                for side in ('a','w'):
+                    self.assertEqual(len(case[side]['norm2']),4096)
+                    if case['group_statistics_retained']:
+                        rebuilt=weighted_norms(case[side]['scale_codes'],
+                            case[side]['group_sum_squares'],case[side]['kind'])
+                        for key,value in rebuilt.items(): self.assertEqual(case[side][key],value)
+                key=(case['sample_id'],case['variant'])
+                if suffix=='screen': first[key]=case
+                elif key in first: self.assertEqual(case,first[key])
+                total=totals[case['variant']]
+                total['unsafe']+=stats['outputs']-stats['int32_norm_safe_outputs']
+                total['unsafe_ctas']+=stats['ctas']-stats['guard_safe_ctas']
+                total['safe_samples']+=stats['all_outputs_guaranteed_safe']
+                self.assertTrue(stats['coefficient_int32_safe'])
+                if not stats['all_outputs_guaranteed_safe']:
+                    self.assertEqual(key,('layer_24_o_proj','o8'))
+            self.assertEqual(totals['o7'],dict(unsafe=0,unsafe_ctas=0,safe_samples=expected))
+            self.assertEqual(totals['o8'],dict(unsafe=15 if expected==24 else 0,
+                unsafe_ctas=12 if expected==24 else 0,safe_samples=23 if expected==24 else 4))
