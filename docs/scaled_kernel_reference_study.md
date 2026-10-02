@@ -70,6 +70,22 @@ O3 的 A scale 不随组变化，可在最后恢复；W scale 仍逐 G128 保留
 可借鉴“按消费者访问顺序存放 scale”，但不能把其硬件缩放成本或指令直接移植到 A100。
 教程的格式与 scale 粒度不等于本项目的 G128 实验变体，不能为了使用它而改变我们的量化。
 
+### 6. CUTLASS SM80：A100 可迁移的拷贝调度
+
+[mma_multistage.h](https://github.com/NVIDIA/cutlass/blob/db1c288993354c88e551c40c19a8fb93a774a241/include/cutlass/gemm/threadblock/mma_multistage.h)
+的 `mac_loop_iter` 在 warp MMA 步骤之间调用 `copy_tiles_and_advance`，
+将下一 stage 的 global→shared 拷贝分段发出，并使用双缓冲 shared→register fragment。
+它不是本项目双侧 G128 scale 的现成实现，但比 SM90 TMA/WGMMA 更适合作为 A100 的调度参考。
+
+据此设计独立 v64：将相同的 payload 拷贝拆成四段，分别穿插到前半段的 MMA 工作中；
+scale 随第一段准备，最后一段才 commit，保留原来的 wait/barrier、CTA 和级数。
+它不同于 v42 将整批 copy 整体挪动；不减少必要 MMA，也不改变数学。
+这是按本项目布局重新实现的调度实验，不是复制 CUTLASS 源码或其性能结论。
+编译先核对寄存器、spill、额外寻址和两路 INT4，再决定是否进行 GPU 初筛。
+v64 实测已完成：虽消除 spill，四样本配对吞吐 O3/O7/O8 为−5.36%/−7.55%/−6.97%，
+输出/MSE不变。停止候选，不扫描相邻位置；不能把参考项目的成功直接推定为本项目的收益。
+[v64证据](evidence/a100_o378_roof_v64/README.md)
+
 ## 从参考源码到候选的筛选口径
 
 |问题|在本项目中怎样核对|不能据此宣称什么|
@@ -81,7 +97,9 @@ O3 的 A scale 不随组变化，可在最后恢复；W scale 仍逐 G128 保留
 例如这轮独立 interleaved-merge 编译候选仅尝试缩短 partial 生命周期：
 四个独立 N atom 各用一组整数 fragment 先算 high、乘16、再算 low；保留原始两路 INT4、
 各 G128 scale 和 FP32 顺序。这是针对本项目的推导，不声称来自上述项目的同款实现。
-需要编译资源审计后才决定是否投入 GPU 测量；当前不因数学等价就宣称性能提升。
+v63 已完成编译、正确性与四样本初筛：虽然 spill 降低，但三个后端均变慢，已停止；
+不能因数学等价或 partial 数组更少就宣称性能提升。
+[v63 实测证据](evidence/a100_o378_roof_v63/README.md)
 
 ## 对下一轮的实际指导
 

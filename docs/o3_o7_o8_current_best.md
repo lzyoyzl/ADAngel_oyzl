@@ -2,7 +2,13 @@
 
 ## 结论
 
-最新v63只做一个4样本候选初筛：交错复用high/low partial虽减少spill，
+最新v64参考CUTLASS SM80分段copy调度，保留两路独立partial。
+4样本×3轮配对GEMM吞吐O3/O7/O8分别 **−5.36%/−7.55%/−6.97%**；
+虽消除spill，但REG/驻留CTA不变，静态shared读取与指令数增加。输出/MSE逐位不变，
+96项检查及有限mem/sync/race通过；停止候选，不扩大24样本或四模式，最佳/默认不变。
+[v64原始结果与范围](evidence/a100_o378_roof_v64/README.md)
+
+v63只做一个4样本候选初筛：交错复用high/low partial虽减少spill，
 但O3/O7/O8配对GEMM吞吐分别−6.24%/−1.64%/−1.35%，输出/MSE不变。
 不采纳、不扩大24样本或四模式；下面的已测最佳组合不变。
 [v63证据](evidence/a100_o378_roof_v63/README.md)
