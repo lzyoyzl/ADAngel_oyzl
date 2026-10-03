@@ -36,6 +36,11 @@ v85进一步测试按MMA寄存器消费者顺序预排packed INT4，并以LDS.12
 不能仅因使用“消费者导向布局”就宣称获得开源实现的加速效果。
 [v85结果](evidence/a100_o378_roof_v85/README.md)
 
+v86又用同一样本的full NCU检查v78/v85：LDSM替换为等量LDS，shared读取wavefront都为22.020096M，
+168regs/3CTA不变，eligible和issue active下降。按消费者布局预排并未减少必要供数；
+不因开源实践采用类似思想就继续扫描该方向。本轮是诊断，没有新的Event加速比。
+[v86对照](evidence/a100_o378_roof_v86/README.md)
+
 [v54 转换证据](evidence/a100_o378_roof_v54/README.md)、
 [v64 分段 copy 负结果](evidence/a100_o378_roof_v64/README.md)、
 [v67 缓存 GEMM 证据](evidence/a100_o378_roof_v67/README.md)、

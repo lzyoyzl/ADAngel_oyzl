@@ -1,0 +1,113 @@
+[
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--version"
+    ],
+    "output": "ncu_version.txt"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--set",
+      "full",
+      "--cache-control",
+      "all",
+      "--clock-control",
+      "none",
+      "--kernel-name-base",
+      "function",
+      "--kernel-name",
+      "adangel_roof_o78_eight_chain_candidate",
+      "--launch-skip",
+      "50",
+      "--launch-count",
+      "1",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v86_ncu/o7_p0",
+      "/home/zlouyang/miniconda3/envs/adangel-a100/bin/python",
+      "scripts/profile_register_layout_kernel.py",
+      "--policy",
+      "0",
+      "--output",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v86_ncu/o7_p0"
+    ],
+    "output": "o7_p0.log"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v86_ncu/o7_p0.ncu-rep",
+      "--csv",
+      "--page",
+      "raw"
+    ],
+    "output": "o7_p0_raw.csv"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v86_ncu/o7_p0.ncu-rep",
+      "--csv",
+      "--page",
+      "source",
+      "--print-source",
+      "sass"
+    ],
+    "output": "o7_p0_source_sass.csv"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--set",
+      "full",
+      "--cache-control",
+      "all",
+      "--clock-control",
+      "none",
+      "--kernel-name-base",
+      "function",
+      "--kernel-name",
+      "adangel_roof_o78_register_layout_candidate",
+      "--launch-skip",
+      "50",
+      "--launch-count",
+      "1",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v86_ncu/o7_p1",
+      "/home/zlouyang/miniconda3/envs/adangel-a100/bin/python",
+      "scripts/profile_register_layout_kernel.py",
+      "--policy",
+      "1",
+      "--output",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v86_ncu/o7_p1"
+    ],
+    "output": "o7_p1.log"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v86_ncu/o7_p1.ncu-rep",
+      "--csv",
+      "--page",
+      "raw"
+    ],
+    "output": "o7_p1_raw.csv"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v86_ncu/o7_p1.ncu-rep",
+      "--csv",
+      "--page",
+      "source",
+      "--print-source",
+      "sass"
+    ],
+    "output": "o7_p1_source_sass.csv"
+  }
+]

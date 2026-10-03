@@ -2,6 +2,12 @@
 
 ## 结论
 
+**v86补充NCU诊断，没有刷新最佳。** 对现有v78/v85的同一O7样本、相同4096³工作量采集：
+LDSM虽被消除，但换成等量LDS，shared读取wavefront均为22.020096M；168regs/3CTA不变。
+eligible/issue active下降，不能将v85的失败归因于本次没有执行的fallback spill。
+不继续扫描同类布局替换；NCU Duration仅作诊断，不冒充新Event/MSE成绩。
+[v86对照及结论边界](evidence/a100_o378_roof_v86/README.md)。
+
 **v85预排MMA寄存器布局未获益，最佳不变。** 修正并穷举验证CuTe列映射后，
 四样本三轮O7/O8配对吞吐−2.65%/−2.91%，输出逐位一致、MSE不变。
 整数循环16 LDSM改为16 LDS.128，但必要MMA、payload和168regs/3CTA均未减少。
