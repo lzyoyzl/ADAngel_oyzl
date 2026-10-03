@@ -15,6 +15,12 @@ from inspect_eight_chain_schedule import trace
 from probe_o78_cute_traversal_codegen import ROOT, SYMBOL, CONTROL, STEM, generated_header, loop_summary
 
 
+def json_canonical(value):
+    # Static chain histograms have integer keys; saved JSON has string keys.
+    # Normalize representation only, keeping every instruction/count/value.
+    return json.loads(json.dumps(value, allow_nan=False))
+
+
 def checked(directory):
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     r = json.loads((directory / 'codegen.json').read_text())
@@ -37,7 +43,7 @@ def checked(directory):
     for symbol in (CONTROL, SYMBOL):
         live = r['liveness'][symbol]
         info = loop_summary(sass, symbol, live)
-        if info != r['loop_summary'][symbol] or trace(sass, symbol, live) != r['schedule'][symbol]:
+        if info != r['loop_summary'][symbol] or json_canonical(trace(sass, symbol, live)) != r['schedule'][symbol]:
             raise ValueError('encoded loop or MMA dependency drift')
         if info['mma_count'] != 64 or info['opcode_counts'].get('LDSM.16.M88.4') != 16:
             raise ValueError('necessary MMA/operand work changed')

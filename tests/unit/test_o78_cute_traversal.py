@@ -70,3 +70,12 @@ def test_online_preparation_and_timing_contract_unchanged():
         assert not result.pop('new_preparation_or_layout')
         result['comparison'] = old(mode, 100)['comparison']
         assert result == old(mode, 100)
+
+
+def test_json_histogram_roundtrip_keeps_all_schedule_values():
+    from benchmark_o78_cute_traversal import json_canonical
+    value = dict(active_count_histogram={0: 2, 8: 9}, mma=[dict(pc='0x1230', stage=1)])
+    saved = dict(active_count_histogram={'0': 2, '8': 9}, mma=[dict(pc='0x1230', stage=1)])
+    assert json_canonical(value) == saved
+    saved['mma'][0]['stage'] = 2
+    assert json_canonical(value) != saved
