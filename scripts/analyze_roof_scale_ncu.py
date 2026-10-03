@@ -107,6 +107,8 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
                      ('o8', 59, 'adangel_roof_o78_eight_chain_candidate'),
                      ('o7', 59, 'adangel_roof_o78_warp_metadata_candidate'),
                      ('o8', 59, 'adangel_roof_o78_warp_metadata_candidate'),
+                     ('o7', 59, 'adangel_roof_o78_register_layout_candidate'),
+                     ('o8', 59, 'adangel_roof_o78_register_layout_candidate'),
                      ('o7', 59, 'adangel_roof_o78_fullk_candidate'),
                      ('o8', 59, 'adangel_roof_o78_fullk_candidate')}
     if fullk_integer and (paired_integer or fullk_identity not in approved_fullk):
@@ -152,6 +154,9 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
             permitted=expected_symbol
         if expected_symbol=='adangel_roof_o78_warp_metadata_candidate' and variant in ('o7','o8'):
             if not fullk_integer: raise ValueError('warp-metadata candidate requires full-K accounting')
+            permitted=expected_symbol
+        if expected_symbol=='adangel_roof_o78_register_layout_candidate' and variant in ('o7','o8'):
+            if not fullk_integer: raise ValueError('register-layout candidate requires full-K accounting')
             permitted=expected_symbol
         if expected_symbol in ('adangel_roof_o78_fullk_control','adangel_roof_o78_fullk_candidate') and variant in ('o7','o8'):
             if fullk_integer != (expected_symbol == 'adangel_roof_o78_fullk_candidate'):
