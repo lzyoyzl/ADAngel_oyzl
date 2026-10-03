@@ -27,8 +27,8 @@ NEW_A = '''    // Warp/lane coordinates come from the same CuTe MMA partition, n
     // an assumed warp-to-M/N assignment. Payload already has register order.
     auto load_a=[&](auto half,auto& av,auto& hv) {
       o1_static_for<0,2>([&](auto mi) {
-        const int atom=cute::get<0>(coords(cute::_0{},mi,cute::_0{}))/16;
-        const int off=atom*1024+half*512+(threadIdx.x&31)*16;
+        const int off=o78_register_layout_mapping::a_offset(
+            cute::get<0>(coords(cute::_0{},mi,cute::_0{})),half,threadIdx.x&31);
         auto ar=cute::recast<uint32_t>(av(cute::_,mi,cute::_0{}));
         auto hr=cute::recast<uint32_t>(hv(cute::_,mi,cute::_0{}));
         const uint4 la=load128(s.low[slot]+off),ha=load128(s.high[slot]+off);
@@ -44,8 +44,9 @@ OLD_B = '''      cute::copy(SCopy{},bc.partition_S(tile_b(slot,nb,cute::_0{})),b
 NEW_B = '''      auto load_b=[&](auto half,auto& bv) {
         auto br=cute::recast<uint32_t>(bv);
         o1_static_for<0,2>([&](auto pair) {
-          const int atom=cute::get<1>(coords(cute::_0{},cute::_0{},nb*cute::_4{}+pair*cute::_2{}))/16;
-          const uint4 data=load128(s.weight[slot]+atom*1024+half*512+(threadIdx.x&31)*16);
+          const int off=o78_register_layout_mapping::w_offset(
+              cute::get<1>(coords(cute::_0{},cute::_0{},nb*cute::_4{}+pair*cute::_2{})),half,threadIdx.x&31);
+          const uint4 data=load128(s.weight[slot]+off);
           br(pair*4+0)=data.x;br(pair*4+1)=data.y;br(pair*4+2)=data.z;br(pair*4+3)=data.w;
         });
       };
@@ -63,6 +64,13 @@ LOAD_HELPER = '''__device__ __forceinline__ uint4 load128(const void* p) {
 def generated_header(source):
     text = eight_header(source)
     replacements = ((OLD_A, NEW_A), (OLD_B, NEW_B),
+        ('  C::ByteLayout<64> la;C::ByteLayout<128> lb;\n', ''),
+        ('  C::Mma mma;C::HighMma high_mma;',
+         '  static_assert(std::is_same<C::Mma,o78_register_layout_mapping::FullMma>::value);\n'
+         '  C::Mma mma;C::HighMma high_mma;'),
+        ('  SliceMma slice_mma;',
+         '  static_assert(std::is_same<SliceMma,o78_register_layout_mapping::SliceMma>::value);\n'
+         '  SliceMma slice_mma;'),
         ('s.low[slot]+la(row,col)', 's.low[slot]+off'),
         ('s.high[slot]+la(row,col)', 's.high[slot]+off'),
         ('s.weight[slot]+lb(row,col)', 's.weight[slot]+off'),
@@ -81,7 +89,7 @@ struct RegisterLayoutOnline:RowFusedOnline {
   using RowFusedOnline::RowFusedOnline;
   void weight(bool layout) {
     RowFusedOnline::weight(true);
-    if(layout) o78_register_pack::pack<true><<<dim3(n/16,32),32,0,stream>>>(
+    if(layout) o78_register_pack::pack<true><<<dim3(n/32,32),64,0,stream>>>(
       reinterpret_cast<const uint8_t*>(v[1]),reinterpret_cast<uint8_t*>(v[1])+size_t(n)*2048,n);
   }
   void activation(bool layout) {
@@ -135,6 +143,7 @@ def main():
     driver.write_text(generated_driver((ROOT/'csrc/sm80/roof_o78_row_fused_prepare.cu').read_text()))
     sources=set(prior['sources'])|set(preparation['sources'])|{
         'csrc/sm80/o78_register_pack.cuh','csrc/sm80/roof_o78_register_layout_probe.cu',
+        'csrc/sm80/o78_register_layout_mapping.cuh','csrc/sm80/verify_o78_register_layout.cu',
         'scripts/probe_o78_register_layout_codegen.py'}
     receipt=dict(scope='register_layout_compile_not_performance_acceptance',
         source_commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
@@ -148,6 +157,10 @@ def main():
             subprocess.run(command,cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,check=True)
     compiler=[str(cuda/'nvcc'),'-O3','-std=c++17','--expt-relaxed-constexpr','-lineinfo','-arch=sm_80',
         '-I'+str(cutlass/'include'),'-I'+str(ROOT/'csrc/sm80'),'-I'+str(out)]
+    verifier=out/'verify_register_layout'
+    run(compiler+[str(ROOT/'csrc/sm80/verify_o78_register_layout.cu'),'-o',str(verifier)],'mapping_build.log')
+    run([str(verifier)],'mapping_verification.json')
+    receipt['coordinate_verification']=json.loads((out/'mapping_verification.json').read_text())
     src=str(ROOT/'csrc/sm80/roof_o78_register_layout_probe.cu')
     cubin=out/'o78_register_layout.cubin'
     run(compiler+[src,'-cubin','-o',str(cubin),'-Xptxas=-v'],'build.log')
@@ -161,7 +174,7 @@ def main():
         control_comparison=compare((args.baseline/'o78_eight_chain.sass').read_text(),sass,'^'+CONTROL+'$'),
         liveness={s:analyze((out/'liveness.txt').read_text(),s) for s in (CONTROL,SYMBOL)},
         artifact_sha256={p:sha(out/p) for p in ('build.log','o78_register_layout.sass',
-            'o78_register_layout.ptx','resources.txt','liveness.txt')})
+            'o78_register_layout.ptx','resources.txt','liveness.txt','mapping_verification.json')})
     (out/'codegen.json').write_text(json.dumps(receipt,indent=2)+'\n')
     if not receipt['control_comparison']['passed'] or not all(
         e['native_u4_s4'] and e['native_s4_s4'] and not e['int8_mma'] and e['all_copies_bypass_l1']

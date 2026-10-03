@@ -1,6 +1,7 @@
 // Independent v85: lane-vector payload layout, same v78 integer math.
 // Natural payload is retained in the first half for the unchanged fallback.
 #include "roof_o78_eight_chain_probe.cu"
+#include "o78_register_layout_mapping.cuh"
 namespace {
 #include "o78_register_layout_generated.cuh"
 }

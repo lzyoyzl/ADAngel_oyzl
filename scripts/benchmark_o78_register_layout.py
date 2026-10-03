@@ -14,25 +14,27 @@ from probe_o78_register_layout_codegen import ROOT, SYMBOL, generated_header, ge
 def register_order_indices(weight):
     """Independent SM80 atom oracle, checked against CuTe by GPU packing/GEMM.
 
-    Return nibble positions within a16x128 natural tile. A's registers group
-    M8 then K32; B's two-register N8 atoms group K32 then the adjacent N8.
+    A packs a16x128 tile. W packs a32x128 tile with two N warps; adjacent
+    fragments within one warp are 16 columns apart, not adjacent N8 atoms.
     """
     result=[]
-    for half in range(2):
-        for lane in range(32):
-            for value in range(32):
-                row=lane//4+8*(value//16 if weight else (value//8)%2)
-                k=half*64+(lane%4)*8+value%8+32*((value//8)%2 if weight else value//16)
-                result.append(row*128+k)
+    for warp in range(2 if weight else 1):
+        for half in range(2):
+            for lane in range(32):
+                for value in range(32):
+                    row=warp*8+lane//4+(16*(value//16) if weight else 8*((value//8)%2))
+                    k=half*64+(lane%4)*8+value%8+32*((value//8)%2 if weight else value//16)
+                    result.append(row*128+k)
     return np.asarray(result,dtype=np.int64)
 
 
 def packed_reference(natural,weight):
     original=np.asarray(natural,dtype=np.uint8)
     rows=original.shape[-2]
-    if rows%16 or original.shape[-1]!=64:raise ValueError('natural G128 packed rows required')
+    tile=32 if weight else 16
+    if rows%tile or original.shape[-1]!=64:raise ValueError('natural G128 packed rows required')
     planes=1 if weight else 2
-    values=np.stack((original&15,original>>4),axis=-1).reshape(planes,32,rows//16,2048)
+    values=np.stack((original&15,original>>4),axis=-1).reshape(planes,32,rows//tile,tile*128)
     ordered=values[...,register_order_indices(weight)]
     return (ordered[...,::2]|(ordered[...,1::2]<<4)).reshape(-1)
 

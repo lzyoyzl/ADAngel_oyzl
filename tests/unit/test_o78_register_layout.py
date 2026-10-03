@@ -16,15 +16,28 @@ def test_layout_permutation_is_bijective_and_roundtrips_every_nibble():
     rng=np.random.default_rng(20261003)
     for weight in (False,True):
         order=register_order_indices(weight)
-        assert sorted(order.tolist())==list(range(2048))
+        tile=32 if weight else 16
+        assert sorted(order.tolist())==list(range(tile*128))
         shape=(32,64,64) if weight else (2,32,64,64)
         raw=rng.integers(0,256,shape,dtype=np.uint8)
         packed=packed_reference(raw,weight)
         assert packed.nbytes==raw.nbytes
-        recovered=np.stack((packed&15,packed>>4),axis=-1).reshape(1 if weight else 2,32,4,2048)
+        recovered=np.stack((packed&15,packed>>4),axis=-1).reshape(1 if weight else 2,32,64//tile,tile*128)
         recovered=recovered[...,np.argsort(order)]
         back=(recovered[...,::2]|(recovered[...,1::2]<<4)).reshape(shape)
         assert np.array_equal(back,raw)
+
+
+def test_weight_pair_follows_tiled_mma_n_warp_stride_not_adjacent_n8():
+    packed=register_order_indices(True).reshape(2,2,32,32)
+    for warp in range(2):
+        for lane in range(32):
+            rows=packed[warp,0,lane]//128
+            assert np.all(rows[:16]==warp*8+lane//4)
+            assert np.all(rows[16:]==warp*8+lane//4+16)
+    source=(ROOT/'csrc/sm80/verify_o78_register_layout.cu').read_text()
+    assert 'thr.partition_A' in source and 'st.partition_B' in source
+    assert 'legacy_adjacent_b_mismatches' in source
 
 
 def test_integer_math_pipeline_and_epilogue_are_unchanged():
