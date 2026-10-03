@@ -25,6 +25,11 @@
 它是针对本项目实测热点的修改，不是新开源kernel移植，也不能用计数器改善替代延迟证据。
 [v81结果](evidence/a100_o378_roof_v81/README.md)
 
+v83进一步独立测试扩大N tile来复用A片段：相同输出工作量LDSM/copy条数下降25%/30%，
+但寄存器168→255、驻留CTA 3→2，四样本O7/O8配对吞吐−0.90%/−1.36%，未采纳。
+这也是本项目候选，不是直接移植某一开源kernel；供数复用与资源占用必须一起验收。
+[v83结果](evidence/a100_o378_roof_v83/README.md)
+
 [v54 转换证据](evidence/a100_o378_roof_v54/README.md)、
 [v64 分段 copy 负结果](evidence/a100_o378_roof_v64/README.md)、
 [v67 缓存 GEMM 证据](evidence/a100_o378_roof_v67/README.md)、
