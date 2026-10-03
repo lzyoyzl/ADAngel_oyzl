@@ -29,3 +29,15 @@ def test_combined_guard_never_silently_accepts_unsafe_half():
         for b in range(3):
             assert ((a|b)==0) == (a==b==0)
             assert ((a|b)>1) == (a==2 or b==2)
+
+
+def test_cached_driver_has_same_timer_and_exact_tile_guard():
+    source=(ROOT/'csrc/sm80/roof_o78_n256_driver.cpp').read_text()
+    assert 'n/tile_n,m/64,1,128,1,1' in source
+    assert 'p->smem!=(tile_n==256?51712u:34304u)' in source
+    assert 'Events events(repeats*2)' in source
+    assert source.index('Events events(repeats*2)')<source.index('for(int i=0;i<warmup')
+    script=(ROOT/'scripts/benchmark_o78_n256_probe.py').read_text()
+    assert "mode!='compute_only'" in script and "if '--full-modes' in sys.argv" in script
+    assert 'np.any(case.oracle[\'status_flat\']>1)' in script
+    assert 'same_native_driver' in script
