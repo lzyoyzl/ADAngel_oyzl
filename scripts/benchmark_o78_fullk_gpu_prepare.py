@@ -301,7 +301,7 @@ class Case:
                 assert torch.equal(got, want), f"new conversion payload mismatch: {key}"
 
 
-def validate_edges(driver):
+def validate_edges(driver, variants=("o7", "o8")):
     """GPU branches for invalid encodings, exact saturation and fallback.
 
     Source scales are deliberately mutated AFTER constructing a valid case;
@@ -312,6 +312,8 @@ def validate_edges(driver):
     from adangel.quantization import mixed_formats as mf
     from o78_fullk_integer_metadata import prepare_fullk_metadata
     cases = []
+    if not variants or len(set(variants)) != len(variants) or not set(variants) <= {"o7", "o8"}:
+        raise ValueError("explicit nonempty O7/O8 validation selection required")
     specs = [
         ("ue_code_zero", "o7"), ("factor_delta30_norm_uint64_overflow", "o7"),
         ("capped_norm_other_operand_zero", "o7"), ("factor_delta32", "o7"),
@@ -321,6 +323,8 @@ def validate_edges(driver):
         ("e6_code_zero", "o8"), ("invalid_e6_255", "o8"),
     ]
     for name, variant in specs:
+        if variant not in variants:
+            continue
         wf, af = mf.VARIANTS[variant]
         a = torch.full((64, 4096), .5, device="cuda", dtype=torch.float16)
         w = torch.full((128, 4096), .125, device="cuda", dtype=torch.float16)

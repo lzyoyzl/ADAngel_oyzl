@@ -81,7 +81,7 @@ class Driver(fused.Driver):
         return case.state['y'], base.normalize_timings(mode, np.ctypeslib.as_array(values).reshape(4, repeats), repeats)
 
 
-def validate(driver):
+def validate(driver, variants=('o7', 'o8')):
     import torch
     from adangel import _sm80 as native
     from adangel.quantization import mixed_formats as mf
@@ -101,6 +101,8 @@ def validate(driver):
                 a[:, ::2] = -8; a[:, 1::2] = 7
                 w[:, ::2] = -7; w[:, 1::2] = 6
             for variant, (wf, af) in mf.VARIANTS.items():
+                if variant not in variants:
+                    continue
                 ws, acs = mf.quantize_source(w, wf), mf.quantize_source(a, af)
                 if pattern == 'wide_scale':
                     if variant == 'o7':
@@ -132,23 +134,25 @@ def validate(driver):
     original_case = base.Case
     try:
         base.Case = fused.Case
-        edges = base.validate_edges(driver)
+        edges = base.validate_edges(driver, variants=variants)
     finally:
         base.Case = original_case
     return dict(passed=True, scope='small_MN_full_K4096_not_4096cubed_sanitizer',
                 count=len(checks), checks=checks, edge_count=len(edges), edge_checks=edges)
 
 
-def summarize(rows, modes):
+def summarize(rows, modes, variants=('o7', 'o8')):
     from adangel.benchmark.metrics import bootstrap_median_ci
     index = {(r['sample_id'], r['variant'], r['mode'], r['round'], r['candidate']): r for r in rows}
     ids = sorted({r['sample_id'] for r in rows})
     rounds = sorted({r['round'] for r in rows})
-    expected = {(s, v, m, r, p) for s in ids for v in ('o7', 'o8') for m in modes for r in rounds for p in (0, 1)}
+    if not variants or len(set(variants)) != len(variants) or not set(variants) <= {'o7', 'o8'}:
+        raise ValueError('explicit nonempty O7/O8 variant selection required')
+    expected = {(s, v, m, r, p) for s in ids for v in variants for m in modes for r in rounds for p in (0, 1)}
     if len(index) != len(rows) or set(index) != expected:
         raise ValueError('incomplete paired evidence')
     result = []
-    for variant in ('o7', 'o8'):
+    for variant in variants:
         for mode in modes:
             for policy in (0, 1):
                 selected = [index[s, variant, mode, r, policy] for s in ids for r in rounds]
@@ -171,9 +175,12 @@ def summarize(rows, modes):
 def main(*, driver_cls=Driver, default_gpu_build=Path('reports/o378_roof_v69_codegen'),
          labels=('v67_fullK_same_v69_preparation', 'v72_coefficient_first_same_v69_preparation'),
          experiment='coefficient_first', banner='COEFFICIENT',
-         contract=fused.timing_contract, description=__doc__):
+         contract=fused.timing_contract, description=__doc__, variants=('o7', 'o8'),
+         validation_fn=None):
     """Shared paired protocol; defaults preserve the original v72 experiment."""
     p = argparse.ArgumentParser(description=description)
+    if not variants or len(set(variants)) != len(variants) or not set(variants) <= {'o7', 'o8'}:
+        raise ValueError('explicit nonempty O7/O8 variant selection required')
     p.add_argument('--gpu-build', type=Path, default=default_gpu_build)
     p.add_argument('--baseline', type=Path, default=Path('reports/o378_roof_v67_codegen'))
     p.add_argument('--cubins', type=Path, required=True)
@@ -214,7 +221,7 @@ def main(*, driver_cls=Driver, default_gpu_build=Path('reports/o378_roof_v69_cod
         with (args.output / name).open('a') as out:
             out.write(json.dumps(obj, allow_nan=False) + '\n')
     try:
-        save('validation.json', validate(driver))
+        save('validation.json', validate(driver, variants) if validation_fn is None else validation_fn(driver))
         if args.validate_only:
             print(banner + ' VALIDATION PASSED', flush=True)
             return
@@ -223,7 +230,7 @@ def main(*, driver_cls=Driver, default_gpu_build=Path('reports/o378_roof_v69_cod
         raw_index = {r['sample_id']: r for r in raw['samples']}
         save('environment.json', dict(git_commit=command('git', 'rev-parse', 'HEAD'),
             extension_sha256=sha256_file(Path(native.__file__)), codegen=driver.codegen, gpu_preparation_build=build,
-            resources=driver.resources, torch=torch.__version__, cuda=torch.version.cuda, gpu=torch.cuda.get_device_name(),
+            resources=driver.resources, variants=list(variants), torch=torch.__version__, cuda=torch.version.cuda, gpu=torch.cuda.get_device_name(),
             prepared_manifest_sha256=mh, raw_manifest_sha256=rh, production_default_changed=False,
             control=labels[0], candidate=labels[1],
             source_quantization='original_FP16_direct_source_quantization_excluded',
@@ -238,6 +245,8 @@ def main(*, driver_cls=Driver, default_gpu_build=Path('reports/o378_roof_v69_cod
             prepared = load_prepared(path, device='cpu')
             verify_raw_prepared(prepared, (record['activation_fp16'], record['weight_fp16'])); del prepared
             for vi, (variant, (wf, af)) in enumerate(mf.VARIANTS.items()):
+                if variant not in variants:
+                    continue
                 ws = mf.quantize_source(record['weight_fp16'].cuda(), wf)
                 acs = mf.quantize_source(record['activation_fp16'].cuda(), af)
                 append('source_provenance.jsonl', dict(sample_id=entry['sample_id'], variant=variant,
@@ -278,7 +287,7 @@ def main(*, driver_cls=Driver, default_gpu_build=Path('reports/o378_roof_v69_cod
                             rows.append(row); append('results.jsonl', row)
                 print(entry['sample_id'], variant, 'paired complete', flush=True)
             save('summary.json', dict(scope=experiment + '_paired_' + ('four_modes' if args.full_modes else 'cached_GEMM'),
-                production_default_changed=False, no_filtering=True, records=summarize(rows, modes)))
+                production_default_changed=False, no_filtering=True, records=summarize(rows, modes, variants)))
         assert sha256_file(args.data / 'manifest.json') == mh and sha256_file(args.raw_data / 'trace_manifest.json') == rh
         print(banner + ' PAIRED TEST PASSED', flush=True)
     finally:
