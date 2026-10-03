@@ -60,3 +60,13 @@ Function : other
     result = loop_summary(sass, 'target', live)
     assert result['mma_count'] == 2 and result['operand_reuse_markers'] == 2
     assert 'not_measured' in result['scope']
+
+
+def test_online_preparation_and_timing_contract_unchanged():
+    from benchmark_o78_cute_traversal import timing_contract
+    from benchmark_o78_eight_chain_probe import timing_contract as old
+    for mode in ('conversion_only', 'compute_only', 'cold', 'steady_state'):
+        result = timing_contract(mode, 100)
+        assert not result.pop('new_preparation_or_layout')
+        result['comparison'] = old(mode, 100)['comparison']
+        assert result == old(mode, 100)
