@@ -127,12 +127,12 @@ def o3_case(x,native):
 
 
 def summarize(rows):
-    from adangel.benchmark.metrics import bootstrap_median_ci
     ids=sorted({r['sample_id'] for r in rows});rounds=sorted({r['round'] for r in rows})
     index={(r['sample_id'],r['variant'],r['round'],r['policy']):r for r in rows}
     if len(ids)!=24 or len(index)!=len(rows) or set(index)!={
             (s,v,r,p) for s in ids for v in ('o3','o7','o8') for r in rounds for p in (0,1)}:
         raise ValueError('complete full24 paired records required')
+    from adangel.benchmark.metrics import bootstrap_median_ci
     output=[]
     for variant in ('o3','o7','o8'):
         ratios=[statistics.median(index[s,variant,r,0]['summary']['median_ms']/
