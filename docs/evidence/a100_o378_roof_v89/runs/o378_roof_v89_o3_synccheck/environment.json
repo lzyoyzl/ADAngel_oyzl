@@ -1,0 +1,30 @@
+{
+  "git_commit": "9e7f81aec47624d5711d3a2aaa5166bdc57c4098",
+  "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "production_default_changed": false,
+  "args": {
+    "output": "runs/o378_roof_v89_o3_synccheck",
+    "codegen": "reports/o378_roof_v89_o3_codegen",
+    "samples": 24,
+    "rounds": 3,
+    "warmup": 50,
+    "repeats": 200,
+    "inner": 100,
+    "modes": [
+      "compute_only"
+    ],
+    "validate_only": true
+  },
+  "policy": "unlocked shared GPU, cyclic pair order, all raw samples retained",
+  "timing_contract_version": 2,
+  "scope": "O3 v79 vs v89 grouped_CTA, same conversion2 and online GPU guard",
+  "guard_cost": "both: weight conversion includes factors/status; cached outside compute/steady",
+  "host_preflight": "same normal-scale/finite-row preflight and post-batch status outside GPU Event timing",
+  "control": "adangel_roof_o3_eight_chain_candidate",
+  "candidate": "adangel_roof_o3_grouped_cta_candidate",
+  "cta_order_group_m": 8,
+  "no_small_performance_screen": true
+}

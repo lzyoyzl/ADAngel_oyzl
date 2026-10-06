@@ -1,0 +1,125 @@
+{
+  "first_run": "runs/o378_roof_v89_o3",
+  "retry_run": "runs/o378_roof_v89_o3_retry",
+  "first_warmup": 50,
+  "retry_warmup": 1000,
+  "no_raw_filtering": true,
+  "no_default_change": true,
+  "conclusion_scope": "independent full24 repeat, not best-of-many CV selection",
+  "records": [
+    {
+      "variant": "o3",
+      "mode": "compute_only",
+      "policy": 0,
+      "first": {
+        "variant": "o3",
+        "mode": "compute_only",
+        "policy": 0,
+        "samples": 24,
+        "records": 72,
+        "median_ms": 0.44595199823379517,
+        "paired_speedup": 1.0,
+        "paired_speedup_ci95": [
+          1.0,
+          1.0
+        ],
+        "median_mse": 0.006653010287409885,
+        "mean_mse": 0.007578847013302748,
+        "selected_cv_failed_records": 48,
+        "any_stage_cv_failed_records": 48,
+        "median_cv_percent": 4.258814083929135,
+        "max_cv_percent": 36.51779205190632,
+        "samples_faster_than_control": 0,
+        "bitwise_previous_best": true,
+        "no_filtering": true
+      },
+      "retry": {
+        "variant": "o3",
+        "mode": "compute_only",
+        "policy": 0,
+        "samples": 24,
+        "records": 72,
+        "median_ms": 0.4607999920845032,
+        "paired_speedup": 1.0,
+        "paired_speedup_ci95": [
+          1.0,
+          1.0
+        ],
+        "median_mse": 0.006653010287409885,
+        "mean_mse": 0.007578847013302748,
+        "selected_cv_failed_records": 5,
+        "any_stage_cv_failed_records": 5,
+        "median_cv_percent": 0.5523043281976899,
+        "max_cv_percent": 40.8907807655798,
+        "samples_faster_than_control": 0,
+        "bitwise_previous_best": true,
+        "no_filtering": true
+      },
+      "latency_shift_percent": 3.3295049488541117,
+      "paired_gain_percent": 0.0,
+      "strict_cv_passed": false
+    },
+    {
+      "variant": "o3",
+      "mode": "compute_only",
+      "policy": 1,
+      "first": {
+        "variant": "o3",
+        "mode": "compute_only",
+        "policy": 1,
+        "samples": 24,
+        "records": 72,
+        "median_ms": 0.42291200160980225,
+        "paired_speedup": 1.0609278575649483,
+        "paired_speedup_ci95": [
+          1.050724601003365,
+          1.072551378993665
+        ],
+        "median_mse": 0.006653010287409885,
+        "mean_mse": 0.007578847013302748,
+        "selected_cv_failed_records": 52,
+        "any_stage_cv_failed_records": 52,
+        "median_cv_percent": 4.788057986429642,
+        "max_cv_percent": 38.65514756737201,
+        "samples_faster_than_control": 24,
+        "bitwise_previous_best": true,
+        "no_filtering": true
+      },
+      "retry": {
+        "variant": "o3",
+        "mode": "compute_only",
+        "policy": 1,
+        "samples": 24,
+        "records": 72,
+        "median_ms": 0.43775999546051025,
+        "paired_speedup": 1.049239674944963,
+        "paired_speedup_ci95": [
+          1.0466200616431331,
+          1.0525087433747184
+        ],
+        "median_mse": 0.006653010287409885,
+        "mean_mse": 0.007578847013302748,
+        "selected_cv_failed_records": 5,
+        "any_stage_cv_failed_records": 5,
+        "median_cv_percent": 0.5840373923314213,
+        "max_cv_percent": 41.6221594440723,
+        "samples_faster_than_control": 24,
+        "bitwise_previous_best": true,
+        "no_filtering": true
+      },
+      "latency_shift_percent": 3.510894416377286,
+      "paired_gain_percent": 4.923967494496306,
+      "strict_cv_passed": false
+    }
+  ],
+  "first_input_sha256": {
+    "results.jsonl": "11e6c9a6e094fa071a6549890396443691ef809730079420b5a9c0c58ee3bf04",
+    "environment.json": "cff5cfff100c667c66115952fc73d8d14ed2a30831c5a47e016c7ab670bed47a",
+    "validation.json": "27d07b6534fac15cfb69f0f1084d43857d05c9c01f637ad85b63c57aa79910d3"
+  },
+  "retry_input_sha256": {
+    "results.jsonl": "47ae0a83764fb7ff42e6285506cd63fca0ea8f6c113bc8b797dcb4c7e233346d",
+    "environment.json": "e932d13c6ef0e5ec5a56faf5aec9baa2066542b59a8d9d0e792db02bbb163a1c",
+    "validation.json": "27d07b6534fac15cfb69f0f1084d43857d05c9c01f637ad85b63c57aa79910d3"
+  }
+}
