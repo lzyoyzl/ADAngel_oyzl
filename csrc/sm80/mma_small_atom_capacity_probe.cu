@@ -49,7 +49,9 @@ __device__ __forceinline__ void body(const uint32_t* input,uint32_t* output,int 
     #pragma unroll
     for(int slice=0;slice<2;++slice) {
       #pragma unroll
-      for(int i=0;i<Chains;++i) for(int j=0;j<Width;++j) p[i][j]=0;
+      // Distinguish every C value so ptxas cannot common an identical start.
+      // Both shapes use the same32 affine seeds; all are observed below.
+      for(int i=0;i<Chains;++i) for(int j=0;j<Width;++j) p[i][j]=static_cast<uint32_t>(tid+i*Width+j);
       #pragma unroll
       for(int step=0;step<Steps;++step) {
         #pragma unroll
@@ -114,8 +116,10 @@ int main() {
     check(cudaMemcpyAsync(host.data(),y,count*sizeof(uint32_t),cudaMemcpyDeviceToHost,stream));
     check(cudaStreamSynchronize(stream));
     const int sa=a<8?a:a-16,sb=b<8?b:b-16;
-    const uint32_t expected=static_cast<uint32_t>(64ll*groups*128*(16*sa+a)*sb);
-    for(uint32_t got:host) if(got!=expected) {std::fprintf(stderr,"checksum mismatch\n");std::exit(5);}
+    for(int t=0;t<count;++t) {
+      const uint32_t expected=static_cast<uint32_t>(groups*(64ll*128*(16*sa+a)*sb+1024ll*t+15872));
+      if(host[t]!=expected) {std::fprintf(stderr,"checksum mismatch\n");std::exit(5);}
+    }
   };
   int checks=0;
   const int patterns[][2]={{0,15},{1,1},{15,1},{7,8},{8,7},{15,15}};

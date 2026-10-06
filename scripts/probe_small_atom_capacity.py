@@ -82,7 +82,7 @@ def summarize(rows):
         gate='Require >=10% lower-CI capacity gain before a real GEMM implementation; no retry-to-pass.',
         scope='matched_MMA_capacity_only_not_GEMM_MSE_attainable_peak_or_real_case_speedup',
         no_filtering=True,production_default_changed=False,new_experiment_MSE_measured=False,
-        note='Both modes include64 checksum additions/group and observe every D register. No real payload/shared loads, group factors, full-K accumulator or FP32 output. Source chain count is not measured hardware concurrency. Do not compare absolute timing with v82, whose checksum work differs.')
+        note='Both modes use the same32 affine C seeds to prevent common starts, include64 checksum additions/group and observe every D register. No real payload/shared loads, group factors, full-K accumulator or FP32 output. Source chain count is not measured hardware concurrency. Do not compare absolute timing with v82, whose checksum work differs.')
 
 
 def main():

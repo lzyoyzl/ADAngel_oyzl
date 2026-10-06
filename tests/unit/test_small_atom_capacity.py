@@ -34,3 +34,4 @@ def test_source_observes_all_registers_and_keeps_native_types():
         for types in ('s32.u4.s4.s32','s32.s4.s4.s32'):
             assert shape+'.row.col.'+types in text
     assert 'checksum+=p[i][j]' in text and 'for(int j=0;j<Width;++j)' in text
+    assert 'tid+i*Width+j' in text and '1024ll*t+15872' in text

@@ -38,6 +38,8 @@ v83/v84 tile/stage、v87 coefficient shift、v92/v94/v96/v97/v98 chain/资源、
 SASS检查同entry两路原生S4/S4、U4/S4及精确动态循环工作量，热循环不得有内存读写。
 
 与v82不同，本轮控制观察全部D寄存器，不能把其绝对时间与v82拼接。
+两种shape都使用相同32个依赖threadID的仿射C初值，避免编译器合并重复起始计算；
+checksum参考包含这些初值。该诊断仍不是正式partial语义或真实GEMM。
 除以8的32组等效时间仅用于工作量归一化；没有真实payload、scale、全K accumulator和FP32输出，
 不是正式GEMM成绩、可达到的kernel peak或相对当前最佳的加速。
 
@@ -56,4 +58,7 @@ python -m pytest tests/unit/test_small_atom_capacity.py -q
 
 ## 结果状态
 
-当前为诊断实现与预设门槛，服务器结果尚待记录。没有新的GEMM、MSE、conversion或端到端成绩。
+首次构建的小atom PTX有256个MMA，SASS只有255个（127 signed、128 unsigned），
+因此相同工作量审计失败，未启动GPU计时。原始构建目录和失败日志保留；
+随后将两种shape的C初值均改为相同32个仿射值以避免重复起始计算，不放宽审计。
+服务器修正版结果尚待记录。没有新的GEMM、MSE、conversion或端到端成绩。
