@@ -3,11 +3,13 @@ from copy import deepcopy
 from pathlib import Path
 import re
 import sys
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]/'scripts'))
 from probe_output_streaming_codegen import generated_header, prior_memory_evidence, worth_runtime
 from probe_grouped_cta_codegen import generated_headers
 from probe_o78_eight_chain_codegen import generated_header as eight_header
+from benchmark_o378_output_streaming import resources
 
 
 def test_only_integer_epilogue_changes():
@@ -64,3 +66,26 @@ def test_fixed_compile_budget_rejects_extra_work():
     extra = deepcopy(stores)
     extra['candidate']['total'] += 1
     assert not worth_runtime(control, control, extra)
+
+
+def test_runtime_resources_and_policy_identity():
+    class Library:
+        values = [168, 0, 128, 3]
+        def roof_probe_resources(self, handle, values):
+            for index, value in enumerate(self.values):
+                values[index] = value
+            return 0
+    from probe_output_streaming_codegen import CONFIG
+    library = Library()
+    check = lambda code: None if code == 0 else pytest.fail('driver error')
+    for kind in CONFIG:
+        cfg = CONFIG[kind]
+        row = resources(library, check, None, kind, cfg['symbol'])
+        assert row['integer_output_policy'] == 'streaming_cs'
+        assert row['partial_registers'] == 32 and row['source_max_chains'] == 8
+        assert row['fallback_output_policy'] == 'unchanged_default_wb'
+        assert resources(library, check, None, kind, cfg['control'])['integer_output_policy'] == 'default_wb'
+    for values in ([169, 0, 128, 3], [168, 0, 256, 3], [168, 0, 128, 2]):
+        library.values = values
+        with pytest.raises(ValueError, match='capacity gates'):
+            resources(library, check, None, 'o3', CONFIG['o3']['symbol'])

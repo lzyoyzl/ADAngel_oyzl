@@ -1,0 +1,229 @@
+{
+  "runtime_justified": true,
+  "stores": {
+    "control": {
+      "opcodes": {
+        "STG.E": 128,
+        "STG.E.64": 64
+      },
+      "total": 192,
+      "streaming": 0
+    },
+    "candidate": {
+      "opcodes": {
+        "STG.E": 64,
+        "STG.E.64": 32,
+        "STG.E.EF": 64,
+        "STG.E.EF.64": 32
+      },
+      "total": 192,
+      "streaming": 96
+    }
+  },
+  "liveness": {
+    "adangel_roof_o78_output_streaming_candidate": {
+      "symbol": "adangel_roof_o78_output_streaming_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 164,
+      "loops": [
+        {
+          "kind": "integer",
+          "begin_pc": "0xaa0",
+          "end_pc": "0x2280",
+          "static_instructions": 383,
+          "max_live_gpr": 164,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 20,
+            "IADD3.X": 5,
+            "IMAD": 128,
+            "IMAD.IADD": 1,
+            "IMAD.SHL.U32": 24,
+            "IMAD.X": 5,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 2,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 6,
+            "MOV": 2,
+            "PLOP3.LUT": 2,
+            "S2R": 5,
+            "SHF.L.U32": 48,
+            "UIADD3": 1,
+            "UIMAD": 2,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULOP3.LUT": 6,
+            "UMOV": 1,
+            "USHF.L.U32": 8
+          },
+          "peak_pcs": [
+            "0x1870",
+            "0x1880",
+            "0x1890",
+            "0x18a0",
+            "0x18b0",
+            "0x18c0",
+            "0x19d0",
+            "0x19e0"
+          ]
+        },
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x4d80",
+          "end_pc": "0x68f0",
+          "static_instructions": 440,
+          "max_live_gpr": 162,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "FFMA": 64,
+            "FMUL": 64,
+            "I2F": 64,
+            "IADD3": 19,
+            "IADD3.X": 8,
+            "IMAD": 23,
+            "IMAD.IADD": 5,
+            "IMAD.SHL.U32": 5,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GE.U32.AND": 2,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 45,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 12,
+            "MOV": 1,
+            "NOP": 2,
+            "S2R": 2,
+            "SHF.L.U32": 9
+          },
+          "peak_pcs": [
+            "0x58e0",
+            "0x5f90"
+          ]
+        }
+      ],
+      "cta_threads": 128,
+      "register_only_four_cta_limit_per_thread": 128,
+      "interpretation": "static_binary_live_range_not_runtime_timing_or_universal_register_lower_bound"
+    },
+    "adangel_roof_o78_eight_chain_candidate": {
+      "symbol": "adangel_roof_o78_eight_chain_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 166,
+      "loops": [
+        {
+          "kind": "integer",
+          "begin_pc": "0xa60",
+          "end_pc": "0x2240",
+          "static_instructions": 383,
+          "max_live_gpr": 166,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 20,
+            "IADD3.X": 5,
+            "IMAD": 128,
+            "IMAD.IADD": 1,
+            "IMAD.SHL.U32": 24,
+            "IMAD.X": 5,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 2,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 6,
+            "MOV": 2,
+            "PLOP3.LUT": 2,
+            "S2R": 5,
+            "SHF.L.U32": 48,
+            "UIADD3": 1,
+            "UIMAD": 2,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULOP3.LUT": 6,
+            "UMOV": 1,
+            "USHF.L.U32": 8
+          },
+          "peak_pcs": [
+            "0x1880",
+            "0x1890",
+            "0x1950",
+            "0x1960",
+            "0x1970",
+            "0x1980"
+          ]
+        },
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x4d40",
+          "end_pc": "0x68b0",
+          "static_instructions": 440,
+          "max_live_gpr": 162,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "FFMA": 64,
+            "FMUL": 64,
+            "I2F": 64,
+            "IADD3": 19,
+            "IADD3.X": 8,
+            "IMAD": 23,
+            "IMAD.IADD": 5,
+            "IMAD.SHL.U32": 5,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GE.U32.AND": 2,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 45,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 12,
+            "MOV": 1,
+            "NOP": 2,
+            "S2R": 2,
+            "SHF.L.U32": 9
+          },
+          "peak_pcs": [
+            "0x58a0",
+            "0x5f50"
+          ]
+        }
+      ],
+      "cta_threads": 128,
+      "register_only_four_cta_limit_per_thread": 128,
+      "interpretation": "static_binary_live_range_not_runtime_timing_or_universal_register_lower_bound"
+    }
+  }
+}
