@@ -10,6 +10,7 @@ import argparse
 import ctypes as ct
 import hashlib
 import json
+import os
 from pathlib import Path
 import statistics
 import subprocess
@@ -33,6 +34,10 @@ def resources_gate(resources):
         # codegen receipt separately audits the candidate's hot-loop local.
         if r['local_size_bytes']<0 or r['active_blocks_per_sm']<2: return False
         if policy and r['active_blocks_per_sm']*r['threads']//32<16:return False
+    for kind in ('o3','o78'):
+        old,new=(resources[kind,p] for p in (0,1))
+        if new['active_blocks_per_sm']*new['threads']<=old['active_blocks_per_sm']*old['threads']:
+            return False
     return True
 
 
@@ -56,7 +61,9 @@ class Driver:
         command=['g++','-std=c++17','-O2','-shared','-fPIC',str(SOURCE),
             '-I/usr/local/cuda-12.8/include','-L/usr/local/cuda-12.8/lib64/stubs',
             '-lcuda','-o',str(library)]
-        result=subprocess.run(command,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        temporary=ROOT/'tmp';temporary.mkdir(exist_ok=True)
+        result=subprocess.run(command,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
+                              env={**os.environ,'TMPDIR':str(temporary)})
         (output/'host_compile.log').write_text(result.stdout)
         if result.returncode:raise RuntimeError('cached cubin host driver compile failed')
         self.lib=ct.CDLL(str(library.resolve()))
@@ -79,7 +86,8 @@ class Driver:
                         threads=r[2],active_blocks_per_sm=r[3],active_warps_per_sm=r[3]*r[2]//32,
                         shared_memory_bytes=cfg['shared'],kernel_symbol=symbol,
                         cubin_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
-            self.receipt=dict(host_command=command,driver_sha256=hashlib.sha256(library.read_bytes()).hexdigest(),
+            self.receipt=dict(host_command=command,compiler_temporary_directory=str(temporary),
+                driver_sha256=hashlib.sha256(library.read_bytes()).hexdigest(),
                 sources={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (SOURCE,Path(__file__))},
                 resources={f'{k}_{p}':r for (k,p),r in self.resources.items()},original_codegen=self.receipts,
                 rationale=model_rationale(),capacity_gate=resources_gate(self.resources))
@@ -170,6 +178,7 @@ def main():
         p.error('fresh project output and valid counts required')
     import torch
     torch.cuda.init();torch.set_num_threads(4);torch.backends.cuda.matmul.allow_tf32=False
+    context_anchor=torch.empty(1,device='cuda') # Driver context is lazy until a real allocation.
     if torch.cuda.get_device_capability()!=(8,0):raise ValueError('A100 SM80 required')
     driver=Driver(args.output/'build',{'o3':args.o3_codegen,'o78':args.o78_codegen})
     try:

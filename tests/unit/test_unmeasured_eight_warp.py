@@ -3,7 +3,9 @@ import sys
 
 import pytest
 
-sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'scripts'))
+ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/'scripts'))
+sys.path.insert(0,str(ROOT/'python'))
 from validate_unmeasured_eight_warp import resources_gate,model_rationale,summarize
 
 
@@ -23,3 +25,24 @@ def test_no_static_gate_rewrite_or_speedup_claim():
     assert r['shared_capacity_estimate_ms']['o3']>.22
     assert r['no_new_optimization_or_parameter_scan']
     with pytest.raises(ValueError):summarize([])
+
+
+def test_full24_pairing_and_MSE_aggregation():
+    rows=[dict(sample_id=f'sample_{s}',variant=v,round=r,policy=p,
+        summary=dict(median_ms=1 if p==0 else .8,cv_percent=0),
+        bitwise_equal_control=True,finite_fp32=True,mse_vs_reference=.002)
+        for s in range(24) for v in ('o3','o7','o8') for r in range(3) for p in (0,1)]
+    out=summarize(rows)
+    assert out['records']==432 and len(out['summary'])==6
+    assert all(x['paired_speedup']==1.25 and x['median_MSE']==.002
+               for x in out['summary'] if x['policy']==1)
+    assert not out['original_v98_compile_gate_changed']
+    with pytest.raises(ValueError):summarize(rows[:-1])
+
+
+def test_pointer_ABI_order_matches_exact_o78_entry():
+    from types import SimpleNamespace
+    from benchmark_unmeasured_eight_warp import tensor_pointers_o78
+    names=('a','w','as','ws','af','wf','ab','wb','status','y')
+    c=SimpleNamespace(state={key:i for i,key in enumerate(names)})
+    assert tensor_pointers_o78(c)==tuple(range(10))

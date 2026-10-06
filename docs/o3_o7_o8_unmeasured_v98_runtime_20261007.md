@@ -30,3 +30,15 @@ O3/O7/O8 的量化、G128 scale、整数安全语义、两路原生 INT4 和 FP3
       --resources-only --output reports/o378_roof_v104_resources
 
 本轮初始状态：待实际驻留查询，无新 GPU GEMM/MSE 或最佳结果。
+
+首次资源查询在 Torch 仅初始化、尚未创建实际 current context 时停止，**没有 GEMM launch**。
+独立 harness 增加一个上下文 anchor 分配，失败目录/日志保留；不修改任何 cubin。
+修正后资源目录使用新名字，不覆盖失败记录。
+容量成立时执行完整协议：
+
+    python scripts/benchmark_unmeasured_eight_warp.py \
+      --output runs/o378_roof_v104_full24
+
+O3 cached 模式沿用已有 CPU 保守 column guard；候选/最佳共用完全相同 metadata。
+O7/O8 共用原 v73 GPU 准备及安全 oracle，并要求原始 source 全字段 SHA 与 v99 一致。
+这些准备全部在 Event 外，不是在线转换/Cold/steady 的结果。
