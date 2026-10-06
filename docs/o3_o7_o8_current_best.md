@@ -1,5 +1,11 @@
 # A100 O3 / O7 / O8：当前最佳候选与最新结果（O3 v89；O7/O8 v78+v73）
 
+**v95：SM80槽位握手在编译阶段淘汰，最佳不变。** 不增加producer warp、保持原有tile和数学，
+整数循环全CTA barrier 1→0，但静态指令O3 323→436、O7/O8 383→526，local load 0→15/30。
+CUDA查询仍168regs、3CTA/SM。两路原生INT4/cg copy、旧编码对照和本地/A100 84项测试通过；
+预设gate失败，不启动候选kernel或性能/MSE测试，不宣称新加速，正式默认/5090不变。
+[v95实现、证据与当前MSE引用边界](o3_o7_o8_slot_pipeline_20261006.md)。
+
 **v94：A片段短活跃范围候选未获得4 CTA容量，最佳不变。** 保持N128 CTA和全局复制，
 源码改为16个partial槽位和覆盖写A fragment，但SASS仍交错最多8条MMA链；
 整数循环活跃GPR166→157、entry仍168regs，CUDA查询仍3CTA/SM，LDSM16→24。
