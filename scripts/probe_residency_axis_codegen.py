@@ -26,14 +26,23 @@ STEM='o78_residency_axis'
 SHARED=34304
 
 SETUP='''  // Same warp ownership, but A is M32 and B is full N128.
+  // TiledMMA's permutation tile is fixed: use M32 for A partition/copy.
+  using SliceMma=cute::TiledMMA<cute::MMA_Atom<cute::SM80_16x8x64_S32U4S4S32_TN>,
+      cute::Layout<cute::Shape<cute::_2,cute::_2,cute::_1>>,
+      cute::Tile<cute::_32,cute::_128,cute::_64>>;
+  using SliceHighMma=cute::TiledMMA<cute::MMA_Atom<cute::SM80_16x8x64_S32S4S4S32_TN>,
+      cute::Layout<cute::Shape<cute::_2,cute::_2,cute::_1>>,
+      cute::Tile<cute::_32,cute::_128,cute::_64>>;
+  SliceMma slice_mma;SliceHighMma slice_high_mma;
+  auto atr=slice_mma.get_slice(threadIdx.x),aht=slice_high_mma.get_slice(threadIdx.x);
   auto tile_a=[&](auto t,auto mb,auto half) {return cute::local_tile(t,
       cute::make_shape(cute::_32{},cute::_64{}),cute::make_coord(mb,half));};
-  auto a0=thr.partition_fragment_A(tile_a(low(0),cute::_0{},cute::_0{}));auto a1=cute::make_fragment_like(a0);
-  auto h0=ht.partition_fragment_A(tile_a(high(0),cute::_0{},cute::_0{}));auto h1=cute::make_fragment_like(h0);
+  auto a0=atr.partition_fragment_A(tile_a(low(0),cute::_0{},cute::_0{}));auto a1=cute::make_fragment_like(a0);
+  auto h0=aht.partition_fragment_A(tile_a(high(0),cute::_0{},cute::_0{}));auto h1=cute::make_fragment_like(h0);
   using LCopy=cute::Copy_Atom<cute::SM75_U32x4_LDSM_N,cutlass::uint4b_t>;
   using SCopy=cute::Copy_Atom<cute::SM75_U32x4_LDSM_N,cutlass::int4b_t>;
-  auto lc=cute::make_tiled_copy_A(LCopy{},mma).get_slice(threadIdx.x);
-  auto hc=cute::make_tiled_copy_A(SCopy{},high_mma).get_slice(threadIdx.x);
+  auto lc=cute::make_tiled_copy_A(LCopy{},slice_mma).get_slice(threadIdx.x);
+  auto hc=cute::make_tiled_copy_A(SCopy{},slice_high_mma).get_slice(threadIdx.x);
   auto ld0=lc.retile_D(a0),ld1=lc.retile_D(a1);
   auto hd0=hc.retile_D(h0),hd1=hc.retile_D(h1);
   auto tile_b=[&](int slot,auto half) {return cute::local_tile(weight(slot),

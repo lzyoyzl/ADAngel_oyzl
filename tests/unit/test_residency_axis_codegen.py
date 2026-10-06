@@ -26,6 +26,9 @@ def test_fixed_partial_and_operand_budget_not_N128_window_repeat():
     assert 'cute::make_shape(cute::_4{},cute::_8{})' in text
     assert 'cute::make_shape(cute::_4{},cute::_2{},cute::_8{})' not in text
     assert 'cute::_32{},cute::_64{}' in text and 'cute::_128{},cute::_64{}' in text
+    assert 'cute::Tile<cute::_32,cute::_128,cute::_64>' in text
+    assert 'atr.partition_fragment_A' in text and 'aht.partition_fragment_A' in text
+    assert 'cute::make_tiled_copy_A(LCopy{},slice_mma)' in text
     assert 'o1_static_for<0,2>([&](auto mb)' in text
     assert text.count('cute::gemm(HA{}')==text.count('cute::gemm(LA{}')==2
     assert text.count('bc.partition_S(tile_b(slot')==2
@@ -63,6 +66,8 @@ def test_coordinate_proof_covers_source_halves_rows_columns_and_all_owners():
     src=(ROOT/'tests/cuda/validate_residency_axis_coordinates.cu').read_text()
     assert 'auto full_a=thr.partition_A(ia);' in src
     assert 'auto full_b=thr.partition_B(ib);' in src
+    assert 'auto sa=athr.partition_A(ta);' in src
+    assert 'cute::Tile<cute::_32,cute::_128,cute::_64>' in src
     for text in ('full_a(v,mb,half)','full_b(v,ni,half)',
                  'for(int count:owners) assert(count==1);','gpu_execution\\\":false'):
         assert text in src
