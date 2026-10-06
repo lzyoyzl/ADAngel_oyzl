@@ -1,6 +1,7 @@
 """v99 is a store-policy experiment, not another MMA/payload-layout change."""
 from copy import deepcopy
 from pathlib import Path
+import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]/'scripts'))
@@ -21,6 +22,14 @@ def test_only_integer_epilogue_changes():
         assert new.count('__stcs(') == 3
         assert '__fmul_rn' in new and 'float(acc(i))' in new
         assert 'st.global' not in new  # use the documented compiler intrinsic
+        restored = new.replace(kind+'_output_streaming_experiment', old_namespace)
+        restored = restored.replace(
+            '__stcs(reinterpret_cast<float2*>(y+offset),make_float2(__int_as_float(acc(i)),__int_as_float(acc(i+cute::_1{}))));',
+            '*reinterpret_cast<float2*>(y+offset)=make_float2(__int_as_float(acc(i)),__int_as_float(acc(i+cute::_1{})));')
+        restored = restored.replace('__stcs(y+offset,__int_as_float(acc(i)));', 'y[offset]=__int_as_float(acc(i));')
+        restored = re.sub(r'__stcs\(y\+\((.*?)\),__int_as_float\(acc\(i\+cute::_1\{\}\)\)\);',
+                          r'y[\1]=__int_as_float(acc(i+cute::_1{}));', restored)
+        assert restored == old  # every non-store expression is identical
 
 
 def test_authoritative_ldsm_already_conflict_free():
