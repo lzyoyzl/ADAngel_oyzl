@@ -20,6 +20,8 @@ def test_generated_shell_keeps_actual_math_and_only_read_only_shared():
     assert '[group&31][cute::get<0>(coord)]' in generated
     assert '[group&31][cute::get<1>(coord)]' in generated
     assert 'base_a[' not in generated and 'base_w[' not in generated
+    assert '-> auto&' not in generated
+    assert 'return b20(cute::_,cute::_,cute::_);' in generated
 
 
 def test_predeclared_compiler_gate_rejects_work_spill_or_occupancy_changes():

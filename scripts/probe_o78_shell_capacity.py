@@ -118,13 +118,13 @@ __device__ __forceinline__ void body(float* y,int groups,int seed) {
         cute::copy(SCopy{},bc.partition_S(tile_b(slot,nb,cute::_0{})),bd0);
         cute::copy(SCopy{},bc.partition_S(tile_b(slot,nb,cute::_1{})),bd1);
       }
-      auto& use_b0=[&]() -> auto& {
-        if constexpr(Mode==0 && decltype(nb)::value==1) return b20;
-        else return b0;
+      auto use_b0=[&]() {
+        if constexpr(Mode==0 && decltype(nb)::value==1) return b20(cute::_,cute::_,cute::_);
+        else return b0(cute::_,cute::_,cute::_);
       }();
-      auto& use_b1=[&]() -> auto& {
-        if constexpr(Mode==0 && decltype(nb)::value==1) return b21;
-        else return b1;
+      auto use_b1=[&]() {
+        if constexpr(Mode==0 && decltype(nb)::value==1) return b21(cute::_,cute::_,cute::_);
+        else return b1(cute::_,cute::_,cute::_);
       }();''')
     for name in ('b0','b1'):
         source=source.replace(name+'(cute::_,ni,cute::_0{})','use_'+name+'(cute::_,ni,cute::_0{})')
@@ -242,7 +242,7 @@ def main():
     if args.run and r['compile_gate']['passed']:
         executable=out/'capacity_driver'
         run([str(cuda/'nvcc'),'-std=c++17','-O2',str(ROOT/'csrc/sm80/roof_o78_shell_capacity_driver.cpp'),
-            '-x','none','-lcuda','-o',str(executable)],'driver_build.log')
+            '-lcuda','-o',str(executable)],'driver_build.log')
         run(['nvidia-smi','--query-gpu=name,clocks.sm,temperature.gpu,power.draw','--format=csv'],'gpu_before.txt')
         run([str(executable),str(cubin)],'results.jsonl')
         raw=[json.loads(line) for line in (out/'results.jsonl').read_text().splitlines()]
