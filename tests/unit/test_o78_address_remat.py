@@ -62,3 +62,21 @@ def test_spill_gate_counts_width_suffixes_and_only_integer_loop():
     assert runtime_justified(candidate, old)
     assert not runtime_justified(old, old)
     assert not runtime_justified(dict(candidate, allocated_gpr=169), old)
+
+
+def test_paired_runtime_preserves_preparation_and_rejects_negative_compile_gate():
+    from benchmark_o78_address_remat import timing_contract
+    from benchmark_o78_eight_chain_probe import timing_contract as previous
+    for mode in ('conversion_only', 'compute_only', 'cold', 'steady_state'):
+        current = timing_contract(mode, 100)
+        assert current.pop('a_copy_address_rematerialization')
+        assert current.pop('cta_order_group_m') == 8
+        assert current.pop('new_preparation_or_layout') is False
+        current['comparison'] = previous(mode, 100)['comparison']
+        assert current == previous(mode, 100)
+    source = (ROOT / 'scripts/benchmark_o78_address_remat.py').read_text()
+    assert "if not receipt['worth_runtime_validation']" in source
+    assert "if not encoded_control['passed']" in source
+    assert 'full_sample_args()' in source and 'validation_fn=validate' in source
+    assert 'self.handles[0] = self.handles[1]' in source
+    assert 'default_gpu_build=Path(\'reports/o378_roof_v73_codegen\')' in source
