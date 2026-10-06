@@ -47,3 +47,5 @@ python -m pytest tests/unit/test_o78_address_remat.py tests/unit/test_roof_v91_e
 
 运行需要已验证的 v67/v73/v78/v89 基线 artifacts；本次无需重编正式扩展。
 首次 evidence 单测的缺省零 LDL/STL 字段处理已修正：raw CSV/SASS 和分析值没变。
+A100 离线回归首次因旧 v89 对照 SASS 被全局 `*.sass` ignore 排除而缺少复核输入；
+该文件已按旧 codegen SHA 核对并显式跟踪，未更改机器码或重跑性能实验。

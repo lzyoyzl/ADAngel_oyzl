@@ -33,6 +33,8 @@ def test_native_copy_work_and_exact_control_encodings():
     sass = (C / (STEM + '.sass')).read_text()
     assert static_entries(sass, '^(?:' + '|'.join(sorted(symbols)) + ')$', symbols) == receipt['entries']
     prior = ROOT / 'docs/evidence/a100_o378_roof_v89/reports/o378_roof_v89_o78_codegen/o78_grouped_cta.sass'
+    prior_receipt = json.loads((prior.parent / 'codegen.json').read_text())
+    assert hashlib.sha256(prior.read_bytes()).hexdigest() == prior_receipt['artifact_sha256'][prior.name]
     for symbol in CONTROLS:
         assert compare(prior.read_text(), sass, '^' + symbol + '$')['passed']
     for symbol in symbols:
