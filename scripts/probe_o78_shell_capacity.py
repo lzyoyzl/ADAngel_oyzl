@@ -52,11 +52,11 @@ __device__ __forceinline__ void initialize(Storage& s,int seed) {
   if constexpr(Scale) {
     for(int off=threadIdx.x;off<32*64;off+=128) {
       int g=off/64,row=off%64;
-      s.activation_factors[g][row]=1+(int(blockIdx.y)*64+row+g+seed)%3;
+      s.activation_factors[g][row]=1+((int(blockIdx.y)*64+row+g+seed)&1);
     }
     for(int off=threadIdx.x;off<32*128;off+=128) {
       int g=off/128,col=off%128;
-      s.weight_factors[g][col]=1+(int(blockIdx.x)*128+col+2*g+seed)%3;
+      s.weight_factors[g][col]=3+2*((int(blockIdx.x)*128+col+(g>>1)+seed)&1);
     }
   }
   __syncthreads(); // Read-only shared data afterwards; no unsafe slot reuse.
@@ -139,7 +139,7 @@ __device__ __forceinline__ void body(float* y,int groups,int seed) {
     source=once(source,'''    const float row=base_a[blockIdx.y*64+cute::get<0>(p)];
     const float column=base_w[blockIdx.x*128+cute::get<1>(p)];
     acc(i)=__float_as_int(__fmul_rn(__fmul_rn(float(acc(i)),row),column));''',
-        '''    // Synthetic |integer|<=256*128*2*3*9=1769472, exactly FP32.
+        '''    // Synthetic |integer|<=256*128*2*3*10=1966080, exactly FP32.
     acc(i)=__float_as_int(float(acc(i)));''')
     return source.replace('o78_eight_chain_experiment','o78_shell_capacity_experiment')
 

@@ -17,7 +17,7 @@ void check(CUresult status) {
 int expected(int mode,int row,int col,int groups,int seed) {
   int value=0,a=(row+seed)%5-2,b=(col+seed)%7-3;
   for(int g=0;g<groups;++g) {
-    int factor=mode==2?(1+(row+(g&31)+seed)%3)*(1+(col+2*(g&31)+seed)%3):1;
+    int factor=mode==2?(1+((row+(g&31)+seed)&1))*(3+2*((col+((g&31)>>1)+seed)&1)):1;
     value+=128*a*b*factor;
   }
   return value;
@@ -51,10 +51,10 @@ int main(int argc,char** argv) {
   auto verify=[&](int mode,int groups,int seed) {
     check(cuMemcpyDtoHAsync(host.data(),output,host.size()*sizeof(float),stream));
     check(cuStreamSynchronize(stream));
-    // 315 row/column/scale residue combinations; validate all16M outputs.
-    int table[15][21];for(int m=0;m<15;++m)for(int n=0;n<21;++n)table[m][n]=expected(mode,m,n,groups,seed);
+    // 140 row/column/scale residue combinations; validate all16M outputs.
+    int table[10][14];for(int m=0;m<10;++m)for(int n=0;n<14;++n)table[m][n]=expected(mode,m,n,groups,seed);
     for(int m=0;m<M;++m)for(int n=0;n<N;++n) {
-      float got=host[size_t(m)*N+n],want=float(table[m%15][n%21]);
+      float got=host[size_t(m)*N+n],want=float(table[m%10][n%14]);
       if(!std::isfinite(got) || std::memcmp(&got,&want,sizeof(float))) {
         std::fprintf(stderr,"checksum mismatch mode%d g%d seed%d at%d,%d: %g vs %g\n",mode,groups,seed,m,n,got,want);
         std::exit(5);

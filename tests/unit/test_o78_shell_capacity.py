@@ -40,16 +40,16 @@ def test_predeclared_compiler_gate_rejects_work_spill_or_occupancy_changes():
 def test_synthetic_reconstruction_bounds_and_host_reference_periodicity():
     import numpy as np
     for seed in (0,4):
-        for row in range(15):
+        for row in range(10):
             a=(row+seed)%5-2;lo=a&15;hi=-1 if a<0 else 0
             assert lo+16*hi==a
-            for col in range(21):
+            for col in range(14):
                 w=(col+seed)%7-3
                 for groups in (1,32,256):
-                    factors=np.array([(1+(row+(g&31)+seed)%3)*(1+(col+2*(g&31)+seed)%3)
+                    factors=np.array([(1+((row+(g&31)+seed)&1))*(3+2*((col+((g&31)>>1)+seed)&1))
                         for g in range(groups)],dtype=np.int64)
                     value=int(np.sum(128*(lo+16*hi)*w*factors))
-                    assert abs(value)<=1769472
+                    assert abs(value)<=1966080
                     assert float(np.float32(value))==value
 
 
