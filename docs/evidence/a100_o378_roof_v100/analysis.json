@@ -1,0 +1,101 @@
+{
+  "scope": "v100_hash_bound_compile_replay_no_GPU_launch_or_performance_claim",
+  "source_commit": "264cd712b77bd0f26aed767830535f60d33ad0a2",
+  "compiler_receipt_sha256": "3dbe86d33f09df3a0a6445b903cf19967e5a5e0f3e2b0422a3c3cf8cfea094af",
+  "analyzer_sha256": "798e6856acab0ab3a72616562b9d5d02281e2b24401bf6c99b36e548b9b7c3ab",
+  "scalar_proof": {
+    "exact_integer_reconstruction": true,
+    "source_codes": {
+      "o7": {
+        "valid_source_codes": 254,
+        "q_min": -112,
+        "q_max": 112,
+        "high_min": -7,
+        "high_max": 7,
+        "fractional_bits": -2
+      },
+      "o8": {
+        "valid_source_codes": 64,
+        "q_min": -30,
+        "q_max": 30,
+        "high_min": -2,
+        "high_max": 2,
+        "fractional_bits": 2
+      }
+    },
+    "exhaustive_integer_inputs": 248,
+    "output_or_MSE_runtime_tested": false,
+    "quantization_scale_guard_math_changed": false,
+    "o3_excluded": true,
+    "unsupported_int8_inputs": [
+      120,
+      127
+    ]
+  },
+  "control_machine_encoding_passed": true,
+  "old_allocated_gpr": 168,
+  "candidate_allocated_gpr": 168,
+  "cta_tile": [
+    64,
+    128,
+    128
+  ],
+  "threads": 128,
+  "shared_bytes": 34304,
+  "rows": {
+    "integer": {
+      "old_instructions": 383,
+      "candidate_instructions": 383,
+      "old_peak_live_gpr": 166,
+      "candidate_peak_live_gpr": 166,
+      "old_hot_local_instructions": 0,
+      "candidate_hot_local_instructions": 0,
+      "old_native_u4s4": 32,
+      "old_native_s4s4": 32,
+      "candidate_native_s4s4": 64,
+      "old_ldsm": 16,
+      "candidate_ldsm": 16
+    },
+    "fp32_fallback": {
+      "old_instructions": 440,
+      "candidate_instructions": 440,
+      "old_peak_live_gpr": 162,
+      "candidate_peak_live_gpr": 162,
+      "old_hot_local_instructions": 0,
+      "candidate_hot_local_instructions": 0,
+      "old_native_u4s4": 32,
+      "old_native_s4s4": 32,
+      "candidate_native_s4s4": 64,
+      "old_ldsm": 16,
+      "candidate_ldsm": 16
+    }
+  },
+  "sequence_checks": {
+    "integer": {
+      "equal_except_low_MMA_signedness": true,
+      "scope": "same_entry_mainloop_text_including_operands_not_raw_machine_bit_equality",
+      "old_normalized_sequence_sha256": "8410dd4dbac3161efe2392cce0bd7c274d476c37c9d5aef70a943e5e5c6b6311",
+      "candidate_sequence_sha256": "8410dd4dbac3161efe2392cce0bd7c274d476c37c9d5aef70a943e5e5c6b6311"
+    },
+    "fp32_fallback": {
+      "equal_except_low_MMA_signedness": true,
+      "scope": "same_entry_mainloop_text_including_operands_not_raw_machine_bit_equality",
+      "old_normalized_sequence_sha256": "40d14fc9f3948a08703ccf1008b923428af9fc7814785d638603b7aad1ed33dd",
+      "candidate_sequence_sha256": "40d14fc9f3948a08703ccf1008b923428af9fc7814785d638603b7aad1ed33dd"
+    }
+  },
+  "runtime_gate": {
+    "worth_runtime_validation": false,
+    "no_extra_hot_work_budget": true,
+    "register_capacity_improved": false,
+    "integer_instructions_saved": 0,
+    "minimum_instruction_saving_required": 8,
+    "preparation_cost_measured": false,
+    "interpretation": "compiler_screen_only_no_measured_speedup_or_output_MSE"
+  },
+  "performance_measured": false,
+  "MSE_measured": false,
+  "production_default_changed": false,
+  "o3_changed": false,
+  "conclusion": "stop_after_compile_no_reduced_instruction_or_residency_budget"
+}
