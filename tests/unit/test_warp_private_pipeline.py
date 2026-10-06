@@ -17,6 +17,8 @@ def test_gate_preserves_math_operand_work_resource_and_sync_budget():
     assert gate(old,mock(instructions=430))['passed']
     for bad in (mock(registers=176),mock(instructions=441),mock(bar=1),mock(warpsync=0),mock(local=1)):
         assert not gate(old,bad)['passed']
+    deferred=mock();deferred['loops'][0]['opcode_counts']['BAR.SYNC.DEFER_BLOCKING']=1
+    assert not gate(old,deferred)['no_integer_CTA_barrier']
 
 
 def test_private_payload_writes_do_not_touch_current_factor_storage():

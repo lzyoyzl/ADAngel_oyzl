@@ -1,5 +1,23 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v109：私有warp独立流水线，编译门槛失败，停止
+
+查重后仅新增四warp私有in-place供数，不重测producer/槽位mbarrier/八warp或驻留轴。
+CTA64×128、八链/32 partial/G128数学与guard不改，但输入读取翻倍、输出owner改变。
+Host CuTe唯一owner/布局及原生双INT4、cg copy、旧v78控制机器码审计通过。
+
+|A100编译工作|v78|v109|
+|---|---:|---:|
+|整数循环指令|383|433|
+|分配R / 活跃R峰值|168 / 166|168 / 164|
+|MMA / LDSM / copy|64 / 16 / 10|64 / 16 / 18|
+|热local指令|0|8|
+
+预设门槛失败，不重编译相邻变体，不跑候选GPU/MSE/四模式/NCU，也不迁移O3。
+原始PTX三个warp sync与SASS无显式WARPSYNC均保留；不夸大为同步/GPU正确性结论。
+最佳、默认、转换、正式扩展和5090不变，目标未达到。
+[v109成本、停止依据和全部证据](o7_o8_warp_private_pipeline_20261007.md)。
+
 ## v108：完整K scale模式机会不足，停止
 
 不是v105同组warp factor复用，也不重复tile/warp/stage/驻留轴扫描。

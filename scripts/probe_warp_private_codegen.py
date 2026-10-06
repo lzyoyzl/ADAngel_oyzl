@@ -33,7 +33,7 @@ def gate(old,new):
     result=dict(same_native_MMA=c.get('IMMA.16864.S4.S4')==c.get('IMMA.16864.U4.S4')==32,
         same_LDSM=c.get('LDSM.16.M88.4')==16,no_hot_local=locals==0,
         registers_at_most168=new['allocated_gpr']<=168,
-        no_integer_CTA_barrier=c.get('BAR.SYNC',0)==0,
+        no_integer_CTA_barrier=sum(v for k,v in c.items() if k.startswith('BAR.SYNC'))==0,
         warp_sync_present=c.get('WARPSYNC',0)>=2,
         static_work_growth_at_most15pct=b['static_instructions']<=1.15*a['static_instructions'],
         static_work_ratio=b['static_instructions']/a['static_instructions'])
