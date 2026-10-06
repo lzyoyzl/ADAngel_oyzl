@@ -7,6 +7,8 @@ import pytest
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
 from probe_interleaved_tail_codegen import CONFIG, generated_header, ordering_summary, worth_runtime
+from inspect_eight_chain_schedule import trace
+from inspect_interleaved_tail_equivalence import equivalence
 
 
 @pytest.mark.parametrize('kind',('o3','o78'))
@@ -85,3 +87,43 @@ def test_order_summary_does_not_claim_measured_speedup():
     assert result['first_next_slice_mma_ordinal']==26
     assert result['next_slice_starts_before_all_old_mma_finish']
     assert 'predicted speedup' in result['interpretation']
+
+
+def test_exact_machine_dataflow_fixture_recycles_eight_slots_not_sixteen():
+    ops=[]
+    def mma(chain,kind,zero=False):
+        r=32+4*chain
+        ops.append(f'IMMA.16864.{kind}.S4 R{r}, R0.ROW, R8.COL, '+('RZ' if zero else f'R{r}'))
+    def shift():
+        for r in range(32,64):ops.append(f'SHF.L.U32 R{r}, R{r}, 0x4, RZ')
+    for chain in range(8):mma(chain,'S4',True)
+    for chain in range(8):mma(chain,'S4')
+    shift()
+    for chain in range(8):mma(chain,'U4')
+    for chain in range(8):
+        mma(chain,'U4')
+        for vi in range(4):
+            r=32+chain*4+vi
+            ops.append(f'IMAD R{100+chain*4+vi}, R{r}, R20, R{100+chain*4+vi}')
+        mma(chain,'S4',True)
+    for chain in range(8):mma(chain,'S4')
+    shift()
+    for chain in range(8):mma(chain,'U4')
+    for chain in range(8):mma(chain,'U4')
+    sass='Function : recycled\n'+'\n'.join(f'/*{i*16:04x}*/ {op} ;' for i,op in enumerate(ops))
+    live=dict(loops=[dict(kind='integer',begin_pc='0x0',end_pc=hex((len(ops)-1)*16))])
+    result=trace(sass,'recycled',live)
+    order=ordering_summary(result)
+    assert result['total_mma']==64 and order['peak_started_not_finished_chains']==8
+    assert order['first_next_slice_mma_ordinal']==26
+    assert order['next_slice_starts_before_all_old_mma_finish']
+
+
+def test_symbol_rename_never_hides_a_changed_encoded_instruction():
+    encoded='/*0000*/ NOP; /* 0x0000000000000001 */\n/* 0x0000000000000002 */\n'
+    before='Function : exact_old\n'+encoded
+    after='Function : exact_new\n'+encoded
+    assert equivalence(before+after,'exact_old','exact_new')['passed']
+    bad=after.replace('0x0000000000000002','0x0000000000000003')
+    assert not equivalence(before+bad,'exact_old','exact_new')['passed']
+    with pytest.raises(ValueError):equivalence(before+before+after,'exact_old','exact_new')

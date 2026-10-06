@@ -1,5 +1,11 @@
 # A100 O3 / O7 / O8：当前最佳候选与最新结果（O3 v89；O7/O8 v78+v73）
 
+**v96：跨 N64 的八槽位交错未落实到机器码，最佳不变。** 源码逐链复用32个partial槽位，
+但第二片段第一条MMA仍为第33条、静态交错链峰值仍8；MMA64/LDSM16及168regs不变。
+O3整数循环323条不变，O7/O8 383→384；没有新增hot spill，但预设排序gate失败。
+同entry原生INT4/cg copy、编码旧对照和相关CPU测试通过；停止GPU性能/MSE/NCU测试，
+不宣称新加速、不更改正式默认或5090。[v96结果与证据](o3_o7_o8_interleaved_tail_20261006.md)。
+
 **v95：SM80槽位握手在编译阶段淘汰，最佳不变。** 不增加producer warp、保持原有tile和数学，
 整数循环全CTA barrier 1→0，但静态指令O3 323→436、O7/O8 383→526，local load 0→15/30。
 CUDA查询仍168regs、3CTA/SM。两路原生INT4/cg copy、旧编码对照和本地/A100 84项测试通过；
