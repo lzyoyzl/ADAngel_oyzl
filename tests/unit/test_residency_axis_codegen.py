@@ -61,6 +61,8 @@ def test_kernel_retains_uniform_guard_and_existing_fallback():
 
 def test_coordinate_proof_covers_source_halves_rows_columns_and_all_owners():
     src=(ROOT/'tests/cuda/validate_residency_axis_coordinates.cu').read_text()
+    assert 'auto full_a=thr.partition_A(ia);' in src
+    assert 'auto full_b=thr.partition_B(ib);' in src
     for text in ('full_a(v,mb,half)','full_b(v,ni,half)',
                  'for(int count:owners) assert(count==1);','gpu_execution\\\":false'):
         assert text in src

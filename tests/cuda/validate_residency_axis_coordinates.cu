@@ -12,7 +12,8 @@ int main() {
   unsigned compared=0;
   for(int tid=0;tid<128;++tid) {
     auto thr=mma.get_slice(tid);
-    auto full_a=thr.partition_A(ia),full_b=thr.partition_B(ib);
+    auto full_a=thr.partition_A(ia);
+    auto full_b=thr.partition_B(ib);
     auto c=thr.partition_C(ia);
     assert(cute::size<1>(c)==2 && cute::size<2>(c)==8 && cute::size(c)==64);
     for(int mb=0;mb<2;++mb) {
