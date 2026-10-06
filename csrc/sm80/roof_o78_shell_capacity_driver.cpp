@@ -24,7 +24,9 @@ int expected(int mode,int row,int col,int groups,int seed) {
 }
 }
 int main(int argc,char** argv) {
-  if(argc!=2)return 2;
+  if(argc<2 || argc>3)return 2;
+  const int selected=argc==3?std::atoi(argv[2]):7;
+  if(selected<=0 || selected>7)return 2;
   check(cuInit(0));CUdevice device;check(cuDeviceGet(&device,0));
   int major,minor,sms;check(cuDeviceGetAttribute(&major,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR,device));
   check(cuDeviceGetAttribute(&minor,CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR,device));
@@ -33,6 +35,7 @@ int main(int argc,char** argv) {
   CUcontext context;check(cuCtxCreate(&context,0,device));
   CUmodule module;check(cuModuleLoad(&module,argv[1]));CUfunction f[3];int regs[3],local[3],resident[3];
   for(int mode=0;mode<3;++mode) {
+    if(!(selected&(1<<mode)))continue;
     check(cuModuleGetFunction(&f[mode],module,names[mode]));
     check(cuFuncSetAttribute(f[mode],CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES,Shared));
     check(cuFuncGetAttribute(&regs[mode],CU_FUNC_ATTRIBUTE_NUM_REGS,f[mode]));
@@ -63,17 +66,22 @@ int main(int argc,char** argv) {
   };
   int checks=0;
   for(int seed:{0,4})for(int groups:{1,32,256})for(int mode=0;mode<3;++mode) {
+    if(!(selected&(1<<mode)))continue;
     launch(mode,groups,seed);verify(mode,groups,seed);++checks;
   }
   for(int round=0;round<3;++round) {
-    for(int w=0;w<50;++w)for(int order=0;order<3;++order)launch((w+order+round)%3,Groups,0);
+    for(int w=0;w<50;++w)for(int order=0;order<3;++order) {
+      int mode=(w+order+round)%3;if(selected&(1<<mode))launch(mode,Groups,0);
+    }
     check(cuStreamSynchronize(stream));std::vector<float> times[3];
     for(int repeat=0;repeat<200;++repeat)for(int order=0;order<3;++order) {
-      int mode=(repeat+order+round)%3;check(cuEventRecord(begin,stream));launch(mode,Groups,0);
+      int mode=(repeat+order+round)%3;if(!(selected&(1<<mode)))continue;
+      check(cuEventRecord(begin,stream));launch(mode,Groups,0);
       check(cuEventRecord(end,stream));check(cuEventSynchronize(end));float ms;
       check(cuEventElapsedTime(&ms,begin,end));times[mode].push_back(ms);
     }
     for(int mode=0;mode<3;++mode) {
+      if(!(selected&(1<<mode)))continue;
       launch(mode,Groups,0);verify(mode,Groups,0);
       std::printf("{\"mode\":%d,\"round\":%d,\"symbol\":\"%s\",\"grid\":[32,64],\"threads\":128,"
         "\"groups\":256,\"shared_reserved_bytes\":50688,\"registers\":%d,\"local_bytes\":%d,"

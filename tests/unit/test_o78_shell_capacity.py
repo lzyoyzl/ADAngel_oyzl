@@ -5,6 +5,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
 from probe_o78_shell_capacity import generated_header,compile_gate,SYMBOLS
+from run_o78_shell_capacity import summarize
 
 
 def test_generated_shell_keeps_actual_math_and_only_read_only_shared():
@@ -60,6 +61,22 @@ def test_driver_residency_checksum_all_outputs_and_event_scope():
     assert 'std::memcmp(&got,&want,sizeof(float))' in source
     assert 'for(int m=0;m<M;++m)for(int n=0;n<N;++n)' in source
     assert 'round<3' in source and 'repeat<200' in source
-    timed=source[source.index('for(int repeat=0;repeat<200'):source.index('for(int mode=0;mode<3;++mode) {\n      launch(mode,Groups,0);verify')]
+    begin=source.index('for(int repeat=0;repeat<200')
+    end=source.index('launch(mode,Groups,0);verify(mode,Groups,0);',begin)
+    timed=source[begin:end]
     assert 'cuEventRecord(begin,stream)' in timed and 'cuEventRecord(end,stream)' in timed
     assert 'verify(' not in timed and 'cuMemAlloc(' not in timed
+    assert 'selected&(1<<mode)' in timed
+
+
+def test_two_shell_summary_never_claims_trace_MSE_or_relaxes_rejected_scale():
+    import pytest
+    rows=[dict(mode=m,round=r,symbol=SYMBOLS[m],grid=[32,64],groups=256,threads=128,
+        active_ctas_per_sm=3,validation_checks=12,checksum_passed=True,shared_reserved_bytes=50688,
+        raw_ms=[2.0+m*.4]*200) for r in range(3) for m in (0,1)]
+    result=summarize(rows)
+    assert result['modes'][0]['normalized32_groups_ms']==.25
+    assert result['modes'][1]['normalized32_groups_ms']==.3
+    assert not result['original_experiment_MSE_measured'] and not result['real_trace_latency_measured']
+    rows[0]['validation_checks']=18
+    with pytest.raises(ValueError):summarize(rows)
