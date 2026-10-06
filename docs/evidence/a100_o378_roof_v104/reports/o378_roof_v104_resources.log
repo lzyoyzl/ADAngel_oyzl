@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/zlouyang/ADAngel_oyzl/scripts/validate_unmeasured_eight_warp.py", line 185, in <module>
+    if __name__=='__main__':main()
+  File "/home/zlouyang/ADAngel_oyzl/scripts/validate_unmeasured_eight_warp.py", line 174, in main
+    driver=Driver(args.output/'build',{'o3':args.o3_codegen,'o78':args.o78_codegen})
+  File "/home/zlouyang/ADAngel_oyzl/scripts/validate_unmeasured_eight_warp.py", line 75, in __init__
+    self.check(self.lib.roof_latency_open(str(path.resolve()).encode(),symbol.encode(),
+  File "/home/zlouyang/ADAngel_oyzl/scripts/validate_unmeasured_eight_warp.py", line 90, in check
+    if code:raise RuntimeError(self.lib.roof_latency_error().decode())
+RuntimeError: Torch CUDA context must be current

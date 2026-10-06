@@ -1,0 +1,287 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "variant": "o3",
+      "pattern": "random",
+      "shape": [
+        576,
+        384,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 4194304,
+        "columns": 384,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 0,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix"
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "zero",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 4194304,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 0,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix"
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "saturated",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "safe": true,
+        "max_abs_prefix_bound": 4194304,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 0,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix"
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "fallback",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "safe": false,
+        "max_abs_prefix_bound": 272678883819520,
+        "columns": 128,
+        "normal_scales": true,
+        "full_k4096": true,
+        "max_exponent_difference": 26,
+        "proof": "128*128*8*sum(2**(code-anchor)); bounds every product and prefix"
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "random",
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 4,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 4,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "zero",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "saturated",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "fallback",
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 4,
+        "invalid_ctas": 0,
+        "ctas": 4,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "random",
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 4,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 4,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "zero",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "saturated",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "fallback",
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "nondefault_stream": true,
+      "finite_fp32": true,
+      "bitwise_current_best": true,
+      "production_semantics_close": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 4,
+        "invalid_ctas": 0,
+        "ctas": 4,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      }
+    }
+  ],
+  "count": 12,
+  "scope": "small_MN_fullK_correctness_only_not_performance_screen_or_sanitizer"
+}

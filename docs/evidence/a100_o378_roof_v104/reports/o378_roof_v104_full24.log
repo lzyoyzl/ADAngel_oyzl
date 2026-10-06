@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/zlouyang/ADAngel_oyzl/scripts/benchmark_unmeasured_eight_warp.py", line 195, in <module>
+    if __name__=='__main__':main()
+  File "/home/zlouyang/ADAngel_oyzl/scripts/benchmark_unmeasured_eight_warp.py", line 122, in main
+    save('validation.json',validate(driver,prep,native))
+  File "/home/zlouyang/ADAngel_oyzl/scripts/benchmark_unmeasured_eight_warp.py", line 54, in validate
+    tensors,guard,base=o3_case(x,native)
+  File "/home/zlouyang/ADAngel_oyzl/scripts/validate_unmeasured_eight_warp.py", line 132, in o3_case
+    tensors=(base['packed_activation_g128_major'],base['packed_weight_g128_major'],x.A_scale,
+KeyError: 'packed_activation_g128_major'
