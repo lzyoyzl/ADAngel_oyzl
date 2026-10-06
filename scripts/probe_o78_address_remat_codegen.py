@@ -52,6 +52,19 @@ def address_offsets(group, m, k, logical_y, thread, chunk):
     return (g + r + col, g + r + col + high), (g + ((r + col) & mask), g + ((r + col) & mask) + high)
 
 
+def opcode_count(loop, opcode):
+    """nvdisasm retains width/type suffixes, for example LDL.64."""
+    return sum(count for name, count in loop['opcode_counts'].items()
+               if name.split('.')[0] == opcode)
+
+
+def runtime_justified(candidate, prior):
+    new_loop = next(loop for loop in candidate['loops'] if loop['kind'] == 'integer')
+    old_loop = next(loop for loop in prior['loops'] if loop['kind'] == 'integer')
+    return (opcode_count(new_loop, 'LDL') < opcode_count(old_loop, 'LDL')
+            and candidate['allocated_gpr'] <= 168)
+
+
 def checked(directory):
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     r = json.loads((directory / 'codegen.json').read_text())
@@ -126,10 +139,8 @@ def main():
     receipt.update(entries=entries, liveness={symbol: analyze(live, symbol) for symbol in sorted(symbols)},
         cubin_sha256=sha(cubin), control_comparisons={symbol: compare(
             (args.baseline / 'o78_grouped_cta.sass').read_text(), sass, '^' + symbol + '$') for symbol in CONTROLS})
-    candidate_loop = next(l for l in receipt['liveness'][SYMBOL]['loops'] if l['kind'] == 'integer')
-    prior_loop = next(l for l in receipt['liveness'][CONTROLS[1]]['loops'] if l['kind'] == 'integer')
-    receipt['worth_runtime_validation'] = (candidate_loop['opcode_counts'].get('LDL', 0) <
-        prior_loop['opcode_counts'].get('LDL', 0) and receipt['liveness'][SYMBOL]['allocated_gpr'] <= 168)
+    receipt['worth_runtime_validation'] = runtime_justified(
+        receipt['liveness'][SYMBOL], receipt['liveness'][CONTROLS[1]])
     receipt['artifact_sha256'] = {f.name: sha(f) for f in out.iterdir() if f.is_file() and f.name != 'codegen.json'}
     (out / 'codegen.json').write_text(json.dumps(receipt, indent=2) + '\n')
     checked(out)

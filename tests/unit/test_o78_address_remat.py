@@ -5,7 +5,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from probe_o78_address_remat_codegen import OLD, NEW, address_offsets, generated_header
+from probe_o78_address_remat_codegen import (
+    OLD, NEW, address_offsets, generated_header, opcode_count, runtime_justified,
+)
 from probe_grouped_cta_codegen import generated_headers
 
 
@@ -45,3 +47,18 @@ def test_helper_keeps_async_copy_width_cache_and_synchronization():
     assert 'status[tile.y*(n/128)+tile.x]' in entry
     assert 'o78_grouped_fallback::o3_body' in entry
     assert 'o78_address_remat_experiment::body' in entry
+
+
+def test_spill_gate_counts_width_suffixes_and_only_integer_loop():
+    old = dict(allocated_gpr=168, loops=[
+        dict(kind='integer', opcode_counts={'LDL.64': 2, 'LDL': 1, 'LDS.U': 8}),
+        dict(kind='fp32_fallback', opcode_counts={'LDL.128': 20}),
+    ])
+    candidate = dict(allocated_gpr=168, loops=[
+        dict(kind='integer', opcode_counts={'LDL.64': 1, 'LDS.U': 8}),
+        dict(kind='fp32_fallback', opcode_counts={'LDL.128': 99}),
+    ])
+    assert opcode_count(old['loops'][0], 'LDL') == 3
+    assert runtime_justified(candidate, old)
+    assert not runtime_justified(old, old)
+    assert not runtime_justified(dict(candidate, allocated_gpr=169), old)
