@@ -1,0 +1,112 @@
+{
+  "scope": "v102_small_INT4_atom_capacity_only",
+  "production_default_changed": false,
+  "source_commit": "fc078094afb963e4ba9b9ea0589a0a1de5192387",
+  "sources": {
+    "csrc/sm80/mma_small_atom_capacity_probe.cu": "1c29bcfdcfab5ec8fd69c9af52393997f40e744d140f1b662e0e5b2ec49accd4",
+    "scripts/probe_small_atom_capacity.py": "424c759198ff7a90645df79fb1fd09825ac7509ed3ab7f7410ae27e2a1701eba"
+  },
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "-arch=sm_80",
+      "-lineinfo",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/mma_small_atom_capacity_probe.cu",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v102_capacity_r2/small_atom_capacity",
+      "-Xptxas=-v"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "-arch=sm_80",
+      "-lineinfo",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/mma_small_atom_capacity_probe.cu",
+      "-ptx",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v102_capacity_r2/kernel.ptx"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-sass",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v102_capacity_r2/small_atom_capacity"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-resource-usage",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v102_capacity_r2/small_atom_capacity"
+    ],
+    [
+      "nvidia-smi",
+      "--query-gpu=name,clocks.current.sm,temperature.gpu,power.draw",
+      "--format=csv,noheader"
+    ],
+    [
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v102_capacity_r2/small_atom_capacity"
+    ],
+    [
+      "nvidia-smi",
+      "--query-gpu=name,clocks.current.sm,temperature.gpu,power.draw",
+      "--format=csv,noheader"
+    ]
+  ],
+  "binary_sha256": "f694b5717d9a0dbedb319d87cf75d5fee86670b7932960204a2ab8a07f24e5fd",
+  "entries": {
+    "adangel_capacity_large_observed": {
+      "begin_pc": "0x330",
+      "end_pc": "0x11a0",
+      "instructions": 232,
+      "opcode_counts": {
+        "BRA": 1,
+        "IADD3": 38,
+        "IMAD.SHL.U32": 60,
+        "IMMA.16864.S4.S4": 32,
+        "IMMA.16864.U4.S4": 32,
+        "ISETP.GE.AND": 1,
+        "NOP": 64,
+        "SHF.L.U32": 4
+      },
+      "hot_memory_instructions": 0,
+      "source_chains": 8,
+      "logical_partial_registers": 32,
+      "static_native_mma_count": 64,
+      "programmed_chains_not_hardware_concurrency": true
+    },
+    "adangel_capacity_small_observed": {
+      "begin_pc": "0x330",
+      "end_pc": "0x19b0",
+      "instructions": 361,
+      "opcode_counts": {
+        "BRA": 1,
+        "CALL.REL.NOINC": 1,
+        "IADD3": 38,
+        "IMAD.SHL.U32": 60,
+        "IMMA.8832.S4.S4": 128,
+        "IMMA.8832.U4.S4": 128,
+        "ISETP.GE.AND": 1,
+        "SHF.L.U32": 4
+      },
+      "hot_memory_instructions": 0,
+      "source_chains": 16,
+      "logical_partial_registers": 32,
+      "static_native_mma_count": 256,
+      "programmed_chains_not_hardware_concurrency": true
+    }
+  },
+  "artifact_sha256": {
+    "kernel.sass": "58c4731f8433c1efa1829d3c214e2c250b8cca23b25c9f92cdd82d24ee6ae0b0",
+    "ptx_build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "kernel.ptx": "1bd5c7a08478214ed855a5328f0d36ef16701d443fee1cd5bdc168db0462bc55",
+    "resources.txt": "d0385f17f760f7e9558800c85951c1fa4ee4bd5470a29e3924f5286c5583fcde",
+    "results.jsonl": "c5da110949d23b93de7d99f5530fdaf8c9558ca97b4a16f51266ea4504989056",
+    "gpu_after.txt": "a5a50a104bf219dc03ef5eb3b9ca4690b4c778256806345b4934a093ff570ed8",
+    "gpu_before.txt": "75657ff6e72c0f339618b9a742e218f31b127eed113b437e851068d1b0a1e563",
+    "summary.json": "b45963d6bb241e5970a92b45e7faa6f98ce6ce18bf6a388cc7bc05aaccc77cbe",
+    "build.log": "4bab2df13401f3e139460428f3ce818a49bc08bae38c1605d571e0c51ce21980",
+    "small_atom_capacity": "f694b5717d9a0dbedb319d87cf75d5fee86670b7932960204a2ab8a07f24e5fd"
+  }
+}

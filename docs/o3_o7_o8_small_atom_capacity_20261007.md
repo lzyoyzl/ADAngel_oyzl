@@ -61,4 +61,32 @@ python -m pytest tests/unit/test_small_atom_capacity.py -q
 首次构建的小atom PTX有256个MMA，SASS只有255个（127 signed、128 unsigned），
 因此相同工作量审计失败，未启动GPU计时。原始构建目录和失败日志保留；
 随后将两种shape的C初值均改为相同32个仿射值以避免重复起始计算，不放宽审计。
-服务器修正版结果尚待记录。没有新的GEMM、MSE、conversion或端到端成绩。
+修正版在 `fc078094afb963e4ba9b9ea0589a0a1de5192387` 构建，原生INT4审计通过：
+
+|项目|大atom控制|小atom诊断|
+|---|---:|---:|
+|同entry SASS|32 S4/S4＋32 U4/S4|128 S4/S4＋128 U4/S4|
+|热循环指令/warp/组|232（含64 NOP）|361|
+|寄存器/线程|49|47|
+|local、stack、spill|0|0|
+|CUDA查询驻留CTA/SM|3|3|
+|256组 median ms|2.850816|3.719168|
+|256组 mean ms|2.856269|3.732598|
+|CV %|0.320|0.471|
+|归一化32组 ms（非GEMM）|0.356352|0.464896|
+|诊断物理 INT4 TOPS|771.37|591.27|
+
+配对容量比 **0.765758×**，bootstrap95%区间 **[0.765419,0.765905]**，吞吐变化 **−23.42%**。
+24项checksum验证通过，两种shape各200次计时均保留；前后SM时钟快照均1410MHz，
+但未锁频、未逐launch采频，不能据此声称所有launch频率恒定。
+热循环没有payload/shared/local/global访存；较少的diagnostic寄存器没有抵消4倍MMA指令成本。
+这里是一次特定调度/初值/checksum下的诊断负结果，不证明所有小atom算法必然更慢，
+更不能将 **−23.42%** 说成正式O3/O7/O8的性能变化。
+
+**决策：不达到预设10%潜力门槛，停止本路线。** 不做完整GEMM、24真实样本、NCU、
+MSE或端到端扩测，不继续扫描atom/链数。正式最佳、量化、MSE及conversion均无新结果。
+正式A100扩展SHA-256仍为 `94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462`；
+5090未连接或改动，未配置环境/锁频，所有服务器写入均在A100项目目录内。
+
+原始SASS/PTX、两种shape的全部400次计时、环境快照、首次失败日志和修正版日志见
+[v102证据目录](evidence/a100_o378_roof_v102/README.md)。
