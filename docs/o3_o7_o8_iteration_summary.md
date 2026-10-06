@@ -4,6 +4,16 @@
 默认未切换；共享、未锁频GPU，保留CV失败记录。以下“提升”指配对吞吐提升，
 正数更快、负数更慢；延迟降低使用 `1−1/speedup`，不要与吞吐提升混称。
 
+## v101：先查重，仅诊断 CTA 尾部，不新增优化性能结果
+
+提前加载B0已在v96实现，不重做；tile/stage/chain/scale/cache与v100表示路线先核对历史。
+对O3 v89、O7/O8 v78各做3次4096³真实样本四warp时间戳采集，未增加同步或数值partial。
+原生INT4/cg copy/旧编码及168regs/3 CTA容量通过；9次输出逐位一致，采样MSE不变。
+O7/O8插桩整个entry新增8B local（热循环local0）；未锁频/CV离群全部保留。
+观测3 CTA的SM×时间约89.5–89.7%；缺失槽位折算5.1–5.4%，其中末尾4.5–4.7%，
+不是可实现的加速或理论peak。暂不投入跨CTA调度；最佳/正式扩展/5090不改，目标仍未达到。
+[v101诊断、查重与原始证据](o3_o7_o8_cta_timeline_20261007.md)。
+
 ## v100：精确 signed-radix16 表示，编译工作不改善，停止
 
 先核对历史：tile/warp、stage/producer、partial 链、scale 和 cache/store 均已有记录，不重做。

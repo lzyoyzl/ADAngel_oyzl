@@ -1,0 +1,133 @@
+{
+  "variant": "o3",
+  "bitwise_previous_best": true,
+  "resources": {
+    "control": {
+      "registers_per_thread": 168,
+      "local_bytes": 16,
+      "threads": 128,
+      "active_blocks_per_SM": 3,
+      "shared_bytes": 50688
+    },
+    "instrumented": {
+      "registers_per_thread": 168,
+      "local_bytes": 16,
+      "threads": 128,
+      "active_blocks_per_SM": 3,
+      "shared_bytes": 50688
+    }
+  },
+  "summaries": [
+    {
+      "ctas": 2048,
+      "observed_SMs": 108,
+      "reported_SM_count": 108,
+      "globaltimer_span_ms": 0.398336,
+      "last_observed_CTA_start_ms": 0.34816,
+      "after_last_start_ms": 0.050176,
+      "observed_max_CTA_overlap_per_SM": 3,
+      "capacity_time_fraction": {
+        "0": 0.010377987241740456,
+        "1": 0.032681138722269826,
+        "2": 0.060197086546700945,
+        "3": 0.8967437874892887
+      },
+      "tail_capacity_time_fraction": {
+        "0": 0.08238851095993953,
+        "1": 0.259448223733938,
+        "2": 0.34958427815570675,
+        "3": 0.3085789871504157
+      },
+      "mean_CTA_warp_envelope_ms": 0.0597265,
+      "median_CTA_warp_envelope_ms": 0.060416,
+      "full_capture_missing_capacity_equivalent_ms": 0.020805530864197532,
+      "tail_missing_capacity_equivalent_ms": 0.018659555555555554,
+      "scope": "observed_warp_envelopes_underestimate_true_residency; instrumentation_perturbs_execution",
+      "not_an_achievable_latency_bound": true,
+      "not_a_new_performance_result": true
+    },
+    {
+      "ctas": 2048,
+      "observed_SMs": 108,
+      "reported_SM_count": 108,
+      "globaltimer_span_ms": 0.391168,
+      "last_observed_CTA_start_ms": 0.342016,
+      "after_last_start_ms": 0.049152,
+      "observed_max_CTA_overlap_per_SM": 3,
+      "capacity_time_fraction": {
+        "0": 0.012652705061082025,
+        "1": 0.032310451813069616,
+        "2": 0.06066996315687415,
+        "3": 0.8943668799689742
+      },
+      "tail_capacity_time_fraction": {
+        "0": 0.10069444444444445,
+        "1": 0.25713734567901236,
+        "2": 0.35050154320987653,
+        "3": 0.2916666666666667
+      },
+      "mean_CTA_warp_envelope_ms": 0.0585165,
+      "median_CTA_warp_envelope_ms": 0.059392,
+      "full_capture_missing_capacity_equivalent_ms": 0.021285925925925927,
+      "tail_missing_capacity_equivalent_ms": 0.019117827160493827,
+      "scope": "observed_warp_envelopes_underestimate_true_residency; instrumentation_perturbs_execution",
+      "not_an_achievable_latency_bound": true,
+      "not_a_new_performance_result": true
+    },
+    {
+      "ctas": 2048,
+      "observed_SMs": 108,
+      "reported_SM_count": 108,
+      "globaltimer_span_ms": 0.400384,
+      "last_observed_CTA_start_ms": 0.350208,
+      "after_last_start_ms": 0.050176,
+      "observed_max_CTA_overlap_per_SM": 3,
+      "capacity_time_fraction": {
+        "0": 0.01250355214549588,
+        "1": 0.03263237662214644,
+        "2": 0.05974708724069338,
+        "3": 0.8951169839916643
+      },
+      "tail_capacity_time_fraction": {
+        "0": 0.08522297808012094,
+        "1": 0.25982615268329556,
+        "2": 0.35034013605442177,
+        "3": 0.30461073318216175
+      },
+      "mean_CTA_warp_envelope_ms": 0.0599105,
+      "median_CTA_warp_envelope_ms": 0.060416,
+      "full_capture_missing_capacity_equivalent_ms": 0.02169046913580247,
+      "tail_missing_capacity_equivalent_ms": 0.018827061728395062,
+      "scope": "observed_warp_envelopes_underestimate_true_residency; instrumentation_perturbs_execution",
+      "not_an_achievable_latency_bound": true,
+      "not_a_new_performance_result": true
+    }
+  ],
+  "capture_Event_ms": [
+    0.4044800102710724,
+    0.3983359932899475,
+    0.4065279960632324
+  ],
+  "control_before": {
+    "count": 200,
+    "median_ms": 0.4034560024738312,
+    "mean_ms": 0.3916032013297081,
+    "cv_percent": 5.065163790102153,
+    "min_ms": 0.35020801424980164,
+    "max_ms": 0.4106239974498749,
+    "p5_ms": 0.35225600004196167,
+    "p95_ms": 0.40959998965263367,
+    "iqr_ms": 0.029696017503738403
+  },
+  "control_after": {
+    "count": 200,
+    "median_ms": 0.3973119854927063,
+    "mean_ms": 0.3912294355034828,
+    "cv_percent": 3.4279454497296755,
+    "min_ms": 0.35839998722076416,
+    "max_ms": 0.4044800102710724,
+    "p5_ms": 0.35942399501800537,
+    "p95_ms": 0.4034560024738312,
+    "iqr_ms": 0.024576008319854736
+  }
+}
