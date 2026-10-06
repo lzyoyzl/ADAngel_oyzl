@@ -34,7 +34,8 @@ SETUP='''  // Same warp ownership, but A is M32 and B is full N128.
       cute::Layout<cute::Shape<cute::_2,cute::_2,cute::_1>>,
       cute::Tile<cute::_32,cute::_128,cute::_64>>;
   SliceMma slice_mma;SliceHighMma slice_high_mma;
-  auto atr=slice_mma.get_slice(threadIdx.x),aht=slice_high_mma.get_slice(threadIdx.x);
+  auto atr=slice_mma.get_slice(threadIdx.x);
+  auto aht=slice_high_mma.get_slice(threadIdx.x);
   auto tile_a=[&](auto t,auto mb,auto half) {return cute::local_tile(t,
       cute::make_shape(cute::_32{},cute::_64{}),cute::make_coord(mb,half));};
   auto a0=atr.partition_fragment_A(tile_a(low(0),cute::_0{},cute::_0{}));auto a1=cute::make_fragment_like(a0);

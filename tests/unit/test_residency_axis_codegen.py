@@ -28,6 +28,8 @@ def test_fixed_partial_and_operand_budget_not_N128_window_repeat():
     assert 'cute::_32{},cute::_64{}' in text and 'cute::_128{},cute::_64{}' in text
     assert 'cute::Tile<cute::_32,cute::_128,cute::_64>' in text
     assert 'atr.partition_fragment_A' in text and 'aht.partition_fragment_A' in text
+    assert 'auto atr=slice_mma.get_slice(threadIdx.x);' in text
+    assert 'auto aht=slice_high_mma.get_slice(threadIdx.x);' in text
     assert 'cute::make_tiled_copy_A(LCopy{},slice_mma)' in text
     assert 'o1_static_for<0,2>([&](auto mb)' in text
     assert text.count('cute::gemm(HA{}')==text.count('cute::gemm(LA{}')==2
