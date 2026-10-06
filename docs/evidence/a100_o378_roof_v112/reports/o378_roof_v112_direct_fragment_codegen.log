@@ -1,0 +1,111 @@
+{
+  "compile_gate": {
+    "passed": false,
+    "checks": {
+      "four_CTA_register_budget": true,
+      "no_hot_local": false,
+      "native_INT4_64": true,
+      "no_hot_payload_shared_path": true,
+      "fewer_instructions": false
+    },
+    "runtime_gate": "actual>=4 CTAs/SM, full GPU correctness/fallback/safety, then full24 paired Event/MSE",
+    "conversion_caveat": "online A/W fragment packing charged in conversion/cold/steady; no free permutation"
+  },
+  "liveness": {
+    "adangel_roof_o78_eight_chain_candidate": {
+      "symbol": "adangel_roof_o78_eight_chain_candidate",
+      "allocated_gpr": 168,
+      "loop": {
+        "begin_pc": "0xa60",
+        "end_pc": "0x2240",
+        "static_instructions": 383,
+        "max_live_gpr": 166,
+        "opcode_counts": {
+          "BAR.SYNC.DEFER_BLOCKING": 1,
+          "BRA": 2,
+          "CALL.REL.NOINC": 1,
+          "DEPBAR.LE": 1,
+          "IADD3": 20,
+          "IADD3.X": 5,
+          "IMAD": 128,
+          "IMAD.IADD": 1,
+          "IMAD.SHL.U32": 24,
+          "IMAD.X": 5,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "ISETP.GT.U32.AND": 1,
+          "LDGDEPBAR": 1,
+          "LDGSTS.E.BYPASS.128": 10,
+          "LDS": 7,
+          "LDS.64": 8,
+          "LDSM.16.M88.4": 16,
+          "LEA": 2,
+          "LEA.HI.X": 2,
+          "LOP3.LUT": 6,
+          "MOV": 2,
+          "PLOP3.LUT": 2,
+          "S2R": 5,
+          "SHF.L.U32": 48,
+          "UIADD3": 1,
+          "UIMAD": 2,
+          "UISETP.GT.U32.AND": 1,
+          "UISETP.NE.AND": 1,
+          "ULDC.64": 1,
+          "ULOP3.LUT": 6,
+          "UMOV": 1,
+          "USHF.L.U32": 8
+        }
+      }
+    },
+    "adangel_roof_o78_direct_fragment_candidate": {
+      "symbol": "adangel_roof_o78_direct_fragment_candidate",
+      "allocated_gpr": 128,
+      "loop": {
+        "begin_pc": "0x16d0",
+        "end_pc": "0x3240",
+        "static_instructions": 440,
+        "max_live_gpr": 126,
+        "opcode_counts": {
+          "BRA": 1,
+          "CALL.REL.NOINC": 1,
+          "IADD3": 16,
+          "IADD3.X": 16,
+          "IMAD": 128,
+          "IMAD.SHL.U32": 32,
+          "IMAD.U32": 14,
+          "IMAD.WIDE.U32": 16,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "LDG.E.128.STRONG.SM": 16,
+          "LDL.64": 8,
+          "LDL.LU": 22,
+          "LDS": 4,
+          "LDS.64": 8,
+          "LEA": 2,
+          "LEA.HI": 1,
+          "LOP3.LUT": 4,
+          "MOV": 12,
+          "NOP": 4,
+          "PLOP3.LUT": 1,
+          "S2R": 4,
+          "SHF.L.U32": 33,
+          "SHF.R.U32.HI": 2,
+          "STL": 22,
+          "UIADD3": 1,
+          "UIMAD": 4,
+          "UIMAD.WIDE.U32": 1,
+          "UISETP.NE.AND": 1,
+          "ULDC": 1,
+          "USHF.R.S32.HI": 1
+        }
+      }
+    }
+  },
+  "mapping": {
+    "passed": true,
+    "a_register_nibbles": 16384,
+    "b_register_nibbles": 32768,
+    "legacy_adjacent_b_mismatches": 24576,
+    "gpu_execution": false
+  }
+}
