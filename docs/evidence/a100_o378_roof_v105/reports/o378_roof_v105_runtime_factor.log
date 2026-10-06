@@ -1,0 +1,13 @@
+validate_coordinates: /home/zlouyang/ADAngel_oyzl/tests/cuda/validate_factor_observation_coordinates.cu:37: int main(): Assertion `rows==std::set<int>({first,first+8,first+16,first+24})' failed.
+Traceback (most recent call last):
+  File "/home/zlouyang/ADAngel_oyzl/scripts/inspect_runtime_factor_reuse.py", line 186, in <module>
+    if __name__=='__main__':main()
+  File "/home/zlouyang/ADAngel_oyzl/scripts/inspect_runtime_factor_reuse.py", line 140, in main
+    coordinates=coordinate_check(args.output)
+  File "/home/zlouyang/ADAngel_oyzl/scripts/inspect_runtime_factor_reuse.py", line 108, in coordinate_check
+    result=json.loads(subprocess.check_output([str(binary)],text=True))
+  File "/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['reports/o378_roof_v105_runtime_factor/validate_coordinates']' died with <Signals.SIGABRT: 6>.

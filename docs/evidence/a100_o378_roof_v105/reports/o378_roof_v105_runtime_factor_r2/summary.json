@@ -1,0 +1,35 @@
+{
+  "scope": "runtime_factor_equality_full24_read_only_not_kernel_performance",
+  "variants": [
+    {
+      "variant": "o7",
+      "samples": 24,
+      "mean_warp_same4_fraction": 0.004414876302083333,
+      "mean_per_lane_same4_fraction": 0.14839553833007812,
+      "mean_same4_optimistic_loop_work_reduction_percent": 0.07322093940382943,
+      "mean_ideal_any_pattern_optimistic_loop_work_reduction_percent": 0.9453702948215839,
+      "raw_opportunity_gate": false,
+      "raw_opportunity_threshold_percent": 5.0,
+      "decision": "compile_one_same4_candidate_if_gate_passes_else_stop_no_GPU_timing"
+    },
+    {
+      "variant": "o8",
+      "samples": 24,
+      "mean_warp_same4_fraction": 0.0,
+      "mean_per_lane_same4_fraction": 0.001918792724609375,
+      "mean_same4_optimistic_loop_work_reduction_percent": 0.0,
+      "mean_ideal_any_pattern_optimistic_loop_work_reduction_percent": 0.0005524505004351611,
+      "raw_opportunity_gate": false,
+      "raw_opportunity_threshold_percent": 5.0,
+      "decision": "compile_one_same4_candidate_if_gate_passes_else_stop_no_GPU_timing"
+    }
+  ],
+  "new_MSE_measured": false,
+  "new_GEMM_measured": false,
+  "new_kernel_implemented": false,
+  "production_default_changed": false,
+  "O3_unchanged": true,
+  "O3_reason": "activation_row_scale_already_outside_G128_loop",
+  "no_filtering": true,
+  "no_quantization_or_scale_change": true
+}
