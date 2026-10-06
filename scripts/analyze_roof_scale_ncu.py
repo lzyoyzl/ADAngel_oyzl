@@ -103,6 +103,9 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
     fullk_identity = (variant, tune, expected_symbol)
     approved_fullk = {('o3', 54, 'adangel_roof_fullk_integer_o3'),
                      ('o3', 54, 'adangel_roof_o3_eight_chain_candidate'),
+                     ('o3', 54, 'adangel_roof_o3_grouped_cta_candidate'),
+                     ('o7', 59, 'adangel_roof_o78_grouped_cta_candidate'),
+                     ('o8', 59, 'adangel_roof_o78_grouped_cta_candidate'),
                      ('o7', 59, 'adangel_roof_o78_eight_chain_candidate'),
                      ('o8', 59, 'adangel_roof_o78_eight_chain_candidate'),
                      ('o7', 59, 'adangel_roof_o78_warp_metadata_candidate'),
@@ -151,6 +154,10 @@ def analyze(raw_payload, sass_payload, tune, variant='o7', resource_model=False,
         if expected_symbol == ('adangel_roof_o3_eight_chain_candidate' if variant=='o3' else 'adangel_roof_o78_eight_chain_candidate'):
             if not fullk_integer:
                 raise ValueError('eight-chain accounting requires full-K integer work')
+            permitted=expected_symbol
+        if expected_symbol == ('adangel_roof_o3_grouped_cta_candidate' if variant=='o3' else 'adangel_roof_o78_grouped_cta_candidate'):
+            if not fullk_integer:
+                raise ValueError('grouped-CTA accounting requires full-K integer work')
             permitted=expected_symbol
         if expected_symbol=='adangel_roof_o78_warp_metadata_candidate' and variant in ('o7','o8'):
             if not fullk_integer: raise ValueError('warp-metadata candidate requires full-K accounting')
