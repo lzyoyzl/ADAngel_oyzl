@@ -46,3 +46,15 @@ def test_pointer_ABI_order_matches_exact_o78_entry():
     names=('a','w','as','ws','af','wf','ab','wb','status','y')
     c=SimpleNamespace(state={key:i for i,key in enumerate(names)})
     assert tensor_pointers_o78(c)==tuple(range(10))
+
+
+def test_native_public_payload_and_o0_interface_contract():
+    source=(ROOT/'scripts/validate_unmeasured_eight_warp.py').read_text()
+    assert "base['packed_activation_g128_major']" not in source
+    assert "base['packed_weight_g128_major']" not in source
+    assert "reshape(2,m,32,64).permute(0,2,1,3).contiguous()" in source
+    assert "split_int8_to_packed_int4(x.A_int8)" in source
+    assert "base['converted_weight'],x.W_q4" in source
+    runner=(ROOT/'scripts/benchmark_unmeasured_eight_warp.py').read_text()
+    assert "native.benchmark('o0'" not in runner
+    assert "native.benchmark_o0(" in runner

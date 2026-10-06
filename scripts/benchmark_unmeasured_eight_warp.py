@@ -148,7 +148,7 @@ def main():
                     snapshot=command('nvidia-smi','--query-gpu=clocks.sm,temperature.gpu,power.draw,utilization.gpu','--format=csv')))
                 if variant=='o3':
                     tensors,guard,base=o3_case(x,native);kind='o3'
-                    reference=native.benchmark('o0','compute_only',x.A_int8,x.A_scale,x.W_mxfp4,x.W_scale,0,1,100,'production')['output']
+                    reference=native.benchmark_o0(x.A_int8,x.A_scale,x.W_mxfp4,x.W_scale,'compute_only',0,1,100)['output']
                     m,n,_=x.shape
                 else:
                     wf,af=mf.VARIANTS[variant]

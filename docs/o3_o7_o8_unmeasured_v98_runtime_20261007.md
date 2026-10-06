@@ -42,3 +42,8 @@ O3/O7/O8 的量化、G128 scale、整数安全语义、两路原生 INT4 和 FP3
 O3 cached 模式沿用已有 CPU 保守 column guard；候选/最佳共用完全相同 metadata。
 O7/O8 共用原 v73 GPU 准备及安全 oracle，并要求原始 source 全字段 SHA 与 v99 一致。
 这些准备全部在 Event 外，不是在线转换/Cold/steady 的结果。
+
+首次完整运行在输入准备阶段因引用可选 roof-tune 的 packed 字段而停止，
+没有候选 GEMM launch 或性能记录。改为从正式接口的自然顺序 payload 在计时外重排，
+并与 Split/Q4 软件参考逐元素核对；O0 参考使用其专用 `benchmark_o0` 接口。
+失败 `runs/o378_roof_v104_full24` 与日志保留，修正运行使用新目录。

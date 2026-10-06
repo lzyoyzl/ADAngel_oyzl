@@ -117,6 +117,15 @@ def o3_case(x,native):
     if not torch.equal(x.W_q4,mxfp4_to_q4_packed(x.W_mxfp4_g128)):
         raise ValueError('O3 prepared Q4 differs from current mapping')
     base=native.benchmark('o3','compute_only',x.A_int8,x.A_scale,x.W_mxfp4_g128,x.W_scale_g128,0,1,100,'production')
+    # Public production benchmark exports natural payload, not the optional
+    # roof-tune group-major diagnostic keys. Rearrange it once outside Event.
+    from adangel.quantization.arbitrary_bits import split_int8_to_packed_int4
+    if not torch.equal(base['converted_activation'],split_int8_to_packed_int4(x.A_int8)) or not torch.equal(
+            base['converted_weight'],x.W_q4):
+        raise ValueError('O3 native payload differs from exact Split/Q4 reference')
+    m,k=x.A_int8.shape;n=x.W_mxfp4_g128.shape[0]
+    packed_a=base['converted_activation'].reshape(2,m,32,64).permute(0,2,1,3).contiguous()
+    packed_w=base['converted_weight'].reshape(n,32,64).permute(1,0,2).contiguous()
     columns=x.W_scale_g128.cpu().tolist()
     anchors,guard=guard_columns(columns)
     if not guard['normal_scales']:raise ValueError('O3 requires normal scales for cached proof')
@@ -129,7 +138,7 @@ def o3_case(x,native):
             for g in range(32)]+[anchors],dtype=torch.int32,device=meta.device))
     status=torch.full((n//128,),0 if guard['safe'] else 1,device=meta.device,dtype=torch.uint32)
     output=torch.empty_like(base['output'])
-    tensors=(base['packed_activation_g128_major'],base['packed_weight_g128_major'],x.A_scale,
+    tensors=(packed_a,packed_w,x.A_scale,
         x.W_scale_g128.T.contiguous(),meta,status,output)
     return tensors,guard,base
 
