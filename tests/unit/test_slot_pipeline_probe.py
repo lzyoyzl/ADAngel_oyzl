@@ -100,3 +100,16 @@ def test_compile_gate_preserves_compute_work_and_no_full_CTA_hot_barrier():
     for changed in ({'BAR.SYNC':1},{'LDSM.16.M88.4':24},{'IMMA.16864.U4.S4':16},{'LDL.64':3}):
         assert not worth_runtime(dict(live,loops=[dict(kind='integer',opcode_counts={**counts,**changed})]))
     assert not worth_runtime(dict(live,allocated_gpr=176))
+
+
+def test_runtime_contract_same_conversion_and_direct_E2E():
+    from benchmark_o78_slot_pipeline import timing_contract
+    for mode in ('conversion_only','compute_only','cold','steady_state'):
+        r=timing_contract(mode,100)
+        assert r['preparation_implementation']=='row_fused_conversion_factor_metadata'
+        assert not r['new_preparation_or_layout'] and r['producer_extra_warps']==0
+        assert r['stage_timing_inner_repeats']['total']==(100 if mode=='conversion_only' else 1)
+    for kind in CONFIG:
+        text=(ROOT/f'scripts/benchmark_{kind}_slot_pipeline.py').read_text()
+        assert 'full_sample_args()' in text and "receipt['worth_runtime_validation']" in text
+        assert 'values[3]<3' in text
