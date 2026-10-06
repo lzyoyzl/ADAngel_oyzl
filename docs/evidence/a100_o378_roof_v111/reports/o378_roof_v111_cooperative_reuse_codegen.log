@@ -1,0 +1,110 @@
+{
+  "compile_gate": {
+    "checks": {
+      "registers_at_most168": true,
+      "native_mma64": true,
+      "no_fragment_read_growth": true,
+      "hot_local_at_most2": true,
+      "weighted_instructions_at_least5pct_less": false
+    },
+    "passed": false,
+    "weighted_static_instruction_ratio": 1.0420202349869452,
+    "runtime_residency_gate": "must query1 resident CTA and12 warps before any runtime test",
+    "acceptance_incomplete": "fallback/runtime/MSE/24samples not established by compile gate"
+  },
+  "liveness": {
+    "adangel_roof_o78_eight_chain_candidate": {
+      "symbol": "adangel_roof_o78_eight_chain_candidate",
+      "allocated_gpr": 168,
+      "loop": {
+        "begin_pc": "0xa60",
+        "end_pc": "0x2240",
+        "static_instructions": 383,
+        "max_live_gpr": 166,
+        "opcode_counts": {
+          "BAR.SYNC.DEFER_BLOCKING": 1,
+          "BRA": 2,
+          "CALL.REL.NOINC": 1,
+          "DEPBAR.LE": 1,
+          "IADD3": 20,
+          "IADD3.X": 5,
+          "IMAD": 128,
+          "IMAD.IADD": 1,
+          "IMAD.SHL.U32": 24,
+          "IMAD.X": 5,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "ISETP.GT.U32.AND": 1,
+          "LDGDEPBAR": 1,
+          "LDGSTS.E.BYPASS.128": 10,
+          "LDS": 7,
+          "LDS.64": 8,
+          "LDSM.16.M88.4": 16,
+          "LEA": 2,
+          "LEA.HI.X": 2,
+          "LOP3.LUT": 6,
+          "MOV": 2,
+          "PLOP3.LUT": 2,
+          "S2R": 5,
+          "SHF.L.U32": 48,
+          "UIADD3": 1,
+          "UIMAD": 2,
+          "UISETP.GT.U32.AND": 1,
+          "UISETP.NE.AND": 1,
+          "ULDC.64": 1,
+          "ULOP3.LUT": 6,
+          "UMOV": 1,
+          "USHF.L.U32": 8
+        }
+      }
+    },
+    "adangel_roof_o78_cooperative_reuse_candidate": {
+      "symbol": "adangel_roof_o78_cooperative_reuse_candidate",
+      "allocated_gpr": 168,
+      "loop": {
+        "begin_pc": "0xb10",
+        "end_pc": "0x2330",
+        "static_instructions": 387,
+        "max_live_gpr": 162,
+        "opcode_counts": {
+          "BAR.SYNC.DEFER_BLOCKING": 1,
+          "BRA": 2,
+          "CALL.REL.NOINC": 1,
+          "DEPBAR.LE": 1,
+          "IADD3": 18,
+          "IADD3.X": 8,
+          "IMAD": 139,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "ISETP.GE.U32.AND": 1,
+          "ISETP.GT.U32.AND": 3,
+          "ISETP.NE.AND": 1,
+          "LDGDEPBAR": 1,
+          "LDGSTS.E.BYPASS.128": 8,
+          "LDS": 7,
+          "LDS.64": 8,
+          "LDSM.16.M88.4": 16,
+          "LEA": 7,
+          "LEA.HI.X": 2,
+          "LOP3.LUT": 11,
+          "MOV": 5,
+          "S2R": 2,
+          "SEL": 1,
+          "SHF.L.U32": 75,
+          "SHF.R.U32.HI": 5
+        }
+      }
+    }
+  },
+  "coordinates": {
+    "passed": true,
+    "gpu_execution": false,
+    "output_elements": 24576,
+    "unique_output_owners": true,
+    "same32_partial_mapping": true,
+    "vector_pairs": 12288,
+    "copy_byte_owners": 20480,
+    "nibble_layout_checks": 40960,
+    "shared_bytes": 59904
+  }
+}
