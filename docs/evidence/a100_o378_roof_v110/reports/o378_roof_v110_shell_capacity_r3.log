@@ -1,0 +1,110 @@
+{
+  "compile_gate": {
+    "passed": false,
+    "checks": [
+      {
+        "symbol": "adangel_capacity_register_shell",
+        "native_two_INT4_routes": true,
+        "expected_LDSM": true,
+        "no_hot_local": true,
+        "no_hot_barrier": true,
+        "no_hot_global_copy": true,
+        "allocated_at_most168": true
+      },
+      {
+        "symbol": "adangel_capacity_shared_shell",
+        "native_two_INT4_routes": true,
+        "expected_LDSM": true,
+        "no_hot_local": true,
+        "no_hot_barrier": true,
+        "no_hot_global_copy": true,
+        "allocated_at_most168": true
+      },
+      {
+        "symbol": "adangel_capacity_scaled_shared_shell",
+        "native_two_INT4_routes": true,
+        "expected_LDSM": true,
+        "no_hot_local": false,
+        "no_hot_barrier": true,
+        "no_hot_global_copy": true,
+        "allocated_at_most168": true
+      }
+    ],
+    "runtime_gate": "CUDA query must confirm3 resident CTAs/SM; checksum before timings"
+  },
+  "liveness": {
+    "adangel_capacity_register_shell": {
+      "symbol": "adangel_capacity_register_shell",
+      "allocated_gpr": 166,
+      "loop": {
+        "static_instructions": 195,
+        "opcode_counts": {
+          "BRA": 1,
+          "IADD3": 12,
+          "IMAD.IADD": 53,
+          "IMAD.SHL.U32": 55,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "ISETP.GE.AND": 1,
+          "SHF.L.U32": 9
+        },
+        "max_live_gpr": 164,
+        "begin_pc": "0x14c0",
+        "end_pc": "0x20e0"
+      }
+    },
+    "adangel_capacity_shared_shell": {
+      "symbol": "adangel_capacity_shared_shell",
+      "allocated_gpr": 165,
+      "loop": {
+        "static_instructions": 213,
+        "opcode_counts": {
+          "BRA": 1,
+          "IADD3": 11,
+          "IMAD.IADD": 54,
+          "IMAD.SHL.U32": 53,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "ISETP.GE.AND": 1,
+          "LDSM.16.M88.4": 16,
+          "NOP": 2,
+          "SHF.L.U32": 11
+        },
+        "max_live_gpr": 151,
+        "begin_pc": "0x13c0",
+        "end_pc": "0x2100"
+      }
+    },
+    "adangel_capacity_scaled_shared_shell": {
+      "symbol": "adangel_capacity_scaled_shared_shell",
+      "allocated_gpr": 168,
+      "loop": {
+        "static_instructions": 300,
+        "opcode_counts": {
+          "BRA": 1,
+          "CALL.REL.NOINC": 1,
+          "IMAD": 128,
+          "IMAD.SHL.U32": 55,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "LDL.LU": 3,
+          "LDS": 4,
+          "LDS.64": 8,
+          "LDSM.16.M88.4": 16,
+          "PLOP3.LUT": 1,
+          "SHF.L.U32": 9,
+          "STL": 3,
+          "UIADD3": 1,
+          "UISETP.GE.AND": 1,
+          "ULDC": 1,
+          "ULOP3.LUT": 2,
+          "USHF.L.U32": 2
+        },
+        "max_live_gpr": 164,
+        "begin_pc": "0x1ef0",
+        "end_pc": "0x31a0"
+      }
+    }
+  },
+  "runtime": null
+}

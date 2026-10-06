@@ -1,5 +1,14 @@
 # A100 O3 / O7 / O8：当前主基准与最新结果（O3 v89；O7/O8 v78+v73，附 v99 微调）
 
+**2026-10-07 v110：补齐实际64 accumulator供数容量诊断，最佳不变。**
+不是重复v82/v102纯MMA，也未扫描tile/stage/cache/partial；固定八链/32 partial/3CTA。
+两个合格entry三轮运行，归一化32组工作量为寄存器0.293120、shared0.295552ms，相差0.83%；
+全部原始Event保留、六组CV<3%、合成全输出逐位检查通过。不是实测4096³延迟或kernel peak。
+带scale entry热local6条，gate失败、从未运行；三次编译为实现修复，日志全部保留。
+仅重编译host选择两个entry，复用原cubin，没有新增正式GEMM/MSE或端到端收益。
+正式默认/扩展/量化/转换/5090均不变；目标尚未达到。
+[v110查重、诊断含义与原始证据](o3_o7_o8_capacity_shells_20261007.md)。
+
 **2026-10-07 v109：固定warp私有流水线编译gate失败，最佳不变。**
 并非producer/mbarrier/八warp/驻留轴重测；CTA与八链/32 partial相同，改为私有in-place供数。
 循环383→433条、搬运10→18、热local 0→8；寄存器仍168。原生双INT4与旧控制编码审计通过。

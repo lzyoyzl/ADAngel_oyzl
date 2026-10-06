@@ -1,0 +1,131 @@
+{
+  "scope": "v110_same_cubin_two_passed_capacity_shells_not_real_trace_GEMM",
+  "source_commit": "637434204bd7081c2f14512f0128ce94a478b4a7",
+  "compile_receipt_sha256": "440408b8c6c5ac781d1344280cee85375f478e4c4db6f433e65f44878d2e5cd5",
+  "cubin_sha256": "59b2037da160a40daee6e4cfc9eb4c6d32be7159b61e55d8693305a61034fcc5",
+  "selected_modes": [
+    0,
+    1
+  ],
+  "rejected_scaled_shell_not_launched": true,
+  "static_gate_not_relaxed": true,
+  "sources": {
+    "scripts/run_o78_shell_capacity.py": "c935c235dc6a924053503bbe5d511b161fda3d1364088208bc554a1f3f24e17e",
+    "csrc/sm80/roof_o78_shell_capacity_driver.cpp": "145bf0257a93de971f5e8a8150a5e1f4db1e76c4ce3f19795c5534c5cc51d1f4"
+  },
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "-O2",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_shell_capacity_driver.cpp",
+      "-lcuda",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_two_shells/capacity_driver"
+    ],
+    [
+      "nvidia-smi",
+      "--query-gpu=name,clocks.sm,temperature.gpu,power.draw",
+      "--format=csv"
+    ],
+    [
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_two_shells/capacity_driver",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_shell_capacity_r3/o78_shell_capacity.cubin",
+      "3"
+    ],
+    [
+      "nvidia-smi",
+      "--query-gpu=name,clocks.sm,temperature.gpu,power.draw",
+      "--format=csv"
+    ]
+  ],
+  "extension_sha256_before": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "production_default_changed": false,
+  "runtime": {
+    "records": 6,
+    "statistics": [
+      {
+        "mode": 0,
+        "round": 0,
+        "median_ms": 2.34495997,
+        "mean_ms": 2.3588607758,
+        "normalized32_groups_ms": 0.29311999625,
+        "cv_percent": 1.6715039029383656,
+        "p5_ms": 2.34188795,
+        "p95_ms": 2.46374393
+      },
+      {
+        "mode": 1,
+        "round": 0,
+        "median_ms": 2.36441588,
+        "mean_ms": 2.37793277115,
+        "normalized32_groups_ms": 0.295551985,
+        "cv_percent": 1.5979083165404333,
+        "p5_ms": 2.36339211,
+        "p95_ms": 2.4801792505
+      },
+      {
+        "mode": 0,
+        "round": 1,
+        "median_ms": 2.34495997,
+        "mean_ms": 2.3577139004,
+        "normalized32_groups_ms": 0.29311999625,
+        "cv_percent": 1.1662474954381619,
+        "p5_ms": 2.32550406,
+        "p95_ms": 2.4241152905
+      },
+      {
+        "mode": 1,
+        "round": 1,
+        "median_ms": 2.36441588,
+        "mean_ms": 2.37696512415,
+        "normalized32_groups_ms": 0.295551985,
+        "cv_percent": 1.1430226702344686,
+        "p5_ms": 2.34188795,
+        "p95_ms": 2.44843525
+      },
+      {
+        "mode": 0,
+        "round": 2,
+        "median_ms": 2.34393597,
+        "mean_ms": 2.36155391275,
+        "normalized32_groups_ms": 0.29299199625,
+        "cv_percent": 2.0251726886258705,
+        "p5_ms": 2.32550406,
+        "p95_ms": 2.4863233
+      },
+      {
+        "mode": 1,
+        "round": 2,
+        "median_ms": 2.36441588,
+        "mean_ms": 2.3803136044,
+        "normalized32_groups_ms": 0.295551985,
+        "cv_percent": 1.9993033140143328,
+        "p5_ms": 2.34188795,
+        "p95_ms": 2.5068032105
+      }
+    ],
+    "modes": [
+      {
+        "mode": 0,
+        "normalized32_groups_ms": 0.29311999625
+      },
+      {
+        "mode": 1,
+        "normalized32_groups_ms": 0.295551985
+      }
+    ],
+    "original_experiment_MSE_measured": false,
+    "real_trace_latency_measured": false,
+    "normalized_times_are_diagnostic_not_kernel_peak": true,
+    "no_filtering": true
+  },
+  "extension_sha256_after": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "artifact_sha256": {
+    "gpu_after.txt": "f367acece46c58ea7a5f79e5500ac21a6bd054deae6ffe5d963c611e6e4d36ae",
+    "results.jsonl": "a7a4e44fae723a955285fbb818a08b26df205a25985e1ab5e33f197b55061f14",
+    "gpu_before.txt": "e10b8059b5e9a94f5c4de7020043564f79beddc71ff0b52ff3ac8d1e3f7212a1",
+    "driver_build.log": "4a9039e3453232c01f7268ec2cf78f30738e225eb22be0155616a8713600c863",
+    "capacity_driver": "d9ead67868c4ffdb24fbcfd374cd9ad311e0790a69da0ea6eca3df06364ada07"
+  }
+}

@@ -1,0 +1,334 @@
+{
+  "scope": "v110_fixed_grid_capacity_diagnostic_not_real_trace_GEMM",
+  "source_commit": "e86e28b3a63b06357b423239cbd5e82ee77a6f94",
+  "sources": {
+    "csrc/sm80/o78_fullk_integer_probe.cuh": "8e7e2bd5718fa7bf637a67abbd89347ebe99863c81daf1da03e962b1174e11cc",
+    "csrc/sm80/o78_unsigned_payload_candidate.cuh": "899819e7d2eeb19acdca23cb9326846d8c674763fc57bc62e58a8cf8ee830a25",
+    "csrc/sm80/roof_o78_eight_chain_probe.cu": "c4fd0001f7fbd02f4756794bed85a125d949e9135ac28f16a2f24e966ef2bcd5",
+    "csrc/sm80/roof_o78_fullk_driver.cpp": "36422a6e0d37269ee0a324c53a3488c874bbee1b4c490da2e3b7b59628a5cd0b",
+    "csrc/sm80/roof_o78_fullk_probe.cu": "c463d24d9e17ae7972fa1fdd4b6f7543e64268e4bcae66b3b457d81afdb6d19e",
+    "csrc/sm80/roof_o78_shell_capacity_driver.cpp": "81f3808b2512a8b697c955e76f86a4f06902ccd2fdb0e7cc746944b2a82488af",
+    "csrc/sm80/roof_o78_shell_probe.cu": "e0378c6e8a0fbb066d1f4b6b1be6aaac41f696c1842bf3e5d06db5f07672b918",
+    "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9",
+    "scripts/probe_o78_eight_chain_codegen.py": "df14edf4eb8b89f5bf8c2c61086f6a16a847be775d93aa0bf411d13506ad6a57",
+    "scripts/probe_o78_shell_capacity.py": "e16de312dfecbeeb710cd6a055bf934fec6e90392ab12ebabe8af854cab4c7ee"
+  },
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-O3",
+      "-lineinfo",
+      "-arch=sm_80",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_shell_capacity_r3",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_shell_probe.cu",
+      "-cubin",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_shell_capacity_r3/o78_shell_capacity.cubin",
+      "-Xptxas=-v"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-O3",
+      "-lineinfo",
+      "-arch=sm_80",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_shell_capacity_r3",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_shell_probe.cu",
+      "-ptx",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_shell_capacity_r3/o78_shell_capacity.ptx"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-sass",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_shell_capacity_r3/o78_shell_capacity.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-resource-usage",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_shell_capacity_r3/o78_shell_capacity.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvdisasm",
+      "--print-code",
+      "--life-range-mode",
+      "count",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v110_shell_capacity_r3/o78_shell_capacity.cubin"
+    ]
+  ],
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+  "cta_tile": [
+    64,
+    128,
+    128
+  ],
+  "grid": [
+    32,
+    64
+  ],
+  "threads": 128,
+  "stages_in_hot_loop": 0,
+  "independent_chains": 8,
+  "partial_registers": 32,
+  "output_accumulators": 64,
+  "shared_used_bytes": 40960,
+  "shared_reserved_bytes": 50688,
+  "groups_for_timing": 256,
+  "initialization_and_output_not_removed_from_event_time": true,
+  "normalization_to32_groups_not_actual_4096_trace_latency": true,
+  "new_MSE_measured": false,
+  "new_real_GEMM_measured": false,
+  "production_default_changed": false,
+  "extension_sha256_before": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "baseline_cubin_sha256": "08badf82c4538c2d3695ca0d53fa4082669db12038f356892bd5ec85d9d9c11a",
+  "liveness": {
+    "adangel_capacity_register_shell": {
+      "symbol": "adangel_capacity_register_shell",
+      "allocated_gpr": 166,
+      "loop": {
+        "static_instructions": 195,
+        "opcode_counts": {
+          "BRA": 1,
+          "IADD3": 12,
+          "IMAD.IADD": 53,
+          "IMAD.SHL.U32": 55,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "ISETP.GE.AND": 1,
+          "SHF.L.U32": 9
+        },
+        "max_live_gpr": 164,
+        "begin_pc": "0x14c0",
+        "end_pc": "0x20e0"
+      }
+    },
+    "adangel_capacity_shared_shell": {
+      "symbol": "adangel_capacity_shared_shell",
+      "allocated_gpr": 165,
+      "loop": {
+        "static_instructions": 213,
+        "opcode_counts": {
+          "BRA": 1,
+          "IADD3": 11,
+          "IMAD.IADD": 54,
+          "IMAD.SHL.U32": 53,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "ISETP.GE.AND": 1,
+          "LDSM.16.M88.4": 16,
+          "NOP": 2,
+          "SHF.L.U32": 11
+        },
+        "max_live_gpr": 151,
+        "begin_pc": "0x13c0",
+        "end_pc": "0x2100"
+      }
+    },
+    "adangel_capacity_scaled_shared_shell": {
+      "symbol": "adangel_capacity_scaled_shared_shell",
+      "allocated_gpr": 168,
+      "loop": {
+        "static_instructions": 300,
+        "opcode_counts": {
+          "BRA": 1,
+          "CALL.REL.NOINC": 1,
+          "IMAD": 128,
+          "IMAD.SHL.U32": 55,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "LDL.LU": 3,
+          "LDS": 4,
+          "LDS.64": 8,
+          "LDSM.16.M88.4": 16,
+          "PLOP3.LUT": 1,
+          "SHF.L.U32": 9,
+          "STL": 3,
+          "UIADD3": 1,
+          "UISETP.GE.AND": 1,
+          "ULDC": 1,
+          "ULOP3.LUT": 2,
+          "USHF.L.U32": 2
+        },
+        "max_live_gpr": 164,
+        "begin_pc": "0x1ef0",
+        "end_pc": "0x31a0"
+      }
+    }
+  },
+  "control_comparison": {
+    "passed": true,
+    "missing": [],
+    "changed": [],
+    "old_symbols": 1,
+    "new_symbols": 1,
+    "unchanged": [
+      "adangel_roof_o78_eight_chain_candidate"
+    ],
+    "scope": "exact_SASS_words_of_matched_old_entries_not_full_binary_or_performance"
+  },
+  "entries": {
+    "adangel_capacity_scaled_shared_shell": {
+      "instructions": 992,
+      "opcode_counts": {
+        "IMAD": 318,
+        "S2R": 10,
+        "BSSY": 8,
+        "IADD3": 82,
+        "ISETP": 21,
+        "BRA": 23,
+        "IMNMX": 4,
+        "LEA": 57,
+        "LOP3": 79,
+        "SHF": 68,
+        "SEL": 5,
+        "STS": 25,
+        "BSYNC": 8,
+        "MOV": 3,
+        "BAR": 1,
+        "CS2R": 61,
+        "ULDC": 2,
+        "STL": 6,
+        "UMOV": 1,
+        "LDSM": 16,
+        "USHF": 2,
+        "ULOP3": 2,
+        "IMMA": 64,
+        "LDS": 12,
+        "LDL": 3,
+        "UIADD3": 1,
+        "UISETP": 1,
+        "PLOP3": 1,
+        "CALL": 1,
+        "I2F": 64,
+        "STG": 32,
+        "EXIT": 1,
+        "NOP;": 10
+      },
+      "copies": [],
+      "all_copies_bypass_l1": false,
+      "native_u4_s4": true,
+      "native_s4_s4": true,
+      "int8_mma": false
+    },
+    "adangel_capacity_shared_shell": {
+      "instructions": 728,
+      "opcode_counts": {
+        "IMAD": 213,
+        "S2R": 5,
+        "BSSY": 4,
+        "ISETP": 15,
+        "SHF": 50,
+        "BRA": 13,
+        "IMNMX": 2,
+        "IADD3": 57,
+        "LEA": 36,
+        "LOP3": 50,
+        "SEL": 5,
+        "STS": 15,
+        "BSYNC": 4,
+        "MOV": 1,
+        "BAR": 1,
+        "CS2R": 64,
+        "ULDC": 1,
+        "LDSM": 16,
+        "IMMA": 64,
+        "NOP": 2,
+        "I2F": 64,
+        "STG": 32,
+        "EXIT": 1,
+        "NOP;": 13
+      },
+      "copies": [],
+      "all_copies_bypass_l1": false,
+      "native_u4_s4": true,
+      "native_s4_s4": true,
+      "int8_mma": false
+    },
+    "adangel_capacity_register_shell": {
+      "instructions": 720,
+      "opcode_counts": {
+        "IMAD": 213,
+        "S2R": 5,
+        "BSSY": 4,
+        "ISETP": 15,
+        "SHF": 48,
+        "BRA": 13,
+        "IMNMX": 2,
+        "IADD3": 58,
+        "LEA": 36,
+        "LOP3": 50,
+        "SEL": 5,
+        "STS": 15,
+        "BSYNC": 4,
+        "MOV": 1,
+        "BAR": 1,
+        "ULDC": 1,
+        "CS2R": 64,
+        "LDSM": 16,
+        "IMMA": 64,
+        "I2F": 64,
+        "STG": 32,
+        "EXIT": 1,
+        "NOP;": 8
+      },
+      "copies": [],
+      "all_copies_bypass_l1": false,
+      "native_u4_s4": true,
+      "native_s4_s4": true,
+      "int8_mma": false
+    }
+  },
+  "compile_gate": {
+    "passed": false,
+    "checks": [
+      {
+        "symbol": "adangel_capacity_register_shell",
+        "native_two_INT4_routes": true,
+        "expected_LDSM": true,
+        "no_hot_local": true,
+        "no_hot_barrier": true,
+        "no_hot_global_copy": true,
+        "allocated_at_most168": true
+      },
+      {
+        "symbol": "adangel_capacity_shared_shell",
+        "native_two_INT4_routes": true,
+        "expected_LDSM": true,
+        "no_hot_local": true,
+        "no_hot_barrier": true,
+        "no_hot_global_copy": true,
+        "allocated_at_most168": true
+      },
+      {
+        "symbol": "adangel_capacity_scaled_shared_shell",
+        "native_two_INT4_routes": true,
+        "expected_LDSM": true,
+        "no_hot_local": false,
+        "no_hot_barrier": true,
+        "no_hot_global_copy": true,
+        "allocated_at_most168": true
+      }
+    ],
+    "runtime_gate": "CUDA query must confirm3 resident CTAs/SM; checksum before timings"
+  },
+  "extension_sha256_after": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "artifact_sha256": {
+    "liveness.txt": "3f4500dce1ec6b2658d191c68f0fccc6f3992405e5b7d9064674f3f1d96c9f17",
+    "o78_shell_capacity.ptx": "62c47bcc10a422ef81ef1cc97e6e1d401988ffa62c2b97139ac486d622e61889",
+    "o78_shell_capacity.sass": "3e2b9ef7bdbaf55b4f2e824f71c014711d0c2bd429ecb5549f96827c3e35763b",
+    "resources.txt": "0734ea73fe141ff72303a3bb1fc076f6b5472633b5a6b07adaac82b45317e3fb",
+    "ptx_build.log": "dd99ecaee55a55cbd2cbd15b44ab9b5003ebccb7891327ade26d1cbb49a8d4a4",
+    "o78_shell_generated.cuh": "97861a82fa07f9fe2cc64728867f3657d44dac3229cbcbbf28ba6d94c67616c1",
+    "o78_shell_capacity.cubin": "59b2037da160a40daee6e4cfc9eb4c6d32be7159b61e55d8693305a61034fcc5",
+    "o78_eight_chain_generated.cuh": "6d4510513f07e6b1645bc3e51d4936935c734a06bf971a72a7a4b4685b260156",
+    "build.log": "648c3c2d737833d7c1a9036e5efec3d4b44170fba424e6936bbdd10ae64cca77"
+  }
+}
