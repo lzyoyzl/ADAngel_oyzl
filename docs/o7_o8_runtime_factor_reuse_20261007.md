@@ -9,7 +9,10 @@ v78每线程有4个输出行×16列，共64次 `A_factor*W_factor` 和64次parti
 若4行因子相同，可每列只形成一次系数，理论系数乘法64→16；
 若全部为1，系数可直接使用W factor。不同lane的偶然相等不等于整warp少发指令，
 因此同时统计每lane和整warp的4个因子向量是否相同。
-现有CuTe类型经新Host-only坐标校验确认，再据此统计，禁止猜测lane映射。
+先用现有CuTe类型进行Host-only坐标校验，再据此统计，禁止猜测lane映射。
+首个坐标gate拦住了脚本的错误M32分组，尚未统计真实数据或启动GEMM；保留失败日志。
+修正为实际M16 atom×M2 warp布局：每线程行offset为0/8/32/40，M warp起点0或16，
+而不是0/8/16/24。完整覆盖及逐线程坐标校验通过后才接受统计。
 
 直接24个真实样本、原始FP16激活量化、原v99 source全字段SHA核对；
 复用原精确factor/anchor与GPU row guard，保存压缩factor/code/范数供CPU重放。

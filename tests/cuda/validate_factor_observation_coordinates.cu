@@ -32,9 +32,13 @@ int main() {
         assert(covered.insert(int(cute::get<0>(p))*128+int(cute::get<1>(p))).second);
       }
       assert(rows.size()==4);
-      const int first=*rows.begin(),base=(first/32)*32,offset=first%32;
+      const int first=*rows.begin(),base=(first/16)*16,offset=first%16;
       assert(offset<8);
-      assert(rows==std::set<int>({first,first+8,first+16,first+24}));
+      if(rows!=std::set<int>({first,first+8,first+32,first+40})) {
+        std::cerr << "unexpected warp/lane " << warp << '/' << lane << " rows:";
+        for(int row:rows)std::cerr << ' ' << row;
+        std::cerr << '\n';return 1;
+      }
       if(lane==0) bases[warp]=base;
       assert(base==bases[warp]);++quads[offset];
     }
@@ -42,9 +46,9 @@ int main() {
     for(auto [offset,count]:quads) assert(count==4);
   }
   assert(covered.size()==8192);
-  assert(std::multiset<int>(bases,bases+4)==std::multiset<int>({0,0,32,32}));
+  assert(std::multiset<int>(bases,bases+4)==std::multiset<int>({0,0,16,16}));
   std::cout << "{\"passed\":true,\"gpu_execution\":false,\"outputs\":8192,"
-    "\"rows_per_thread\":4,\"quad_offsets\":[0,8,16,24],\"quad_bases_per_warp\":8,"
+    "\"rows_per_thread\":4,\"quad_offsets\":[0,8,32,40],\"quad_bases_per_warp\":8,"
     "\"lanes_per_quad\":4,\"warp_m_bases\":[";
   for(int i=0;i<4;++i) std::cout << (i?",":"") << bases[i];
   std::cout << "]}\n";

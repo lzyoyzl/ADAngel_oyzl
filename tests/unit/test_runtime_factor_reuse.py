@@ -19,8 +19,8 @@ def test_uniform_vectors_and_trivial_units():
 
 
 def test_per_lane_equality_is_not_SIMD_instruction_savings():
-    f=np.full((1,32),2,dtype=np.int32);st=np.zeros(32,dtype=np.uint32)
-    f[0,8]=3
+    f=np.full((1,64),2,dtype=np.int32);st=np.zeros(64,dtype=np.uint32)
+    f[0,[8,24]]=3
     x=factor_observation(f,st)
     assert x['per_lane_same4_fraction']==7/8
     assert x['warp_same4_fraction']==0
@@ -28,11 +28,20 @@ def test_per_lane_equality_is_not_SIMD_instruction_savings():
 
 
 def test_vector_equivalence_is_not_one_common_scalar():
-    f=np.tile(np.arange(2,10,dtype=np.int32),4).reshape(1,32)
-    x=factor_observation(f,np.zeros(32,dtype=np.uint32))
+    f=np.tile(np.arange(2,10,dtype=np.int32),8).reshape(1,64)
+    x=factor_observation(f,np.zeros(64,dtype=np.uint32))
     assert x['warp_same4_fraction']==1 and x['same4_mean_saved_coefficient_imad']==48
-    f=np.vstack((np.repeat([2,3,4,5],8),)).astype(np.int32)
-    assert factor_observation(f,np.zeros(32,dtype=np.uint32))['ideal_any_pattern_mean_saved_coefficient_imad']==0
+    f=np.repeat([2,3,2,3,4,5,4,5],8).reshape(1,64).astype(np.int32)
+    assert factor_observation(f,np.zeros(64,dtype=np.uint32))['ideal_any_pattern_mean_saved_coefficient_imad']==0
+
+
+def test_actual_M16_warp_layout_repeats_at_M32_not_M16():
+    f=np.repeat([2,2,3,3,2,2,3,3],8).reshape(1,64).astype(np.int32)
+    x=factor_observation(f,np.zeros(64,dtype=np.uint32))
+    assert x['quad_offsets']==[0,8,32,40]
+    assert x['warp_same4_fraction']==1
+    f[0,32]=7
+    assert factor_observation(f,np.zeros(64,dtype=np.uint32))['warp_same4_fraction']==.5
 
 
 def test_unrepresentable_rows_excluded_without_hiding_cost():

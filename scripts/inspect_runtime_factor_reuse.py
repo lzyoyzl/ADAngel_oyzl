@@ -24,13 +24,19 @@ LOOP_INSTRUCTIONS=383
 
 def factor_observation(factors,row_status):
     f=np.asarray(factors);st=np.asarray(row_status)
-    if f.dtype!=np.int32 or f.ndim!=2 or not f.size or f.shape[1]%32 or np.any(f<0):
-        raise ValueError('nonnegative group-major INT32 factors and M32 alignment required')
+    if f.dtype!=np.int32 or f.ndim!=2 or not f.size or f.shape[1]%64 or np.any(f<0):
+        raise ValueError('nonnegative group-major INT32 factors and M64 alignment required')
     if st.shape!=(f.shape[1],) or st.dtype!=np.uint32 or np.any(st>2):
         raise ValueError('exact row-status vector required')
-    # Host CuTe verifier checks [base+r, base+r+8, base+r+16, base+r+24].
-    panels=f.reshape(f.shape[0],-1,4,8).reshape(-1,4,8)
-    valid_rows=(st==0).reshape(-1,32).all(-1)
+    # Atom M16, warp-layout M2: mi advances by32, not16.
+    # Unique M-warps in CTA64 start at0/16; quad offsets0/8/32/40.
+    # Host CuTe verifier must confirm this before real-data observation.
+    indices=(np.arange(f.shape[1]//64)[:,None,None,None]*64+
+             np.asarray([0,16])[None,:,None,None]+
+             np.asarray([0,8,32,40])[None,None,:,None]+
+             np.arange(8)[None,None,None,:])
+    panels=f[:,indices].reshape(-1,4,8)
+    valid_rows=(st[indices]==0).all(-1).all(-1).reshape(-1)
     valid=np.tile(valid_rows,f.shape[0]);p=panels[valid]
     if not len(p):raise ValueError('no representable warp panels')
     is_new=np.ones((len(p),4),dtype=bool)
@@ -48,7 +54,7 @@ def factor_observation(factors,row_status):
     q_nontrivial=(q_new&(q!=0)&(q!=1)).sum(-1)
     hist=lambda x,size:np.bincount(x,minlength=size).tolist()
     return dict(shape=list(f.shape),warp_panels=int(len(panels)),representable_warp_panels=int(len(p)),
-        excluded_warp_panels=int((~valid).sum()),quad_offsets=[0,8,16,24],
+        excluded_warp_panels=int((~valid).sum()),quad_offsets=[0,8,32,40],
         per_lane_nontrivial_unique_histogram=hist(q_nontrivial,5),
         warp_nontrivial_unique_vector_histogram=hist(nontrivial,5),
         warp_same4_panels=int(same4.sum()),warp_same4_fraction=float(same4.mean()),
