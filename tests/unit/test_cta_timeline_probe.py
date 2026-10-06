@@ -1,4 +1,3 @@
-import importlib.util
 from pathlib import Path
 import sys
 import numpy as np
@@ -68,3 +67,8 @@ def test_capacity_gate_rejects_new_spill_or_registers():
     assert not instrumentation_gate(old,dict(old,allocated_gpr=176))['passed']
     newloop=dict(loop,opcode_counts=dict(loop['opcode_counts'],LDL=1))
     assert not instrumentation_gate(old,dict(old,loops=[newloop]))['passed']
+
+
+def test_guard_uint32_reduction_is_untimed_host_check():
+    source=(ROOT/'scripts/profile_cta_timeline.py').read_text()
+    assert 'np.any(status.cpu().numpy())' in source and 'status.any()' not in source

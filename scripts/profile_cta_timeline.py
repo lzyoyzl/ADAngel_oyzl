@@ -146,7 +146,9 @@ def main():
             status=torch.empty(n//128,device='cuda',dtype=torch.uint32)
             preparation=driver.open(built[1],'adangel_roof_factor_prepare',0)
             driver.launch(preparation,[r['converted_weight_scale'].data_ptr(),meta.data_ptr(),status.data_ptr(),n],(n//128,1))
-            assert not bool(status.any()),'diagnostic selects sample with all integer CTA guards'
+            # PyTorch2.7 CUDA has no UInt32 any/or reduction. This host guard
+            # check is outside all timed/captured launches; do not alter flags.
+            assert not np.any(status.cpu().numpy()),'diagnostic selects sample with all integer CTA guards'
             fp=native.benchmark_o0(prepared.A_int8,prepared.A_scale,prepared.W_mxfp4,
                 prepared.W_scale,'compute_only',0,1,2)['output']
             args=[r['packed_activation_g128_major'].data_ptr(),r['packed_weight_g128_major'].data_ptr(),
