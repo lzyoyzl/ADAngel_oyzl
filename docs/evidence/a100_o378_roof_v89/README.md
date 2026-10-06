@@ -5,6 +5,8 @@
 本目录完整保留首次/复测原始 JSONL、统计、GPU 监测、两份同 entry PTX/SASS/
 资源/存活审计、O3 四模式与有限 sanitizer 记录；没有筛掉高 CV 或较慢记录。
 Git 不提交 CUBIN/driver 二进制，它们在完整归档及 A100 原目录中保留。
+O3 各次运行的 `build/grouped_build.json` 是构建身份文本，单独纳入 Git；
+它们不应随可再生成的 build 二进制一起被忽略，离线复核必须包含这些收据。
 
 完整归档：`tmp/o378_v89_complete2.tar.gz`，两端 SHA256 一致：
 `a1e6e2d8027e99a76a461e01ba608f1c256d25d60e4bf42100897ceeccf41a6f`。
