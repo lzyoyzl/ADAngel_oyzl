@@ -1,0 +1,120 @@
+layer_00_q_proj exact sources and lossless pair statistics passed
+layer_00_k_proj exact sources and lossless pair statistics passed
+layer_00_v_proj exact sources and lossless pair statistics passed
+layer_00_o_proj exact sources and lossless pair statistics passed
+layer_06_q_proj exact sources and lossless pair statistics passed
+layer_06_k_proj exact sources and lossless pair statistics passed
+layer_06_v_proj exact sources and lossless pair statistics passed
+layer_06_o_proj exact sources and lossless pair statistics passed
+layer_12_q_proj exact sources and lossless pair statistics passed
+layer_12_k_proj exact sources and lossless pair statistics passed
+layer_12_v_proj exact sources and lossless pair statistics passed
+layer_12_o_proj exact sources and lossless pair statistics passed
+layer_18_q_proj exact sources and lossless pair statistics passed
+layer_18_k_proj exact sources and lossless pair statistics passed
+layer_18_v_proj exact sources and lossless pair statistics passed
+layer_18_o_proj exact sources and lossless pair statistics passed
+layer_24_q_proj exact sources and lossless pair statistics passed
+layer_24_k_proj exact sources and lossless pair statistics passed
+layer_24_v_proj exact sources and lossless pair statistics passed
+layer_24_o_proj exact sources and lossless pair statistics passed
+layer_31_q_proj exact sources and lossless pair statistics passed
+layer_31_k_proj exact sources and lossless pair statistics passed
+layer_31_v_proj exact sources and lossless pair statistics passed
+layer_31_o_proj exact sources and lossless pair statistics passed
+{
+  "scope": "read_only_full24_Q4_data_feasibility_not_GPU_performance",
+  "records": 72,
+  "variants": [
+    {
+      "variant": "o3",
+      "samples": 24,
+      "statistics": {
+        "q4_zero_fraction": {
+          "median": 0.31035295128822327,
+          "min": 0.2733885645866394,
+          "max": 0.6496444940567017
+        },
+        "minimum_residual_fraction": {
+          "median": 0.24579623341560364,
+          "min": 0.09069502353668213,
+          "max": 0.2688552737236023
+        },
+        "chunks_requiring_residual_fraction": {
+          "median": 0.9407224655151367,
+          "min": 0.44155025482177734,
+          "max": 0.9601812362670898
+        },
+        "g128_without_residual_fraction": {
+          "median": 0.00041961669921875,
+          "min": 0.0,
+          "max": 0.224853515625
+        }
+      },
+      "scalar_model_median_ms": 0.8665671657473075,
+      "ideal_vector_model_median_ms": 0.21664179143682688
+    },
+    {
+      "variant": "o7",
+      "samples": 24,
+      "statistics": {
+        "q4_zero_fraction": {
+          "median": 0.2814100980758667,
+          "min": 0.27546238899230957,
+          "max": 0.6319282650947571
+        },
+        "minimum_residual_fraction": {
+          "median": 0.2627430856227875,
+          "min": 0.0968395471572876,
+          "max": 0.2663339376449585
+        },
+        "chunks_requiring_residual_fraction": {
+          "median": 0.9615130424499512,
+          "min": 0.47005271911621094,
+          "max": 0.9660539627075195
+        },
+        "g128_without_residual_fraction": {
+          "median": 0.000278472900390625,
+          "min": 0.0,
+          "max": 0.1974334716796875
+        }
+      },
+      "scalar_model_median_ms": 0.9263141581297609,
+      "ideal_vector_model_median_ms": 0.23157853953244023
+    },
+    {
+      "variant": "o8",
+      "samples": 24,
+      "statistics": {
+        "q4_zero_fraction": {
+          "median": 0.21365287899971008,
+          "min": 0.20810991525650024,
+          "max": 0.5329849123954773
+        },
+        "minimum_residual_fraction": {
+          "median": 0.3102906048297882,
+          "min": 0.1388721466064453,
+          "max": 0.31402069330215454
+        },
+        "chunks_requiring_residual_fraction": {
+          "median": 0.9848883152008057,
+          "min": 0.615382194519043,
+          "max": 0.9873390197753906
+        },
+        "g128_without_residual_fraction": {
+          "median": 0.000102996826171875,
+          "min": 0.0,
+          "max": 0.1033172607421875
+        }
+      },
+      "scalar_model_median_ms": 1.09394536380352,
+      "ideal_vector_model_median_ms": 0.27348634095088
+    }
+  ],
+  "production_default_changed": false,
+  "pruning_performed": false,
+  "new_MSE_measured": false,
+  "new_GEMM_measured": false,
+  "residual_format_or_kernel_implemented": false,
+  "ptx_rule": "https://docs.nvidia.com/cuda/archive/12.8.0/parallel-thread-execution/index.html#sparse-matrix-storage"
+}

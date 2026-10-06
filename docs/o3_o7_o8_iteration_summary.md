@@ -1,5 +1,16 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v103：查重后检查无损 paired sparse，残差过多，停止标量路线
+
+未重复 tile/stage/cache/producer/partial/全K/atom 方案；只检查新的主项稀疏＋精确残差机制。
+遵循 INT4 的 paired 4:8，不剪枝，不改 G128 或定点值。直接 24×3 完整权重检查，
+48 个 O7/O8 weight source SHA 与 v99 一致，O3 prepared Q4 与当前转换一致。
+最少残差占全权重的中位数为 24.58/26.27/31.03%，约94.07/96.15/98.49%的8元素块需补回。
+有利标量模型仅残差即约0.867/0.926/1.094ms；不是GPU性能或完整kernel peak。
+停止这一标量残差路线，不扩 CUDA/NCU/Event/MSE/四模式；也不据此否定所有向量/重排方案。
+当前最佳、默认、正式扩展及5090不变，目标未达到。
+[v103查重、数据与停止依据](o3_o7_o8_sparse_feasibility_20261007.md)。
+
 ## v102：新小INT4 atom诊断不具潜力，停止路线，不更新最佳
 
 先核对源码/ledger，未重复tile/stage/cache/producer/地址/partial数组等已测机制。
