@@ -64,3 +64,39 @@ def test_history_gates_are_explicit():
     assert 'improvement>=.05' in source
     assert "ops.get('SHFL.IDX',0)>=16" in source
     assert "b['registers']<=a['registers']" in source
+
+
+def test_runtime_compares_preparation_not_GEMM_and_requires_full24():
+    path=ROOT/'scripts/benchmark_o7_warp_lut.py'
+    source=path.read_text()
+    assert 'self.handles[0]=self.handles[1]' in source
+    assert 'negative compile gate; do not launch candidate' in source
+    assert "variants=('o7',)" in source
+    assert 'full24 only; no small performance screen' in source
+    assert 'full_v99_source_identity_equal=True' in source
+    assert "if any(row!=old[row['sample_id']] for row in rows)" in source
+
+
+def test_runtime_uses_original_direct_and_amortized_timing(monkeypatch):
+    from types import SimpleNamespace
+    import numpy as np
+    import benchmark_o7_warp_lut as runtime
+    calls=[]
+    def invoke(*args):
+        calls.append(args)
+        for i in range(len(args[-1])):args[-1][i]=1.
+        if args[3]==0:
+            for i in range(args[-4]):args[-1][3*args[-4]+i]=2.
+        return 0
+    monkeypatch.setitem(sys.modules,'torch',SimpleNamespace(cuda=SimpleNamespace(
+        current_stream=lambda:SimpleNamespace(cuda_stream=7))))
+    driver=object.__new__(runtime.Driver)
+    driver.handles={0:11,1:11,2:22}
+    driver.lib=SimpleNamespace(roof_o78_warp_lut_benchmark=invoke)
+    case=SimpleNamespace(variant='o7',oracle={'status_flat':np.array([0])},
+        a_source=1,w_source=2,state_pointers=3,m=64,n=128,a_multiplier=4.,w_multiplier=1.,state={'y':'out'})
+    for mode in runtime.eight.base.MODES:
+        for policy in (0,1,2):driver.run(case,policy,mode,50,2,100)
+    assert [c[0] for c in calls]==[11,11,22]*4
+    assert [c[2] for c in calls]==[0,1,0]*4
+    assert all(c[-3]==100 for c in calls)
