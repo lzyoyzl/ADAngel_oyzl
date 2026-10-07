@@ -1,0 +1,398 @@
+{
+  "scope": "v115_scalar_DP2A_lowering_and_full24_scale_range_gate",
+  "source_commit": "7def7c9f584b4e47a4e0d1f32bab4ac791bf5f65",
+  "source_hashes": {
+    "tests/cuda/probe_dp2a_recompose.cu": "d349646a02daa526e036fe3c69665edd18fe7cbfd6130f1720de67a81eafe59f",
+    "scripts/probe_dp2a_recompose.py": "65c6601f82b946de4cc93664b5cb39675a400c89c288257426e4f43c061aa83e"
+  },
+  "references": [
+    "https://docs.nvidia.com/cuda/archive/12.8.0/parallel-thread-execution/index.html#integer-arithmetic-instructions-dp2a"
+  ],
+  "data_summary": [
+    {
+      "variant": "o3",
+      "samples": 24,
+      "mean_coverage": 0.8072916666666666,
+      "coverage_kind": "scale-range fraction",
+      "minimum_coverage": 0.5,
+      "data_gate": true
+    },
+    {
+      "variant": "o7",
+      "samples": 24,
+      "mean_coverage": 0.1171875,
+      "coverage_kind": "conditional A-only upper bound (W_factor>=1)",
+      "minimum_coverage": 0.5,
+      "data_gate": false
+    },
+    {
+      "variant": "o8",
+      "samples": 24,
+      "mean_coverage": 0.0,
+      "coverage_kind": "conditional A-only upper bound (W_factor>=1)",
+      "minimum_coverage": 0.5,
+      "data_gate": false
+    }
+  ],
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "-arch=sm_80",
+      "-lineinfo",
+      "/home/zlouyang/ADAngel_oyzl/tests/cuda/probe_dp2a_recompose.cu",
+      "-cubin",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v115_dp2a_cost/dp2a_recompose.cubin",
+      "-Xptxas=-v"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "-arch=sm_80",
+      "-lineinfo",
+      "/home/zlouyang/ADAngel_oyzl/tests/cuda/probe_dp2a_recompose.cu",
+      "-ptx",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v115_dp2a_cost/dp2a_recompose.ptx"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-sass",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v115_dp2a_cost/dp2a_recompose.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-resource-usage",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v115_dp2a_cost/dp2a_recompose.cubin"
+    ]
+  ],
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "low_dot_abs_bound": 15360,
+  "high_dot_abs_bound": 8192,
+  "coefficient_limit": 15,
+  "source_quantization_unchanged": true,
+  "production_default_changed": false,
+  "candidate_GEMM_implemented": false,
+  "candidate_GPU_launched": false,
+  "new_performance_result": false,
+  "new_MSE_result": false,
+  "formal_extension_sha256_before": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "entries": {
+    "adangel_scalar_recompose_cost": {
+      "instructions": [
+        {
+          "pc": "0x0",
+          "instruction": "MOV R1, c[0x0][0x28]"
+        },
+        {
+          "pc": "0x10",
+          "instruction": "S2R R10, SR_CTAID.X"
+        },
+        {
+          "pc": "0x20",
+          "instruction": "HFMA2.MMA R11, -RZ, RZ, 0, 2.384185791015625e-07"
+        },
+        {
+          "pc": "0x30",
+          "instruction": "ULDC.64 UR4, c[0x0][0x118]"
+        },
+        {
+          "pc": "0x40",
+          "instruction": "S2R R3, SR_TID.X"
+        },
+        {
+          "pc": "0x50",
+          "instruction": "IMAD R10, R10, c[0x0][0x0], R3"
+        },
+        {
+          "pc": "0x60",
+          "instruction": "IMAD.WIDE R4, R10, R11, c[0x0][0x160]"
+        },
+        {
+          "pc": "0x70",
+          "instruction": "IMAD.WIDE R6, R10.reuse, R11.reuse, c[0x0][0x168]"
+        },
+        {
+          "pc": "0x80",
+          "instruction": "LDG.E R4, [R4.64]"
+        },
+        {
+          "pc": "0x90",
+          "instruction": "IMAD.WIDE R2, R10.reuse, R11.reuse, c[0x0][0x178]"
+        },
+        {
+          "pc": "0xa0",
+          "instruction": "LDG.E R7, [R6.64]"
+        },
+        {
+          "pc": "0xb0",
+          "instruction": "IMAD.WIDE R8, R10.reuse, R11.reuse, c[0x0][0x170]"
+        },
+        {
+          "pc": "0xc0",
+          "instruction": "LDG.E R2, [R2.64]"
+        },
+        {
+          "pc": "0xd0",
+          "instruction": "LDG.E R8, [R8.64]"
+        },
+        {
+          "pc": "0xe0",
+          "instruction": "IMAD.WIDE R10, R10, R11, c[0x0][0x180]"
+        },
+        {
+          "pc": "0xf0",
+          "instruction": "LEA R13, R7, R4, 0x4"
+        },
+        {
+          "pc": "0x100",
+          "instruction": "IMAD R13, R13, R8, R2"
+        },
+        {
+          "pc": "0x110",
+          "instruction": "STG.E [R10.64], R13"
+        },
+        {
+          "pc": "0x120",
+          "instruction": "EXIT"
+        },
+        {
+          "pc": "0x130",
+          "instruction": "BRA 0x130"
+        },
+        {
+          "pc": "0x140",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x150",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x160",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x170",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x180",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x190",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1a0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1b0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1c0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1d0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1e0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1f0",
+          "instruction": "NOP"
+        }
+      ],
+      "opcode_counts": {
+        "MOV": 1,
+        "S2R": 2,
+        "HFMA2.MMA": 1,
+        "ULDC.64": 1,
+        "IMAD": 2,
+        "IMAD.WIDE": 5,
+        "LDG.E": 4,
+        "LEA": 1,
+        "STG.E": 1,
+        "EXIT": 1,
+        "BRA": 1,
+        "NOP": 12
+      }
+    },
+    "adangel_dp2a_recompose_cost": {
+      "instructions": [
+        {
+          "pc": "0x0",
+          "instruction": "MOV R1, c[0x0][0x28]"
+        },
+        {
+          "pc": "0x10",
+          "instruction": "S2R R10, SR_CTAID.X"
+        },
+        {
+          "pc": "0x20",
+          "instruction": "HFMA2.MMA R11, -RZ, RZ, 0, 2.384185791015625e-07"
+        },
+        {
+          "pc": "0x30",
+          "instruction": "ULDC.64 UR4, c[0x0][0x118]"
+        },
+        {
+          "pc": "0x40",
+          "instruction": "S2R R3, SR_TID.X"
+        },
+        {
+          "pc": "0x50",
+          "instruction": "IMAD R10, R10, c[0x0][0x0], R3"
+        },
+        {
+          "pc": "0x60",
+          "instruction": "IMAD.WIDE R2, R10, R11, c[0x0][0x160]"
+        },
+        {
+          "pc": "0x70",
+          "instruction": "IMAD.WIDE R4, R10.reuse, R11.reuse, c[0x0][0x168]"
+        },
+        {
+          "pc": "0x80",
+          "instruction": "LDG.E R2, [R2.64]"
+        },
+        {
+          "pc": "0x90",
+          "instruction": "IMAD.WIDE R6, R10.reuse, R11.reuse, c[0x0][0x170]"
+        },
+        {
+          "pc": "0xa0",
+          "instruction": "LDG.E R5, [R4.64]"
+        },
+        {
+          "pc": "0xb0",
+          "instruction": "IMAD.WIDE R8, R10.reuse, R11.reuse, c[0x0][0x178]"
+        },
+        {
+          "pc": "0xc0",
+          "instruction": "LDG.E R7, [R6.64]"
+        },
+        {
+          "pc": "0xd0",
+          "instruction": "LDG.E R8, [R8.64]"
+        },
+        {
+          "pc": "0xe0",
+          "instruction": "IMAD.WIDE R10, R10, R11, c[0x0][0x180]"
+        },
+        {
+          "pc": "0xf0",
+          "instruction": "PRMT R0, R2, 0x5410, R5"
+        },
+        {
+          "pc": "0x100",
+          "instruction": "IDP.2A.LO.S16.U8 R13, R0, R7, R8"
+        },
+        {
+          "pc": "0x110",
+          "instruction": "STG.E [R10.64], R13"
+        },
+        {
+          "pc": "0x120",
+          "instruction": "EXIT"
+        },
+        {
+          "pc": "0x130",
+          "instruction": "BRA 0x130"
+        },
+        {
+          "pc": "0x140",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x150",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x160",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x170",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x180",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x190",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1a0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1b0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1c0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1d0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1e0",
+          "instruction": "NOP"
+        },
+        {
+          "pc": "0x1f0",
+          "instruction": "NOP"
+        }
+      ],
+      "opcode_counts": {
+        "MOV": 1,
+        "S2R": 2,
+        "HFMA2.MMA": 1,
+        "ULDC.64": 1,
+        "IMAD": 1,
+        "IMAD.WIDE": 5,
+        "LDG.E": 4,
+        "PRMT": 1,
+        "IDP.2A.LO.S16.U8": 1,
+        "STG.E": 1,
+        "EXIT": 1,
+        "BRA": 1,
+        "NOP": 12
+      }
+    }
+  },
+  "isa_gate": {
+    "native_s16_u8_dp2a": true,
+    "exactly_one_dot_instruction": true,
+    "native_dot_count": 1,
+    "all_dot_count": 1,
+    "passed": true,
+    "scope": "scalar ISA gate only; still need complete MMA/guard/resource/24sample/MSE/timing acceptance"
+  },
+  "formal_extension_sha256_after": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "decision": "complete_one_O3_GEMM_candidate_if_both_gates_pass_else_stop",
+  "proceed_with_O3_GEMM": true,
+  "artifact_sha256": {
+    "dp2a_recompose.cubin": "3253100864ad7f28cf760597ba930d6a116803aafa171012478749a05d6763b1",
+    "dp2a_recompose.sass": "5a1c5be605b53ef99abccb8d4b688e9b7d19db0612bcdc5ec5179708a537bd52",
+    "ptx_build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "resources.txt": "0f5108ad3e0cbe24ce1b3eb6e717285d11d3117163b63094b48db63cb74e5f5c",
+    "data_rows.jsonl": "b5aa5056a6b68ccd1786f6f63c97b637e51260a3f936083d0c600deffdf69086",
+    "dp2a_recompose.ptx": "4fa608e3c1af74bb9dcb1abbdf65d0ddb922a69ea0634ae5d63b8d6c46ba5fd6",
+    "build.log": "080b45556fa58e394ed730da94b254c2a2ecfc1646791465f320568db34fb57d"
+  }
+}
