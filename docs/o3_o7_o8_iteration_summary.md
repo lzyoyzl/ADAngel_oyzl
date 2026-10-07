@@ -1,5 +1,16 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v120：固定CTA异构调度，编译gate失败即停止
+
+先核对v63/v78/v92/v96/v97、v41/v89/v104/v119；不重测统一链数、producer、tile顺序或asm。
+仅固定1/3 CTA四链、2/3八链，分派在完整K循环之外；没有比例/seed参数扫描。
+原控制完整SASS相同，各新路径同entry双原生INT4、LDSM/cg copy/barrier保持。
+循环383→368/367，但新增4/3条热LDL.64，源码四链实际静态链峰值为6；168regs不变。
+未通过预设结构/零热localgate，停止，不扩大性能/NCU、不运行候选或O3迁移。
+14份文本/生成header/环境记录及原始SHA冻结，本地/A100的15项CPU测试通过，非GPU验收。
+无新Event/MSE/conversion/端到端成绩；最佳/正式默认/扩展/5090不改，主目标尚未达到。
+[v120结果、查重及证据](o7_o8_cta_phase_mix_20261007.md)。
+
 ## v119：新纯寄存器MMA编译依赖，完整SASS相同，停止
 
 查重后不重复既有链调度、固定high路由或tile/pipeline参数；只去除两个寄存器MMA的asm volatile。

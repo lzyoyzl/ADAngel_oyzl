@@ -1,0 +1,2834 @@
+{
+  "scope": "O7_O8_fixed_CTA_phase_mix_compile_gate_not_GPU_acceptance",
+  "source_commit": "9d9b8a103caff66318da3e2f63c3023c92bb97f8",
+  "sources": {
+    "csrc/sm80/o78_fullk_integer_probe.cuh": "8e7e2bd5718fa7bf637a67abbd89347ebe99863c81daf1da03e962b1174e11cc",
+    "csrc/sm80/o78_unsigned_payload_candidate.cuh": "899819e7d2eeb19acdca23cb9326846d8c674763fc57bc62e58a8cf8ee830a25",
+    "csrc/sm80/roof_o78_eight_chain_probe.cu": "c4fd0001f7fbd02f4756794bed85a125d949e9135ac28f16a2f24e966ef2bcd5",
+    "csrc/sm80/roof_o78_fullk_driver.cpp": "36422a6e0d37269ee0a324c53a3488c874bbee1b4c490da2e3b7b59628a5cd0b",
+    "csrc/sm80/roof_o78_fullk_probe.cu": "c463d24d9e17ae7972fa1fdd4b6f7543e64268e4bcae66b3b457d81afdb6d19e",
+    "csrc/sm80/roof_o78_phase_mixed_probe.cu": "fef91d0f33f3eca81e4019e6cb180f9c5e33b0eeb7a950732fcef8808092fccb",
+    "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9",
+    "scripts/compare_a100_codegen.py": "ebb2603e66143e037b5e076f6a88fdfc8f81d743fd30b994d5388d874c673653",
+    "scripts/inspect_eight_chain_schedule.py": "8a0bd31a628e9b541c69b1da7508f236c81221091e5024ed3c112ec167e08917",
+    "scripts/probe_o78_eight_chain_codegen.py": "df14edf4eb8b89f5bf8c2c61086f6a16a847be775d93aa0bf411d13506ad6a57",
+    "scripts/probe_o78_phase_mixed_codegen.py": "47994179700f0cd9a1ff08e11084bee83618a4379f76d924279742118d51815b"
+  },
+  "generated_sha256": {
+    "o78_eight_chain_generated.cuh": "6d4510513f07e6b1645bc3e51d4936935c734a06bf971a72a7a4b4685b260156",
+    "o78_four_chain_generated.cuh": "0fcb3783d15643bb03d39cb00acc65ce8515e2c8b50791ea837891cdb759570e"
+  },
+  "baseline_cubin_sha256": "08badf82c4538c2d3695ca0d53fa4082669db12038f356892bd5ec85d9d9c11a",
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+  "production_default_changed": false,
+  "cta_tile": [
+    64,
+    128,
+    128
+  ],
+  "threads": 128,
+  "stages": 2,
+  "shared_bytes": 34304,
+  "changed_math": false,
+  "changed_pipeline": false,
+  "supported_variants": [
+    "o7",
+    "o8"
+  ],
+  "limits": {
+    "max_allocated_gpr": 168,
+    "max_hot_local": 0,
+    "max_weighted_work_ratio": 1.03,
+    "required_mma_each": 32,
+    "required_ldsm": 16,
+    "required_async_copy": 10,
+    "four_chain_fraction": [
+      1,
+      3
+    ],
+    "minimum_active_ctas": 3
+  },
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-lineinfo",
+      "-arch=sm_80",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v120_codegen",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_phase_mixed_probe.cu",
+      "-cubin",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v120_codegen/o78_phase_mixed.cubin",
+      "-Xptxas=-v"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-lineinfo",
+      "-arch=sm_80",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v120_codegen",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_phase_mixed_probe.cu",
+      "-ptx",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v120_codegen/o78_phase_mixed.ptx"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-sass",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v120_codegen/o78_phase_mixed.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-resource-usage",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v120_codegen/o78_phase_mixed.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvdisasm",
+      "--print-code",
+      "--life-range-mode",
+      "count",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v120_codegen/o78_phase_mixed.cubin"
+    ]
+  ],
+  "cubin_sha256": "1fc22cfdde11d06ed112a8f43a73f097813203f8931d7886d68a2316526999a8",
+  "entries": {
+    "adangel_roof_o78_phase_mixed_candidate": {
+      "instructions": 3024,
+      "opcode_counts": {
+        "MOV": 24,
+        "S2UR": 2,
+        "ULDC": 13,
+        "IADD3": 334,
+        "USHF": 28,
+        "UMOV": 5,
+        "ULEA": 3,
+        "UIMAD": 14,
+        "LDG": 41,
+        "ISETP": 108,
+        "EXIT": 7,
+        "BRA": 10,
+        "S2R": 9,
+        "IMAD": 567,
+        "SHF": 153,
+        "LOP3": 213,
+        "LEA": 113,
+        "LDGSTS": 60,
+        "CS2R": 93,
+        "STL": 9,
+        "LDGDEPBAR": 6,
+        "ULOP3": 13,
+        "DEPBAR": 3,
+        "UIADD3": 3,
+        "UISETP": 6,
+        "BAR": 3,
+        "PLOP3": 6,
+        "LDL": 9,
+        "LDS": 51,
+        "LDSM": 48,
+        "IMMA": 192,
+        "CALL": 3,
+        "I2F": 192,
+        "FMUL": 320,
+        "STG": 288,
+        "FFMA": 64,
+        "NOP;": 11
+      },
+      "copies": [
+        "LDGSTS.E.BYPASS.128 [R153+0x200], [R156.64] ;",
+        "LDGSTS.E.BYPASS.128 [R153+0x2200], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R158+0x200], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R158+0x2200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R153+0x4200], [R18.64] ;",
+        "LDGSTS.E.BYPASS.128 [R158+0x4200], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R155+0x4200], [R16.64] ;",
+        "LDGSTS.E.BYPASS.128 [R154+0x4200], [R164.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R11], [R2.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R11+0x8200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35+0x200], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35+0x2200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x200], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x2200], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x4200], [R26.64] ;",
+        "LDGSTS.E.BYPASS.128 [R33+0x4200], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35+0x4200], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x4200], [R28.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R25], [R22.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R27+0x8200], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R153+0x200], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R153+0x2200], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3+0x200], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3+0x2200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R153+0x4200], [R26.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3+0x4200], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R4+0x4200], [R164.64] ;",
+        "LDGSTS.E.BYPASS.128 [R6+0x4200], [R162.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R11], [R14.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R11+0x8200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x200], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x2200], [R36.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x200], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x2200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R43+0x4200], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x4200], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x4200], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x4200], [R32.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R29], [R26.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R31+0x8200], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R144+0x200], [R18.64] ;",
+        "LDGSTS.E.BYPASS.128 [R144+0x2200], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R152+0x200], [R164.64] ;",
+        "LDGSTS.E.BYPASS.128 [R152+0x2200], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R144+0x4200], [R16.64] ;",
+        "LDGSTS.E.BYPASS.128 [R152+0x4200], [R162.64] ;",
+        "LDGSTS.E.BYPASS.128 [R151+0x4200], [R160.64] ;",
+        "LDGSTS.E.BYPASS.128 [R150+0x4200], [R158.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R51], [R2.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R51+0x8200], [R4.64] ;",
+        "LDGSTS.E.BYPASS.128 [R63+0x200], [R48.64] ;",
+        "LDGSTS.E.BYPASS.128 [R63+0x2200], [R50.64] ;",
+        "LDGSTS.E.BYPASS.128 [R65+0x200], [R52.64] ;",
+        "LDGSTS.E.BYPASS.128 [R65+0x2200], [R54.64] ;",
+        "LDGSTS.E.BYPASS.128 [R67+0x4200], [R48.64] ;",
+        "LDGSTS.E.BYPASS.128 [R63+0x4200], [R56.64] ;",
+        "LDGSTS.E.BYPASS.128 [R55+0x4200], [R50.64] ;",
+        "LDGSTS.E.BYPASS.128 [R65+0x4200], [R52.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R49], [R58.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R57+0x8200], [R60.64] ;"
+      ],
+      "all_copies_bypass_l1": true,
+      "native_u4_s4": true,
+      "native_s4_s4": true,
+      "int8_mma": false
+    },
+    "adangel_roof_o78_eight_chain_candidate": {
+      "instructions": 1976,
+      "opcode_counts": {
+        "MOV": 11,
+        "S2R": 17,
+        "ULDC": 7,
+        "IMAD": 370,
+        "USHF": 13,
+        "ULEA": 1,
+        "LDG": 21,
+        "ISETP": 74,
+        "EXIT": 5,
+        "SHF": 95,
+        "LOP3": 181,
+        "IADD3": 191,
+        "LEA": 72,
+        "BRA": 7,
+        "UIMAD": 4,
+        "LDGSTS": 40,
+        "CS2R": 62,
+        "UMOV": 2,
+        "LDGDEPBAR": 4,
+        "UIADD3": 1,
+        "DEPBAR": 2,
+        "UISETP": 2,
+        "BAR": 2,
+        "PLOP3": 2,
+        "ULOP3": 6,
+        "LDS": 33,
+        "LDSM": 32,
+        "IMMA": 128,
+        "CALL": 2,
+        "I2F": 128,
+        "FMUL": 192,
+        "STG": 192,
+        "FFMA": 64,
+        "NOP": 2,
+        "NOP;": 11
+      },
+      "copies": [
+        "LDGSTS.E.BYPASS.128 [R141+0x200], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x2200], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R9+0x200], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R9+0x2200], [R10.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x4200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R9+0x4200], [R22.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3+0x4200], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R11+0x4200], [R26.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R31], [R14.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R31+0x8200], [R16.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x2200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x200], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x2200], [R36.64] ;",
+        "LDGSTS.E.BYPASS.128 [R43+0x4200], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R45+0x4200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x4200], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x4200], [R32.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R15], [R16.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R35+0x8200], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x200], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x2200], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x200], [R142.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x2200], [R10.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x4200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x4200], [R148.64] ;",
+        "LDGSTS.E.BYPASS.128 [R11+0x4200], [R146.64] ;",
+        "LDGSTS.E.BYPASS.128 [R13+0x4200], [R144.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R52], [R2.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R52+0x8200], [R4.64] ;",
+        "LDGSTS.E.BYPASS.128 [R61+0x200], [R52.64] ;",
+        "LDGSTS.E.BYPASS.128 [R61+0x2200], [R54.64] ;",
+        "LDGSTS.E.BYPASS.128 [R65+0x200], [R56.64] ;",
+        "LDGSTS.E.BYPASS.128 [R65+0x2200], [R52.64] ;",
+        "LDGSTS.E.BYPASS.128 [R67+0x4200], [R58.64] ;",
+        "LDGSTS.E.BYPASS.128 [R69+0x4200], [R54.64] ;",
+        "LDGSTS.E.BYPASS.128 [R71+0x4200], [R60.64] ;",
+        "LDGSTS.E.BYPASS.128 [R73+0x4200], [R62.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R53], [R50.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R57+0x8200], [R48.64] ;"
+      ],
+      "all_copies_bypass_l1": true,
+      "native_u4_s4": true,
+      "native_s4_s4": true,
+      "int8_mma": false
+    }
+  },
+  "liveness": {
+    "adangel_roof_o78_eight_chain_candidate": {
+      "symbol": "adangel_roof_o78_eight_chain_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 166,
+      "loops": [
+        {
+          "kind": "integer",
+          "begin_pc": "0xa60",
+          "end_pc": "0x2240",
+          "static_instructions": 383,
+          "max_live_gpr": 166,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 20,
+            "IADD3.X": 5,
+            "IMAD": 128,
+            "IMAD.IADD": 1,
+            "IMAD.SHL.U32": 24,
+            "IMAD.X": 5,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 2,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 6,
+            "MOV": 2,
+            "PLOP3.LUT": 2,
+            "S2R": 5,
+            "SHF.L.U32": 48,
+            "UIADD3": 1,
+            "UIMAD": 2,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULOP3.LUT": 6,
+            "UMOV": 1,
+            "USHF.L.U32": 8
+          },
+          "peak_pcs": [
+            "0x1880",
+            "0x1890",
+            "0x1950",
+            "0x1960",
+            "0x1970",
+            "0x1980"
+          ]
+        },
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x4d40",
+          "end_pc": "0x68b0",
+          "static_instructions": 440,
+          "max_live_gpr": 162,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "FFMA": 64,
+            "FMUL": 64,
+            "I2F": 64,
+            "IADD3": 19,
+            "IADD3.X": 8,
+            "IMAD": 23,
+            "IMAD.IADD": 5,
+            "IMAD.SHL.U32": 5,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GE.U32.AND": 2,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 45,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 12,
+            "MOV": 1,
+            "NOP": 2,
+            "S2R": 2,
+            "SHF.L.U32": 9
+          },
+          "peak_pcs": [
+            "0x58a0",
+            "0x5f50"
+          ]
+        }
+      ],
+      "cta_threads": 128,
+      "register_only_four_cta_limit_per_thread": 128,
+      "interpretation": "static_binary_live_range_not_runtime_timing_or_universal_register_lower_bound"
+    },
+    "adangel_roof_o78_phase_mixed_candidate": {
+      "symbol": "adangel_roof_o78_phase_mixed_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 165,
+      "loops": [
+        {
+          "kind": "integer",
+          "begin_pc": "0xb60",
+          "end_pc": "0x2250",
+          "static_instructions": 368,
+          "max_live_gpr": 161,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 16,
+            "IADD3.X": 8,
+            "IMAD": 131,
+            "IMAD.SHL.U32": 16,
+            "IMAD.U32": 1,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDL.64": 4,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 5,
+            "LEA.HI.X": 2,
+            "MOV": 4,
+            "PLOP3.LUT": 2,
+            "SHF.L.U32": 50,
+            "UIADD3": 1,
+            "UIMAD": 2,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULEA": 1,
+            "ULOP3.LUT": 4,
+            "USHF.L.U32": 4
+          },
+          "peak_pcs": [
+            "0x1930",
+            "0x1940",
+            "0x1950",
+            "0x1960"
+          ]
+        },
+        {
+          "kind": "integer",
+          "begin_pc": "0x4ce0",
+          "end_pc": "0x63c0",
+          "static_instructions": 367,
+          "max_live_gpr": 164,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 16,
+            "IADD3.X": 8,
+            "IMAD": 129,
+            "IMAD.SHL.U32": 17,
+            "IMAD.U32": 2,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDL.64": 3,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 7,
+            "LEA.HI.X": 2,
+            "MOV": 3,
+            "PLOP3.LUT": 2,
+            "SHF.L.U32": 49,
+            "UIADD3": 1,
+            "UIMAD": 2,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULEA": 1,
+            "ULOP3.LUT": 4,
+            "USHF.L.U32": 4
+          },
+          "peak_pcs": [
+            "0x5600",
+            "0x5610",
+            "0x5620",
+            "0x5630"
+          ]
+        },
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x8f30",
+          "end_pc": "0xaa80",
+          "static_instructions": 438,
+          "max_live_gpr": 165,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "FFMA": 64,
+            "FMUL": 64,
+            "I2F": 64,
+            "IADD3": 19,
+            "IADD3.X": 8,
+            "IMAD": 15,
+            "IMAD.SHL.U32": 1,
+            "IMAD.U32": 1,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDL.64": 2,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 53,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 3,
+            "MOV": 4,
+            "PLOP3.LUT": 2,
+            "SHF.L.U32": 3,
+            "UIADD3": 1,
+            "UIMAD": 2,
+            "UISETP.GE.U32.AND": 2,
+            "ULDC.64": 1,
+            "ULOP3.LUT": 5,
+            "UMOV": 1,
+            "USHF.L.U32": 8
+          },
+          "peak_pcs": [
+            "0x9a90",
+            "0x9aa0",
+            "0x9ab0",
+            "0x9ac0"
+          ]
+        }
+      ],
+      "interpretation": "static_paths_not_dynamic_concurrency_or_latency"
+    }
+  },
+  "schedules": [
+    {
+      "symbol": "adangel_roof_o78_phase_mixed_candidate",
+      "loop": {
+        "kind": "integer",
+        "begin_pc": "0xb60",
+        "end_pc": "0x2250",
+        "static_instructions": 368,
+        "max_live_gpr": 161,
+        "opcode_counts": {
+          "BAR.SYNC.DEFER_BLOCKING": 1,
+          "BRA": 2,
+          "CALL.REL.NOINC": 1,
+          "DEPBAR.LE": 1,
+          "IADD3": 16,
+          "IADD3.X": 8,
+          "IMAD": 131,
+          "IMAD.SHL.U32": 16,
+          "IMAD.U32": 1,
+          "IMAD.X": 2,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "ISETP.GT.U32.AND": 1,
+          "LDGDEPBAR": 1,
+          "LDGSTS.E.BYPASS.128": 10,
+          "LDL.64": 4,
+          "LDS": 7,
+          "LDS.64": 8,
+          "LDSM.16.M88.4": 16,
+          "LEA": 5,
+          "LEA.HI.X": 2,
+          "MOV": 4,
+          "PLOP3.LUT": 2,
+          "SHF.L.U32": 50,
+          "UIADD3": 1,
+          "UIMAD": 2,
+          "UISETP.GT.U32.AND": 1,
+          "UISETP.NE.AND": 1,
+          "ULDC.64": 1,
+          "ULEA": 1,
+          "ULOP3.LUT": 4,
+          "USHF.L.U32": 4
+        },
+        "peak_pcs": [
+          "0x1930",
+          "0x1940",
+          "0x1950",
+          "0x1960"
+        ]
+      },
+      "chains": [
+        {
+          "id": 0,
+          "start_pc": "0x1130",
+          "mma": [
+            {
+              "pc": "0x1130",
+              "kind": "S4",
+              "destination": 56,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x11c0",
+              "kind": "S4",
+              "destination": 56,
+              "c": "R56"
+            },
+            {
+              "pc": "0x12c0",
+              "kind": "U4",
+              "destination": 56,
+              "c": "R56"
+            },
+            {
+              "pc": "0x1360",
+              "kind": "U4",
+              "destination": 56,
+              "c": "R56"
+            }
+          ],
+          "end_pc": "0x1360"
+        },
+        {
+          "id": 1,
+          "start_pc": "0x1160",
+          "mma": [
+            {
+              "pc": "0x1160",
+              "kind": "S4",
+              "destination": 20,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x11d0",
+              "kind": "S4",
+              "destination": 20,
+              "c": "R20"
+            },
+            {
+              "pc": "0x1310",
+              "kind": "U4",
+              "destination": 20,
+              "c": "R20"
+            },
+            {
+              "pc": "0x1370",
+              "kind": "U4",
+              "destination": 20,
+              "c": "R20"
+            }
+          ],
+          "end_pc": "0x1370"
+        },
+        {
+          "id": 2,
+          "start_pc": "0x1190",
+          "mma": [
+            {
+              "pc": "0x1190",
+              "kind": "S4",
+              "destination": 28,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x11e0",
+              "kind": "S4",
+              "destination": 28,
+              "c": "R28"
+            },
+            {
+              "pc": "0x1330",
+              "kind": "U4",
+              "destination": 28,
+              "c": "R28"
+            },
+            {
+              "pc": "0x1380",
+              "kind": "U4",
+              "destination": 28,
+              "c": "R28"
+            }
+          ],
+          "end_pc": "0x1380"
+        },
+        {
+          "id": 3,
+          "start_pc": "0x11b0",
+          "mma": [
+            {
+              "pc": "0x11b0",
+              "kind": "S4",
+              "destination": 32,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x11f0",
+              "kind": "S4",
+              "destination": 32,
+              "c": "R32"
+            },
+            {
+              "pc": "0x1340",
+              "kind": "U4",
+              "destination": 48,
+              "c": "R32"
+            },
+            {
+              "pc": "0x1390",
+              "kind": "U4",
+              "destination": 24,
+              "c": "R48"
+            }
+          ],
+          "end_pc": "0x1390"
+        },
+        {
+          "id": 4,
+          "start_pc": "0x1270",
+          "mma": [
+            {
+              "pc": "0x1270",
+              "kind": "S4",
+              "destination": 52,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x1430",
+              "kind": "S4",
+              "destination": 52,
+              "c": "R52"
+            },
+            {
+              "pc": "0x1590",
+              "kind": "U4",
+              "destination": 52,
+              "c": "R52"
+            },
+            {
+              "pc": "0x16d0",
+              "kind": "U4",
+              "destination": 52,
+              "c": "R52"
+            }
+          ],
+          "end_pc": "0x16d0"
+        },
+        {
+          "id": 5,
+          "start_pc": "0x13e0",
+          "mma": [
+            {
+              "pc": "0x13e0",
+              "kind": "S4",
+              "destination": 48,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x14d0",
+              "kind": "S4",
+              "destination": 48,
+              "c": "R48"
+            },
+            {
+              "pc": "0x1640",
+              "kind": "U4",
+              "destination": 48,
+              "c": "R48"
+            },
+            {
+              "pc": "0x1720",
+              "kind": "U4",
+              "destination": 48,
+              "c": "R48"
+            }
+          ],
+          "end_pc": "0x1720"
+        },
+        {
+          "id": 6,
+          "start_pc": "0x1480",
+          "mma": [
+            {
+              "pc": "0x1480",
+              "kind": "S4",
+              "destination": 72,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x15f0",
+              "kind": "S4",
+              "destination": 72,
+              "c": "R72"
+            },
+            {
+              "pc": "0x1770",
+              "kind": "U4",
+              "destination": 72,
+              "c": "R72"
+            },
+            {
+              "pc": "0x1820",
+              "kind": "U4",
+              "destination": 36,
+              "c": "R72"
+            }
+          ],
+          "end_pc": "0x1820"
+        },
+        {
+          "id": 7,
+          "start_pc": "0x1550",
+          "mma": [
+            {
+              "pc": "0x1550",
+              "kind": "S4",
+              "destination": 68,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x16a0",
+              "kind": "S4",
+              "destination": 68,
+              "c": "R68"
+            },
+            {
+              "pc": "0x17a0",
+              "kind": "U4",
+              "destination": 68,
+              "c": "R68"
+            },
+            {
+              "pc": "0x1890",
+              "kind": "U4",
+              "destination": 32,
+              "c": "R68"
+            }
+          ],
+          "end_pc": "0x1890"
+        },
+        {
+          "id": 8,
+          "start_pc": "0x17d0",
+          "mma": [
+            {
+              "pc": "0x17d0",
+              "kind": "S4",
+              "destination": 56,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x19d0",
+              "kind": "S4",
+              "destination": 56,
+              "c": "R56"
+            },
+            {
+              "pc": "0x1b10",
+              "kind": "U4",
+              "destination": 60,
+              "c": "R56"
+            },
+            {
+              "pc": "0x1e10",
+              "kind": "U4",
+              "destination": 60,
+              "c": "R60"
+            }
+          ],
+          "end_pc": "0x1e10"
+        },
+        {
+          "id": 9,
+          "start_pc": "0x18f0",
+          "mma": [
+            {
+              "pc": "0x18f0",
+              "kind": "S4",
+              "destination": 88,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x1c30",
+              "kind": "S4",
+              "destination": 88,
+              "c": "R88"
+            },
+            {
+              "pc": "0x1da0",
+              "kind": "U4",
+              "destination": 88,
+              "c": "R88"
+            },
+            {
+              "pc": "0x1ec0",
+              "kind": "U4",
+              "destination": 88,
+              "c": "R88"
+            }
+          ],
+          "end_pc": "0x1ec0"
+        },
+        {
+          "id": 10,
+          "start_pc": "0x1930",
+          "mma": [
+            {
+              "pc": "0x1930",
+              "kind": "S4",
+              "destination": 48,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x1a70",
+              "kind": "S4",
+              "destination": 48,
+              "c": "R48"
+            },
+            {
+              "pc": "0x1b60",
+              "kind": "U4",
+              "destination": 48,
+              "c": "R48"
+            },
+            {
+              "pc": "0x1e00",
+              "kind": "U4",
+              "destination": 48,
+              "c": "R48"
+            }
+          ],
+          "end_pc": "0x1e00"
+        },
+        {
+          "id": 11,
+          "start_pc": "0x1a20",
+          "mma": [
+            {
+              "pc": "0x1a20",
+              "kind": "S4",
+              "destination": 52,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x1ac0",
+              "kind": "S4",
+              "destination": 52,
+              "c": "R52"
+            },
+            {
+              "pc": "0x1bb0",
+              "kind": "U4",
+              "destination": 56,
+              "c": "R52"
+            },
+            {
+              "pc": "0x1cc0",
+              "kind": "U4",
+              "destination": 56,
+              "c": "R56"
+            }
+          ],
+          "end_pc": "0x1cc0"
+        },
+        {
+          "id": 12,
+          "start_pc": "0x1a60",
+          "mma": [
+            {
+              "pc": "0x1a60",
+              "kind": "S4",
+              "destination": 60,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x1ad0",
+              "kind": "S4",
+              "destination": 40,
+              "c": "R60"
+            },
+            {
+              "pc": "0x1bd0",
+              "kind": "U4",
+              "destination": 44,
+              "c": "R40"
+            },
+            {
+              "pc": "0x1df0",
+              "kind": "U4",
+              "destination": 44,
+              "c": "R44"
+            }
+          ],
+          "end_pc": "0x1df0"
+        },
+        {
+          "id": 13,
+          "start_pc": "0x1be0",
+          "mma": [
+            {
+              "pc": "0x1be0",
+              "kind": "S4",
+              "destination": 40,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x1c10",
+              "kind": "S4",
+              "destination": 40,
+              "c": "R40"
+            },
+            {
+              "pc": "0x1d10",
+              "kind": "U4",
+              "destination": 40,
+              "c": "R40"
+            },
+            {
+              "pc": "0x1e20",
+              "kind": "U4",
+              "destination": 40,
+              "c": "R40"
+            }
+          ],
+          "end_pc": "0x1e20"
+        },
+        {
+          "id": 14,
+          "start_pc": "0x1bf0",
+          "mma": [
+            {
+              "pc": "0x1bf0",
+              "kind": "S4",
+              "destination": 52,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x1c20",
+              "kind": "S4",
+              "destination": 52,
+              "c": "R52"
+            },
+            {
+              "pc": "0x1d70",
+              "kind": "U4",
+              "destination": 52,
+              "c": "R52"
+            },
+            {
+              "pc": "0x1e70",
+              "kind": "U4",
+              "destination": 52,
+              "c": "R52"
+            }
+          ],
+          "end_pc": "0x1e70"
+        },
+        {
+          "id": 15,
+          "start_pc": "0x1c00",
+          "mma": [
+            {
+              "pc": "0x1c00",
+              "kind": "S4",
+              "destination": 92,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x1c40",
+              "kind": "S4",
+              "destination": 92,
+              "c": "R92"
+            },
+            {
+              "pc": "0x1dd0",
+              "kind": "U4",
+              "destination": 92,
+              "c": "R92"
+            },
+            {
+              "pc": "0x1f10",
+              "kind": "U4",
+              "destination": 92,
+              "c": "R92"
+            }
+          ],
+          "end_pc": "0x1f10"
+        }
+      ],
+      "schedule": [
+        {
+          "pc": "0x1130",
+          "chain": 0,
+          "stage": 1,
+          "active_after": 1,
+          "ordinal": 1
+        },
+        {
+          "pc": "0x1160",
+          "chain": 1,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 2
+        },
+        {
+          "pc": "0x1190",
+          "chain": 2,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 3
+        },
+        {
+          "pc": "0x11b0",
+          "chain": 3,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 4
+        },
+        {
+          "pc": "0x11c0",
+          "chain": 0,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 5
+        },
+        {
+          "pc": "0x11d0",
+          "chain": 1,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 6
+        },
+        {
+          "pc": "0x11e0",
+          "chain": 2,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 7
+        },
+        {
+          "pc": "0x11f0",
+          "chain": 3,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 8
+        },
+        {
+          "pc": "0x1270",
+          "chain": 4,
+          "stage": 1,
+          "active_after": 5,
+          "ordinal": 9
+        },
+        {
+          "pc": "0x12c0",
+          "chain": 0,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 10
+        },
+        {
+          "pc": "0x1310",
+          "chain": 1,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 11
+        },
+        {
+          "pc": "0x1330",
+          "chain": 2,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 12
+        },
+        {
+          "pc": "0x1340",
+          "chain": 3,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 13
+        },
+        {
+          "pc": "0x1360",
+          "chain": 0,
+          "stage": 4,
+          "active_after": 4,
+          "ordinal": 14
+        },
+        {
+          "pc": "0x1370",
+          "chain": 1,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 15
+        },
+        {
+          "pc": "0x1380",
+          "chain": 2,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 16
+        },
+        {
+          "pc": "0x1390",
+          "chain": 3,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 17
+        },
+        {
+          "pc": "0x13e0",
+          "chain": 5,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 18
+        },
+        {
+          "pc": "0x1430",
+          "chain": 4,
+          "stage": 2,
+          "active_after": 2,
+          "ordinal": 19
+        },
+        {
+          "pc": "0x1480",
+          "chain": 6,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 20
+        },
+        {
+          "pc": "0x14d0",
+          "chain": 5,
+          "stage": 2,
+          "active_after": 3,
+          "ordinal": 21
+        },
+        {
+          "pc": "0x1550",
+          "chain": 7,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 22
+        },
+        {
+          "pc": "0x1590",
+          "chain": 4,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 23
+        },
+        {
+          "pc": "0x15f0",
+          "chain": 6,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 24
+        },
+        {
+          "pc": "0x1640",
+          "chain": 5,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 25
+        },
+        {
+          "pc": "0x16a0",
+          "chain": 7,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 26
+        },
+        {
+          "pc": "0x16d0",
+          "chain": 4,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 27
+        },
+        {
+          "pc": "0x1720",
+          "chain": 5,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 28
+        },
+        {
+          "pc": "0x1770",
+          "chain": 6,
+          "stage": 3,
+          "active_after": 2,
+          "ordinal": 29
+        },
+        {
+          "pc": "0x17a0",
+          "chain": 7,
+          "stage": 3,
+          "active_after": 2,
+          "ordinal": 30
+        },
+        {
+          "pc": "0x17d0",
+          "chain": 8,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 31
+        },
+        {
+          "pc": "0x1820",
+          "chain": 6,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 32
+        },
+        {
+          "pc": "0x1890",
+          "chain": 7,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 33
+        },
+        {
+          "pc": "0x18f0",
+          "chain": 9,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 34
+        },
+        {
+          "pc": "0x1930",
+          "chain": 10,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 35
+        },
+        {
+          "pc": "0x19d0",
+          "chain": 8,
+          "stage": 2,
+          "active_after": 3,
+          "ordinal": 36
+        },
+        {
+          "pc": "0x1a20",
+          "chain": 11,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 37
+        },
+        {
+          "pc": "0x1a60",
+          "chain": 12,
+          "stage": 1,
+          "active_after": 5,
+          "ordinal": 38
+        },
+        {
+          "pc": "0x1a70",
+          "chain": 10,
+          "stage": 2,
+          "active_after": 5,
+          "ordinal": 39
+        },
+        {
+          "pc": "0x1ac0",
+          "chain": 11,
+          "stage": 2,
+          "active_after": 5,
+          "ordinal": 40
+        },
+        {
+          "pc": "0x1ad0",
+          "chain": 12,
+          "stage": 2,
+          "active_after": 5,
+          "ordinal": 41
+        },
+        {
+          "pc": "0x1b10",
+          "chain": 8,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 42
+        },
+        {
+          "pc": "0x1b60",
+          "chain": 10,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 43
+        },
+        {
+          "pc": "0x1bb0",
+          "chain": 11,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 44
+        },
+        {
+          "pc": "0x1bd0",
+          "chain": 12,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 45
+        },
+        {
+          "pc": "0x1be0",
+          "chain": 13,
+          "stage": 1,
+          "active_after": 6,
+          "ordinal": 46
+        },
+        {
+          "pc": "0x1bf0",
+          "chain": 14,
+          "stage": 1,
+          "active_after": 7,
+          "ordinal": 47
+        },
+        {
+          "pc": "0x1c00",
+          "chain": 15,
+          "stage": 1,
+          "active_after": 8,
+          "ordinal": 48
+        },
+        {
+          "pc": "0x1c10",
+          "chain": 13,
+          "stage": 2,
+          "active_after": 8,
+          "ordinal": 49
+        },
+        {
+          "pc": "0x1c20",
+          "chain": 14,
+          "stage": 2,
+          "active_after": 8,
+          "ordinal": 50
+        },
+        {
+          "pc": "0x1c30",
+          "chain": 9,
+          "stage": 2,
+          "active_after": 8,
+          "ordinal": 51
+        },
+        {
+          "pc": "0x1c40",
+          "chain": 15,
+          "stage": 2,
+          "active_after": 8,
+          "ordinal": 52
+        },
+        {
+          "pc": "0x1cc0",
+          "chain": 11,
+          "stage": 4,
+          "active_after": 7,
+          "ordinal": 53
+        },
+        {
+          "pc": "0x1d10",
+          "chain": 13,
+          "stage": 3,
+          "active_after": 7,
+          "ordinal": 54
+        },
+        {
+          "pc": "0x1d70",
+          "chain": 14,
+          "stage": 3,
+          "active_after": 7,
+          "ordinal": 55
+        },
+        {
+          "pc": "0x1da0",
+          "chain": 9,
+          "stage": 3,
+          "active_after": 7,
+          "ordinal": 56
+        },
+        {
+          "pc": "0x1dd0",
+          "chain": 15,
+          "stage": 3,
+          "active_after": 7,
+          "ordinal": 57
+        },
+        {
+          "pc": "0x1df0",
+          "chain": 12,
+          "stage": 4,
+          "active_after": 6,
+          "ordinal": 58
+        },
+        {
+          "pc": "0x1e00",
+          "chain": 10,
+          "stage": 4,
+          "active_after": 5,
+          "ordinal": 59
+        },
+        {
+          "pc": "0x1e10",
+          "chain": 8,
+          "stage": 4,
+          "active_after": 4,
+          "ordinal": 60
+        },
+        {
+          "pc": "0x1e20",
+          "chain": 13,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 61
+        },
+        {
+          "pc": "0x1e70",
+          "chain": 14,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 62
+        },
+        {
+          "pc": "0x1ec0",
+          "chain": 9,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 63
+        },
+        {
+          "pc": "0x1f10",
+          "chain": 15,
+          "stage": 4,
+          "active_after": 0,
+          "ordinal": 64
+        }
+      ],
+      "loads": [
+        {
+          "pc": "0x1000",
+          "destination": 60,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x1040",
+          "destination": 48,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x1070",
+          "destination": 92,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x10a0",
+          "destination": 40,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x10c0",
+          "destination": 24,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x10d0",
+          "destination": 84,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x10e0",
+          "destination": 44,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x10f0",
+          "destination": 80,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x1100",
+          "destination": 76,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x1110",
+          "destination": 64,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x1120",
+          "destination": 36,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x1350",
+          "destination": 32,
+          "width": 4,
+          "mma_before": 13
+        },
+        {
+          "pc": "0x1660",
+          "destination": 28,
+          "width": 4,
+          "mma_before": 25
+        },
+        {
+          "pc": "0x1840",
+          "destination": 72,
+          "width": 4,
+          "mma_before": 32
+        },
+        {
+          "pc": "0x1870",
+          "destination": 24,
+          "width": 4,
+          "mma_before": 32
+        },
+        {
+          "pc": "0x18b0",
+          "destination": 68,
+          "width": 4,
+          "mma_before": 33
+        }
+      ],
+      "total_mma": 64,
+      "chains_per_group": 16,
+      "peak_started_not_finished_chains": 8,
+      "active_count_histogram": {
+        "0": 1,
+        "1": 4,
+        "2": 10,
+        "3": 9,
+        "4": 13,
+        "5": 14,
+        "6": 2,
+        "7": 6,
+        "8": 5
+      },
+      "scope": "static programmed order, not concurrent hardware execution or a latency/throughput model"
+    },
+    {
+      "symbol": "adangel_roof_o78_phase_mixed_candidate",
+      "loop": {
+        "kind": "integer",
+        "begin_pc": "0x4ce0",
+        "end_pc": "0x63c0",
+        "static_instructions": 367,
+        "max_live_gpr": 164,
+        "opcode_counts": {
+          "BAR.SYNC.DEFER_BLOCKING": 1,
+          "BRA": 2,
+          "CALL.REL.NOINC": 1,
+          "DEPBAR.LE": 1,
+          "IADD3": 16,
+          "IADD3.X": 8,
+          "IMAD": 129,
+          "IMAD.SHL.U32": 17,
+          "IMAD.U32": 2,
+          "IMAD.X": 2,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "ISETP.GT.U32.AND": 1,
+          "LDGDEPBAR": 1,
+          "LDGSTS.E.BYPASS.128": 10,
+          "LDL.64": 3,
+          "LDS": 7,
+          "LDS.64": 8,
+          "LDSM.16.M88.4": 16,
+          "LEA": 7,
+          "LEA.HI.X": 2,
+          "MOV": 3,
+          "PLOP3.LUT": 2,
+          "SHF.L.U32": 49,
+          "UIADD3": 1,
+          "UIMAD": 2,
+          "UISETP.GT.U32.AND": 1,
+          "UISETP.NE.AND": 1,
+          "ULDC.64": 1,
+          "ULEA": 1,
+          "ULOP3.LUT": 4,
+          "USHF.L.U32": 4
+        },
+        "peak_pcs": [
+          "0x5600",
+          "0x5610",
+          "0x5620",
+          "0x5630"
+        ]
+      },
+      "chains": [
+        {
+          "id": 0,
+          "start_pc": "0x5280",
+          "mma": [
+            {
+              "pc": "0x5280",
+              "kind": "S4",
+              "destination": 36,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5300",
+              "kind": "S4",
+              "destination": 36,
+              "c": "R36"
+            },
+            {
+              "pc": "0x5400",
+              "kind": "U4",
+              "destination": 36,
+              "c": "R36"
+            },
+            {
+              "pc": "0x54a0",
+              "kind": "U4",
+              "destination": 36,
+              "c": "R36"
+            }
+          ],
+          "end_pc": "0x54a0"
+        },
+        {
+          "id": 1,
+          "start_pc": "0x52b0",
+          "mma": [
+            {
+              "pc": "0x52b0",
+              "kind": "S4",
+              "destination": 32,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5310",
+              "kind": "S4",
+              "destination": 32,
+              "c": "R32"
+            },
+            {
+              "pc": "0x5450",
+              "kind": "U4",
+              "destination": 32,
+              "c": "R32"
+            },
+            {
+              "pc": "0x54b0",
+              "kind": "U4",
+              "destination": 32,
+              "c": "R32"
+            }
+          ],
+          "end_pc": "0x54b0"
+        },
+        {
+          "id": 2,
+          "start_pc": "0x52e0",
+          "mma": [
+            {
+              "pc": "0x52e0",
+              "kind": "S4",
+              "destination": 84,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5320",
+              "kind": "S4",
+              "destination": 84,
+              "c": "R84"
+            },
+            {
+              "pc": "0x5470",
+              "kind": "U4",
+              "destination": 84,
+              "c": "R84"
+            },
+            {
+              "pc": "0x54c0",
+              "kind": "U4",
+              "destination": 84,
+              "c": "R84"
+            }
+          ],
+          "end_pc": "0x54c0"
+        },
+        {
+          "id": 3,
+          "start_pc": "0x52f0",
+          "mma": [
+            {
+              "pc": "0x52f0",
+              "kind": "S4",
+              "destination": 24,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5330",
+              "kind": "S4",
+              "destination": 24,
+              "c": "R24"
+            },
+            {
+              "pc": "0x5480",
+              "kind": "U4",
+              "destination": 40,
+              "c": "R24"
+            },
+            {
+              "pc": "0x54d0",
+              "kind": "U4",
+              "destination": 48,
+              "c": "R40"
+            }
+          ],
+          "end_pc": "0x54d0"
+        },
+        {
+          "id": 4,
+          "start_pc": "0x53b0",
+          "mma": [
+            {
+              "pc": "0x53b0",
+              "kind": "S4",
+              "destination": 92,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5560",
+              "kind": "S4",
+              "destination": 92,
+              "c": "R92"
+            },
+            {
+              "pc": "0x5670",
+              "kind": "U4",
+              "destination": 92,
+              "c": "R92"
+            },
+            {
+              "pc": "0x56d0",
+              "kind": "U4",
+              "destination": 92,
+              "c": "R92"
+            }
+          ],
+          "end_pc": "0x56d0"
+        },
+        {
+          "id": 5,
+          "start_pc": "0x5500",
+          "mma": [
+            {
+              "pc": "0x5500",
+              "kind": "S4",
+              "destination": 44,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5570",
+              "kind": "S4",
+              "destination": 44,
+              "c": "R44"
+            },
+            {
+              "pc": "0x5690",
+              "kind": "U4",
+              "destination": 44,
+              "c": "R44"
+            },
+            {
+              "pc": "0x5750",
+              "kind": "U4",
+              "destination": 44,
+              "c": "R44"
+            }
+          ],
+          "end_pc": "0x5750"
+        },
+        {
+          "id": 6,
+          "start_pc": "0x5530",
+          "mma": [
+            {
+              "pc": "0x5530",
+              "kind": "S4",
+              "destination": 40,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5580",
+              "kind": "S4",
+              "destination": 40,
+              "c": "R40"
+            },
+            {
+              "pc": "0x56b0",
+              "kind": "U4",
+              "destination": 40,
+              "c": "R40"
+            },
+            {
+              "pc": "0x57a0",
+              "kind": "U4",
+              "destination": 40,
+              "c": "R40"
+            }
+          ],
+          "end_pc": "0x57a0"
+        },
+        {
+          "id": 7,
+          "start_pc": "0x5600",
+          "mma": [
+            {
+              "pc": "0x5600",
+              "kind": "S4",
+              "destination": 88,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x56a0",
+              "kind": "S4",
+              "destination": 88,
+              "c": "R88"
+            },
+            {
+              "pc": "0x5770",
+              "kind": "U4",
+              "destination": 88,
+              "c": "R88"
+            },
+            {
+              "pc": "0x5830",
+              "kind": "U4",
+              "destination": 88,
+              "c": "R88"
+            }
+          ],
+          "end_pc": "0x5830"
+        },
+        {
+          "id": 8,
+          "start_pc": "0x5b20",
+          "mma": [
+            {
+              "pc": "0x5b20",
+              "kind": "S4",
+              "destination": 84,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5bd0",
+              "kind": "S4",
+              "destination": 84,
+              "c": "R84"
+            },
+            {
+              "pc": "0x5cd0",
+              "kind": "U4",
+              "destination": 56,
+              "c": "R56"
+            },
+            {
+              "pc": "0x5dd0",
+              "kind": "U4",
+              "destination": 56,
+              "c": "R56"
+            }
+          ],
+          "end_pc": "0x5dd0"
+        },
+        {
+          "id": 9,
+          "start_pc": "0x5b70",
+          "mma": [
+            {
+              "pc": "0x5b70",
+              "kind": "S4",
+              "destination": 36,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5be0",
+              "kind": "S4",
+              "destination": 36,
+              "c": "R36"
+            },
+            {
+              "pc": "0x5d30",
+              "kind": "U4",
+              "destination": 36,
+              "c": "R36"
+            },
+            {
+              "pc": "0x5e30",
+              "kind": "U4",
+              "destination": 36,
+              "c": "R36"
+            }
+          ],
+          "end_pc": "0x5e30"
+        },
+        {
+          "id": 10,
+          "start_pc": "0x5bb0",
+          "mma": [
+            {
+              "pc": "0x5bb0",
+              "kind": "S4",
+              "destination": 40,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5bf0",
+              "kind": "S4",
+              "destination": 40,
+              "c": "R40"
+            },
+            {
+              "pc": "0x5d40",
+              "kind": "U4",
+              "destination": 40,
+              "c": "R40"
+            },
+            {
+              "pc": "0x5d80",
+              "kind": "U4",
+              "destination": 40,
+              "c": "R40"
+            }
+          ],
+          "end_pc": "0x5d80"
+        },
+        {
+          "id": 11,
+          "start_pc": "0x5bc0",
+          "mma": [
+            {
+              "pc": "0x5bc0",
+              "kind": "S4",
+              "destination": 60,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5c00",
+              "kind": "S4",
+              "destination": 60,
+              "c": "R60"
+            },
+            {
+              "pc": "0x5d50",
+              "kind": "U4",
+              "destination": 68,
+              "c": "R60"
+            },
+            {
+              "pc": "0x5eb0",
+              "kind": "U4",
+              "destination": 68,
+              "c": "R68"
+            }
+          ],
+          "end_pc": "0x5eb0"
+        },
+        {
+          "id": 12,
+          "start_pc": "0x5c70",
+          "mma": [
+            {
+              "pc": "0x5c70",
+              "kind": "S4",
+              "destination": 84,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5d70",
+              "kind": "S4",
+              "destination": 84,
+              "c": "R84"
+            },
+            {
+              "pc": "0x5df0",
+              "kind": "U4",
+              "destination": 84,
+              "c": "R84"
+            },
+            {
+              "pc": "0x5f30",
+              "kind": "U4",
+              "destination": 84,
+              "c": "R84"
+            }
+          ],
+          "end_pc": "0x5f30"
+        },
+        {
+          "id": 13,
+          "start_pc": "0x5d60",
+          "mma": [
+            {
+              "pc": "0x5d60",
+              "kind": "S4",
+              "destination": 60,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5d90",
+              "kind": "S4",
+              "destination": 60,
+              "c": "R60"
+            },
+            {
+              "pc": "0x5e50",
+              "kind": "U4",
+              "destination": 28,
+              "c": "R60"
+            },
+            {
+              "pc": "0x5e80",
+              "kind": "U4",
+              "destination": 28,
+              "c": "R28"
+            }
+          ],
+          "end_pc": "0x5e80"
+        },
+        {
+          "id": 14,
+          "start_pc": "0x5e60",
+          "mma": [
+            {
+              "pc": "0x5e60",
+              "kind": "S4",
+              "destination": 60,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5e90",
+              "kind": "S4",
+              "destination": 60,
+              "c": "R60"
+            },
+            {
+              "pc": "0x5f80",
+              "kind": "U4",
+              "destination": 52,
+              "c": "R52"
+            },
+            {
+              "pc": "0x6070",
+              "kind": "U4",
+              "destination": 52,
+              "c": "R52"
+            }
+          ],
+          "end_pc": "0x6070"
+        },
+        {
+          "id": 15,
+          "start_pc": "0x5e70",
+          "mma": [
+            {
+              "pc": "0x5e70",
+              "kind": "S4",
+              "destination": 64,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5ea0",
+              "kind": "S4",
+              "destination": 64,
+              "c": "R64"
+            },
+            {
+              "pc": "0x5fe0",
+              "kind": "U4",
+              "destination": 64,
+              "c": "R64"
+            },
+            {
+              "pc": "0x60c0",
+              "kind": "U4",
+              "destination": 64,
+              "c": "R64"
+            }
+          ],
+          "end_pc": "0x60c0"
+        }
+      ],
+      "schedule": [
+        {
+          "pc": "0x5280",
+          "chain": 0,
+          "stage": 1,
+          "active_after": 1,
+          "ordinal": 1
+        },
+        {
+          "pc": "0x52b0",
+          "chain": 1,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 2
+        },
+        {
+          "pc": "0x52e0",
+          "chain": 2,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 3
+        },
+        {
+          "pc": "0x52f0",
+          "chain": 3,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 4
+        },
+        {
+          "pc": "0x5300",
+          "chain": 0,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 5
+        },
+        {
+          "pc": "0x5310",
+          "chain": 1,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 6
+        },
+        {
+          "pc": "0x5320",
+          "chain": 2,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 7
+        },
+        {
+          "pc": "0x5330",
+          "chain": 3,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 8
+        },
+        {
+          "pc": "0x53b0",
+          "chain": 4,
+          "stage": 1,
+          "active_after": 5,
+          "ordinal": 9
+        },
+        {
+          "pc": "0x5400",
+          "chain": 0,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 10
+        },
+        {
+          "pc": "0x5450",
+          "chain": 1,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 11
+        },
+        {
+          "pc": "0x5470",
+          "chain": 2,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 12
+        },
+        {
+          "pc": "0x5480",
+          "chain": 3,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 13
+        },
+        {
+          "pc": "0x54a0",
+          "chain": 0,
+          "stage": 4,
+          "active_after": 4,
+          "ordinal": 14
+        },
+        {
+          "pc": "0x54b0",
+          "chain": 1,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 15
+        },
+        {
+          "pc": "0x54c0",
+          "chain": 2,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 16
+        },
+        {
+          "pc": "0x54d0",
+          "chain": 3,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 17
+        },
+        {
+          "pc": "0x5500",
+          "chain": 5,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 18
+        },
+        {
+          "pc": "0x5530",
+          "chain": 6,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 19
+        },
+        {
+          "pc": "0x5560",
+          "chain": 4,
+          "stage": 2,
+          "active_after": 3,
+          "ordinal": 20
+        },
+        {
+          "pc": "0x5570",
+          "chain": 5,
+          "stage": 2,
+          "active_after": 3,
+          "ordinal": 21
+        },
+        {
+          "pc": "0x5580",
+          "chain": 6,
+          "stage": 2,
+          "active_after": 3,
+          "ordinal": 22
+        },
+        {
+          "pc": "0x5600",
+          "chain": 7,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 23
+        },
+        {
+          "pc": "0x5670",
+          "chain": 4,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 24
+        },
+        {
+          "pc": "0x5690",
+          "chain": 5,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 25
+        },
+        {
+          "pc": "0x56a0",
+          "chain": 7,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 26
+        },
+        {
+          "pc": "0x56b0",
+          "chain": 6,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 27
+        },
+        {
+          "pc": "0x56d0",
+          "chain": 4,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 28
+        },
+        {
+          "pc": "0x5750",
+          "chain": 5,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 29
+        },
+        {
+          "pc": "0x5770",
+          "chain": 7,
+          "stage": 3,
+          "active_after": 2,
+          "ordinal": 30
+        },
+        {
+          "pc": "0x57a0",
+          "chain": 6,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 31
+        },
+        {
+          "pc": "0x5830",
+          "chain": 7,
+          "stage": 4,
+          "active_after": 0,
+          "ordinal": 32
+        },
+        {
+          "pc": "0x5b20",
+          "chain": 8,
+          "stage": 1,
+          "active_after": 1,
+          "ordinal": 33
+        },
+        {
+          "pc": "0x5b70",
+          "chain": 9,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 34
+        },
+        {
+          "pc": "0x5bb0",
+          "chain": 10,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 35
+        },
+        {
+          "pc": "0x5bc0",
+          "chain": 11,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 36
+        },
+        {
+          "pc": "0x5bd0",
+          "chain": 8,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 37
+        },
+        {
+          "pc": "0x5be0",
+          "chain": 9,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 38
+        },
+        {
+          "pc": "0x5bf0",
+          "chain": 10,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 39
+        },
+        {
+          "pc": "0x5c00",
+          "chain": 11,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 40
+        },
+        {
+          "pc": "0x5c70",
+          "chain": 12,
+          "stage": 1,
+          "active_after": 5,
+          "ordinal": 41
+        },
+        {
+          "pc": "0x5cd0",
+          "chain": 8,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 42
+        },
+        {
+          "pc": "0x5d30",
+          "chain": 9,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 43
+        },
+        {
+          "pc": "0x5d40",
+          "chain": 10,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 44
+        },
+        {
+          "pc": "0x5d50",
+          "chain": 11,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 45
+        },
+        {
+          "pc": "0x5d60",
+          "chain": 13,
+          "stage": 1,
+          "active_after": 6,
+          "ordinal": 46
+        },
+        {
+          "pc": "0x5d70",
+          "chain": 12,
+          "stage": 2,
+          "active_after": 6,
+          "ordinal": 47
+        },
+        {
+          "pc": "0x5d80",
+          "chain": 10,
+          "stage": 4,
+          "active_after": 5,
+          "ordinal": 48
+        },
+        {
+          "pc": "0x5d90",
+          "chain": 13,
+          "stage": 2,
+          "active_after": 5,
+          "ordinal": 49
+        },
+        {
+          "pc": "0x5dd0",
+          "chain": 8,
+          "stage": 4,
+          "active_after": 4,
+          "ordinal": 50
+        },
+        {
+          "pc": "0x5df0",
+          "chain": 12,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 51
+        },
+        {
+          "pc": "0x5e30",
+          "chain": 9,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 52
+        },
+        {
+          "pc": "0x5e50",
+          "chain": 13,
+          "stage": 3,
+          "active_after": 3,
+          "ordinal": 53
+        },
+        {
+          "pc": "0x5e60",
+          "chain": 14,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 54
+        },
+        {
+          "pc": "0x5e70",
+          "chain": 15,
+          "stage": 1,
+          "active_after": 5,
+          "ordinal": 55
+        },
+        {
+          "pc": "0x5e80",
+          "chain": 13,
+          "stage": 4,
+          "active_after": 4,
+          "ordinal": 56
+        },
+        {
+          "pc": "0x5e90",
+          "chain": 14,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 57
+        },
+        {
+          "pc": "0x5ea0",
+          "chain": 15,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 58
+        },
+        {
+          "pc": "0x5eb0",
+          "chain": 11,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 59
+        },
+        {
+          "pc": "0x5f30",
+          "chain": 12,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 60
+        },
+        {
+          "pc": "0x5f80",
+          "chain": 14,
+          "stage": 3,
+          "active_after": 2,
+          "ordinal": 61
+        },
+        {
+          "pc": "0x5fe0",
+          "chain": 15,
+          "stage": 3,
+          "active_after": 2,
+          "ordinal": 62
+        },
+        {
+          "pc": "0x6070",
+          "chain": 14,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 63
+        },
+        {
+          "pc": "0x60c0",
+          "chain": 15,
+          "stage": 4,
+          "active_after": 0,
+          "ordinal": 64
+        }
+      ],
+      "loads": [
+        {
+          "pc": "0x5170",
+          "destination": 60,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x51a0",
+          "destination": 40,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x51c0",
+          "destination": 64,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x51e0",
+          "destination": 56,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x51f0",
+          "destination": 48,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x5200",
+          "destination": 52,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x5210",
+          "destination": 68,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x5220",
+          "destination": 76,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x5230",
+          "destination": 80,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x5240",
+          "destination": 72,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x5260",
+          "destination": 28,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x5490",
+          "destination": 24,
+          "width": 4,
+          "mma_before": 13
+        },
+        {
+          "pc": "0x5940",
+          "destination": 48,
+          "width": 4,
+          "mma_before": 32
+        },
+        {
+          "pc": "0x59b0",
+          "destination": 28,
+          "width": 4,
+          "mma_before": 32
+        },
+        {
+          "pc": "0x5a20",
+          "destination": 32,
+          "width": 4,
+          "mma_before": 32
+        },
+        {
+          "pc": "0x5a50",
+          "destination": 44,
+          "width": 4,
+          "mma_before": 32
+        }
+      ],
+      "total_mma": 64,
+      "chains_per_group": 16,
+      "peak_started_not_finished_chains": 6,
+      "active_count_histogram": {
+        "0": 2,
+        "1": 5,
+        "2": 9,
+        "3": 11,
+        "4": 22,
+        "5": 13,
+        "6": 2
+      },
+      "scope": "static programmed order, not concurrent hardware execution or a latency/throughput model"
+    }
+  ],
+  "cost_gate": {
+    "passed": false,
+    "checks": {
+      "distinct_four_and_eight_paths": false,
+      "allocation": true,
+      "no_hot_local": false,
+      "same_math": true,
+      "same_supply": true,
+      "same_barrier": true,
+      "bounded_weighted_work": false
+    },
+    "limits": {
+      "max_allocated_gpr": 168,
+      "max_hot_local": 0,
+      "max_weighted_work_ratio": 1.03,
+      "required_mma_each": 32,
+      "required_ldsm": 16,
+      "required_async_copy": 10,
+      "four_chain_fraction": [
+        1,
+        3
+      ],
+      "minimum_active_ctas": 3
+    },
+    "baseline_static": 383,
+    "weighted_static": null,
+    "weighted_work_ratio": null,
+    "paths": {
+      "6": {
+        "begin_pc": "0x4ce0",
+        "static_instructions": 367
+      },
+      "8": {
+        "begin_pc": "0xb60",
+        "static_instructions": 368
+      }
+    },
+    "scope": "phase_overlap_hypothesis_gate_not_speedup_or_proof_of_same_SM_placement",
+    "control_encoding_unchanged": true
+  },
+  "control_comparison": {
+    "passed": true,
+    "missing": [],
+    "changed": [],
+    "old_symbols": 1,
+    "new_symbols": 1,
+    "unchanged": [
+      "adangel_roof_o78_eight_chain_candidate"
+    ],
+    "scope": "exact_SASS_words_of_matched_old_entries_not_full_binary_or_performance"
+  },
+  "artifact_sha256": {
+    "build.log": "9632a6fbb84862fecf40ae28982fd8588534d8774ea3259f798dbd8181b751f3",
+    "ptx_build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "o78_phase_mixed.sass": "3b1d0a0ab78c02d31b12a203b560702d1b21cda98edeb5335584b56f259b9a98",
+    "o78_phase_mixed.ptx": "1f42d0ae2f03b2365cef0b6359e6612efc1d083bf4f2713cd4114cc71eb78ed4",
+    "resources.txt": "ee84c8425d02b5d8dd82697aa990d3ceee98fc40dbd6c0eb5dc28a4312cf76cf",
+    "liveness.txt": "e4cc3a36d62f6ddd2ecb8b17b174ad3c6de9b448e43c618ef524a008a7369a31"
+  }
+}

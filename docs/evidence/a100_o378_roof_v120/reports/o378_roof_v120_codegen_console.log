@@ -1,0 +1,41 @@
+{
+  "passed": false,
+  "checks": {
+    "distinct_four_and_eight_paths": false,
+    "allocation": true,
+    "no_hot_local": false,
+    "same_math": true,
+    "same_supply": true,
+    "same_barrier": true,
+    "bounded_weighted_work": false
+  },
+  "limits": {
+    "max_allocated_gpr": 168,
+    "max_hot_local": 0,
+    "max_weighted_work_ratio": 1.03,
+    "required_mma_each": 32,
+    "required_ldsm": 16,
+    "required_async_copy": 10,
+    "four_chain_fraction": [
+      1,
+      3
+    ],
+    "minimum_active_ctas": 3
+  },
+  "baseline_static": 383,
+  "weighted_static": null,
+  "weighted_work_ratio": null,
+  "paths": {
+    "6": {
+      "begin_pc": "0x4ce0",
+      "static_instructions": 367
+    },
+    "8": {
+      "begin_pc": "0xb60",
+      "static_instructions": 368
+    }
+  },
+  "scope": "phase_overlap_hypothesis_gate_not_speedup_or_proof_of_same_SM_placement",
+  "control_encoding_unchanged": true
+}
+Gate FAILED: no candidate launch, no ratio/seed neighbors or O3 migration.
