@@ -14,7 +14,7 @@ def test_only_address_block_changes_and_original_gate_is_not_relaxed():
     assert LIMITS['max_work_ratio']==1.05 and LIMITS['max_allocated_gpr']==168
     assert new.count('__shfl_sync')==1 # compile-time 2x2, prologue only
     assert new.index('__shfl_sync')<new.index('for(int group=0;group<groups;++group)')
-    assert '__cvta_generic_to_shared(&src(0,mi,0))' in new
+    assert '__cvta_generic_to_shared(&src(mi))' in new
     assert 's.activation_factors' not in new
     assert 'SM80_16x8x64_S32U4S4S32_TN' in new and 'SM80_16x8x64_S32S4S4S32_TN' in new
     assert new.count('__syncthreads()')==old.count('__syncthreads()')

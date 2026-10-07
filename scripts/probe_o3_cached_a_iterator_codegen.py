@@ -38,25 +38,21 @@ NEW='''  // Derive all four source addresses from the SAME CuTe copy partition.
   auto a_addresses=cute::make_tensor<uint32_t>(cute::make_shape(cute::_2{},cute::_2{}));
   o1_static_for<0,2>([&](auto half) {
     auto src=cute::recast<cute::uint128_t>(lc.partition_S(tile_a(low(0),half)));
-    static_assert(decltype(cute::size<0>(src))::value==1);
-    static_assert(decltype(cute::size<1>(src))::value==2);
-    static_assert(decltype(cute::size<2>(src))::value==1);
+    static_assert(decltype(cute::size(src))::value==2);
     o1_static_for<0,2>([&](auto mi) {
-      uint32_t address=static_cast<uint32_t>(__cvta_generic_to_shared(&src(0,mi,0)));
+      uint32_t address=static_cast<uint32_t>(__cvta_generic_to_shared(&src(mi)));
       // Every thread participates, and selects itself. Not a lane permutation.
       a_addresses(mi,half)=__shfl_sync(0xffffffffu,address,threadIdx.x&31);
     });
   });
   auto load_words=[&](int slot,auto half,auto plane,auto& destination,auto const& copier) {
     auto d=cute::recast<uint32_t>(copier.retile_D(destination));
-    static_assert(decltype(cute::size<0>(d))::value==4);
-    static_assert(decltype(cute::size<1>(d))::value==2);
-    static_assert(decltype(cute::size<2>(d))::value==1);
+    static_assert(decltype(cute::size(d))::value==8);
     o1_static_for<0,2>([&](auto mi) {
       const uint32_t address=a_addresses(mi,half)+uint32_t(slot)*4096u+uint32_t(plane)*12288u;
       // Identical public PTX operation to SM75_U32x4_LDSM_N::copy.
       asm volatile("ldmatrix.sync.aligned.x4.m8n8.shared.b16 {%0,%1,%2,%3}, [%4];"
-          : "=r"(d(0,mi,0)),"=r"(d(1,mi,0)),"=r"(d(2,mi,0)),"=r"(d(3,mi,0))
+          : "=r"(d(4*mi)),"=r"(d(4*mi+1)),"=r"(d(4*mi+2)),"=r"(d(4*mi+3))
           : "r"(address));
     });
   };
@@ -113,7 +109,7 @@ def main():
     run(flags+[str(ROOT/'csrc/sm80/verify_o3_cached_a_iterator.cpp'),'-o',str(verifier)],'host_build.log')
     run([str(verifier)],'host_layout.json') # CPU layout checks, never launches CUDA.
     layout=json.loads((out/'host_layout.json').read_text())
-    if layout!={'passed':True,'source_addresses':3072,'destination_words':2048}:
+    if layout!={'passed':True,'source_addresses':3072,'destination_words':12288}:
         raise ValueError('incomplete CuTe layout verification')
     src=str(ROOT/'csrc/sm80/roof_o3_cached_a_iterator_probe.cu');cubin=out/(STEM+'.cubin')
     run(flags+['-O3','-lineinfo',src,'-cubin','-o',str(cubin),'-Xptxas=-v'],'build.log')

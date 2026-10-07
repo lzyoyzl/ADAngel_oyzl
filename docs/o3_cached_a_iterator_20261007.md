@@ -6,7 +6,9 @@ v128已将下一组A fragment加载提前到当前组32次整数加权之前，�
 本轮不是重跑已确认负收益的方案，而是对这项明确的额外工作做一次修复。
 
 从原CuTe copy partition取得4个stage0的shared源地址，GEMM入口计算后保留在寄存器。一次同lane shuffle保持地址值完全不变，但使其对前端优化器不透明，尝试避免循环内重新展开坐标；该额外指令也计入GEMM。
-组内只加stage偏移与高位平面偏移，仍使用原公开 `ldmatrix.x4`，不修改片段映射。先在CPU用真实CuTe遍历128线程、3stage、2平面、2个K64及2个M片段，验证全部3072个地址和2048个destination word。
+组内只加stage偏移与高位平面偏移，仍使用原公开 `ldmatrix.x4`，不修改片段映射。先在CPU用真实CuTe遍历128线程、3stage、2平面、2个K64及2个M片段，验证全部3072个地址和12288个destination word。
+
+首次CPU编译暴露Copy partition的嵌套shape与预期不同，断言阻止后续GPU编译/执行；保留失败目录。修正为CuTe自身的线性索引，并用继承原Copy_Traits的记录器直接捕获每次Copy_Atom调用的源/目标指针作对照，而不是手写lane映射或只检查总元素数。
 
 保持v128的数学、旧factor先缓存、32次barrier、三stage、50688B shared、64×128×128 CTA、128线程、32 partial寄存器及原guard/fallback。
 不是旧v91全部地址重物化、v46全局row cursor或v131只换加载顺序；本轮只修复v128增加的A迭代器寻址。
