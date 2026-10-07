@@ -1,0 +1,147 @@
+{
+  "scope": "v137 two-native-INT4 route cohorts versus O3 v89; full24x3 direct Event",
+  "records": 144,
+  "samples": 24,
+  "rounds": 3,
+  "source_commit": "8358d8ff3df7f3eba78eff4be4f92a9f16ac1f37",
+  "candidate_cubin_sha256": "9f6b2d2d69ee1179a6747079790e36f3cb6a53246a7cd92c8745827571fff4a2",
+  "control_cubin_sha256": "89918880f8cad38f8234993ff07064d5c8bb6f2c5a4996c3d443d637836856bd",
+  "control_median_ms": 0.43827200680971146,
+  "candidate_median_ms": 0.5734399855136871,
+  "paired_speedup": 0.7619893828395539,
+  "paired_speedup_ci95": [
+    0.761220833075997,
+    0.7630161789084068
+  ],
+  "paired_throughput_change_percent": -23.801061716044615,
+  "paired_latency_change_percent": 31.23542434062525,
+  "per_round": [
+    {
+      "round": 0,
+      "paired_throughput_change_percent": -23.839489204222453
+    },
+    {
+      "round": 1,
+      "paired_throughput_change_percent": -23.801061716044615
+    },
+    {
+      "round": 2,
+      "paired_throughput_change_percent": -23.801061716044615
+    }
+  ],
+  "control_cv_failed": 0,
+  "candidate_cv_failed": 0,
+  "records_per_side": 72,
+  "bitwise_best_all": true,
+  "mse_vs_best": 0.0,
+  "median_mse_vs_o0": 0.006653010287409885,
+  "mean_mse_vs_o0": 0.007578847013302748,
+  "all_real_integer_path": true,
+  "numerical_validation_cases": 96,
+  "rejected_invalid_cases": 8,
+  "extra_grouped_cases": 2,
+  "safety": {
+    "synccheck": {
+      "passed": true,
+      "scope": "mixed128x384x4096 safety; no performance result",
+      "cases": 4
+    },
+    "memcheck": {
+      "passed": true,
+      "scope": "mixed128x384x4096 safety; no performance result",
+      "cases": 4
+    },
+    "racecheck": {
+      "passed": true,
+      "scope": "mixed128x384x4096 safety; no performance result",
+      "cases": 4
+    }
+  },
+  "resources": {
+    "v89": {
+      "registers_per_thread": 168,
+      "local_size_bytes": 16,
+      "threads": 128,
+      "active_blocks_per_sm": 3,
+      "active_warps_per_sm": 12,
+      "shared_memory_bytes": 50688,
+      "kernel_symbol": "adangel_roof_o3_grouped_cta_candidate"
+    },
+    "v137": {
+      "registers_per_thread": 128,
+      "local_size_bytes": 112,
+      "threads": 256,
+      "active_blocks_per_sm": 2,
+      "active_warps_per_sm": 16,
+      "shared_memory_bytes": 50688,
+      "kernel_symbol": "adangel_roof_o3_route_cohort_candidate"
+    }
+  },
+  "integer_loop_local_loads": 0,
+  "integer_loop_local_stores": 0,
+  "fallback_loop": {
+    "kind": "fp32_fallback",
+    "begin_pc": "0x1320",
+    "end_pc": "0x2d80",
+    "static_instructions": 423,
+    "max_live_gpr": 126,
+    "opcode_counts": {
+      "BAR.SYNC.DEFER_BLOCKING": 1,
+      "BRA": 4,
+      "CALL.REL.NOINC": 1,
+      "DEPBAR.LE": 2,
+      "FFMA": 64,
+      "FSEL": 1,
+      "I2F": 64,
+      "IADD3": 14,
+      "IADD3.X": 9,
+      "IMAD": 26,
+      "IMMA.16864.S4.S4": 32,
+      "IMMA.16864.U4.S4": 32,
+      "ISETP.NE.AND": 1,
+      "LDG.E.U8": 1,
+      "LDGDEPBAR": 1,
+      "LDGSTS.E.BYPASS.128": 8,
+      "LDL": 5,
+      "LDL.LU": 22,
+      "LDS": 3,
+      "LDS.64": 8,
+      "LDSM.16.M88.4": 16,
+      "LEA": 44,
+      "LOP3.LUT": 2,
+      "MOV": 4,
+      "NOP": 7,
+      "PLOP3.LUT": 3,
+      "S2R": 2,
+      "SHF.L.U32": 3,
+      "SHF.R.U32.HI": 1,
+      "STL": 22,
+      "STS": 1,
+      "UIADD3": 2,
+      "UIMAD": 4,
+      "UIMAD.WIDE.U32": 2,
+      "UISETP.GE.AND": 3,
+      "ULDC": 1,
+      "ULEA": 2,
+      "USHF.L.U32": 1,
+      "USHF.R.S32.HI": 2,
+      "USHF.R.U32.HI": 2
+    },
+    "peak_pcs": [
+      "0x2830",
+      "0x2840",
+      "0x2850",
+      "0x2860",
+      "0x2870",
+      "0x2880",
+      "0x2890",
+      "0x28a0",
+      "0x28b0",
+      "0x28c0",
+      "0x28e0"
+    ]
+  },
+  "formal_extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "production_default_changed": false,
+  "four_mode_expansion_justified": false
+}

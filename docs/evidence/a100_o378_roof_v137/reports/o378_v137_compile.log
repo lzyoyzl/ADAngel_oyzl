@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/zlouyang/ADAngel_oyzl/scripts/probe_o3_route_cohort_codegen.py", line 107, in <module>
+    if __name__=='__main__':main()
+  File "/home/zlouyang/ADAngel_oyzl/scripts/probe_o3_route_cohort_codegen.py", line 81, in main
+    run(flags+['-O3','-lineinfo',source,'-cubin','-o',str(cubin),'-Xptxas=-v'],'build.log')
+  File "/home/zlouyang/ADAngel_oyzl/scripts/probe_o3_route_cohort_codegen.py", line 77, in run
+    subprocess.run(cmd,cwd=ROOT,env=dict(os.environ,TMPDIR=str(ROOT/'tmp')),stdout=f,stderr=subprocess.STDOUT,check=True)
+  File "/home/zlouyang/miniconda3/envs/adangel-a100/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/usr/local/cuda-12.8/bin/nvcc', '-std=c++17', '--expt-relaxed-constexpr', '-arch=sm_80', '-DADANGEL_FULLK_INTEGER=1', '-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include', '-I/home/zlouyang/ADAngel_oyzl/csrc/sm80', '-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v137_o3_route_cohort_codegen', '-O3', '-lineinfo', '/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o3_route_cohort_probe.cu', '-cubin', '-o', '/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v137_o3_route_cohort_codegen/o3_route_cohort.cubin', '-Xptxas=-v']' returned non-zero exit status 1.

@@ -1,0 +1,66 @@
+{
+  "scope": "route_cohort_compile_gate_not_GPU_validation",
+  "limits": {
+    "max_allocated_gpr": 128,
+    "max_hot_local_instructions": 4,
+    "min_actual_ctas_before_runtime": 2,
+    "block_threads": 256,
+    "shared_bytes": 50688,
+    "tile": [
+      64,
+      128,
+      128
+    ],
+    "stages": 3,
+    "producer_specialization": false
+  },
+  "source_commit": "6b6c449a3ec349394e5fffc512d33675bc5d838e",
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+  "sources": {
+    "csrc/sm80/o3_fullk_integer_probe.cuh": "f82b9767cd06b12a11954ff11b4f3ddfca28934240221f61fe2431db25bedaff",
+    "csrc/sm80/o3_route_cohort_candidate.cuh": "3624a68efe5e42ede3b28675cc1e5c9ac1bdfdbc266bc40cf9f04131ce675838",
+    "csrc/sm80/roof_fullk_integer_probe.cu": "3cad6bb889b8049b1ad8b8a4c582022add9f928364918dbbbe920b76bce05cce",
+    "csrc/sm80/roof_grouped_cta.cuh": "288d87418539ae194cdf5065fc66db366e289cc7c74b99225b3d386d3594e00a",
+    "csrc/sm80/roof_o3_eight_chain_probe.cu": "c84ab6bb683a197bbdb0b278630a7ecc10ab62020487ba536b70ab8dd1bd6786",
+    "csrc/sm80/roof_o3_grouped_cta_probe.cu": "b19e70150f38f602967c51ecc4475373fc127d513981abf39e43da4ae26fa8d6",
+    "csrc/sm80/roof_o3_route_cohort_probe.cu": "f49067f19b3818e0d2ce071f4f5f46ca3d77787c3c63066742c536de2f4edaaa",
+    "scripts/compare_a100_codegen.py": "ebb2603e66143e037b5e076f6a88fdfc8f81d743fd30b994d5388d874c673653",
+    "scripts/inspect_o78_register_liveness.py": "5b37a4a2c554fd7f905be3983f51829b769fe02d21487eec6a9b0fedde32bd62",
+    "scripts/probe_grouped_cta_codegen.py": "82ca3f0e9aa9deb7af4a3eaca7d2c4b234e426c4e9904b30ebfdb0a07d3f4fa5",
+    "scripts/probe_o3_eight_chain_codegen.py": "1eaf08fc18b61c25bdc8d71727a70a7f7b0506ff47544aa61f068c4653b4eef7",
+    "scripts/probe_o3_route_cohort_codegen.py": "21238c3a3f3f0ecc4b11610818f9ab58940e6d7a5f6d54faece4c1e0c71142ea",
+    "scripts/probe_o78_eight_chain_codegen.py": "df14edf4eb8b89f5bf8c2c61086f6a16a847be775d93aa0bf411d13506ad6a57",
+    "scripts/probe_roof_device_factor_codegen.py": "0de095a10723572a2e7b096f7b73933e90294414afd40ef235ef07f2e2bbb49b",
+    "scripts/probe_roof_factor_async_codegen.py": "10e315f9dbba6cdf3ff758b23222b6ea19d86f4fab0f4fb238adb2d7336dbb97",
+    "scripts/probe_roof_fullk_integer_codegen.py": "506a8070250dce2402800fd37696785641306d4481e43c1c1107936eff5e860e"
+  },
+  "baseline_cubin_sha256": "89918880f8cad38f8234993ff07064d5c8bb6f2c5a4996c3d443d637836856bd",
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-arch=sm_80",
+      "-DADANGEL_FULLK_INTEGER=1",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v137_o3_route_cohort_codegen",
+      "-O3",
+      "-lineinfo",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o3_route_cohort_probe.cu",
+      "-cubin",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v137_o3_route_cohort_codegen/o3_route_cohort.cubin",
+      "-Xptxas=-v"
+    ]
+  ],
+  "production_default_changed": false,
+  "source_quantization_changed": false,
+  "scale_semantics_changed": false,
+  "conversion_changed": false,
+  "new_runtime_measurements": false,
+  "extra_epilogue_shared_bytes_per_cta": 65536,
+  "weight_fragment_read_multiplier": 2,
+  "total_fragment_read_multiplier": 1.5
+}

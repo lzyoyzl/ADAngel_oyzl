@@ -1,5 +1,19 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v137：全K high/low warp分路，完整配对吞吐下降23.80%
+
+严格保留两路原生INT4、原量化/G128 scale/guard；没有单INT8对照。
+4个low+4个high warp各自全K累加，最后复用shared合并一次，不同于v125/v135逐组同warp重构。
+固定64×128×128/3stage，168→128regs；实际资源最大3→2CTA、12→16warp/SM，安全整数热循环零local。
+代价是W fragment读2倍、A/W合计1.5倍、最终shared交接65536B/CTA；fallback有spill，真实24样本不走fallback。
+24样本×3轮、warmup1000/repeats200，GEMM中位数0.438272→0.573440ms；
+配对0.76199×，95%CI[0.76122,0.76302]，吞吐−23.80%，配对延迟+31.24%；CV失败双方0/72。
+输出逐位一致，vs旧最佳MSE=0，vsO0 median/mean仍0.00665301028741/0.00757884701330。
+96合成+8拒绝+2坐标通过；混合小网格memcheck/synccheck/racecheck均0错误/警告。
+首次ADL编译错误修复并留痕；不计作性能轮次。完整证据冻结，未新增NCU或四模式正式性能。
+不采纳、不移植O7/O8、不扫描邻近参数，当前最佳/正式默认/5090不变。
+[v137结果与实现取舍](o3_route_cohort_review_20261007.md)。
+
 ## v136：补齐当前O3预热后NCU，最佳不变
 
 不是新候选/性能迭代；原v89 cubin，layer_12_o_proj，full/application replay/cache none/clock none。

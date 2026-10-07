@@ -1,0 +1,26 @@
+{
+  "command": [
+    "g++",
+    "-O3",
+    "-std=c++17",
+    "-shared",
+    "-fPIC",
+    "-I/usr/local/cuda-12.8/include",
+    "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_device_factor_driver.cpp",
+    "-lcuda",
+    "-o",
+    "/home/zlouyang/ADAngel_oyzl/runs/o378_roof_v137_memcheck/build/libdevice_factor_driver.so"
+  ],
+  "driver_sha256": "f3fd70dc51f1c504e5139f70c1ef49b43c438adf5c0d09665caae93bd63727ad",
+  "sources": {
+    "csrc/sm80/roof_device_factor_driver.cpp": "ce9dfe422dd3450f09381b2faa31a375cf25f24dbcc77bf847a0baa53c72135c",
+    "csrc/sm80/roof_gpu_factor_driver.cpp": "0b7cb6fb4e44343bd69d37abcd5cfc44fe31da72e1829017bdacd7ea418bbfb9",
+    "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9"
+  },
+  "preparation_cubin_sha256": "02f7fb647bcdec0dcb0a017da24be293d960093ead148ccae6b07083874f34e2",
+  "device_cubin_sha256": "d390ad87e2bfb4f3326785482cfebd2c67f36884854c904e41356e30551b9e8c",
+  "gemm_cubins": {
+    "0": "d56c78e25a29253201dfdc951e071e65d43572743bdcf81ed78707dede9a2cef",
+    "1": "931657ff36911bd44a2b04ad5a4d150d79655e0ca081c5356ee706704d771bb2"
+  }
+}
