@@ -90,14 +90,14 @@ def generated_header():
         'o78_eight_chain_experiment','o78_tensor_factor_experiment')
 
 
-def analyze_candidate(text):
+def analyze_candidate(text, symbol=SYMBOL):
     """Exactly3 complete K loops: FP32, original INT32, metadata-TC INT32.
 
     The width guard is a separate short loop, not part of the hot-loop cost.
     Its global reads, predicate reduction and barrier are charged at runtime.
     """
     block=next(b for b in re.split(r'(?=^//-+ \.text\.)',text,flags=re.M)
-        if re.match(r'//-+ \.text\.'+SYMBOL+r'\s',b))
+        if re.match(r'//-+ \.text\.'+re.escape(symbol)+r'\s',b))
     allocated=int(re.search(r'SHI_REGISTERS=(\d+)',block)[1])
     ops=[];labels={};pending=[]
     for line in block.splitlines():
@@ -124,7 +124,7 @@ def analyze_candidate(text):
             opcode_counts=dict(sorted(counts.items()))))
     if len(loops)!=3 or {x['kind'] for x in loops}!={'tensor_factor_integer','fp32_fallback','integer_fallback'}:
         raise ValueError('expected exact helper/native integer/FP32 loop set: '+str(loops))
-    return dict(symbol=SYMBOL,allocated_gpr=allocated,loops=loops,
+    return dict(symbol=symbol,allocated_gpr=allocated,loops=loops,
         function_max_live_gpr=max(x[2] for x in ops),cta_threads=128,
         interpretation='static_binary_cost_not_dynamic_work_or_runtime_safety')
 

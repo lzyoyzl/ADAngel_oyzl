@@ -53,4 +53,5 @@ int main() {
   std::cout << "{\"passed\":true,\"gpu_execution\":false,\"outputs\":8192,"
       "\"A_coordinates\":1024,\"B_coordinates\":2048,\"C_matches_payload\":true,"
       "\"coefficient_mma\":\"m16n8k16.u8.u8\",\"nonzero_K\":0}\n";
+  return 0;
 }
