@@ -7,7 +7,7 @@ import pytest
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
-from benchmark_o3_dp2a import reviewed
+from benchmark_o3_dp2a import reviewed,timing_check,stage_contract,CONTROL,SYMBOL
 
 
 def receipt():
@@ -41,3 +41,14 @@ def test_pack_in_weight_path_and_all_allocations_outside_timing():
     assert 'pack_metadata_reference(meta.cpu().numpy())' in py
     assert 'three_paths_in_one_launch=True' in py and 'full_sample_args()' in py
     assert "('--warmup','1000')" in py and "('--rounds','3')" in py
+
+
+def test_extra_pack_is_required_by_timing_contract_not_hidden():
+    for symbol,kernels in ((CONTROL,2),(SYMBOL,3)):
+        r=dict(stage_timing_inner_repeats=stage_contract('conversion_only',100),
+            weight_cached=False,activation_prepared=False,
+            kernel=dict(kernel_symbol=symbol,weight_conversion_kernels=kernels,activation_conversion_kernels=1),
+            timings_ms=dict(weight_conversion=[.01,.01],activation_conversion=[.02,.02],total=[.03,.03]))
+        timing_check(r,'conversion_only',100,2,1)
+        r['kernel']['weight_conversion_kernels']+=1
+        with pytest.raises(AssertionError):timing_check(r,'conversion_only',100,2,1)

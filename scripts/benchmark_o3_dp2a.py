@@ -85,6 +85,23 @@ def build(output,codegen):
     return (lib,*built[1:],ROOT/'reports/o378_roof_v89_o3_codegen/o3_grouped_cta.cubin',codegen/'o3_dp2a.cubin')
 
 
+def timing_check(r,mode,inner,repeats,policy):
+    # Both sides are guarded full-K kernels. The legacy helper assumed two
+    # weight kernels; candidate packing is a real third operation, not free.
+    assert policy==1 and r['kernel']['kernel_symbol'] in (CONTROL,SYMBOL)
+    candidate=r['kernel']['kernel_symbol']==SYMBOL
+    assert r['stage_timing_inner_repeats']==stage_contract(mode,inner)
+    assert r['weight_cached']==(mode not in ('conversion_only','cold'))
+    assert r['activation_prepared']==(mode=='compute_only')
+    assert r['kernel']['weight_conversion_kernels']==2+int(candidate)
+    assert r['kernel']['activation_conversion_kernels']==1
+    assert set(r['timings_ms'])==set(stage_contract(mode,inner))
+    assert all(len(v)==repeats and all(t>0 for t in v) for v in r['timings_ms'].values())
+    if mode=='conversion_only':
+        for total,w,a in zip(r['timings_ms']['total'],r['timings_ms']['weight_conversion'],r['timings_ms']['activation_conversion']):
+            assert abs(total-w-a)<1e-5*max(total,1e-6)
+
+
 class Pipeline(FullPipeline):
     def __init__(self,*built):
         self.pair={};self.pack=None
@@ -194,7 +211,7 @@ def main():
     for name,value in (('--warmup','1000'),('--repeats','200'),('--rounds','3'),('--inner','100'),
                        ('--codegen','reports/o378_roof_v115_o3_dp2a_codegen')):
         if name not in sys.argv:sys.argv.extend((name,value))
-    protocol.build=build;protocol.Pipeline=Pipeline;protocol.validate=validate
+    protocol.build=build;protocol.Pipeline=Pipeline;protocol.validate=validate;protocol.timing_check=timing_check
     protocol.main()
     out=Path(sys.argv[sys.argv.index('--output')+1]);env=json.loads((out/'environment.json').read_text())
     env.update(scope='v135 full24 first runtime test of frozen v115, versus best O3 v89',

@@ -24,4 +24,7 @@ TMPDIR="$PWD/tmp" python scripts/benchmark_o3_dp2a.py \
   --rounds 3 --warmup 1000 --repeats 200 --inner 100 --modes compute_only
 ```
 
-当前状态：运行脚本已实现，尚无新GPU结果。
+首次运行已确认两端实际均为3 CTA/SM。验证脚本的旧计时断言只接受两个W准备kernel，
+在新增metadata打包（实际第三个kernel）时终止；尚未进入真实样本性能测试。
+修复仅更新本轮计时契约检查，保留第三个kernel的真实开销与首次失败日志，不改CUDA二进制。
+当前状态：等待修复后完整验证与计时。
