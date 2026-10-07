@@ -1,0 +1,33 @@
+{
+  "git_commit": "c47fd55d8e85ee20f12f6af89019de16f5cfd1bd",
+  "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "production_default_changed": false,
+  "args": {
+    "output": "runs/o378_roof_v135_full24_checked",
+    "codegen": "reports/o378_roof_v115_o3_dp2a_codegen",
+    "samples": 24,
+    "rounds": 3,
+    "warmup": 1000,
+    "repeats": 200,
+    "inner": 100,
+    "modes": [
+      "compute_only"
+    ],
+    "validate_only": false
+  },
+  "policy": "unlocked shared GPU, cyclic pair order, all raw samples retained",
+  "timing_contract_version": 2,
+  "scope": "v135 full24 first runtime test of frozen v115, versus best O3 v89",
+  "guard_cost": "both: weight conversion includes factors/status; cached outside compute/steady",
+  "host_preflight": "same normal-scale/finite-row preflight and post-batch status outside GPU Event timing",
+  "control": "adangel_roof_o3_grouped_cta_candidate",
+  "candidate": "adangel_roof_o3_dp2a_candidate",
+  "no_small_performance_screen": true,
+  "historical_static_gate_passed": false,
+  "runtime_review": "small spill accepted, no frozen gate overwritten",
+  "extra_candidate_metadata_pack_charged_to": "weight_conversion",
+  "single_int8_route": false
+}

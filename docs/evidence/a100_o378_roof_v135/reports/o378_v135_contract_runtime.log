@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/zlouyang/ADAngel_oyzl/scripts/benchmark_o3_dp2a.py", line 224, in <module>
+    if __name__=='__main__':main()
+  File "/home/zlouyang/ADAngel_oyzl/scripts/benchmark_o3_dp2a.py", line 215, in main
+    protocol.main()
+  File "/home/zlouyang/ADAngel_oyzl/scripts/benchmark_o3_eight_chain_probe.py", line 218, in main
+    save('resources.json', driver.resources); save('validation.json', validate(driver))
+  File "/home/zlouyang/ADAngel_oyzl/scripts/benchmark_o3_dp2a.py", line 197, in validate
+    ref=reference_fp64('o3',(pa,asc,pw,ws))
+  File "/home/zlouyang/ADAngel_oyzl/scripts/roof_reduction_validation.py", line 33, in reference_fp64
+    partial=a[:,sl].double()@w[:,sl].double().T
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (128x4096 and 128x384)
