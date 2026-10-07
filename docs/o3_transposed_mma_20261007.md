@@ -22,9 +22,32 @@
 
 未通过则停止，不扫描相近transpose/tile参数，不启动候选GPU，也不编造MSE或性能成绩。通过后再做实际资源、GPU数值及安全检查，直接24样本三轮配对，1000/200预热/测量；GEMM正向才补四模式端到端。不做小规模性能筛选。
 
-## 状态
+## A100审计结果：停止该方向
 
-源码与CPU契约已编写，A100编译/审计尚未执行；没有新运行时间或MSE结果。当前最佳与5090不变。
+源码commit `cad527394266c7a4ee0fe1f7a91164ac23b33a38`先在本地提交/推GitHub，再在A100项目目录fetch并ff-only同步。CUDA12.8、原pinned CUTLASS不变。真实CuTe host检查覆盖8192个输出的唯一owner及49152个输入坐标，确认W scale集合16→8；这不是GPU数值验收。
+
+| 指标，整数G128热循环 | 原O3 v89 | 转置MMA候选 |
+|---|---:|---:|
+| 静态指令 | 323 | 322（仅−0.31%） |
+| 活跃GPR峰值 | 166 | 160（仅−6） |
+| 分配寄存器/线程 | 168 | 168 |
+| S4×S4＋另一条原生INT4 | 32＋32 U4×S4 | 32＋32 S4×U4 |
+| LDSM / async copy / CTA barrier | 16 / 9 / 1 | 16 / 9 / 1 |
+| 普通IMAD（包括64个加权累加） | 65 | 65 |
+| factor读取 | 8条LDS.64 | 8条LDS |
+| 热local load/store | 0 / 0 | 0 / 0 |
+
+两侧循环另外各有3条 `LDS RZ,[RZ]`，不是有效factor载入。旧控制完整SASS编码一致，同候选entry确认原生S4×U4、S4×S4及cg async copy，没有INT8 MMA退化。
+
+**为什么scale集合减半却没有显著减少指令？** 原先16个值由8条64-bit load读取；现在8个值由8条32-bit load读取，发射次数没有减少。每个输出的加权累加仍要做一次IMAD，MMA/供数/同步工作保持；此外 `IMAD.SHL.U32` 23→17、`IMAD.U32` 3→2，却有 `SHF.L.U32` 44→50。源码局部数据量下降被实际指令组织抵消，不能据此预测可观提速。
+
+热循环无spill不等于整个entry无spill：两侧资源报告均有16B stack；候选ptxas记录12B spill store/load，未用它冒充热循环访存。也未调用GPU占用率API，因此不新增“实际3 CTA驻留”测量结论。
+
+未达到预设3%指令减少或16活跃GPR减少的投入门槛；其他结构项均通过。**停止，不运行候选、不扫描相近transpose/tile参数，也不迁移O7/O8。** 这不是实测慢0.31%，更不是确认加速0.31%。没有新增Event、MSE、conversion、端到端、NCU或GPU安全验收；已验证的最佳O3 v89、O7/O8 v78保持。正式扩展SHA与5090版本不变。
+
+本地与A100各13项CPU/旧证据回放检查通过。16份原始文本、编译命令、生成文件、源码SHA和原始审计已冻结在[v124证据目录](evidence/a100_o378_roof_v124/README.md)，可在CPU重算；二进制留在项目内归档。
+
+本轮insight：**应区分“少了几个scale数值”与“少了多少实际load/加权指令、改变了多少资源容量”。** 当前O3的主要MMA与整数后处理工作未减少，优化仍未达到有效吞吐上界；不能用一个布局指标改善宣布瓶颈已被消除。
 
 ```bash
 python -m pytest tests/unit/test_transposed_mma_codegen.py -q

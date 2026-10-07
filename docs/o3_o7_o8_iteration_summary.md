@@ -1,5 +1,16 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v124：O3交换MMA操作数，未通过编译投入门槛，停止
+
+核对v45/v47/v85/v88/v107后，不重做固定尺寸、warp长宽比或单纯驻留轴变更。
+逻辑CTA仍64×128；内部计算W×Aᵀ，直接写回原Y，不增加转置buffer/kernel，原guard/三stage/八链保持。
+真实CuTe验证8192输出、49152输入坐标；W scale独有值16→8，但8条LDS.64只变为8条LDS。
+整数热循环323→322，仅少0.31%；活跃GPR166→160、allocated168不变；MMA64/LDSM16/copy9/barrier1及IMAD65不变。
+同entry原生S4×U4/S4×S4和cg copy、旧控制完整编码通过；热local0，不代表整个entry无spill。
+未达预设3%指令或16GPR改善门槛，不运行候选、不扫描邻近配置、不迁移O7/O8。
+无新Event、MSE、NCU、conversion/E2E或GPU安全结果；最佳、正式扩展/默认及5090不改。
+[v124编译证据、查重及停止理由](o3_transposed_mma_20261007.md)。
+
 ## v123：O8 packed FP6转换，确认端到端有限正收益，GEMM最佳不变
 
 先核对v34/v53/v66/v73/v106/v118；新方法为四个byte一起精确解码、DP4A计算平方和，不是标量无分支或旧NVFP4查表重测。
