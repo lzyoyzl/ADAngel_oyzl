@@ -1,5 +1,15 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v136：补齐当前O3预热后NCU，最佳不变
+
+不是新候选/性能迭代；原v89 cubin，layer_12_o_proj，full/application replay/cache none/clock none。
+50次应用回放各1000预热+1目标launch，全部输出逐位一致；样本vsO0 MSE=0.0003752320504872409。
+NCU 0.376160ms，不与跨轮Event做速度比；eligible0.6485、issue42.95%、Tensor活跃65.28%。
+逐PC核对2200条入口/323条热循环；MMA占wait53.79%/math94.56%，重构与加权占wait16.94%，不是耗时比例。
+L2命中94.41%、DRAM吞吐17.87%、LDS/LDSM excessive为0，未支持优先优化HBM或读取bank conflict。
+不重复v125/v135拆链、v94/v104资源、v128/v134预取；无满足投入条件的新候选，不做邻近扫描。
+原始66份文本及归档SHA冻结，正式扩展/默认/5090不变。[v136结论与证据](o3_best_warm_profile_20261007.md)。
+
 ## v135：冻结v115首次完整GPU补测，配对吞吐下降6.48%
 
 仅两路原生INT4；DP2A为标量合并，不是单路INT8 Tensor Core。没有新CUDA调优或重编译候选。

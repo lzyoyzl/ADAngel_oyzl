@@ -1,0 +1,63 @@
+[
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--version"
+    ],
+    "output": "ncu_version.txt"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--set",
+      "full",
+      "--replay-mode",
+      "application",
+      "--cache-control",
+      "none",
+      "--clock-control",
+      "none",
+      "--kernel-name-base",
+      "function",
+      "--kernel-name",
+      "regex:^adangel_roof_o3_grouped_cta_candidate$",
+      "--launch-skip",
+      "1000",
+      "--launch-count",
+      "1",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v136_o3_warm_ncu/o3_warm",
+      "/home/zlouyang/miniconda3/envs/adangel-a100/bin/python",
+      "scripts/profile_o3_best_warm.py",
+      "--validation",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v136_o3_warm_ncu/validation.json",
+      "--output",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v136_o3_warm_ncu/pass_receipts"
+    ],
+    "output": "capture.log"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v136_o3_warm_ncu/o3_warm.ncu-rep",
+      "--csv",
+      "--page",
+      "raw"
+    ],
+    "output": "o3_warm_raw.csv"
+  },
+  {
+    "command": [
+      "/usr/local/cuda-12.8/bin/ncu",
+      "--import",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v136_o3_warm_ncu/o3_warm.ncu-rep",
+      "--csv",
+      "--page",
+      "source",
+      "--print-source",
+      "sass"
+    ],
+    "output": "o3_warm_source_sass.csv"
+  }
+]

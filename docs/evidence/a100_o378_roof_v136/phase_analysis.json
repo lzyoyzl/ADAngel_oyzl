@@ -1,0 +1,2494 @@
+{
+  "scope": "current_O3_verified_consumer_roles_not_causal_latency",
+  "variant": "o3",
+  "sample_id": "layer_12_o_proj",
+  "kernel": "adangel_roof_o3_grouped_cta_candidate",
+  "static_entry_operands_and_predicates_verified": true,
+  "integer_loop_static": {
+    "other_loop_address_or_control": 85,
+    "loop_exit_control": 6,
+    "stage_synchronization": 4,
+    "compiler_dummy_shared_read": 3,
+    "next_stage_async_copy": 9,
+    "matrix_fragment_load": 16,
+    "mma_high_k0": 16,
+    "mma_high_k1": 16,
+    "high_times_16": 64,
+    "mma_low_k0": 16,
+    "factor_shared_load": 8,
+    "mma_low_k1": 16,
+    "weighted_integer_accumulate": 64
+  },
+  "consumer_categories": {
+    "outside_integer_loop": {
+      "static_instructions": 1877,
+      "warp_instructions": 6963200,
+      "predicated_on_thread_instructions": 178454528,
+      "not_issued_samples": 806,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 3,
+        "dispatch": 23,
+        "drain": 38,
+        "imc": 80,
+        "lg": 14,
+        "long_sb": 323,
+        "math": 22,
+        "membar": 0,
+        "mio": 69,
+        "misc": 0,
+        "no_inst": 25,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 32,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 177
+      }
+    },
+    "other_loop_address_or_control": {
+      "static_instructions": 85,
+      "warp_instructions": 19808256,
+      "predicated_on_thread_instructions": 633864192,
+      "not_issued_samples": 1317,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 32,
+        "dispatch": 39,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 478,
+        "math": 51,
+        "membar": 0,
+        "mio": 8,
+        "misc": 0,
+        "no_inst": 32,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 134,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 543
+      }
+    },
+    "loop_exit_control": {
+      "static_instructions": 6,
+      "warp_instructions": 1302528,
+      "predicated_on_thread_instructions": 23199744,
+      "not_issued_samples": 1373,
+      "reason_samples": {
+        "barrier": 1285,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 87
+      }
+    },
+    "stage_synchronization": {
+      "static_instructions": 4,
+      "warp_instructions": 770048,
+      "predicated_on_thread_instructions": 24641536,
+      "not_issued_samples": 182,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 75,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 2,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 17,
+        "misc": 0,
+        "no_inst": 25,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 63
+      }
+    },
+    "compiler_dummy_shared_read": {
+      "static_instructions": 3,
+      "warp_instructions": 737280,
+      "predicated_on_thread_instructions": 0,
+      "not_issued_samples": 14,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 14,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 0
+      }
+    },
+    "next_stage_async_copy": {
+      "static_instructions": 9,
+      "warp_instructions": 2027520,
+      "predicated_on_thread_instructions": 64880640,
+      "not_issued_samples": 173,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 9,
+        "drain": 0,
+        "imc": 0,
+        "lg": 21,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 53,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 90
+      }
+    },
+    "matrix_fragment_load": {
+      "static_instructions": 16,
+      "warp_instructions": 4194304,
+      "predicated_on_thread_instructions": 134217728,
+      "not_issued_samples": 409,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 11,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 190,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 208
+      }
+    },
+    "mma_high_k0": {
+      "static_instructions": 16,
+      "warp_instructions": 4194304,
+      "predicated_on_thread_instructions": 134217728,
+      "not_issued_samples": 1808,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 3,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 1046,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 163,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 596
+      }
+    },
+    "mma_high_k1": {
+      "static_instructions": 16,
+      "warp_instructions": 4194304,
+      "predicated_on_thread_instructions": 134217728,
+      "not_issued_samples": 1788,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 6,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 673,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 333,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 776
+      }
+    },
+    "high_times_16": {
+      "static_instructions": 64,
+      "warp_instructions": 16777216,
+      "predicated_on_thread_instructions": 536870912,
+      "not_issued_samples": 411,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 12,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 51,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 348
+      }
+    },
+    "mma_low_k0": {
+      "static_instructions": 16,
+      "warp_instructions": 4194304,
+      "predicated_on_thread_instructions": 134217728,
+      "not_issued_samples": 651,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 6,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 365,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 280
+      }
+    },
+    "factor_shared_load": {
+      "static_instructions": 8,
+      "warp_instructions": 2097152,
+      "predicated_on_thread_instructions": 67108864,
+      "not_issued_samples": 126,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 52,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 73
+      }
+    },
+    "mma_low_k1": {
+      "static_instructions": 16,
+      "warp_instructions": 4194304,
+      "predicated_on_thread_instructions": 134217728,
+      "not_issued_samples": 1197,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 2,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 521,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 46,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 628
+      }
+    },
+    "weighted_integer_accumulate": {
+      "static_instructions": 64,
+      "warp_instructions": 16777216,
+      "predicated_on_thread_instructions": 536870912,
+      "not_issued_samples": 698,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 94,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 26,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 208,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 370
+      }
+    }
+  },
+  "not_issued_samples": 10953,
+  "reason_samples": {
+    "barrier": 1285,
+    "branch_resolving": 110,
+    "dispatch": 207,
+    "drain": 38,
+    "imc": 80,
+    "lg": 37,
+    "long_sb": 801,
+    "math": 2755,
+    "membar": 0,
+    "mio": 403,
+    "misc": 0,
+    "no_inst": 82,
+    "not_selected": 0,
+    "selected": 0,
+    "short_sb": 916,
+    "sleeping": 0,
+    "tex": 0,
+    "wait": 4239
+  },
+  "top_pcs": [
+    {
+      "pc": "0x4e10",
+      "category": "loop_exit_control",
+      "instruction": "@P1   BRA 0x7dc8556a87d0",
+      "not_issued_samples": 1288,
+      "reason_samples": {
+        "barrier": 1285,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 3
+      }
+    },
+    {
+      "pc": "0x54c0",
+      "category": "mma_high_k1",
+      "instruction": "IMMA.16864.S4.S4 R60, R88.ROW, R72.COL, R60",
+      "not_issued_samples": 590,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 228,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 300,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 62
+      }
+    },
+    {
+      "pc": "0x5480",
+      "category": "mma_high_k0",
+      "instruction": "IMMA.16864.S4.S4 R60, R92.ROW, R76.COL, RZ",
+      "not_issued_samples": 543,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 395,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 148,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 0
+      }
+    },
+    {
+      "pc": "0x56a0",
+      "category": "mma_high_k0",
+      "instruction": "IMMA.16864.S4.S4 R44, R100.ROW, R48.COL, RZ",
+      "not_issued_samples": 386,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 2,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 366,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 18
+      }
+    },
+    {
+      "pc": "0x5740",
+      "category": "mma_low_k1",
+      "instruction": "IMMA.16864.U4.S4 R60, R36.ROW, R72.COL, R60",
+      "not_issued_samples": 350,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 305,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 6,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 38
+      }
+    },
+    {
+      "pc": "0x4de0",
+      "category": "other_loop_address_or_control",
+      "instruction": "UISETP.GT.U32.AND UP0, UPT, UR9, 0x1f, UPT",
+      "not_issued_samples": 328,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 1,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 308,
+        "math": 0,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 1,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 18
+      }
+    },
+    {
+      "pc": "0x58e0",
+      "category": "mma_high_k1",
+      "instruction": "IMMA.16864.S4.S4 R76, R28.ROW, R54.COL, R76",
+      "not_issued_samples": 285,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 2,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 232,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 51
+      }
+    },
+    {
+      "pc": "0x5b20",
+      "category": "mma_high_k1",
+      "instruction": "IMMA.16864.S4.S4 R80, R88.ROW, R68.COL, R80",
+      "not_issued_samples": 174,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 90,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 33,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 50
+      }
+    },
+    {
+      "pc": "0x5490",
+      "category": "mma_high_k0",
+      "instruction": "IMMA.16864.S4.S4 R56, R100.ROW, R76.COL, RZ",
+      "not_issued_samples": 130,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 85,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 13,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 32
+      }
+    },
+    {
+      "pc": "0x5cf0",
+      "category": "mma_low_k0",
+      "instruction": "IMMA.16864.U4.S4 R84, R84.ROW, R62.COL, R88",
+      "not_issued_samples": 104,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 37,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 67
+      }
+    },
+    {
+      "pc": "0x5ed0",
+      "category": "mma_low_k0",
+      "instruction": "IMMA.16864.U4.S4 R100, R32.ROW, R62.COL, R100",
+      "not_issued_samples": 103,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 10,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 92
+      }
+    },
+    {
+      "pc": "0x52c0",
+      "category": "stage_synchronization",
+      "instruction": "LDGDEPBAR",
+      "not_issued_samples": 97,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 55,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 2,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 10,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 30
+      }
+    },
+    {
+      "pc": "0x4f10",
+      "category": "other_loop_address_or_control",
+      "instruction": "SHF.L.U32 R40, R42, 0x4, RZ",
+      "not_issued_samples": 92,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 91,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 0
+      }
+    },
+    {
+      "pc": "0x54a0",
+      "category": "mma_high_k0",
+      "instruction": "IMMA.16864.S4.S4 R40, R92.ROW, R78.COL, RZ",
+      "not_issued_samples": 91,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 19,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 71
+      }
+    },
+    {
+      "pc": "0x4f0",
+      "category": "outside_integer_loop",
+      "instruction": "LOP3.LUT P0, RZ, R0, 0x6, RZ, 0xc0, !PT",
+      "not_issued_samples": 90,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 90,
+        "math": 0,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 0
+      }
+    },
+    {
+      "pc": "0x5630",
+      "category": "mma_low_k0",
+      "instruction": "IMMA.16864.U4.S4 R64, R84.ROW, R78.COL, R40",
+      "not_issued_samples": 89,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 19,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 69
+      }
+    },
+    {
+      "pc": "0x5d10",
+      "category": "mma_high_k0",
+      "instruction": "IMMA.16864.S4.S4 R92, R100.ROW, R60.COL, RZ",
+      "not_issued_samples": 88,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 30,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 58
+      }
+    },
+    {
+      "pc": "0x6290",
+      "category": "outside_integer_loop",
+      "instruction": "IADD3 R5, R56, UR5, RZ",
+      "not_issued_samples": 88,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 88,
+        "math": 0,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 0
+      }
+    },
+    {
+      "pc": "0x4da0",
+      "category": "loop_exit_control",
+      "instruction": "@!P1  BRA 0x7dc8556a82d0",
+      "not_issued_samples": 84,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 83
+      }
+    },
+    {
+      "pc": "0x54b0",
+      "category": "mma_high_k0",
+      "instruction": "IMMA.16864.S4.S4 R36, R100.ROW, R78.COL, RZ",
+      "not_issued_samples": 84,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 25,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 59
+      }
+    },
+    {
+      "pc": "0x5750",
+      "category": "mma_low_k1",
+      "instruction": "IMMA.16864.U4.S4 R64, R36.ROW, R74.COL, R64",
+      "not_issued_samples": 84,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 18,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 66
+      }
+    },
+    {
+      "pc": "0x5f20",
+      "category": "mma_low_k1",
+      "instruction": "IMMA.16864.U4.S4 R80, R36.ROW, R68.COL, R80",
+      "not_issued_samples": 84,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 1,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 83
+      }
+    },
+    {
+      "pc": "0x5700",
+      "category": "mma_low_k1",
+      "instruction": "IMMA.16864.U4.S4 R56, R40.ROW, R72.COL, R56",
+      "not_issued_samples": 83,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 43,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 40,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 0
+      }
+    },
+    {
+      "pc": "0x5a60",
+      "category": "mma_low_k1",
+      "instruction": "IMMA.16864.U4.S4 R52, R40.ROW, R54.COL, R76",
+      "not_issued_samples": 83,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 15,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 68
+      }
+    },
+    {
+      "pc": "0x5d60",
+      "category": "mma_high_k1",
+      "instruction": "IMMA.16864.S4.S4 R96, R28.ROW, R66.COL, R96",
+      "not_issued_samples": 79,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 0,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 79
+      }
+    },
+    {
+      "pc": "0x5650",
+      "category": "mma_low_k0",
+      "instruction": "IMMA.16864.U4.S4 R76, R32.ROW, R78.COL, R36",
+      "not_issued_samples": 77,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 24,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 52
+      }
+    },
+    {
+      "pc": "0x5b00",
+      "category": "mma_high_k1",
+      "instruction": "IMMA.16864.S4.S4 R72, R88.ROW, R64.COL, R72",
+      "not_issued_samples": 77,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 1,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 7,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 69
+      }
+    },
+    {
+      "pc": "0x5760",
+      "category": "mma_low_k1",
+      "instruction": "IMMA.16864.U4.S4 R72, R40.ROW, R74.COL, R76",
+      "not_issued_samples": 76,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 7,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 69
+      }
+    },
+    {
+      "pc": "0x5f30",
+      "category": "mma_low_k1",
+      "instruction": "IMMA.16864.U4.S4 R84, R36.ROW, R70.COL, R84",
+      "not_issued_samples": 76,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 1,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 75
+      }
+    },
+    {
+      "pc": "0x58f0",
+      "category": "mma_low_k1",
+      "instruction": "IMMA.16864.U4.S4 R68, R36.ROW, R52.COL, R68",
+      "not_issued_samples": 71,
+      "reason_samples": {
+        "barrier": 0,
+        "branch_resolving": 0,
+        "dispatch": 0,
+        "drain": 0,
+        "imc": 0,
+        "lg": 0,
+        "long_sb": 0,
+        "math": 19,
+        "membar": 0,
+        "mio": 0,
+        "misc": 0,
+        "no_inst": 0,
+        "not_selected": 0,
+        "selected": 0,
+        "short_sb": 0,
+        "sleeping": 0,
+        "tex": 0,
+        "wait": 52
+      }
+    }
+  ],
+  "instruction_roles": {
+    "0x4d70": {
+      "instruction": "UIADD3 UR9, UR4, 0x2, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4d80": {
+      "instruction": "UISETP.GE.U32.AND UP0, UPT, UR9, 0x20, UPT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4d90": {
+      "instruction": "PLOP3.LUT P1, PT, PT, PT, UP0, 0x80, 0x0",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4da0": {
+      "instruction": "@!P1 BRA 0x4dd0",
+      "category": "loop_exit_control"
+    },
+    "0x4db0": {
+      "instruction": "DEPBAR.LE SB0, 0x0",
+      "category": "stage_synchronization"
+    },
+    "0x4dc0": {
+      "instruction": "BRA 0x4de0",
+      "category": "loop_exit_control"
+    },
+    "0x4dd0": {
+      "instruction": "DEPBAR.LE SB0, 0x1",
+      "category": "stage_synchronization"
+    },
+    "0x4de0": {
+      "instruction": "UISETP.GT.U32.AND UP0, UPT, UR9, 0x1f, UPT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4df0": {
+      "instruction": "BAR.SYNC.DEFER_BLOCKING 0x0",
+      "category": "stage_synchronization"
+    },
+    "0x4e00": {
+      "instruction": "PLOP3.LUT P1, PT, PT, PT, UP0, 0x80, 0x0",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4e10": {
+      "instruction": "@P1 BRA 0x52d0",
+      "category": "loop_exit_control"
+    },
+    "0x4e20": {
+      "instruction": "ULOP3.LUT UR5, UR9, 0xff, URZ, 0xc0, !UPT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4e30": {
+      "instruction": "S2R R42, SR_TID.X",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4e40": {
+      "instruction": "ULDC.64 UR14, c[0x0][0x198]",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4e50": {
+      "instruction": "LOP3.LUT R16, R157, R164, RZ, 0x3c, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4e60": {
+      "instruction": "UIMAD UR6, UR5, 0xaaab, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4e70": {
+      "instruction": "S2R R36, SR_TID.X",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4e80": {
+      "instruction": "UIMAD UR12, UR9, UR15, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4e90": {
+      "instruction": "BSSY B0, 0x52c0",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4ea0": {
+      "instruction": "USHF.R.U32.HI UR6, URZ, 0x11, UR6",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4eb0": {
+      "instruction": "USHF.L.U32 UR15, UR12, 0x6, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4ec0": {
+      "instruction": "UPRMT UR6, UR6, 0x9910, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4ed0": {
+      "instruction": "UIMAD UR6, UR6, 0x3, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4ee0": {
+      "instruction": "IMAD.U32 R21, RZ, RZ, UR15",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4ef0": {
+      "instruction": "UIADD3 UR6, URZ, -UR6, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f00": {
+      "instruction": "UPRMT UR7, UR6, 0x7710, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f10": {
+      "instruction": "SHF.L.U32 R40, R42, 0x4, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f20": {
+      "instruction": "UIMAD UR6, UR9, UR14, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f30": {
+      "instruction": "UIADD3 UR5, UR5, UR7, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f40": {
+      "instruction": "LOP3.LUT R20, R160, 0x30, R40, 0xf8, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f50": {
+      "instruction": "USHF.L.U32 UR6, UR6, 0x6, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f60": {
+      "instruction": "SHF.L.U32 R43, R36, 0x4, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f70": {
+      "instruction": "ULOP3.LUT UR5, UR5, 0xffff, URZ, 0xc0, !UPT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f80": {
+      "instruction": "IADD3 R20, P3, P4, R21, c[0x0][0x168], R20",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4f90": {
+      "instruction": "USHF.R.S32.HI UR7, URZ, 0x1f, UR6",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4fa0": {
+      "instruction": "IADD3 R43, R43, 0x1800, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4fb0": {
+      "instruction": "USHF.R.S32.HI UR9, URZ, 0x1f, UR15",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4fc0": {
+      "instruction": "IADD3 R28, P1, R18, UR6, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4fd0": {
+      "instruction": "IADD3 R30, P2, R22, UR6, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4fe0": {
+      "instruction": "ULEA UR6, UR5, 0x6000, 0xd",
+      "category": "other_loop_address_or_control"
+    },
+    "0x4ff0": {
+      "instruction": "MOV R38, UR5",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5000": {
+      "instruction": "IMAD.U32 R21, RZ, RZ, UR9",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5010": {
+      "instruction": "IADD3.X R29, R19, UR7, RZ, P1, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5020": {
+      "instruction": "IADD3 R32, P1, R28, UR13, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5030": {
+      "instruction": "IADD3.X R31, R23, UR7, RZ, P2, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5040": {
+      "instruction": "IADD3 R34, P2, R30, UR13, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5050": {
+      "instruction": "LEA R37, R38.reuse, R5, 0xc",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5060": {
+      "instruction": "IADD3.X R33, R29, UR16, RZ, P1, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5070": {
+      "instruction": "LEA R39, R38, R16, 0xc",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5080": {
+      "instruction": "@!PT LDS RZ, [RZ]",
+      "category": "compiler_dummy_shared_read"
+    },
+    "0x5090": {
+      "instruction": "@!PT LDS RZ, [RZ]",
+      "category": "compiler_dummy_shared_read"
+    },
+    "0x50a0": {
+      "instruction": "@!PT LDS RZ, [RZ]",
+      "category": "compiler_dummy_shared_read"
+    },
+    "0x50b0": {
+      "instruction": "LDGSTS.E.BYPASS.128 [R37], [R28.64]",
+      "category": "next_stage_async_copy"
+    },
+    "0x50c0": {
+      "instruction": "IADD3.X R35, R31, UR16, RZ, P2, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x50d0": {
+      "instruction": "IADD3.X R21, R21, c[0x0][0x16c], RZ, P3, P4",
+      "category": "other_loop_address_or_control"
+    },
+    "0x50e0": {
+      "instruction": "LDGSTS.E.BYPASS.128 [R37+0x3000], [R32.64]",
+      "category": "next_stage_async_copy"
+    },
+    "0x50f0": {
+      "instruction": "IADD3 R41, R5, UR6, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5100": {
+      "instruction": "LOP3.LUT R36, R159, R165, RZ, 0x3c, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5110": {
+      "instruction": "LDGSTS.E.BYPASS.128 [R39], [R30.64]",
+      "category": "next_stage_async_copy"
+    },
+    "0x5120": {
+      "instruction": "LDGSTS.E.BYPASS.128 [R39+0x3000], [R34.64]",
+      "category": "next_stage_async_copy"
+    },
+    "0x5130": {
+      "instruction": "IADD3 R28, P1, R24, UR15, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5140": {
+      "instruction": "LDGSTS.E.BYPASS.128 [R41], [R20.64]",
+      "category": "next_stage_async_copy"
+    },
+    "0x5150": {
+      "instruction": "LOP3.LUT R37, R158, R43, RZ, 0x3c, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5160": {
+      "instruction": "IADD3.X R29, R25, UR9, RZ, P1, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5170": {
+      "instruction": "IADD3 R30, P3, R104, UR15, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5180": {
+      "instruction": "IADD3 R33, R16, UR6, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5190": {
+      "instruction": "IADD3 R35, R36, UR6, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x51a0": {
+      "instruction": "IADD3.X R31, R105, UR9, RZ, P3, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x51b0": {
+      "instruction": "LDGSTS.E.BYPASS.128 [R33], [R28.64]",
+      "category": "next_stage_async_copy"
+    },
+    "0x51c0": {
+      "instruction": "IADD3 R20, P2, R26, UR15, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x51d0": {
+      "instruction": "IADD3 R37, R37, UR6, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x51e0": {
+      "instruction": "IADD3.X R21, R27, UR9, RZ, P2, !PT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x51f0": {
+      "instruction": "LDGSTS.E.BYPASS.128 [R35], [R20.64]",
+      "category": "next_stage_async_copy"
+    },
+    "0x5200": {
+      "instruction": "LDGSTS.E.BYPASS.128 [R37], [R30.64]",
+      "category": "next_stage_async_copy"
+    },
+    "0x5210": {
+      "instruction": "@P0 BRA 0x52b0",
+      "category": "loop_exit_control"
+    },
+    "0x5220": {
+      "instruction": "IMAD.SHL.U32 R16, R42, 0x4, RZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5230": {
+      "instruction": "MOV R21, UR12",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5240": {
+      "instruction": "USHF.R.S32.HI UR6, URZ, 0x1f, UR12",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5250": {
+      "instruction": "LEA R29, R38, R40, 0x9",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5260": {
+      "instruction": "IADD3 R16, P1, P2, R21, UR17, R16",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5270": {
+      "instruction": "IADD3.X R21, RZ, UR6, RZ, P1, P2",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5280": {
+      "instruction": "LEA R20, P1, R16, c[0x0][0x180], 0x2",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5290": {
+      "instruction": "LEA.HI.X R21, R16, c[0x0][0x184], R21, 0x2, P1",
+      "category": "other_loop_address_or_control"
+    },
+    "0x52a0": {
+      "instruction": "LDGSTS.E.BYPASS.128 [R29+0xc000], [R20.64]",
+      "category": "next_stage_async_copy"
+    },
+    "0x52b0": {
+      "instruction": "BSYNC B0",
+      "category": "other_loop_address_or_control"
+    },
+    "0x52c0": {
+      "instruction": "LDGDEPBAR",
+      "category": "stage_synchronization"
+    },
+    "0x52d0": {
+      "instruction": "ULOP3.LUT UR5, UR4, 0xff, URZ, 0xc0, !UPT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x52e0": {
+      "instruction": "UIADD3 UR4, UR4, 0x1, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x52f0": {
+      "instruction": "UIMAD UR6, UR5, 0xaaab, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5300": {
+      "instruction": "UISETP.NE.AND UP0, UPT, UR4, 0x20, UPT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5310": {
+      "instruction": "USHF.R.U32.HI UR6, URZ, 0x11, UR6",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5320": {
+      "instruction": "UPRMT UR6, UR6, 0x9910, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5330": {
+      "instruction": "PLOP3.LUT P1, PT, PT, PT, UP0, 0x80, 0x0",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5340": {
+      "instruction": "UIMAD UR6, UR6, 0x3, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5350": {
+      "instruction": "UIADD3 UR6, URZ, -UR6, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5360": {
+      "instruction": "UPRMT UR6, UR6, 0x7710, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5370": {
+      "instruction": "UIADD3 UR5, UR5, UR6, URZ",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5380": {
+      "instruction": "ULOP3.LUT UR5, UR5, 0xffff, URZ, 0xc0, !UPT",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5390": {
+      "instruction": "ULEA UR6, UR5, 0x6000, 0xd",
+      "category": "other_loop_address_or_control"
+    },
+    "0x53a0": {
+      "instruction": "IMAD.U32 R20, RZ, RZ, UR5",
+      "category": "other_loop_address_or_control"
+    },
+    "0x53b0": {
+      "instruction": "MOV R21, UR5",
+      "category": "other_loop_address_or_control"
+    },
+    "0x53c0": {
+      "instruction": "LEA R20, R20, R163, 0xc",
+      "category": "other_loop_address_or_control"
+    },
+    "0x53d0": {
+      "instruction": "IMAD R16, R21, 0x1000, R162",
+      "category": "other_loop_address_or_control"
+    },
+    "0x53e0": {
+      "instruction": "LDSM.16.M88.4 R76, [R15+UR6]",
+      "category": "matrix_fragment_load"
+    },
+    "0x53f0": {
+      "instruction": "LDSM.16.M88.4 R92, [R20+0x3000]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5400": {
+      "instruction": "LDSM.16.M88.4 R100, [R20+0x3800]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5410": {
+      "instruction": "LDSM.16.M88.4 R72, [R0+UR6]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5420": {
+      "instruction": "LDSM.16.M88.4 R88, [R16+0x3000]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5430": {
+      "instruction": "LDSM.16.M88.4 R28, [R16+0x3800]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5440": {
+      "instruction": "LDSM.16.M88.4 R84, [R20]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5450": {
+      "instruction": "LDSM.16.M88.4 R32, [R20+0x800]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5460": {
+      "instruction": "LDSM.16.M88.4 R48, [R15+UR6+0x800]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5470": {
+      "instruction": "LDSM.16.M88.4 R52, [R0+UR6+0x800]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5480": {
+      "instruction": "IMMA.16864.S4.S4 R60, R92.ROW, R76.reuse.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5490": {
+      "instruction": "IMMA.16864.S4.S4 R56, R100.ROW, R76.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x54a0": {
+      "instruction": "IMMA.16864.S4.S4 R40, R92.ROW, R78.reuse.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x54b0": {
+      "instruction": "IMMA.16864.S4.S4 R36, R100.ROW, R78.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x54c0": {
+      "instruction": "IMMA.16864.S4.S4 R60, R88.ROW, R72.reuse.COL, R60",
+      "category": "mma_high_k1"
+    },
+    "0x54d0": {
+      "instruction": "IMMA.16864.S4.S4 R56, R28.ROW, R72.COL, R56",
+      "category": "mma_high_k1"
+    },
+    "0x54e0": {
+      "instruction": "IMMA.16864.S4.S4 R40, R88.ROW, R74.reuse.COL, R40",
+      "category": "mma_high_k1"
+    },
+    "0x54f0": {
+      "instruction": "IMMA.16864.S4.S4 R36, R28.ROW, R74.COL, R36",
+      "category": "mma_high_k1"
+    },
+    "0x5500": {
+      "instruction": "SHF.L.U32 R60, R60, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5510": {
+      "instruction": "IMAD.SHL.U32 R62, R62, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5520": {
+      "instruction": "SHF.L.U32 R61, R61, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5530": {
+      "instruction": "SHF.L.U32 R63, R63, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5540": {
+      "instruction": "SHF.L.U32 R56, R56, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5550": {
+      "instruction": "IMAD.SHL.U32 R57, R57, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5560": {
+      "instruction": "SHF.L.U32 R58, R58, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5570": {
+      "instruction": "IMMA.16864.S4.S4 R68, R92.ROW, R48.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5580": {
+      "instruction": "SHF.L.U32 R59, R59, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5590": {
+      "instruction": "IMAD.SHL.U32 R40, R40, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x55a0": {
+      "instruction": "SHF.L.U32 R41, R41, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x55b0": {
+      "instruction": "IMAD.SHL.U32 R43, R43, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x55c0": {
+      "instruction": "SHF.L.U32 R42, R42, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x55d0": {
+      "instruction": "IMMA.16864.U4.S4 R60, R84.ROW, R76.COL, R60",
+      "category": "mma_low_k0"
+    },
+    "0x55e0": {
+      "instruction": "SHF.L.U32 R36, R36, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x55f0": {
+      "instruction": "IMAD.SHL.U32 R38, R38, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5600": {
+      "instruction": "SHF.L.U32 R37, R37, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5610": {
+      "instruction": "SHF.L.U32 R39, R39, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5620": {
+      "instruction": "IMMA.16864.U4.S4 R56, R32.ROW, R76.COL, R56",
+      "category": "mma_low_k0"
+    },
+    "0x5630": {
+      "instruction": "IMMA.16864.U4.S4 R64, R84.ROW, R78.reuse.COL, R40",
+      "category": "mma_low_k0"
+    },
+    "0x5640": {
+      "instruction": "LDSM.16.M88.4 R40, [R16+0x800]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5650": {
+      "instruction": "IMMA.16864.U4.S4 R76, R32.ROW, R78.COL, R36",
+      "category": "mma_low_k0"
+    },
+    "0x5660": {
+      "instruction": "LDSM.16.M88.4 R36, [R16]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5670": {
+      "instruction": "IMMA.16864.S4.S4 R68, R88.ROW, R52.COL, R68",
+      "category": "mma_high_k1"
+    },
+    "0x5680": {
+      "instruction": "MOV R16, UR5",
+      "category": "other_loop_address_or_control"
+    },
+    "0x5690": {
+      "instruction": "LEA R16, R16, R161, 0x7",
+      "category": "other_loop_address_or_control"
+    },
+    "0x56a0": {
+      "instruction": "IMMA.16864.S4.S4 R44, R100.ROW, R48.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x56b0": {
+      "instruction": "LDS.64 R96, [R16.X4+0xc000]",
+      "category": "factor_shared_load"
+    },
+    "0x56c0": {
+      "instruction": "LDS.64 R98, [R16.X4+0xc040]",
+      "category": "factor_shared_load"
+    },
+    "0x56d0": {
+      "instruction": "IMMA.16864.S4.S4 R80, R92.ROW, R50.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x56e0": {
+      "instruction": "LDS.64 R20, [R16.X4+0xc080]",
+      "category": "factor_shared_load"
+    },
+    "0x56f0": {
+      "instruction": "SHF.L.U32 R68, R68, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5700": {
+      "instruction": "IMMA.16864.U4.S4 R56, R40.ROW, R72.COL, R56",
+      "category": "mma_low_k1"
+    },
+    "0x5710": {
+      "instruction": "IMAD.SHL.U32 R69, R69, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5720": {
+      "instruction": "SHF.L.U32 R70, R70, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5730": {
+      "instruction": "SHF.L.U32 R71, R71, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5740": {
+      "instruction": "IMMA.16864.U4.S4 R60, R36.reuse.ROW, R72.COL, R60",
+      "category": "mma_low_k1"
+    },
+    "0x5750": {
+      "instruction": "IMMA.16864.U4.S4 R64, R36.ROW, R74.reuse.COL, R64",
+      "category": "mma_low_k1"
+    },
+    "0x5760": {
+      "instruction": "IMMA.16864.U4.S4 R72, R40.ROW, R74.COL, R76",
+      "category": "mma_low_k1"
+    },
+    "0x5770": {
+      "instruction": "IMAD R109, R56, R96, R109",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5780": {
+      "instruction": "IMAD R111, R58, R96.reuse, R111",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5790": {
+      "instruction": "IMAD R110, R57, R97.reuse, R110",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x57a0": {
+      "instruction": "IMAD R112, R59, R97.reuse, R112",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x57b0": {
+      "instruction": "IMMA.16864.S4.S4 R76, R100.ROW, R50.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x57c0": {
+      "instruction": "IMAD R14, R60, R96.reuse, R14",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x57d0": {
+      "instruction": "LDSM.16.M88.4 R56, [R15+UR6+0x1000]",
+      "category": "matrix_fragment_load"
+    },
+    "0x57e0": {
+      "instruction": "IMAD R12, R62, R96, R12",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x57f0": {
+      "instruction": "IMAD R13, R61, R97, R13",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5800": {
+      "instruction": "IMAD R11, R63, R97, R11",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5810": {
+      "instruction": "IMMA.16864.U4.S4 R68, R84.ROW, R48.COL, R68",
+      "category": "mma_low_k0"
+    },
+    "0x5820": {
+      "instruction": "LDSM.16.M88.4 R60, [R15+UR6+0x1800]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5830": {
+      "instruction": "IMAD R10, R64, R98.reuse, R10",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5840": {
+      "instruction": "IMAD R8, R66, R98, R8",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5850": {
+      "instruction": "IMAD R9, R65, R99.reuse, R9",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5860": {
+      "instruction": "IMMA.16864.S4.S4 R44, R28.ROW, R52.COL, R44",
+      "category": "mma_high_k1"
+    },
+    "0x5870": {
+      "instruction": "IMAD R7, R67, R99, R7",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5880": {
+      "instruction": "LDSM.16.M88.4 R64, [R0+UR6+0x1000]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5890": {
+      "instruction": "IMAD R113, R72, R98.reuse, R113",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x58a0": {
+      "instruction": "IMAD R115, R74, R98, R115",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x58b0": {
+      "instruction": "IMMA.16864.S4.S4 R80, R88.ROW, R54.COL, R80",
+      "category": "mma_high_k1"
+    },
+    "0x58c0": {
+      "instruction": "IMAD R114, R73, R99.reuse, R114",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x58d0": {
+      "instruction": "IMAD R116, R75, R99, R116",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x58e0": {
+      "instruction": "IMMA.16864.S4.S4 R76, R28.ROW, R54.COL, R76",
+      "category": "mma_high_k1"
+    },
+    "0x58f0": {
+      "instruction": "IMMA.16864.U4.S4 R68, R36.ROW, R52.COL, R68",
+      "category": "mma_low_k1"
+    },
+    "0x5900": {
+      "instruction": "IMAD.SHL.U32 R44, R44, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5910": {
+      "instruction": "SHF.L.U32 R45, R45, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5920": {
+      "instruction": "IMAD.SHL.U32 R47, R47, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5930": {
+      "instruction": "SHF.L.U32 R46, R46, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5940": {
+      "instruction": "IMAD.SHL.U32 R80, R80, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5950": {
+      "instruction": "SHF.L.U32 R81, R81, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5960": {
+      "instruction": "IMAD.SHL.U32 R83, R83, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5970": {
+      "instruction": "SHF.L.U32 R82, R82, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5980": {
+      "instruction": "IMMA.16864.U4.S4 R44, R32.ROW, R48.COL, R44",
+      "category": "mma_low_k0"
+    },
+    "0x5990": {
+      "instruction": "SHF.L.U32 R76, R76, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x59a0": {
+      "instruction": "IMAD.SHL.U32 R78, R78, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x59b0": {
+      "instruction": "SHF.L.U32 R77, R77, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x59c0": {
+      "instruction": "SHF.L.U32 R79, R79, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x59d0": {
+      "instruction": "IMMA.16864.U4.S4 R80, R84.ROW, R50.reuse.COL, R80",
+      "category": "mma_low_k0"
+    },
+    "0x59e0": {
+      "instruction": "IMAD R6, R68, R20.reuse, R6",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x59f0": {
+      "instruction": "IMAD R3, R70, R20, R3",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5a00": {
+      "instruction": "IMAD R4, R69, R21.reuse, R4",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5a10": {
+      "instruction": "IMMA.16864.U4.S4 R76, R32.ROW, R50.COL, R76",
+      "category": "mma_low_k0"
+    },
+    "0x5a20": {
+      "instruction": "IMAD R2, R71, R21, R2",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5a30": {
+      "instruction": "LDSM.16.M88.4 R68, [R0+UR6+0x1800]",
+      "category": "matrix_fragment_load"
+    },
+    "0x5a40": {
+      "instruction": "IMMA.16864.U4.S4 R44, R40.ROW, R52.COL, R44",
+      "category": "mma_low_k1"
+    },
+    "0x5a50": {
+      "instruction": "IMMA.16864.U4.S4 R48, R36.ROW, R54.reuse.COL, R80",
+      "category": "mma_low_k1"
+    },
+    "0x5a60": {
+      "instruction": "IMMA.16864.U4.S4 R52, R40.ROW, R54.COL, R76",
+      "category": "mma_low_k1"
+    },
+    "0x5a70": {
+      "instruction": "IMMA.16864.S4.S4 R72, R92.ROW, R56.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5a80": {
+      "instruction": "IMAD R117, R44, R20, R117",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5a90": {
+      "instruction": "IMAD R119, R46, R20, R119",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5aa0": {
+      "instruction": "IMAD R118, R45, R21.reuse, R118",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5ab0": {
+      "instruction": "IMAD R120, R47, R21, R120",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5ac0": {
+      "instruction": "IMMA.16864.S4.S4 R76, R92.reuse.ROW, R58.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5ad0": {
+      "instruction": "LDS.64 R20, [R16.X4+0xc0c0]",
+      "category": "factor_shared_load"
+    },
+    "0x5ae0": {
+      "instruction": "IMMA.16864.S4.S4 R80, R92.reuse.ROW, R60.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5af0": {
+      "instruction": "IMMA.16864.S4.S4 R92, R92.ROW, R62.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5b00": {
+      "instruction": "IMMA.16864.S4.S4 R72, R88.reuse.ROW, R64.COL, R72",
+      "category": "mma_high_k1"
+    },
+    "0x5b10": {
+      "instruction": "IMMA.16864.S4.S4 R76, R88.reuse.ROW, R66.COL, R76",
+      "category": "mma_high_k1"
+    },
+    "0x5b20": {
+      "instruction": "IMMA.16864.S4.S4 R80, R88.ROW, R68.COL, R80",
+      "category": "mma_high_k1"
+    },
+    "0x5b30": {
+      "instruction": "IMAD R17, R48, R20, R17",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5b40": {
+      "instruction": "IMAD R107, R50, R20.reuse, R107",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5b50": {
+      "instruction": "IMAD R121, R52, R20.reuse, R121",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5b60": {
+      "instruction": "IMAD R123, R54, R20, R123",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5b70": {
+      "instruction": "IMMA.16864.S4.S4 R88, R88.ROW, R70.COL, R92",
+      "category": "mma_high_k1"
+    },
+    "0x5b80": {
+      "instruction": "SHF.L.U32 R72, R72, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5b90": {
+      "instruction": "IMAD.SHL.U32 R73, R73, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5ba0": {
+      "instruction": "SHF.L.U32 R74, R74, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5bb0": {
+      "instruction": "IMAD R106, R49, R21.reuse, R106",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5bc0": {
+      "instruction": "SHF.L.U32 R75, R75, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5bd0": {
+      "instruction": "IMAD R108, R51, R21, R108",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5be0": {
+      "instruction": "IMAD.SHL.U32 R76, R76, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5bf0": {
+      "instruction": "SHF.L.U32 R77, R77, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5c00": {
+      "instruction": "IMAD.SHL.U32 R79, R79, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5c10": {
+      "instruction": "SHF.L.U32 R78, R78, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5c20": {
+      "instruction": "IMMA.16864.U4.S4 R72, R84.ROW, R56.COL, R72",
+      "category": "mma_low_k0"
+    },
+    "0x5c30": {
+      "instruction": "IMAD R122, R53, R21.reuse, R122",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5c40": {
+      "instruction": "IMAD R124, R55, R21, R124",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5c50": {
+      "instruction": "SHF.L.U32 R80, R80, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5c60": {
+      "instruction": "IMAD.SHL.U32 R82, R82, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5c70": {
+      "instruction": "SHF.L.U32 R81, R81, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5c80": {
+      "instruction": "SHF.L.U32 R83, R83, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5c90": {
+      "instruction": "IMMA.16864.U4.S4 R76, R84.reuse.ROW, R58.COL, R76",
+      "category": "mma_low_k0"
+    },
+    "0x5ca0": {
+      "instruction": "SHF.L.U32 R88, R88, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5cb0": {
+      "instruction": "IMAD.SHL.U32 R89, R89, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5cc0": {
+      "instruction": "SHF.L.U32 R90, R90, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5cd0": {
+      "instruction": "SHF.L.U32 R91, R91, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5ce0": {
+      "instruction": "IMMA.16864.U4.S4 R80, R84.reuse.ROW, R60.COL, R80",
+      "category": "mma_low_k0"
+    },
+    "0x5cf0": {
+      "instruction": "IMMA.16864.U4.S4 R84, R84.ROW, R62.COL, R88",
+      "category": "mma_low_k0"
+    },
+    "0x5d00": {
+      "instruction": "IMMA.16864.S4.S4 R88, R100.reuse.ROW, R56.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5d10": {
+      "instruction": "IMMA.16864.S4.S4 R92, R100.reuse.ROW, R60.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5d20": {
+      "instruction": "IMMA.16864.S4.S4 R96, R100.reuse.ROW, R58.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5d30": {
+      "instruction": "IMMA.16864.S4.S4 R100, R100.ROW, R62.COL, RZ",
+      "category": "mma_high_k0"
+    },
+    "0x5d40": {
+      "instruction": "IMMA.16864.S4.S4 R88, R28.reuse.ROW, R64.COL, R88",
+      "category": "mma_high_k1"
+    },
+    "0x5d50": {
+      "instruction": "IMMA.16864.S4.S4 R92, R28.reuse.ROW, R68.COL, R92",
+      "category": "mma_high_k1"
+    },
+    "0x5d60": {
+      "instruction": "IMMA.16864.S4.S4 R96, R28.reuse.ROW, R66.COL, R96",
+      "category": "mma_high_k1"
+    },
+    "0x5d70": {
+      "instruction": "IMMA.16864.S4.S4 R100, R28.ROW, R70.COL, R100",
+      "category": "mma_high_k1"
+    },
+    "0x5d80": {
+      "instruction": "IMAD.SHL.U32 R88, R88, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5d90": {
+      "instruction": "SHF.L.U32 R89, R89, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5da0": {
+      "instruction": "IMAD.SHL.U32 R91, R91, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5db0": {
+      "instruction": "SHF.L.U32 R90, R90, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5dc0": {
+      "instruction": "LDS.64 R28, [R16.X4+0xc100]",
+      "category": "factor_shared_load"
+    },
+    "0x5dd0": {
+      "instruction": "SHF.L.U32 R92, R92, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5de0": {
+      "instruction": "IMAD.SHL.U32 R94, R94, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5df0": {
+      "instruction": "SHF.L.U32 R93, R93, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5e00": {
+      "instruction": "IMMA.16864.U4.S4 R88, R32.reuse.ROW, R56.COL, R88",
+      "category": "mma_low_k0"
+    },
+    "0x5e10": {
+      "instruction": "SHF.L.U32 R95, R95, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5e20": {
+      "instruction": "LDS.64 R30, [R16.X4+0xc140]",
+      "category": "factor_shared_load"
+    },
+    "0x5e30": {
+      "instruction": "SHF.L.U32 R96, R96, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5e40": {
+      "instruction": "IMAD.SHL.U32 R97, R97, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5e50": {
+      "instruction": "SHF.L.U32 R98, R98, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5e60": {
+      "instruction": "IMMA.16864.U4.S4 R92, R32.ROW, R60.COL, R92",
+      "category": "mma_low_k0"
+    },
+    "0x5e70": {
+      "instruction": "SHF.L.U32 R99, R99, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5e80": {
+      "instruction": "IMAD.SHL.U32 R100, R100, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5e90": {
+      "instruction": "SHF.L.U32 R101, R101, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5ea0": {
+      "instruction": "IMAD.SHL.U32 R103, R103, 0x10, RZ",
+      "category": "high_times_16"
+    },
+    "0x5eb0": {
+      "instruction": "SHF.L.U32 R102, R102, 0x4, RZ",
+      "category": "high_times_16"
+    },
+    "0x5ec0": {
+      "instruction": "IMMA.16864.U4.S4 R96, R32.reuse.ROW, R58.COL, R96",
+      "category": "mma_low_k0"
+    },
+    "0x5ed0": {
+      "instruction": "IMMA.16864.U4.S4 R100, R32.ROW, R62.COL, R100",
+      "category": "mma_low_k0"
+    },
+    "0x5ee0": {
+      "instruction": "LDS.64 R32, [R16.X4+0xc180]",
+      "category": "factor_shared_load"
+    },
+    "0x5ef0": {
+      "instruction": "LDS.64 R34, [R16.X4+0xc1c0]",
+      "category": "factor_shared_load"
+    },
+    "0x5f00": {
+      "instruction": "IMMA.16864.U4.S4 R72, R36.reuse.ROW, R64.COL, R72",
+      "category": "mma_low_k1"
+    },
+    "0x5f10": {
+      "instruction": "IMMA.16864.U4.S4 R76, R36.reuse.ROW, R66.COL, R76",
+      "category": "mma_low_k1"
+    },
+    "0x5f20": {
+      "instruction": "IMMA.16864.U4.S4 R80, R36.reuse.ROW, R68.COL, R80",
+      "category": "mma_low_k1"
+    },
+    "0x5f30": {
+      "instruction": "IMMA.16864.U4.S4 R84, R36.ROW, R70.COL, R84",
+      "category": "mma_low_k1"
+    },
+    "0x5f40": {
+      "instruction": "IMAD R125, R72, R28, R125",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5f50": {
+      "instruction": "IMAD R127, R74, R28, R127",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5f60": {
+      "instruction": "IMAD R126, R73, R29.reuse, R126",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5f70": {
+      "instruction": "IMAD R128, R75, R29, R128",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5f80": {
+      "instruction": "IMMA.16864.U4.S4 R88, R40.ROW, R64.COL, R88",
+      "category": "mma_low_k1"
+    },
+    "0x5f90": {
+      "instruction": "IMAD R129, R76, R30.reuse, R129",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5fa0": {
+      "instruction": "IMAD R131, R78, R30, R131",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5fb0": {
+      "instruction": "IMAD R130, R77, R31, R130",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5fc0": {
+      "instruction": "IMAD R132, R79, R31, R132",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5fd0": {
+      "instruction": "IMMA.16864.U4.S4 R96, R40.reuse.ROW, R66.COL, R96",
+      "category": "mma_low_k1"
+    },
+    "0x5fe0": {
+      "instruction": "IMAD R133, R80, R32.reuse, R133",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x5ff0": {
+      "instruction": "IMAD R135, R82, R32, R135",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6000": {
+      "instruction": "IMAD R134, R81, R33.reuse, R134",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6010": {
+      "instruction": "IMAD R136, R83, R33, R136",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6020": {
+      "instruction": "IMMA.16864.U4.S4 R92, R40.ROW, R68.COL, R92",
+      "category": "mma_low_k1"
+    },
+    "0x6030": {
+      "instruction": "IMAD R137, R84, R34, R137",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6040": {
+      "instruction": "IMAD R139, R86, R34, R139",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6050": {
+      "instruction": "IMAD R138, R85, R35.reuse, R138",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6060": {
+      "instruction": "IMAD R140, R87, R35, R140",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6070": {
+      "instruction": "IMMA.16864.U4.S4 R100, R40.ROW, R70.COL, R100",
+      "category": "mma_low_k1"
+    },
+    "0x6080": {
+      "instruction": "IMAD R141, R88, R28.reuse, R141",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6090": {
+      "instruction": "IMAD R143, R90, R28, R143",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x60a0": {
+      "instruction": "IMAD R142, R89, R29, R142",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x60b0": {
+      "instruction": "IMAD R144, R91, R29, R144",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x60c0": {
+      "instruction": "IMAD R145, R96, R30.reuse, R145",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x60d0": {
+      "instruction": "IMAD R147, R98, R30, R147",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x60e0": {
+      "instruction": "IMAD R146, R97, R31.reuse, R146",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x60f0": {
+      "instruction": "IMAD R148, R99, R31, R148",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6100": {
+      "instruction": "IMAD R149, R92, R32, R149",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6110": {
+      "instruction": "IMAD R151, R94, R32, R151",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6120": {
+      "instruction": "IMAD R150, R93, R33.reuse, R150",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6130": {
+      "instruction": "IMAD R152, R95, R33, R152",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6140": {
+      "instruction": "IMAD R153, R100, R34.reuse, R153",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6150": {
+      "instruction": "IMAD R155, R102, R34, R155",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6160": {
+      "instruction": "IMAD R154, R101, R35, R154",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6170": {
+      "instruction": "IMAD R156, R103, R35, R156",
+      "category": "weighted_integer_accumulate"
+    },
+    "0x6180": {
+      "instruction": "@!P1 CALL.REL.NOINC 0x61a0",
+      "category": "loop_exit_control"
+    },
+    "0x6190": {
+      "instruction": "BRA 0x4d70",
+      "category": "loop_exit_control"
+    }
+  },
+  "new_performance_result": false,
+  "production_default_changed": false,
+  "inputs": {
+    "docs/evidence/a100_o378_roof_v89/reports/o378_roof_v89_o3_codegen/o3_grouped_cta.sass": "590a5a625da4139b444d69c66fcbd9d26a5a558df20b8053e3542d70a924bd39",
+    "docs/evidence/a100_o378_roof_v89/reports/o378_roof_v89_o3_codegen/liveness.txt": "c262e7949a8aa7a0d90fe17180669b161086bd17ceed0f675c5a16eb671ccc31",
+    "docs/evidence/a100_o378_roof_v136/reports/o378_roof_v136_o3_warm_ncu/o3_warm_source_sass.csv": "6b4e607d402db428dc8eb7b033aa650697e6f8f4895364ae1e1c6aeb8178fd48",
+    "docs/evidence/a100_o378_roof_v136/reports/o378_roof_v136_o3_warm_ncu/analysis.json": "d04bd7f6a7857e29683c41fdf83e4c1f01d3e832bace91bbeea2dd0dcd2b6ec4"
+  },
+  "script_sha256": "17846e0c878c6ff2e59651c8bd16edfa2ec9ec6fd3a97844d45d8777ab0fca66"
+}
