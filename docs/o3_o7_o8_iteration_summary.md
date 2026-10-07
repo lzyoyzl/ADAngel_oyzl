@@ -1,5 +1,13 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v131：同 G128 内延后低位 A 加载（编译待验）
+
+基准 SASS 已有两条 low-A 加载延后，另两条在首 MMA 之前；本轮只改同组供数位置。
+保持 high/high→×16→low/low 的数学顺序、fragment 复用、tile/stage/同步与 guard。
+不是 v128 的跨 K 交接，不新增状态或地址缓存；先按固定 SASS/工作量/资源门槛筛查。
+本地两项源码/SASS测试通过；尚无候选 GPU、性能或 MSE 结果。
+[v131范围与预设门槛](o3_same_group_load_overlap_20261007.md)。
+
 ## v130：修复系数 MMA 输入的 byte 重拼接，门槛仍失败
 
 仅修复v129已确认的54条PRMT：相同CuTe layout用官方U32寄存器接口直构，不做相邻布局/参数扫描。
