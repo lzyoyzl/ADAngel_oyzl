@@ -1,5 +1,15 @@
 # A100 O3 / O7 / O8：当前主基准与最新结果（O3 v89；O7/O8 v78+v73，附 v99 微调）
 
+**2026-10-07 v118：新的packed NVFP4权重转换，确认小幅Cold收益，GEMM最佳不变。**
+按机制查重后，仅将16个标量nibble解码/packing/平方和换为两个8-nibble布尔计算；原v73 row metadata不改。
+编译392→320指令、31→30regs、零local，旧入口完整编码不变；CPU/GPU精确平方和通过。
+同一v78 GEMM、全24样本三轮四模式：W转换吞吐+21.82%、conversion total+6.42%、Cold+0.65%；GEMM/steady无提升。
+576条输出逐位相同、MSE median/mean仍0.005536172273439442/0.005053635851002639；原source identity不变。
+Cold W批量stage57/72 CV略超3%（median3.20/max3.85），全部原值保留；conversion-only W与直接Cold total均0失败，不称所有阶段严格验收通过。
+有限新转换entry mem/synccheck0 errors，24份文本及SHA冻结；正式默认/扩展、O3/O8和5090不变。
+保留独立转换候选，不扫相邻布尔/查表；GEMM逼近有效吞吐上界目标尚未完成。
+[v118完整结果、查重与证据](o7_packed_weight_conversion_20261007.md)。
+
 **2026-10-07 v117：新的固定high×16指令路由，24样本负向，最佳不变。**
 已核对v71可变partial移位与v87可变系数移位，不重复其实现；只将固定重构改为公开SHF。
 同entry双原生INT4、168regs/零热spill、旧控制编码通过；IMAD族−13.291%，总循环+0.522%。

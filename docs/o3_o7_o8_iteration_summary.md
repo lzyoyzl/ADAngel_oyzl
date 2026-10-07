@@ -1,5 +1,17 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v118：新packed权重布尔转换，O7 Cold小幅正向，GEMM最佳不变
+
+先按机制核对v34/v53/v69/v73/v106，不重复tile/stage/warp、累加链、供数、scale预计算或固定high路由。
+保留原row metadata/guard，两个word并行处理16个NVFP4 nibble及精确平方和，无payload shuffle或新表。
+编译392→320指令、31→30regs、零local、旧入口编码一致；GPU word131072项、synthetic32与edge9通过。
+直接24样本×三轮×四模式，同一个v78 GEMM，576条逐位相同，MSE与source SHA不变。
+W conversion-only吞吐+21.82%，conversion total+6.42%，直接Cold+0.65%；GEMM/steady均0确认收益。
+W原约22µs/GEMM481µs，转换收益被端到端占比稀释。Cold W隔离stage57/72 CV略超3%，原值不删，严格全stage验收不通过。
+独立conversion W和直接Cold总延迟各72条全部CV<3%；两个新转换entry有限mem/synccheck0 errors，不扩大安全结论。
+保留独立转换候选，不改默认/扩展/O3/O8/5090，不扫相邻布尔/查表；主GEMM目标尚未达到。
+[v118结果、分析、查重和完整原始证据](o7_packed_weight_conversion_20261007.md)。
+
 ## v117：固定high×16的FMA→ALU路由，新候选实测负向
 
 核对v71/v87后，只改固定high重构，不改可变scale、八链、tile/stage或v73准备。
