@@ -28,3 +28,6 @@ TMPDIR="$PWD/tmp" python scripts/benchmark_o3_dp2a.py \
 在新增metadata打包（实际第三个kernel）时终止；尚未进入真实样本性能测试。
 修复仅更新本轮计时契约检查，保留第三个kernel的真实开销与首次失败日志，不改CUDA二进制。
 当前状态：等待修复后完整验证与计时。
+第二次运行通过原验证集后，新增三路径测试给CPU语义参考传入了三维plane视图，
+而参考接口需要二维`[2*M,K/2]`；修正测试端reshape。两次均未进入24样本性能计时，
+不是两轮优化结果；GPU数学及冻结cubin仍未改变。

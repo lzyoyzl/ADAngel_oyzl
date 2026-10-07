@@ -40,6 +40,8 @@ def test_pack_in_weight_path_and_all_allocations_outside_timing():
     py=(ROOT/'scripts/benchmark_o3_dp2a.py').read_text()
     assert 'pack_metadata_reference(meta.cpu().numpy())' in py
     assert 'three_paths_in_one_launch=True' in py and 'full_sample_args()' in py
+    assert '.contiguous().reshape(2*m,2048)' in py
+    assert '.reshape(2,m,2048)' not in py
     assert "('--warmup','1000')" in py and "('--rounds','3')" in py
 
 

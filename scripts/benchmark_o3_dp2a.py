@@ -192,7 +192,9 @@ def validate(driver):
     ws=((torch.arange(n*32,device='cuda')%4)+116).byte().reshape(n,32)
     ws[128:256,-1]=120;ws[256:,-1]=131
     old=driver.run_four(0,'compute_only',a,asc,w,ws,0,1,2)
-    pa=old['packed_activation_g128_major'].permute(0,2,1,3).contiguous().reshape(2,m,2048)
+    # Existing semantic reference expects stacked [low M rows; high M rows],
+    # i.e. rank2 [2*M,K/2], not a rank3 plane view.
+    pa=old['packed_activation_g128_major'].permute(0,2,1,3).contiguous().reshape(2*m,2048)
     pw=old['packed_weight_g128_major'].permute(1,0,2).contiguous().reshape(n,2048)
     ref=reference_fp64('o3',(pa,asc,pw,ws))
     for mode in MODES:
