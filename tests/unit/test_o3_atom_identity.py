@@ -6,7 +6,8 @@ import pytest
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
-from inspect_o3_atom_identity import atom_statistics,observe,summarize
+from inspect_o3_atom_identity import (atom_statistics,observe,summarize,
+    activation_statistics,observe_activation,summarize_activation)
 
 
 def test_different_column_anchors_can_still_be_all_unit():
@@ -54,3 +55,26 @@ def test_host_mapping_probe_never_creates_a_GPU_launch_or_context():
     assert 'covered.size()==8192' in source
     for token in ('<<<','cudaMalloc','cudaSetDevice','cuLaunchKernel','__global__'):
         assert token not in source
+
+
+def test_unit_product_necessary_condition_includes_zero_weight_factors():
+    for a in range(16):
+        for w in range(16):
+            if a*w==1:assert a==w==1
+    f=np.ones((32,64),dtype=np.int32);st=np.zeros(64,dtype=np.uint32)
+    r=activation_statistics(f,st)
+    assert r['necessary_A_unit_fraction_upper_bound']==1
+    f[0,0]=0
+    assert activation_statistics(f,st)['necessary_A_unit_panels']==127
+    f.fill(1);st[0]=1
+    assert activation_statistics(f,st)['necessary_A_unit_panels']==96
+
+
+def test_full24_O78_upper_bounds_not_complete_weight_coverage():
+    rows=observe_activation();r=summarize_activation(rows)
+    assert len(rows)==48
+    assert r[0]['mean_A_only_unit_fraction_upper_bound']==pytest.approx(0.016825358072916668)
+    assert r[0]['optimistic_loop_instruction_work_reduction_percent_upper_bound']==pytest.approx(0.5623096170583116)
+    assert r[1]['mean_A_only_unit_fraction_upper_bound']==0
+    assert not any(v['opportunity_gate'] for v in r)
+    with pytest.raises(ValueError):summarize_activation(rows[:-1])
