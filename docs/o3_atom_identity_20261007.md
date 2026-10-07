@@ -2,6 +2,23 @@
 
 本轮只检查范围和指令预算，不是新 GEMM 性能测试。正式默认、O7/O8和5090不改。
 
+## 结论：投入门槛未通过，停止该路线
+
+|配置|全24样本子块可用率／必要条件上界|乐观循环指令工作减少|决定|
+|---|---:|---:|---|
+|O3|14.0836%（N8×G128）|2.7906%|停止，不实现新GEMM|
+|O7|≤1.6825%（只检查A侧M16×G128）|≤0.5623%|停止，不再检查W|
+|O8|0%（只检查A侧M16×G128）|0%|停止，不再检查W|
+
+O7/O8的比例是严格必要条件上界，不是已完成的A/W匹配率。三者都没有扣除检测、
+flag读取、分派、回退与寄存器成本，仍不足预设5%的投入门槛。
+表内是特定省指令方案的乐观工作预算，**不是实测加速比、延迟下界或所有方案的性能上限**。
+
+A100完成原始范围测试7项；原生M16/N8坐标覆盖8192个输出且唯一，
+O3/O7/O8实际TiledMMA类型相同。正式扩展SHA不变，没有启动新GEMM、重算MSE、
+生成新Event延迟或端到端结果。当前最佳仍O3 v89、O7/O8 v78+v73，默认和5090不改。
+[完整原始证据与SHA](evidence/a100_o378_roof_v116/README.md)。
+
 ## 为什么检查这一点
 
 原整数路径每组计算 `acc += P * factor`。若一个原生 N8 MMA 覆盖的8列在这一组的
@@ -27,12 +44,16 @@ v108检查完整32组同质profile与排列。这里仅补此前未覆盖的**�
 
 ```bash
 TMPDIR="$PWD/tmp" python scripts/inspect_o3_atom_identity.py \
-  --output reports/o378_roof_v116_atom_identity
+  --output reports/o378_roof_v116_atom_identity_all3
 python -m pytest tests/unit/test_o3_atom_identity.py -q
 ```
 
 仅编译/执行host坐标校验；不创建CUDA context、启动GPU kernel、下载模型或重新量化。
 源码先本地提交并成功推送GitHub，再同步A100执行；输出保留全部结果和完整来源凭据。
+
+上述原始输出目录已存在，复现须指定新的项目内目录。只回放冻结证据无需编译：
+
+    python -m pytest tests/unit/test_o3_atom_identity.py tests/unit/test_roof_v116_evidence.py -q
 
 O7/O8仅追加必要条件检查，不开发候选：对非负整数factor，
 `A_factor * W_factor == 1` 必须有 `A_factor == W_factor == 1`。

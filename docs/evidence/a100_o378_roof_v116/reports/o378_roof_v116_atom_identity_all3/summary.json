@@ -1,0 +1,38 @@
+{
+  "scope": "O3_per_G128_native_N8_identity_work_budget_not_GPU_performance",
+  "samples": 24,
+  "mean_identity_panel_fraction": 0.1408360799153646,
+  "optimistic_loop_instruction_work_reduction_percent": 2.790560097394221,
+  "opportunity_threshold_percent": 5.0,
+  "opportunity_gate": false,
+  "decision": "compile_one_runtime_identity_candidate_if_gate_passes_else_stop_no_new_GEMM",
+  "source_quantization_unchanged": true,
+  "ordering_unchanged": true,
+  "no_filtering": true,
+  "candidate_GEMM_implemented": false,
+  "candidate_GPU_launched": false,
+  "new_performance_result": false,
+  "new_MSE_result": false,
+  "production_default_changed": false,
+  "exclusions": "all classification/dispatch/register/flag preparation and fallback costs ignored",
+  "O7_O8_necessary_condition_bounds": [
+    {
+      "variant": "o7",
+      "samples": 24,
+      "mean_A_only_unit_fraction_upper_bound": 0.016825358072916668,
+      "optimistic_loop_instruction_work_reduction_percent_upper_bound": 0.5623096170583115,
+      "opportunity_gate": false,
+      "opportunity_threshold_percent": 5.0,
+      "bound_kind": "A-only necessary condition, not measured W matching or final dispatch coverage"
+    },
+    {
+      "variant": "o8",
+      "samples": 24,
+      "mean_A_only_unit_fraction_upper_bound": 0.0,
+      "optimistic_loop_instruction_work_reduction_percent_upper_bound": 0.0,
+      "opportunity_gate": false,
+      "opportunity_threshold_percent": 5.0,
+      "bound_kind": "A-only necessary condition, not measured W matching or final dispatch coverage"
+    }
+  ]
+}

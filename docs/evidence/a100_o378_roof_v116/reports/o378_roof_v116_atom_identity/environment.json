@@ -1,0 +1,32 @@
+{
+  "source_commit": "02752540f6ad375180a1166042ccb2a7d2ff9cbb",
+  "source_hashes": {
+    "scripts/inspect_o3_atom_identity.py": "73b61e4f123f70788d8bcb8c164a8c67cce0518d75c43798f78bd9f3fc2f1a99",
+    "tests/cuda/validate_o3_atom_columns.cu": "9d1a4c8a3fbc3a3d5c1d0bc3d71be26f9ee0a712ba169ef668ae81c83a153bef",
+    "csrc/sm80/o3_row_scale_epilogue_candidate.cuh": "44dc701e0bc85e08f98b84dd38051f39b0b59c7638625584ab4ea1a05fb18305"
+  },
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O2",
+      "-std=c++17",
+      "-arch=sm_80",
+      "--expt-relaxed-constexpr",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "/home/zlouyang/ADAngel_oyzl/tests/cuda/validate_o3_atom_columns.cu",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v116_atom_identity/validate_coordinates"
+    ],
+    [
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v116_atom_identity/validate_coordinates"
+    ]
+  ],
+  "snapshots_environment_sha256": "5c3cf5a37fa06184eae44fb517eb0361d96eca83095aa78d0b340323e581194c",
+  "snapshots_results_sha256": "854a806e7c4563496e3fb5aa093b7e179948a20225969889c2fa3c765d89997c",
+  "formal_extension_sha256_before": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "formal_extension_sha256_after": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "no_GPU_kernel_launched": true,
+  "no_new_quantization": true
+}

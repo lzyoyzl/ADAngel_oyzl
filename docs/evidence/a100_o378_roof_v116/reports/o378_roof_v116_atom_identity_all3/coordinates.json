@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "gpu_execution": false,
+  "outputs": 8192,
+  "threads": 128,
+  "outputs_per_thread": 64,
+  "columns_per_native_atom": 8,
+  "rows_per_native_atom": 16,
+  "distinct_N8_panels_per_N128": 16,
+  "N8_panels_per_thread": 8,
+  "native_M16_N8_atoms_per_thread": 16,
+  "per_thread_outputs_per_N8_panel": 8,
+  "per_thread_outputs_per_native_M16_N8_atom": 4,
+  "O3_O78_TiledMMA_types_equal": true,
+  "column_formula": "(warp/2)*8 + ni*16 + j; j=0..7"
+}
