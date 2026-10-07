@@ -1,5 +1,15 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v114：补当前最佳O8预热后NCU，不重复优化，最佳不变
+
+已有v90没有当前O8/cache-primed结果；本轮仅复用v78二进制采集layer_12_o_proj、4096³。
+Full/application replay、不清缓存/锁频；50进程各50次预热，全部源identity/输出逐位/动态指令审计通过。
+NCU0.405600ms只作诊断，实际GPC1.299553GHz；eligible0.7464、issue46.90%，wait/math为主要未发射PC样本。
+LDS/LDSM excessive=0，不能推广为async copy全无额外wavefront；非24样本性能/MSE或sanitizer验收。
+查重后不重跑v41/v84/v95/v109流水线、v83/v92/v104/v111 tile/warp、v85/v86布局及v72/v76系数方案。
+无新CUDA/性能提升、conversion或端到端成绩；正式默认/扩展、量化/trace、5090不变。
+[v114范围、原始证据和瓶颈说明](o8_best_warm_profile_20261007.md)。
+
 ## v113：激活高位稀疏化，完整数据门槛失败，停止
 
 先按机制查重：v103检查Q4权重，v100检查稠密平衡表示；本次仅检查激活高位H。

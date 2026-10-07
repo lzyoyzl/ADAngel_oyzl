@@ -1,5 +1,13 @@
 # A100 O3 / O7 / O8：当前主基准与最新结果（O3 v89；O7/O8 v78+v73，附 v99 微调）
 
+**2026-10-07 v114：查重后仅补当前最佳O8预热后NCU，最佳不变。**
+原v78 CUBIN/v73准备不重编译；真实layer_12_o_proj、4096³，application replay/no cache flush/no clock control。
+50个进程各预热50次，逐位输出/MSE回归、源格式、同entry指纹与动态数学工作全部通过。
+Eligible0.7464、issue46.90%，未发射PC采样wait35.54%/math29.11%；shared读取excessive为0。
+只作单样本诊断，不与旧清缓存NCU算加速，不更新24样本Event/MSE或端到端成绩。
+不重做已失败的tile/stage/producer/系数预计算/LDSM方案；正式默认/扩展、转换及5090不变。
+[v114采集范围、瓶颈与查重](o8_best_warm_profile_20261007.md)。
+
 **2026-10-07 v113：查重后检查激活高位稀疏化，全24数据gate失败，最佳不变。**
 不是重测v103权重稀疏化或v100稠密平衡表示；24×5共120条记录，48份源格式identity与v99相同。
 固定K顺序保留全部精确残差；O8平衡表示高位零值率median68.52%，最小残差仍7.34%。
