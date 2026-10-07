@@ -1,0 +1,88 @@
+{
+  "core": {
+    "command": [
+      "g++",
+      "-O3",
+      "-std=c++17",
+      "-shared",
+      "-fPIC",
+      "-I/usr/local/cuda-12.8/include",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_device_factor_driver.cpp",
+      "-lcuda",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/runs/o378_roof_v125_full24/build/libdevice_factor_driver.so"
+    ],
+    "driver_sha256": "f3fd70dc51f1c504e5139f70c1ef49b43c438adf5c0d09665caae93bd63727ad",
+    "sources": {
+      "csrc/sm80/roof_device_factor_driver.cpp": "ce9dfe422dd3450f09381b2faa31a375cf25f24dbcc77bf847a0baa53c72135c",
+      "csrc/sm80/roof_gpu_factor_driver.cpp": "0b7cb6fb4e44343bd69d37abcd5cfc44fe31da72e1829017bdacd7ea418bbfb9",
+      "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9"
+    },
+    "preparation_cubin_sha256": "02f7fb647bcdec0dcb0a017da24be293d960093ead148ccae6b07083874f34e2",
+    "device_cubin_sha256": "d390ad87e2bfb4f3326785482cfebd2c67f36884854c904e41356e30551b9e8c",
+    "gemm_cubins": {
+      "0": "d56c78e25a29253201dfdc951e071e65d43572743bdcf81ed78707dede9a2cef",
+      "1": "931657ff36911bd44a2b04ad5a4d150d79655e0ca081c5356ee706704d771bb2"
+    }
+  },
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "commands": [
+    [
+      [
+        "/usr/local/cuda-12.8/bin/nvcc",
+        "-O3",
+        "-std=c++17",
+        "-lineinfo",
+        "-arch=sm_80",
+        "-cubin",
+        "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o3_conversion.cu",
+        "-o",
+        "runs/o378_roof_v125_full24/build/conversion.cubin",
+        "-Xptxas=-v"
+      ],
+      "conversion_build.log"
+    ],
+    [
+      [
+        "/usr/local/cuda-12.8/bin/cuobjdump",
+        "--dump-sass",
+        "runs/o378_roof_v125_full24/build/conversion.cubin"
+      ],
+      "conversion.sass"
+    ],
+    [
+      [
+        "/usr/local/cuda-12.8/bin/cuobjdump",
+        "--dump-resource-usage",
+        "runs/o378_roof_v125_full24/build/conversion.cubin"
+      ],
+      "conversion_resources.txt"
+    ],
+    [
+      [
+        "g++",
+        "-O3",
+        "-std=c++17",
+        "-shared",
+        "-fPIC",
+        "-I/usr/local/cuda-12.8/include",
+        "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_full_pipeline_driver.cpp",
+        "-lcuda",
+        "-o",
+        "runs/o378_roof_v125_full24/build/libfull_pipeline_driver.so"
+      ],
+      "full_driver_build.log"
+    ]
+  ],
+  "conversion_symbols": {
+    "weight": "_ZN54_GLOBAL__N__606bf0a7_21_roof_o3_conversion_cu_cc2d77bc32adangel_sm80_o3_tiled_conversionILb0ELb1EEEvPKhS2_PhS3_jj",
+    "activation": "_ZN54_GLOBAL__N__606bf0a7_21_roof_o3_conversion_cu_cc2d77bc32adangel_sm80_o3_tiled_conversionILb1ELb1EEEvPKhS2_PhS3_jj"
+  },
+  "conversion_sha256": "6774eb37d479af459da3d93563d89ada388734191ec394c751ca09c15f00a176",
+  "driver_sha256": "3af41c4f32e61a70cd73f6dc103acd951a6e3ba1ac9749d8f31c2c36daa49251",
+  "sources": {
+    "csrc/sm80/roof_o3_conversion.cu": "155258095273b2f206ff009532a3145cacfabaef997aa2d72df22384ba21b2c9",
+    "csrc/sm80/roof_o3_conversion_api.h": "6a4ecb7a746ee1a184d7ec72dd399eb4c7b166f204a17d3aa5d457a1e7e1b79a",
+    "csrc/sm80/roof_full_pipeline_driver.cpp": "295bda453ea85c4158657bbffa94a8e07f02edce6dfa9385b104efd612655c01"
+  }
+}

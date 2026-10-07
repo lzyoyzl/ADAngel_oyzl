@@ -3,6 +3,8 @@
 日期：2026-10-07。对象为 A100 上的**最佳独立候选**，不是替换正式默认。
 既有 5090 代码、trace、量化语义和计时方式不改。
 
+**更新至 v125：最佳 GEMM 不变。** 后续 [v123 O8 转换融合](o3_o7_o8_current_best.md) 改善了转换与端到端延迟，但不是 GEMM 提升；v124 交换 MMA 操作数未通过编译投入门槛。最新 [v125 高低路独立加权](o3_split_weighted_20261007.md) 完成全 24 样本三轮配对，吞吐下降 5.71%、输出/MSE 不变，已淘汰。其证据进一步说明：缩短 MMA 依赖链时，必须同时考虑独立输出数量、整数加权指令和寄存器成本，不能只看链长度。
+
 ## 1. 当前最佳及仍未消除的开销
 
 以下来自已完成的 v104 同进程 24 样本配对实验；本轮不重测旧版本，也不把不同轮次延迟相除当作加速比。
@@ -39,7 +41,7 @@ O7/O8 共用这一 GEMM 指令结构，但不能据一个 O8 样本断言 O7 或
 
 纯 MMA、issue、shared 等模型提供的是各自理想服务时间下界，不是能相加的 kernel 最快时间。依赖、资源占用、stage 等待和 tail 必须一起考虑；约 0.22 ms 的纯 MMA 模型不能写成当前 kernel 保证可达的延迟。
 
-## 3. 本轮单一候选：factor-only read-only 供数（v121）
+## 3. 已检查的供数方向：factor-only read-only（v121）
 
 原路径：`Af/Wf → cp.async → shared factor panel → LDS → 整数系数`。
 候选路径：`Af/Wf → __ldg 只读 global/cache → 整数系数`。
@@ -88,7 +90,7 @@ O7/O8 共用这一 GEMM 指令结构，但不能据一个 O8 样本断言 O7 或
 | 寄存器 partial、最终一次输出 store | 不把中间点积反复落盘 | MMA fragment/thread 坐标、寄存器分配、spill 与 occupancy |
 | merged MMA chain、供数/计算重叠 | 在资源允许时隐藏依赖延迟 | atom shape、chain 数量、tile、stage、同步及 copy API |
 | guard 后的全 K 整数累加 | 对可精确整数对齐的 scale，减少逐组浮点处理 | 重新证明当前格式、K 和真实范围的系数/乘积/前缀边界；失败时保留正确 fallback |
-| factor-only 只读缓存（本轮未验收） | metadata 与 payload 可按不同复用模式供数 | 只读/可见性契约、cache 层次、地址成本、延迟与命中率，不能默认获益 |
+| factor-only 只读缓存（v121 编译门槛淘汰） | metadata 与 payload 可按不同复用模式供数 | 只读/可见性契约、cache 层次、地址成本、延迟与命中率，不能默认获益 |
 
 A100 的异步 global→shared copy 可在计算时重叠，并避免一般搬运经过额外寄存器；不同 GPU 的寄存器/shared 预算和支持的 MMA shape 不同，所以相同 tile 不等于相同 occupancy 或有效峰值。[NVIDIA Ampere Tuning Guide](https://docs.nvidia.com/cuda/archive/12.8.0/ampere-tuning-guide/index.html)
 
