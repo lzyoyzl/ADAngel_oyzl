@@ -1,0 +1,38 @@
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp: In instantiation of ‘main()::<lambda(auto:194&, const auto:195&)> [with auto:194 = cute::Tensor<cute::ArrayEngine<cutlass::integer_subbyte<4, false>, 64>, cute::Layout<cute::tuple<cute::tuple<cute::C<8>, cute::C<2>, cute::C<2> >, cute::C<2>, cute::C<1> >, cute::tuple<cute::tuple<cute::C<1>, cute::C<8>, cute::C<16> >, cute::C<32>, cute::C<0> > > >; auto:195 = cute::ThrCopy<cute::TiledCopy<cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::integer_subbyte<4, false> >, cute::Layout<cute::tuple<cute::tuple<cute::C<4>, cute::C<8>, cute::C<2>, cute::C<2> >, cute::tuple<cute::tuple<cute::C<8>, cute::C<2>, cute::C<2> >, cute::tuple<cute::C<2>, cute::C<1> > > >, cute::tuple<cute::tuple<cute::C<512>, cute::C<1>, cute::C<16>, cute::C<0> >, cute::tuple<cute::tuple<cute::C<64>, cute::C<8>, cute::C<2048> >, cute::tuple<cute::C<32>, cute::C<0> > > > >, cute::tuple<cute::C<64>, cute::C<64> > >, int>]’:
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:79:22:   required from here
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:63:48: error: static assertion failed
+   63 |       static_assert(decltype(size<0>(d))::value==4);
+      |                                           ~~~~~^~~
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:64:48: error: static assertion failed
+   64 |       static_assert(decltype(size<1>(d))::value==2);
+      |                                           ~~~~~^~~
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp: In instantiation of ‘main()::<lambda(auto:194&, const auto:195&)> [with auto:194 = cute::Tensor<cute::ArrayEngine<cutlass::integer_subbyte<4, true>, 64>, cute::Layout<cute::tuple<cute::tuple<cute::C<8>, cute::C<2>, cute::C<2> >, cute::C<2>, cute::C<1> >, cute::tuple<cute::tuple<cute::C<1>, cute::C<8>, cute::C<16> >, cute::C<32>, cute::C<0> > > >; auto:195 = cute::ThrCopy<cute::TiledCopy<cute::Copy_Atom<cute::SM75_U32x4_LDSM_N, cutlass::integer_subbyte<4, true> >, cute::Layout<cute::tuple<cute::tuple<cute::C<4>, cute::C<8>, cute::C<2>, cute::C<2> >, cute::tuple<cute::tuple<cute::C<8>, cute::C<2>, cute::C<2> >, cute::tuple<cute::C<2>, cute::C<1> > > >, cute::tuple<cute::tuple<cute::C<512>, cute::C<1>, cute::C<16>, cute::C<0> >, cute::tuple<cute::tuple<cute::C<64>, cute::C<8>, cute::C<2048> >, cute::tuple<cute::C<32>, cute::C<0> > > > >, cute::tuple<cute::C<64>, cute::C<64> > >, int>]’:
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:79:41:   required from here
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:63:48: error: static assertion failed
+   63 |       static_assert(decltype(size<0>(d))::value==4);
+      |                                           ~~~~~^~~
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:64:48: error: static assertion failed
+   64 |       static_assert(decltype(size<1>(d))::value==2);
+      |                                           ~~~~~^~~
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp: In instantiation of ‘main()::<lambda(auto:192)> [with auto:192 = cute::integral_constant<int, 0>]’:
+/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include/cute/algorithm/tuple_algorithms.hpp:177:50:   required from ‘cute::for_each(T&&, F&&) [with T = std::integer_sequence<int, 0, 1>; F = main()::<lambda(auto:192)>]::<lambda(auto:2&& ...)> [with auto:2 = {cute::integral_constant<int, 0>, cute::integral_constant<int, 1>}]’
+/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include/cute/algorithm/tuple_algorithms.hpp:75:11:   required from ‘constexpr auto cute::detail::apply(T&&, F&&, cute::int_sequence<I ...>) [with T = std::integer_sequence<int, 0, 1>&; F = cute::for_each(T&&, F&&) [with T = std::integer_sequence<int, 0, 1>; F = main()::<lambda(auto:192)>]::<lambda(auto:2&& ...)>; int ...I = {0, 1}; cute::int_sequence<I ...> = std::integer_sequence<int, 0, 1>]’
+/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include/cute/algorithm/tuple_algorithms.hpp:177:25:   required from ‘constexpr void cute::for_each(T&&, F&&) [with T = std::integer_sequence<int, 0, 1>; F = main()::<lambda(auto:192)>]’
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:44:6:   required from here
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:40:50: error: static assertion failed
+   40 |       static_assert(decltype(size<0>(src))::value==1);
+      |                                             ~~~~~^~~
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:41:50: error: static assertion failed
+   41 |       static_assert(decltype(size<1>(src))::value==2);
+      |                                             ~~~~~^~~
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp: In instantiation of ‘main()::<lambda(auto:192)> [with auto:192 = cute::integral_constant<int, 1>]’:
+/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include/cute/algorithm/tuple_algorithms.hpp:177:50:   required from ‘cute::for_each(T&&, F&&) [with T = std::integer_sequence<int, 0, 1>; F = main()::<lambda(auto:192)>]::<lambda(auto:2&& ...)> [with auto:2 = {cute::integral_constant<int, 0>, cute::integral_constant<int, 1>}]’
+/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include/cute/algorithm/tuple_algorithms.hpp:75:11:   required from ‘constexpr auto cute::detail::apply(T&&, F&&, cute::int_sequence<I ...>) [with T = std::integer_sequence<int, 0, 1>&; F = cute::for_each(T&&, F&&) [with T = std::integer_sequence<int, 0, 1>; F = main()::<lambda(auto:192)>]::<lambda(auto:2&& ...)>; int ...I = {0, 1}; cute::int_sequence<I ...> = std::integer_sequence<int, 0, 1>]’
+/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include/cute/algorithm/tuple_algorithms.hpp:177:25:   required from ‘constexpr void cute::for_each(T&&, F&&) [with T = std::integer_sequence<int, 0, 1>; F = main()::<lambda(auto:192)>]’
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:44:6:   required from here
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:40:50: error: static assertion failed
+   40 |       static_assert(decltype(size<0>(src))::value==1);
+      |                                             ~~~~~^~~
+/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp:41:50: error: static assertion failed
+   41 |       static_assert(decltype(size<1>(src))::value==2);
+      |                                             ~~~~~^~~

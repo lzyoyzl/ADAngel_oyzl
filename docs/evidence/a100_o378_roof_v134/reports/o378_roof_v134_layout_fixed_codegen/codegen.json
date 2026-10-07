@@ -1,0 +1,1994 @@
+{
+  "scope": "O3_crossK_cached_A_iterator_compile_repair_not_GPU_acceptance",
+  "source_commit": "9795c7d2bd68d8d6b495df1464e0d3028df5e34d",
+  "sources": {
+    "csrc/sm80/o3_fullk_integer_probe.cuh": "f82b9767cd06b12a11954ff11b4f3ddfca28934240221f61fe2431db25bedaff",
+    "csrc/sm80/roof_fullk_integer_probe.cu": "3cad6bb889b8049b1ad8b8a4c582022add9f928364918dbbbe920b76bce05cce",
+    "csrc/sm80/roof_grouped_cta.cuh": "288d87418539ae194cdf5065fc66db366e289cc7c74b99225b3d386d3594e00a",
+    "csrc/sm80/roof_o3_cached_a_iterator_probe.cu": "3e99f6719451906c3fca285f8d9128a95b118ae2a2fff8d873e2045e82c91e9a",
+    "csrc/sm80/roof_o3_eight_chain_probe.cu": "c84ab6bb683a197bbdb0b278630a7ecc10ab62020487ba536b70ab8dd1bd6786",
+    "csrc/sm80/roof_o3_grouped_cta_probe.cu": "b19e70150f38f602967c51ecc4475373fc127d513981abf39e43da4ae26fa8d6",
+    "csrc/sm80/verify_o3_cached_a_iterator.cpp": "542fe008914a61d83e02b5415b7cb8789d1eadc713f50bfeea9ac7bb33b7e48c",
+    "scripts/compare_a100_codegen.py": "ebb2603e66143e037b5e076f6a88fdfc8f81d743fd30b994d5388d874c673653",
+    "scripts/inspect_eight_chain_schedule.py": "8a0bd31a628e9b541c69b1da7508f236c81221091e5024ed3c112ec167e08917",
+    "scripts/inspect_o78_register_liveness.py": "5b37a4a2c554fd7f905be3983f51829b769fe02d21487eec6a9b0fedde32bd62",
+    "scripts/probe_grouped_cta_codegen.py": "82ca3f0e9aa9deb7af4a3eaca7d2c4b234e426c4e9904b30ebfdb0a07d3f4fa5",
+    "scripts/probe_o3_cached_a_iterator_codegen.py": "b645c08adc322d745004eb0d8080632debf95b3ecf80302f1946897c5ec1d418",
+    "scripts/probe_o3_crossk_load_codegen.py": "b7a42693a7584c27be634d036f052b1a997846f6230916efcc8a9a5b9fe2686e",
+    "scripts/probe_o3_eight_chain_codegen.py": "1eaf08fc18b61c25bdc8d71727a70a7f7b0506ff47544aa61f068c4653b4eef7",
+    "scripts/probe_o78_eight_chain_codegen.py": "df14edf4eb8b89f5bf8c2c61086f6a16a847be775d93aa0bf411d13506ad6a57",
+    "scripts/probe_roof_device_factor_codegen.py": "0de095a10723572a2e7b096f7b73933e90294414afd40ef235ef07f2e2bbb49b",
+    "scripts/probe_roof_factor_async_codegen.py": "10e315f9dbba6cdf3ff758b23222b6ea19d86f4fab0f4fb238adb2d7336dbb97",
+    "scripts/probe_roof_fullk_integer_codegen.py": "506a8070250dce2402800fd37696785641306d4481e43c1c1107936eff5e860e"
+  },
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-arch=sm_80",
+      "-DADANGEL_FULLK_INTEGER=1",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/verify_o3_cached_a_iterator.cpp",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen/verify_a_iterator"
+    ],
+    [
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen/verify_a_iterator"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-arch=sm_80",
+      "-DADANGEL_FULLK_INTEGER=1",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen",
+      "-O3",
+      "-lineinfo",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o3_cached_a_iterator_probe.cu",
+      "-cubin",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen/o3_cached_a_iterator.cubin",
+      "-Xptxas=-v"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-arch=sm_80",
+      "-DADANGEL_FULLK_INTEGER=1",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen",
+      "-O3",
+      "-lineinfo",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o3_cached_a_iterator_probe.cu",
+      "-ptx",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen/o3_cached_a_iterator.ptx"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-sass",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen/o3_cached_a_iterator.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-resource-usage",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen/o3_cached_a_iterator.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvdisasm",
+      "--print-code",
+      "--life-range-mode",
+      "count",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v134_layout_fixed_codegen/o3_cached_a_iterator.cubin"
+    ]
+  ],
+  "limits": {
+    "max_work_ratio": 1.05,
+    "max_allocated_gpr": 168,
+    "max_hot_local": 1,
+    "min_actual_cta": 3,
+    "mma_each": 32,
+    "ldsm": 16,
+    "copies": 9,
+    "barriers": 1,
+    "next_a_loads_after_last_mma": 8,
+    "min_weighted_updates_after_first_next_load": 8
+  },
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+  "production_default_changed": false,
+  "changed_semantics": false,
+  "cta_tile": [
+    64,
+    128,
+    128
+  ],
+  "threads": 128,
+  "stages": 3,
+  "shared_bytes": 50688,
+  "partial_registers": 32,
+  "conversion_changed": false,
+  "baseline_cubin_sha256": "89918880f8cad38f8234993ff07064d5c8bb6f2c5a4996c3d443d637836856bd",
+  "entries": {
+    "adangel_roof_o3_cached_a_iterator_candidate": {
+      "instructions": 2224,
+      "opcode_counts": {
+        "MOV": 20,
+        "ULDC": 15,
+        "S2UR": 3,
+        "IADD3": 222,
+        "ULOP3": 12,
+        "PLOP3": 10,
+        "BRA": 16,
+        "USHF": 31,
+        "UMOV": 9,
+        "UIADD3": 21,
+        "UISETP": 16,
+        "I2F": 130,
+        "MUFU": 2,
+        "F2I": 2,
+        "R2UR": 2,
+        "UIMAD": 30,
+        "USEL": 1,
+        "ULEA": 9,
+        "IMAD": 406,
+        "LDG": 28,
+        "LOP3": 142,
+        "EXIT": 5,
+        "S2R": 8,
+        "ISETP": 87,
+        "SHF": 97,
+        "LEA": 65,
+        "CS2R": 62,
+        "STL": 8,
+        "LDS": 31,
+        "LDGSTS": 51,
+        "FSEL": 3,
+        "STS": 3,
+        "LDGDEPBAR": 6,
+        "DEPBAR": 5,
+        "BAR": 3,
+        "LDL": 8,
+        "LDSM": 40,
+        "IMMA": 128,
+        "FFMA": 64,
+        "CALL": 2,
+        "FMUL": 192,
+        "STG": 192,
+        "SHFL": 4,
+        "BSSY": 1,
+        "UPRMT": 4,
+        "BSYNC": 1,
+        "NOP": 1,
+        "SEL": 16,
+        "NOP;": 10
+      },
+      "copies": [
+        "LDGSTS.E.BYPASS.128 [R2], [R16.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x3000], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0], [R18.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x3000], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x6000], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x6000], [R22.64] ;",
+        "LDGSTS.E.BYPASS.128 [R47+0x6000], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R165+0x6000], [R26.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x1000], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x4000], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x1000], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x4000], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x8000], [R14.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x8000], [R36.64] ;",
+        "LDGSTS.E.BYPASS.128 [R47+0x8000], [R38.64] ;",
+        "LDGSTS.E.BYPASS.128 [R165+0x8000], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35+0x3000], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x3000], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R33], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2], [R16.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x3000], [R4.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0], [R18.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x3000], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x6000], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x6000], [R22.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x6000], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R165+0x6000], [R26.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R36+0xc000], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x1000], [R4.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x4000], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x1000], [R10.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x4000], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R2+0x8000], [R14.64] ;",
+        "LDGSTS.E.BYPASS.128 [R0+0x8000], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x8000], [R4.64] ;",
+        "LDGSTS.E.BYPASS.128 [R165+0x8000], [R28.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R36+0xc200], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3+0x3000], [R14.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35+0x3000], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37], [R14.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3+0xc000], [R14.64] ;"
+      ],
+      "all_copies_bypass_l1": true,
+      "native_u4_s4": true,
+      "native_s4_s4": true,
+      "int8_mma": false
+    },
+    "adangel_roof_o3_grouped_cta_candidate": {
+      "instructions": 2200,
+      "opcode_counts": {
+        "MOV": 23,
+        "ULDC": 15,
+        "S2UR": 3,
+        "IADD3": 218,
+        "ULOP3": 12,
+        "PLOP3": 9,
+        "BRA": 15,
+        "USHF": 31,
+        "UMOV": 8,
+        "UIADD3": 20,
+        "UISETP": 15,
+        "I2F": 130,
+        "MUFU": 2,
+        "F2I": 2,
+        "R2UR": 2,
+        "UIMAD": 28,
+        "USEL": 1,
+        "ULEA": 9,
+        "IMAD": 409,
+        "LDG": 28,
+        "LOP3": 152,
+        "EXIT": 5,
+        "S2R": 10,
+        "ISETP": 87,
+        "SHF": 98,
+        "LEA": 60,
+        "LDS": 31,
+        "LDGSTS": 51,
+        "STL": 4,
+        "FSEL": 3,
+        "STS": 3,
+        "LDGDEPBAR": 6,
+        "CS2R": 58,
+        "DEPBAR": 4,
+        "BAR": 2,
+        "LDL": 4,
+        "LDSM": 32,
+        "IMMA": 128,
+        "FFMA": 64,
+        "CALL": 2,
+        "FMUL": 192,
+        "STG": 192,
+        "BSSY": 1,
+        "UPRMT": 4,
+        "BSYNC": 1,
+        "SEL": 16,
+        "NOP;": 10
+      },
+      "copies": [
+        "LDGSTS.E.BYPASS.128 [R5], [R18.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x3000], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R27], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R27+0x3000], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x6000], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R27+0x6000], [R22.64] ;",
+        "LDGSTS.E.BYPASS.128 [R7+0x6000], [R104.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29+0x6000], [R106.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x1000], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x4000], [R10.64] ;",
+        "LDGSTS.E.BYPASS.128 [R27+0x1000], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R27+0x4000], [R14.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x8000], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R27+0x8000], [R16.64] ;",
+        "LDGSTS.E.BYPASS.128 [R7+0x8000], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29+0x8000], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R13], [R26.64] ;",
+        "LDGSTS.E.BYPASS.128 [R13+0x3000], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R31], [R26.64] ;",
+        "LDGSTS.E.BYPASS.128 [R31+0x3000], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R33], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R13], [R26.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29], [R26.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x3000], [R10.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29], [R22.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29+0x3000], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x6000], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29+0x6000], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R31+0x6000], [R26.64] ;",
+        "LDGSTS.E.BYPASS.128 [R33+0x6000], [R104.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R36+0xc000], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x1000], [R14.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x4000], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29+0x1000], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29+0x4000], [R10.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x8000], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29+0x8000], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R31+0x8000], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R33+0x8000], [R14.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R36+0xc200], [R16.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x3000], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x3000], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R33], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R35], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R29+0xc000], [R20.64] ;"
+      ],
+      "all_copies_bypass_l1": true,
+      "native_u4_s4": true,
+      "native_s4_s4": true,
+      "int8_mma": false
+    }
+  },
+  "liveness": {
+    "adangel_roof_o3_grouped_cta_candidate": {
+      "symbol": "adangel_roof_o3_grouped_cta_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 166,
+      "loops": [
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x1240",
+          "end_pc": "0x2a20",
+          "static_instructions": 383,
+          "max_live_gpr": 162,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 4,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 2,
+            "FFMA": 64,
+            "FSEL": 1,
+            "I2F": 64,
+            "IADD3": 17,
+            "IADD3.X": 9,
+            "IMAD": 35,
+            "IMAD.SHL.U32": 1,
+            "IMAD.U32": 4,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.NE.AND": 1,
+            "LDG.E.U8": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 8,
+            "LDL": 3,
+            "LDS": 3,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 36,
+            "LOP3.LUT": 6,
+            "MOV": 3,
+            "PLOP3.LUT": 3,
+            "S2R": 2,
+            "SHF.L.U32": 3,
+            "SHF.R.U32.HI": 1,
+            "STS": 1,
+            "UIADD3": 2,
+            "UIMAD": 4,
+            "UIMAD.WIDE.U32": 2,
+            "UISETP.GE.AND": 3,
+            "ULDC.64": 1,
+            "ULEA": 2,
+            "USHF.L.U32": 2,
+            "USHF.R.S32.HI": 2,
+            "USHF.R.U32.HI": 2
+          },
+          "peak_pcs": [
+            "0x21d0",
+            "0x21e0",
+            "0x21f0",
+            "0x2200",
+            "0x2210",
+            "0x2220",
+            "0x2230",
+            "0x2240"
+          ]
+        },
+        {
+          "kind": "integer",
+          "begin_pc": "0x4d70",
+          "end_pc": "0x6190",
+          "static_instructions": 323,
+          "max_live_gpr": 166,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 5,
+            "BSSY": 1,
+            "BSYNC": 1,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 2,
+            "IADD3": 14,
+            "IADD3.X": 9,
+            "IMAD": 65,
+            "IMAD.SHL.U32": 23,
+            "IMAD.U32": 3,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 9,
+            "LDS": 3,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 6,
+            "LEA.HI.X": 1,
+            "LOP3.LUT": 4,
+            "MOV": 4,
+            "PLOP3.LUT": 3,
+            "S2R": 2,
+            "SHF.L.U32": 44,
+            "UIADD3": 6,
+            "UIMAD": 6,
+            "UISETP.GE.U32.AND": 1,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULEA": 2,
+            "ULOP3.LUT": 4,
+            "UPRMT": 4,
+            "USHF.L.U32": 2,
+            "USHF.R.S32.HI": 3,
+            "USHF.R.U32.HI": 2
+          },
+          "peak_pcs": [
+            "0x56e0",
+            "0x56f0",
+            "0x5700",
+            "0x5710",
+            "0x5720",
+            "0x5730",
+            "0x5740",
+            "0x5760"
+          ]
+        }
+      ],
+      "cta_threads": 128,
+      "register_only_four_cta_limit_per_thread": 128,
+      "interpretation": "static_binary_live_range_not_runtime_timing_or_universal_register_lower_bound"
+    },
+    "adangel_roof_o3_cached_a_iterator_candidate": {
+      "symbol": "adangel_roof_o3_cached_a_iterator_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 160,
+      "loops": [
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x1250",
+          "end_pc": "0x2960",
+          "static_instructions": 370,
+          "max_live_gpr": 160,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 4,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 2,
+            "FFMA": 64,
+            "FSEL": 1,
+            "I2F": 64,
+            "IADD3": 14,
+            "IADD3.X": 9,
+            "IMAD": 33,
+            "IMAD.SHL.U32": 1,
+            "IMAD.U32": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.NE.AND": 1,
+            "LDG.E.U8": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 8,
+            "LDL": 4,
+            "LDS": 3,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 37,
+            "LOP3.LUT": 2,
+            "MOV": 2,
+            "PLOP3.LUT": 3,
+            "S2R": 2,
+            "SHF.L.U32": 1,
+            "SHF.R.U32.HI": 1,
+            "STS": 1,
+            "UIADD3": 2,
+            "UIMAD": 4,
+            "UIMAD.WIDE.U32": 2,
+            "UISETP.GE.AND": 3,
+            "ULDC": 1,
+            "ULEA": 2,
+            "USHF.L.U32": 1,
+            "USHF.R.S32.HI": 2,
+            "USHF.R.U32.HI": 2
+          },
+          "peak_pcs": [
+            "0x2000",
+            "0x2010",
+            "0x2020",
+            "0x2030",
+            "0x2040",
+            "0x2050",
+            "0x2060",
+            "0x2070",
+            "0x2080",
+            "0x2140",
+            "0x2150",
+            "0x2160",
+            "0x2170",
+            "0x2180",
+            "0x2190",
+            "0x21a0",
+            "0x21b0",
+            "0x21c0",
+            "0x21d0",
+            "0x21e0"
+          ]
+        },
+        {
+          "kind": "integer",
+          "begin_pc": "0x4d60",
+          "end_pc": "0x6370",
+          "static_instructions": 354,
+          "max_live_gpr": 158,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 6,
+            "BSSY": 1,
+            "BSYNC": 1,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 2,
+            "IADD3": 17,
+            "IADD3.X": 9,
+            "IMAD": 68,
+            "IMAD.IADD": 1,
+            "IMAD.SHL.U32": 22,
+            "IMAD.U32": 3,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 9,
+            "LDL": 4,
+            "LDS": 3,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 5,
+            "LEA.HI": 2,
+            "LEA.HI.X": 1,
+            "LOP3.LUT": 10,
+            "MOV": 6,
+            "NOP": 1,
+            "PLOP3.LUT": 4,
+            "S2R": 2,
+            "SHF.L.U32": 47,
+            "SHF.R.U32.HI": 1,
+            "UIADD3": 7,
+            "UIMAD": 7,
+            "UIMAD.WIDE.U32": 1,
+            "UISETP.GE.U32.AND": 1,
+            "UISETP.GT.U32.AND": 2,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULEA": 2,
+            "ULOP3.LUT": 4,
+            "UPRMT": 4,
+            "USHF.L.U32": 2,
+            "USHF.R.S32.HI": 3,
+            "USHF.R.U32.HI": 3
+          },
+          "peak_pcs": [
+            "0x54f0",
+            "0x5500",
+            "0x5510",
+            "0x5520",
+            "0x5530",
+            "0x5540",
+            "0x5550",
+            "0x5560",
+            "0x5570",
+            "0x5580",
+            "0x5590",
+            "0x55a0",
+            "0x55b0",
+            "0x55c0"
+          ]
+        }
+      ],
+      "cta_threads": 128,
+      "register_only_four_cta_limit_per_thread": 128,
+      "interpretation": "static_binary_live_range_not_runtime_timing_or_universal_register_lower_bound"
+    }
+  },
+  "overlap": {
+    "next_loads": [
+      {
+        "pc": "0x6090",
+        "destination": 56,
+        "width": 4,
+        "mma_before": 64
+      },
+      {
+        "pc": "0x60b0",
+        "destination": 44,
+        "width": 4,
+        "mma_before": 64
+      },
+      {
+        "pc": "0x60d0",
+        "destination": 60,
+        "width": 4,
+        "mma_before": 64
+      },
+      {
+        "pc": "0x60e0",
+        "destination": 40,
+        "width": 4,
+        "mma_before": 64
+      },
+      {
+        "pc": "0x60f0",
+        "destination": 48,
+        "width": 4,
+        "mma_before": 64
+      },
+      {
+        "pc": "0x6100",
+        "destination": 64,
+        "width": 4,
+        "mma_before": 64
+      },
+      {
+        "pc": "0x6110",
+        "destination": 52,
+        "width": 4,
+        "mma_before": 64
+      },
+      {
+        "pc": "0x6120",
+        "destination": 68,
+        "width": 4,
+        "mma_before": 64
+      }
+    ],
+    "weighted_updates_after_first_next_load": [
+      {
+        "pc": "0x6140",
+        "instruction": "IMAD R132, R72, R36, R132"
+      },
+      {
+        "pc": "0x6150",
+        "instruction": "IMAD R134, R74, R36.reuse, R134"
+      },
+      {
+        "pc": "0x6170",
+        "instruction": "IMAD R148, R76, R36.reuse, R148"
+      },
+      {
+        "pc": "0x6180",
+        "instruction": "IMAD R150, R78, R36, R150"
+      },
+      {
+        "pc": "0x6190",
+        "instruction": "IMAD R133, R73, R37.reuse, R133"
+      },
+      {
+        "pc": "0x61b0",
+        "instruction": "IMAD R135, R75, R37.reuse, R135"
+      },
+      {
+        "pc": "0x61c0",
+        "instruction": "IMAD R149, R77, R37, R149"
+      },
+      {
+        "pc": "0x61d0",
+        "instruction": "IMAD R151, R79, R37, R151"
+      },
+      {
+        "pc": "0x61e0",
+        "instruction": "IMAD R136, R100, R34.reuse, R136"
+      },
+      {
+        "pc": "0x61f0",
+        "instruction": "IMAD R138, R102, R34.reuse, R138"
+      },
+      {
+        "pc": "0x6200",
+        "instruction": "IMAD R152, R28, R34.reuse, R152"
+      },
+      {
+        "pc": "0x6210",
+        "instruction": "IMAD R154, R30, R34, R154"
+      },
+      {
+        "pc": "0x6220",
+        "instruction": "IMAD R137, R101, R35, R137"
+      },
+      {
+        "pc": "0x6230",
+        "instruction": "IMAD R139, R103, R35.reuse, R139"
+      },
+      {
+        "pc": "0x6240",
+        "instruction": "IMAD R153, R29, R35.reuse, R153"
+      },
+      {
+        "pc": "0x6250",
+        "instruction": "IMAD R155, R31, R35, R155"
+      },
+      {
+        "pc": "0x6260",
+        "instruction": "IMAD R140, R80, R32.reuse, R140"
+      },
+      {
+        "pc": "0x6270",
+        "instruction": "IMAD R142, R82, R32.reuse, R142"
+      },
+      {
+        "pc": "0x6280",
+        "instruction": "IMAD R156, R92, R32, R156"
+      },
+      {
+        "pc": "0x6290",
+        "instruction": "IMAD R158, R94, R32, R158"
+      },
+      {
+        "pc": "0x62a0",
+        "instruction": "IMAD R141, R81, R33.reuse, R141"
+      },
+      {
+        "pc": "0x62b0",
+        "instruction": "IMAD R143, R83, R33.reuse, R143"
+      },
+      {
+        "pc": "0x62c0",
+        "instruction": "IMAD R157, R93, R33.reuse, R157"
+      },
+      {
+        "pc": "0x62d0",
+        "instruction": "IMAD R159, R95, R33, R159"
+      },
+      {
+        "pc": "0x62e0",
+        "instruction": "IMAD R144, R104, R14, R144"
+      },
+      {
+        "pc": "0x62f0",
+        "instruction": "IMAD R146, R106, R14.reuse, R146"
+      },
+      {
+        "pc": "0x6300",
+        "instruction": "IMAD R160, R96, R14.reuse, R160"
+      },
+      {
+        "pc": "0x6310",
+        "instruction": "IMAD R162, R98, R14, R162"
+      },
+      {
+        "pc": "0x6320",
+        "instruction": "IMAD R145, R105, R15.reuse, R145"
+      },
+      {
+        "pc": "0x6330",
+        "instruction": "IMAD R147, R107, R15.reuse, R147"
+      },
+      {
+        "pc": "0x6340",
+        "instruction": "IMAD R161, R97, R15, R161"
+      },
+      {
+        "pc": "0x6350",
+        "instruction": "IMAD R163, R99, R15, R163"
+      }
+    ],
+    "last_mma_pc": "0x5ec0",
+    "chains": {
+      "symbol": "adangel_roof_o3_cached_a_iterator_candidate",
+      "loop": {
+        "kind": "integer",
+        "begin_pc": "0x4d60",
+        "end_pc": "0x6370",
+        "static_instructions": 354,
+        "max_live_gpr": 158,
+        "opcode_counts": {
+          "BAR.SYNC.DEFER_BLOCKING": 1,
+          "BRA": 6,
+          "BSSY": 1,
+          "BSYNC": 1,
+          "CALL.REL.NOINC": 1,
+          "DEPBAR.LE": 2,
+          "IADD3": 17,
+          "IADD3.X": 9,
+          "IMAD": 68,
+          "IMAD.IADD": 1,
+          "IMAD.SHL.U32": 22,
+          "IMAD.U32": 3,
+          "IMMA.16864.S4.S4": 32,
+          "IMMA.16864.U4.S4": 32,
+          "LDGDEPBAR": 1,
+          "LDGSTS.E.BYPASS.128": 9,
+          "LDL": 4,
+          "LDS": 3,
+          "LDS.64": 8,
+          "LDSM.16.M88.4": 16,
+          "LEA": 5,
+          "LEA.HI": 2,
+          "LEA.HI.X": 1,
+          "LOP3.LUT": 10,
+          "MOV": 6,
+          "NOP": 1,
+          "PLOP3.LUT": 4,
+          "S2R": 2,
+          "SHF.L.U32": 47,
+          "SHF.R.U32.HI": 1,
+          "UIADD3": 7,
+          "UIMAD": 7,
+          "UIMAD.WIDE.U32": 1,
+          "UISETP.GE.U32.AND": 1,
+          "UISETP.GT.U32.AND": 2,
+          "UISETP.NE.AND": 1,
+          "ULDC.64": 1,
+          "ULEA": 2,
+          "ULOP3.LUT": 4,
+          "UPRMT": 4,
+          "USHF.L.U32": 2,
+          "USHF.R.S32.HI": 3,
+          "USHF.R.U32.HI": 3
+        },
+        "peak_pcs": [
+          "0x54f0",
+          "0x5500",
+          "0x5510",
+          "0x5520",
+          "0x5530",
+          "0x5540",
+          "0x5550",
+          "0x5560",
+          "0x5570",
+          "0x5580",
+          "0x5590",
+          "0x55a0",
+          "0x55b0",
+          "0x55c0"
+        ]
+      },
+      "chains": [
+        {
+          "id": 0,
+          "start_pc": "0x5430",
+          "mma": [
+            {
+              "pc": "0x5430",
+              "kind": "S4",
+              "destination": 28,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5470",
+              "kind": "S4",
+              "destination": 28,
+              "c": "R28"
+            },
+            {
+              "pc": "0x5570",
+              "kind": "U4",
+              "destination": 28,
+              "c": "R28"
+            },
+            {
+              "pc": "0x5640",
+              "kind": "U4",
+              "destination": 28,
+              "c": "R28"
+            }
+          ],
+          "end_pc": "0x5640"
+        },
+        {
+          "id": 1,
+          "start_pc": "0x5440",
+          "mma": [
+            {
+              "pc": "0x5440",
+              "kind": "S4",
+              "destination": 72,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5480",
+              "kind": "S4",
+              "destination": 72,
+              "c": "R72"
+            },
+            {
+              "pc": "0x55c0",
+              "kind": "U4",
+              "destination": 72,
+              "c": "R72"
+            },
+            {
+              "pc": "0x5660",
+              "kind": "U4",
+              "destination": 72,
+              "c": "R72"
+            }
+          ],
+          "end_pc": "0x5660"
+        },
+        {
+          "id": 2,
+          "start_pc": "0x5450",
+          "mma": [
+            {
+              "pc": "0x5450",
+              "kind": "S4",
+              "destination": 96,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5490",
+              "kind": "S4",
+              "destination": 96,
+              "c": "R96"
+            },
+            {
+              "pc": "0x55f0",
+              "kind": "U4",
+              "destination": 96,
+              "c": "R96"
+            },
+            {
+              "pc": "0x5670",
+              "kind": "U4",
+              "destination": 96,
+              "c": "R96"
+            }
+          ],
+          "end_pc": "0x5670"
+        },
+        {
+          "id": 3,
+          "start_pc": "0x5460",
+          "mma": [
+            {
+              "pc": "0x5460",
+              "kind": "S4",
+              "destination": 76,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x54a0",
+              "kind": "S4",
+              "destination": 76,
+              "c": "R76"
+            },
+            {
+              "pc": "0x5600",
+              "kind": "U4",
+              "destination": 76,
+              "c": "R76"
+            },
+            {
+              "pc": "0x56d0",
+              "kind": "U4",
+              "destination": 36,
+              "c": "R76"
+            }
+          ],
+          "end_pc": "0x56d0"
+        },
+        {
+          "id": 4,
+          "start_pc": "0x54f0",
+          "mma": [
+            {
+              "pc": "0x54f0",
+              "kind": "S4",
+              "destination": 84,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x55e0",
+              "kind": "S4",
+              "destination": 84,
+              "c": "R84"
+            },
+            {
+              "pc": "0x5680",
+              "kind": "U4",
+              "destination": 92,
+              "c": "R84"
+            },
+            {
+              "pc": "0x5870",
+              "kind": "U4",
+              "destination": 92,
+              "c": "R92"
+            }
+          ],
+          "end_pc": "0x5870"
+        },
+        {
+          "id": 5,
+          "start_pc": "0x5720",
+          "mma": [
+            {
+              "pc": "0x5720",
+              "kind": "S4",
+              "destination": 80,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x57e0",
+              "kind": "S4",
+              "destination": 80,
+              "c": "R80"
+            },
+            {
+              "pc": "0x58c0",
+              "kind": "U4",
+              "destination": 80,
+              "c": "R80"
+            },
+            {
+              "pc": "0x5980",
+              "kind": "U4",
+              "destination": 80,
+              "c": "R80"
+            }
+          ],
+          "end_pc": "0x5980"
+        },
+        {
+          "id": 6,
+          "start_pc": "0x5770",
+          "mma": [
+            {
+              "pc": "0x5770",
+              "kind": "S4",
+              "destination": 84,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5810",
+              "kind": "S4",
+              "destination": 84,
+              "c": "R84"
+            },
+            {
+              "pc": "0x5910",
+              "kind": "U4",
+              "destination": 84,
+              "c": "R84"
+            },
+            {
+              "pc": "0x5990",
+              "kind": "U4",
+              "destination": 84,
+              "c": "R84"
+            }
+          ],
+          "end_pc": "0x5990"
+        },
+        {
+          "id": 7,
+          "start_pc": "0x5790",
+          "mma": [
+            {
+              "pc": "0x5790",
+              "kind": "S4",
+              "destination": 76,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5820",
+              "kind": "S4",
+              "destination": 76,
+              "c": "R76"
+            },
+            {
+              "pc": "0x5930",
+              "kind": "U4",
+              "destination": 76,
+              "c": "R76"
+            },
+            {
+              "pc": "0x59a0",
+              "kind": "U4",
+              "destination": 88,
+              "c": "R76"
+            }
+          ],
+          "end_pc": "0x59a0"
+        },
+        {
+          "id": 8,
+          "start_pc": "0x5a00",
+          "mma": [
+            {
+              "pc": "0x5a00",
+              "kind": "S4",
+              "destination": 72,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5ab0",
+              "kind": "S4",
+              "destination": 72,
+              "c": "R72"
+            },
+            {
+              "pc": "0x5b60",
+              "kind": "U4",
+              "destination": 72,
+              "c": "R72"
+            },
+            {
+              "pc": "0x5c40",
+              "kind": "U4",
+              "destination": 72,
+              "c": "R72"
+            }
+          ],
+          "end_pc": "0x5c40"
+        },
+        {
+          "id": 9,
+          "start_pc": "0x5a50",
+          "mma": [
+            {
+              "pc": "0x5a50",
+              "kind": "S4",
+              "destination": 76,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5ac0",
+              "kind": "S4",
+              "destination": 76,
+              "c": "R76"
+            },
+            {
+              "pc": "0x5bb0",
+              "kind": "U4",
+              "destination": 76,
+              "c": "R76"
+            },
+            {
+              "pc": "0x5c50",
+              "kind": "U4",
+              "destination": 76,
+              "c": "R76"
+            }
+          ],
+          "end_pc": "0x5c50"
+        },
+        {
+          "id": 10,
+          "start_pc": "0x5a90",
+          "mma": [
+            {
+              "pc": "0x5a90",
+              "kind": "S4",
+              "destination": 100,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5ad0",
+              "kind": "S4",
+              "destination": 100,
+              "c": "R100"
+            },
+            {
+              "pc": "0x5c10",
+              "kind": "U4",
+              "destination": 100,
+              "c": "R100"
+            },
+            {
+              "pc": "0x5c60",
+              "kind": "U4",
+              "destination": 100,
+              "c": "R100"
+            }
+          ],
+          "end_pc": "0x5c60"
+        },
+        {
+          "id": 11,
+          "start_pc": "0x5aa0",
+          "mma": [
+            {
+              "pc": "0x5aa0",
+              "kind": "S4",
+              "destination": 96,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5ae0",
+              "kind": "S4",
+              "destination": 96,
+              "c": "R96"
+            },
+            {
+              "pc": "0x5c20",
+              "kind": "U4",
+              "destination": 96,
+              "c": "R96"
+            },
+            {
+              "pc": "0x5c70",
+              "kind": "U4",
+              "destination": 28,
+              "c": "R96"
+            }
+          ],
+          "end_pc": "0x5c70"
+        },
+        {
+          "id": 12,
+          "start_pc": "0x5c80",
+          "mma": [
+            {
+              "pc": "0x5c80",
+              "kind": "S4",
+              "destination": 80,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5cb0",
+              "kind": "S4",
+              "destination": 80,
+              "c": "R80"
+            },
+            {
+              "pc": "0x5d60",
+              "kind": "U4",
+              "destination": 80,
+              "c": "R80"
+            },
+            {
+              "pc": "0x5df0",
+              "kind": "U4",
+              "destination": 80,
+              "c": "R80"
+            }
+          ],
+          "end_pc": "0x5df0"
+        },
+        {
+          "id": 13,
+          "start_pc": "0x5c90",
+          "mma": [
+            {
+              "pc": "0x5c90",
+              "kind": "S4",
+              "destination": 92,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5cc0",
+              "kind": "S4",
+              "destination": 92,
+              "c": "R92"
+            },
+            {
+              "pc": "0x5d90",
+              "kind": "U4",
+              "destination": 92,
+              "c": "R92"
+            },
+            {
+              "pc": "0x5e50",
+              "kind": "U4",
+              "destination": 92,
+              "c": "R92"
+            }
+          ],
+          "end_pc": "0x5e50"
+        },
+        {
+          "id": 14,
+          "start_pc": "0x5ca0",
+          "mma": [
+            {
+              "pc": "0x5ca0",
+              "kind": "S4",
+              "destination": 104,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5d10",
+              "kind": "S4",
+              "destination": 104,
+              "c": "R104"
+            },
+            {
+              "pc": "0x5e30",
+              "kind": "U4",
+              "destination": 104,
+              "c": "R104"
+            },
+            {
+              "pc": "0x5ea0",
+              "kind": "U4",
+              "destination": 104,
+              "c": "R104"
+            }
+          ],
+          "end_pc": "0x5ea0"
+        },
+        {
+          "id": 15,
+          "start_pc": "0x5cd0",
+          "mma": [
+            {
+              "pc": "0x5cd0",
+              "kind": "S4",
+              "destination": 96,
+              "c": "RZ"
+            },
+            {
+              "pc": "0x5d80",
+              "kind": "S4",
+              "destination": 96,
+              "c": "R96"
+            },
+            {
+              "pc": "0x5e70",
+              "kind": "U4",
+              "destination": 96,
+              "c": "R96"
+            },
+            {
+              "pc": "0x5ec0",
+              "kind": "U4",
+              "destination": 96,
+              "c": "R96"
+            }
+          ],
+          "end_pc": "0x5ec0"
+        }
+      ],
+      "schedule": [
+        {
+          "pc": "0x5430",
+          "chain": 0,
+          "stage": 1,
+          "active_after": 1,
+          "ordinal": 1
+        },
+        {
+          "pc": "0x5440",
+          "chain": 1,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 2
+        },
+        {
+          "pc": "0x5450",
+          "chain": 2,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 3
+        },
+        {
+          "pc": "0x5460",
+          "chain": 3,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 4
+        },
+        {
+          "pc": "0x5470",
+          "chain": 0,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 5
+        },
+        {
+          "pc": "0x5480",
+          "chain": 1,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 6
+        },
+        {
+          "pc": "0x5490",
+          "chain": 2,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 7
+        },
+        {
+          "pc": "0x54a0",
+          "chain": 3,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 8
+        },
+        {
+          "pc": "0x54f0",
+          "chain": 4,
+          "stage": 1,
+          "active_after": 5,
+          "ordinal": 9
+        },
+        {
+          "pc": "0x5570",
+          "chain": 0,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 10
+        },
+        {
+          "pc": "0x55c0",
+          "chain": 1,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 11
+        },
+        {
+          "pc": "0x55e0",
+          "chain": 4,
+          "stage": 2,
+          "active_after": 5,
+          "ordinal": 12
+        },
+        {
+          "pc": "0x55f0",
+          "chain": 2,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 13
+        },
+        {
+          "pc": "0x5600",
+          "chain": 3,
+          "stage": 3,
+          "active_after": 5,
+          "ordinal": 14
+        },
+        {
+          "pc": "0x5640",
+          "chain": 0,
+          "stage": 4,
+          "active_after": 4,
+          "ordinal": 15
+        },
+        {
+          "pc": "0x5660",
+          "chain": 1,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 16
+        },
+        {
+          "pc": "0x5670",
+          "chain": 2,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 17
+        },
+        {
+          "pc": "0x5680",
+          "chain": 4,
+          "stage": 3,
+          "active_after": 2,
+          "ordinal": 18
+        },
+        {
+          "pc": "0x56d0",
+          "chain": 3,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 19
+        },
+        {
+          "pc": "0x5720",
+          "chain": 5,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 20
+        },
+        {
+          "pc": "0x5770",
+          "chain": 6,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 21
+        },
+        {
+          "pc": "0x5790",
+          "chain": 7,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 22
+        },
+        {
+          "pc": "0x57e0",
+          "chain": 5,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 23
+        },
+        {
+          "pc": "0x5810",
+          "chain": 6,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 24
+        },
+        {
+          "pc": "0x5820",
+          "chain": 7,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 25
+        },
+        {
+          "pc": "0x5870",
+          "chain": 4,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 26
+        },
+        {
+          "pc": "0x58c0",
+          "chain": 5,
+          "stage": 3,
+          "active_after": 3,
+          "ordinal": 27
+        },
+        {
+          "pc": "0x5910",
+          "chain": 6,
+          "stage": 3,
+          "active_after": 3,
+          "ordinal": 28
+        },
+        {
+          "pc": "0x5930",
+          "chain": 7,
+          "stage": 3,
+          "active_after": 3,
+          "ordinal": 29
+        },
+        {
+          "pc": "0x5980",
+          "chain": 5,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 30
+        },
+        {
+          "pc": "0x5990",
+          "chain": 6,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 31
+        },
+        {
+          "pc": "0x59a0",
+          "chain": 7,
+          "stage": 4,
+          "active_after": 0,
+          "ordinal": 32
+        },
+        {
+          "pc": "0x5a00",
+          "chain": 8,
+          "stage": 1,
+          "active_after": 1,
+          "ordinal": 33
+        },
+        {
+          "pc": "0x5a50",
+          "chain": 9,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 34
+        },
+        {
+          "pc": "0x5a90",
+          "chain": 10,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 35
+        },
+        {
+          "pc": "0x5aa0",
+          "chain": 11,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 36
+        },
+        {
+          "pc": "0x5ab0",
+          "chain": 8,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 37
+        },
+        {
+          "pc": "0x5ac0",
+          "chain": 9,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 38
+        },
+        {
+          "pc": "0x5ad0",
+          "chain": 10,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 39
+        },
+        {
+          "pc": "0x5ae0",
+          "chain": 11,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 40
+        },
+        {
+          "pc": "0x5b60",
+          "chain": 8,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 41
+        },
+        {
+          "pc": "0x5bb0",
+          "chain": 9,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 42
+        },
+        {
+          "pc": "0x5c10",
+          "chain": 10,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 43
+        },
+        {
+          "pc": "0x5c20",
+          "chain": 11,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 44
+        },
+        {
+          "pc": "0x5c40",
+          "chain": 8,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 45
+        },
+        {
+          "pc": "0x5c50",
+          "chain": 9,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 46
+        },
+        {
+          "pc": "0x5c60",
+          "chain": 10,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 47
+        },
+        {
+          "pc": "0x5c70",
+          "chain": 11,
+          "stage": 4,
+          "active_after": 0,
+          "ordinal": 48
+        },
+        {
+          "pc": "0x5c80",
+          "chain": 12,
+          "stage": 1,
+          "active_after": 1,
+          "ordinal": 49
+        },
+        {
+          "pc": "0x5c90",
+          "chain": 13,
+          "stage": 1,
+          "active_after": 2,
+          "ordinal": 50
+        },
+        {
+          "pc": "0x5ca0",
+          "chain": 14,
+          "stage": 1,
+          "active_after": 3,
+          "ordinal": 51
+        },
+        {
+          "pc": "0x5cb0",
+          "chain": 12,
+          "stage": 2,
+          "active_after": 3,
+          "ordinal": 52
+        },
+        {
+          "pc": "0x5cc0",
+          "chain": 13,
+          "stage": 2,
+          "active_after": 3,
+          "ordinal": 53
+        },
+        {
+          "pc": "0x5cd0",
+          "chain": 15,
+          "stage": 1,
+          "active_after": 4,
+          "ordinal": 54
+        },
+        {
+          "pc": "0x5d10",
+          "chain": 14,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 55
+        },
+        {
+          "pc": "0x5d60",
+          "chain": 12,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 56
+        },
+        {
+          "pc": "0x5d80",
+          "chain": 15,
+          "stage": 2,
+          "active_after": 4,
+          "ordinal": 57
+        },
+        {
+          "pc": "0x5d90",
+          "chain": 13,
+          "stage": 3,
+          "active_after": 4,
+          "ordinal": 58
+        },
+        {
+          "pc": "0x5df0",
+          "chain": 12,
+          "stage": 4,
+          "active_after": 3,
+          "ordinal": 59
+        },
+        {
+          "pc": "0x5e30",
+          "chain": 14,
+          "stage": 3,
+          "active_after": 3,
+          "ordinal": 60
+        },
+        {
+          "pc": "0x5e50",
+          "chain": 13,
+          "stage": 4,
+          "active_after": 2,
+          "ordinal": 61
+        },
+        {
+          "pc": "0x5e70",
+          "chain": 15,
+          "stage": 3,
+          "active_after": 2,
+          "ordinal": 62
+        },
+        {
+          "pc": "0x5ea0",
+          "chain": 14,
+          "stage": 4,
+          "active_after": 1,
+          "ordinal": 63
+        },
+        {
+          "pc": "0x5ec0",
+          "chain": 15,
+          "stage": 4,
+          "active_after": 0,
+          "ordinal": 64
+        }
+      ],
+      "loads": [
+        {
+          "pc": "0x53b0",
+          "destination": 92,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x53d0",
+          "destination": 32,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x53e0",
+          "destination": 36,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x53f0",
+          "destination": 88,
+          "width": 4,
+          "mma_before": 0
+        },
+        {
+          "pc": "0x56e0",
+          "destination": 28,
+          "width": 4,
+          "mma_before": 19
+        },
+        {
+          "pc": "0x5800",
+          "destination": 36,
+          "width": 4,
+          "mma_before": 23
+        },
+        {
+          "pc": "0x5940",
+          "destination": 32,
+          "width": 4,
+          "mma_before": 29
+        },
+        {
+          "pc": "0x5c30",
+          "destination": 32,
+          "width": 4,
+          "mma_before": 44
+        },
+        {
+          "pc": "0x6090",
+          "destination": 56,
+          "width": 4,
+          "mma_before": 64
+        },
+        {
+          "pc": "0x60b0",
+          "destination": 44,
+          "width": 4,
+          "mma_before": 64
+        },
+        {
+          "pc": "0x60d0",
+          "destination": 60,
+          "width": 4,
+          "mma_before": 64
+        },
+        {
+          "pc": "0x60e0",
+          "destination": 40,
+          "width": 4,
+          "mma_before": 64
+        },
+        {
+          "pc": "0x60f0",
+          "destination": 48,
+          "width": 4,
+          "mma_before": 64
+        },
+        {
+          "pc": "0x6100",
+          "destination": 64,
+          "width": 4,
+          "mma_before": 64
+        },
+        {
+          "pc": "0x6110",
+          "destination": 52,
+          "width": 4,
+          "mma_before": 64
+        },
+        {
+          "pc": "0x6120",
+          "destination": 68,
+          "width": 4,
+          "mma_before": 64
+        }
+      ],
+      "total_mma": 64,
+      "chains_per_group": 16,
+      "peak_started_not_finished_chains": 5,
+      "active_count_histogram": {
+        "0": 3,
+        "1": 7,
+        "2": 10,
+        "3": 14,
+        "4": 24,
+        "5": 6
+      },
+      "scope": "static programmed order, not concurrent hardware execution or a latency/throughput model"
+    },
+    "scope": "static load-before-weighted-update evidence, not measured overlap/latency"
+  },
+  "cost_gate": {
+    "passed": false,
+    "checks": {
+      "work": false,
+      "allocation": true,
+      "hot_local": false,
+      "native_math": true,
+      "same_supply": true,
+      "same_barrier": true,
+      "next_A_really_moved": true,
+      "useful_tail_work": true,
+      "no_hot_shuffles": true
+    },
+    "limits": {
+      "max_work_ratio": 1.05,
+      "max_allocated_gpr": 168,
+      "max_hot_local": 1,
+      "min_actual_cta": 3,
+      "mma_each": 32,
+      "ldsm": 16,
+      "copies": 9,
+      "barriers": 1,
+      "next_a_loads_after_last_mma": 8,
+      "min_weighted_updates_after_first_next_load": 8
+    },
+    "old_static": 323,
+    "new_static": 354,
+    "work_ratio": 1.0959752321981424,
+    "scope": "predeclared_compile_gate_not_measured_speedup",
+    "control_encoding_unchanged": true
+  },
+  "control_comparison": {
+    "passed": true,
+    "missing": [],
+    "changed": [],
+    "old_symbols": 1,
+    "new_symbols": 1,
+    "unchanged": [
+      "adangel_roof_o3_grouped_cta_candidate"
+    ],
+    "scope": "exact_SASS_words_of_matched_old_entries_not_full_binary_or_performance"
+  },
+  "host_layout": {
+    "passed": true,
+    "source_addresses": 3072,
+    "destination_words": 12288
+  },
+  "cubin_sha256": "95d2b50abbcb935ae2ad82dda9a109a53c0ecf53e617c1850c8e5fffa44d5c75",
+  "artifact_sha256": {
+    "o3_cached_a_iterator.ptx": "0e35cdbf593d18a7091a11065bd23f3e134cd5c5d9a437924143d18073a9b763",
+    "o3_factor_async_generated.cuh": "380d13cf874b8ea54e07f6c3c87cd5373169ed2233480713e0202381093c37b3",
+    "o3_cached_a_iterator.sass": "f430ad2682a871f1dfca0afc12d223d09d23e669bcc227d174dcb56411a2d855",
+    "build.log": "b50d1a5f633fa793e13cda8a049d84341f223e56c33bf03af91e260b4d49424c",
+    "host_layout.json": "e943fc6b3444562a917196cc6110e263760eb2df27e3e87cac90832a3dea28e0",
+    "o3_cached_a_iterator_generated.cuh": "ee1063560dd0613f3fee67ce57f6b3edfb6672aa6feff0f21f69ef9456032646",
+    "o3_grouped_fallback_generated.cuh": "7a586d7a2f994dc9d8320b17154e320fe50df5bd1954c445e12b54facd374825",
+    "liveness.txt": "4a161eb8a4bb418bd7b6e905ec4aababa47ea71ae0d947fa0f22b2da116ad602",
+    "ptx_build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "o3_eight_chain_generated.cuh": "b4bd2edc2e4b5012f94edb4530503cf8e1becb9eaf2ccfd62e89f5ef2a682b07",
+    "o3_cached_a_iterator.cubin": "95d2b50abbcb935ae2ad82dda9a109a53c0ecf53e617c1850c8e5fffa44d5c75",
+    "o3_device_control_generated.cu": "706faba15dabfeb1a2f4fbb7c5b3426e209ac54783ecf2117c2d30336c964236",
+    "host_build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "resources.txt": "85f19fd9762a60604d5bc5e360157402e2bccd919b33a0d3c8ca74e265a3585d",
+    "o3_grouped_cta_generated.cuh": "c4fc2f57662f4e8a71bcbefb7e780719083cf3fd1d679464b329cfb417526b56",
+    "verify_a_iterator": "0f3492740fe50836872446318e223ff8ddeaf6c0ba5503a1313b562232bdf670"
+  }
+}
