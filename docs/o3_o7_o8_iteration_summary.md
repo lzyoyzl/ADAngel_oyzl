@@ -1,5 +1,15 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v129：Tensor Core 生成 scale 外积，编译门槛停止
+
+查重v71/v76/v87/v105/v108/v115/v127；新机制只替换每组Af×Wf系数，不替换两路INT4主点积。
+新增U8范围guard，超范围用旧整数路径；原full-K guard与FP32 fallback保留。
+CuTe host坐标和CPU穷举通过，旧控制完整SASS不变；同entry64条原生INT4+16条系数INT8。
+IMAD族158→115（−27.22%），但54条新增PRMT与packing/控制增加总静态循环383→461（+20.37%），热local读/写3/3，allocated168不变。
+未通过预设工作量与local门槛，停止；不做候选GPU测试、相邻布局扫描或O3迁移。
+没有新性能/MSE/NCU/安全成绩，静态工作量不能当延迟；旧最佳与正式默认/扩展/5090保持。
+[v129完整方法、失败原因与原始证据](o7_o8_tensor_factor_20261007.md)。
+
 ## v128：跨 K 的 A fragment 提前加载，静态工作量门槛停止
 
 先查重v42/v49/v96/v97/v127；保持v89的量化、guard、三stage、CTA、MMA与整数求和顺序。

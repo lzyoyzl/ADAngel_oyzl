@@ -32,7 +32,52 @@ O3没有行列双 factor乘法，不直接套用此候选。
 初步只读检查48份既有Af快照：O7/O8最大Af为512/3584；按M64且覆盖全K，
 Af单侧U8覆盖均值为92.45%/49.61%。这不是包含W、原guard或新开销后的覆盖，更不是性能成绩。
 
-## 状态
+## A100 实际编译结果：停止，不进入 GPU 性能测试
 
-独立实现/编译门槛准备中；没有候选GPU执行、性能、MSE或默认切换。
-代码在[生成器](../scripts/probe_o78_tensor_factor_codegen.py)、[独立入口](../csrc/sm80/roof_o78_tensor_factor_probe.cu)。
+源码 `182f79b29c3662475b1cfa1aab88ec8fbb191e79` 先推送 GitHub，再在 A100 项目目录 fetch/ff-only。
+CUDA 12.8.93、固定 CUTLASS；原 v78 对照的完整 SASS 编码不变。
+CuTe host 验证了 8192 个输出坐标及全部 A/B fragment 坐标；CPU 穷举了 65536 对 U8 系数。
+这些验证不等于候选已在 GPU 上通过数值或安全测试。
+
+| 同一整数热循环的编译指标 | 原 v78 | v129 系数外积路径 |
+|---|---:|---:|
+| 静态指令 / G128 | 383 | 461（+20.37%） |
+| IMAD 族（含地址/移位等，不全是 scale） | 158 | 115（−27.22%） |
+| 普通 IMAD | 128 | 69 |
+| 原生 signed / unsigned INT4 MMA | 32 / 32 | 32 / 32 |
+| 新增系数 U8×U8 MMA | 0 | 16 |
+| PRMT 字节重排 | 0 | 54 |
+| 热 local load / store | 0 / 0 | 3 / 3 |
+| Allocated registers / thread | 168 | 168 |
+| 静态活跃寄存器峰值 | 166 | 166 |
+| LDSM / async copy / CTA barrier | 16 / 10 / 1 | 16 / 10 / 1 |
+
+**系数乘法确实迁移到了 Tensor Core，但输入构造成本抵消了节省。**
+同一正式候选 entry 仍有两路 `IMMA.16864.S4.S4` / `U4.S4`，
+新增的 `IMMA.16816.U8.U8` 只计算系数，不是把 payload 换成 INT8。
+CuTe 将稀疏系数填入 INT8 fragment 时产生了额外 packing、选择、读取和控制指令，
+例如 PRMT 0→54、LOP3 6→30、CS2R 0→9；同时增加了 3 次热 local 读和 3 次写。
+整个 kernel 的 ptxas stack 为 32 B；不能因资源表 `LOCAL:0` 就说不存在 spill。
+
+两个预设门槛失败：静态工作量上限 1.01 倍、热 local 至多 1 条。其余原生 payload、
+供数/barrier 数、寄存器分配和 IMAD 减少门槛通过，但不足以支持继续投入。
+新 range guard 的额外全 K 读取和同步还未计入这个热循环比较，实际运行并不会免费。
+**停止此候选，不放宽门槛、不扫描相邻布局、不移植 O3。**
+
+没有候选 GPU 执行、Event、MSE、CV、sanitizer、NCU 或实际驻留测量。
+不能写成“延迟增加 20.37%”，也不能写成“实测 MSE 不变”；本轮是编译审计淘汰。
+原正式扩展 SHA 保持 `94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462`，
+旧最佳、转换路径和 5090 后端不变。
+
+原始编译日志、PTX/SASS、坐标与 liveness 见 [冻结证据](evidence/a100_o378_roof_v129/README.md)。
+代码：[生成器](../scripts/probe_o78_tensor_factor_codegen.py)、[独立入口](../csrc/sm80/roof_o78_tensor_factor_probe.cu)。
+
+## 瓶颈与可移植性结论
+
+当前优化不能只看“少了几次标量乘法”：小整数外积转给 Tensor Core 的收益，必须覆盖
+fragment 构造、额外 MMA、依赖和寄存器成本。当前 A100 实现没有满足这一条件。
+这并非证明所有 Tensor Core 系数算法都不可能更快，而是排除这个具体候选，避免继续扫描。
+
+可以迁移的是按执行单元分摊工作并核对总成本的思想；整数 MMA、输入 fragment、原生位宽、
+吞吐与资源预算均须按平台重做。此候选未被采用，不能作为“已验证有效的跨平台优化”。
+当前已确认的通用策略及 5090/其他平台限制见 [瓶颈与迁移说明](o3_o7_o8_bottleneck_portability_20261007.md)。

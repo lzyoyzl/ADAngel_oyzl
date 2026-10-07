@@ -1,0 +1,128 @@
+{
+  "scope": "O7_O8_tensor_scale_outer_product_compile_gate_not_GPU_acceptance",
+  "source_commit": "182f79b29c3662475b1cfa1aab88ec8fbb191e79",
+  "sources": {
+    "csrc/sm80/o78_fullk_integer_probe.cuh": "8e7e2bd5718fa7bf637a67abbd89347ebe99863c81daf1da03e962b1174e11cc",
+    "csrc/sm80/o78_unsigned_payload_candidate.cuh": "899819e7d2eeb19acdca23cb9326846d8c674763fc57bc62e58a8cf8ee830a25",
+    "csrc/sm80/roof_o78_eight_chain_probe.cu": "c4fd0001f7fbd02f4756794bed85a125d949e9135ac28f16a2f24e966ef2bcd5",
+    "csrc/sm80/roof_o78_fullk_driver.cpp": "36422a6e0d37269ee0a324c53a3488c874bbee1b4c490da2e3b7b59628a5cd0b",
+    "csrc/sm80/roof_o78_fullk_probe.cu": "c463d24d9e17ae7972fa1fdd4b6f7543e64268e4bcae66b3b457d81afdb6d19e",
+    "csrc/sm80/roof_o78_tensor_factor_probe.cu": "2e1d17919a58f27804b738560a2a6c03ac013a794c4d6750f720057c4dfe5e85",
+    "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9",
+    "scripts/compare_a100_codegen.py": "ebb2603e66143e037b5e076f6a88fdfc8f81d743fd30b994d5388d874c673653",
+    "scripts/inspect_o78_register_liveness.py": "5b37a4a2c554fd7f905be3983f51829b769fe02d21487eec6a9b0fedde32bd62",
+    "scripts/probe_o78_eight_chain_codegen.py": "df14edf4eb8b89f5bf8c2c61086f6a16a847be775d93aa0bf411d13506ad6a57",
+    "scripts/probe_o78_tensor_factor_codegen.py": "7fcbfe4c4df454710bf4022c28a95a32ce8cf8ca0e3f1e0aa6695820ca18ad14",
+    "scripts/probe_roof_fullk_integer_codegen.py": "506a8070250dce2402800fd37696785641306d4481e43c1c1107936eff5e860e",
+    "tests/cuda/validate_tensor_factor_coordinates.cu": "bcd151e3b74a72f6afe56bfd812fc6f9003f0e7de761cc69e53193fc58f58b47"
+  },
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-arch=sm_80",
+      "-DADANGEL_FULLK_INTEGER=1",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen",
+      "-O2",
+      "/home/zlouyang/ADAngel_oyzl/tests/cuda/validate_tensor_factor_coordinates.cu",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen/coordinate_check"
+    ],
+    [
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen/coordinate_check"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-arch=sm_80",
+      "-DADANGEL_FULLK_INTEGER=1",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen",
+      "-O3",
+      "-lineinfo",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_tensor_factor_probe.cu",
+      "-cubin",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen/o78_tensor_factor.cubin",
+      "-Xptxas=-v"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-arch=sm_80",
+      "-DADANGEL_FULLK_INTEGER=1",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen",
+      "-O3",
+      "-lineinfo",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_tensor_factor_probe.cu",
+      "-ptx",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen/o78_tensor_factor.ptx"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-sass",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen/o78_tensor_factor.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-resource-usage",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen/o78_tensor_factor.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvdisasm",
+      "--print-code",
+      "--life-range-mode",
+      "count",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v129_codegen/o78_tensor_factor.cubin"
+    ]
+  ],
+  "limits": {
+    "max_allocated_gpr": 168,
+    "max_hot_local": 1,
+    "max_work_ratio": 1.01,
+    "min_imad_reduction": 0.2,
+    "min_runtime_cta": 3,
+    "min_opportunity_fraction": 0.5,
+    "payload_mma_each": 32,
+    "coefficient_mma": 16,
+    "ldsm": 16,
+    "copies": 10,
+    "barriers": 1
+  },
+  "reference": "https://docs.nvidia.com/cuda/archive/12.8.0/parallel-thread-execution/index.html#warp-level-matrix-fragment-mma-16816-i8",
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+  "production_default_changed": false,
+  "changed_semantics": false,
+  "cta_tile": [
+    64,
+    128,
+    128
+  ],
+  "threads": 128,
+  "stages": 2,
+  "shared_bytes": 34304,
+  "partial_registers": 32,
+  "conversion_changed": false,
+  "new_candidate_GPU_executed": false,
+  "baseline_cubin_sha256": "08badf82c4538c2d3695ca0d53fa4082669db12038f356892bd5ec85d9d9c11a",
+  "coordinates": {
+    "passed": true,
+    "gpu_execution": false,
+    "outputs": 8192,
+    "A_coordinates": 1024,
+    "B_coordinates": 2048,
+    "C_matches_payload": true,
+    "coefficient_mma": "m16n8k16.u8.u8",
+    "nonzero_K": 0
+  }
+}
