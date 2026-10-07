@@ -5,7 +5,7 @@ namespace o3_route_cohort_experiment {
 using C = O3::O3AmpereConfig<64,128,128,false,2,false,3>;
 using S = o3_grouped_cta_experiment::Storage;
 
-__device__ __forceinline__ void prefetch(S& s, int slot, int group,
+__device__ __forceinline__ void prefetch_cohort(S& s, int slot, int group,
     const uint8_t* a, const uint8_t* w, const uint8_t* metadata,
     int m, int n, int k) {
   C::ByteLayout<64> la; C::ByteLayout<128> lb;
@@ -70,13 +70,13 @@ __device__ __forceinline__ void body(const uint8_t* a,const uint8_t* w,
   using HA=cute::MMA_Atom<cute::SM80_16x8x64_S32S4S4S32_TN>;
   static_assert(decltype(cute::size<1>(b0))::value==2);
   static_assert(decltype(cute::size<1>(acc))::value==2);
-  prefetch(s,0,0,a,w,metadata,m,n,k); prefetch(s,1,1,a,w,metadata,m,n,k);
+  prefetch_cohort(s,0,0,a,w,metadata,m,n,k); prefetch_cohort(s,1,1,a,w,metadata,m,n,k);
   for(int group=0;group<32;++group) {
     const int slot=group%3;
     if(group+2<32) asm volatile("cp.async.wait_group 1;" ::: "memory");
     else asm volatile("cp.async.wait_group 0;" ::: "memory");
     __syncthreads();
-    if(group+2<32) prefetch(s,(group+2)%3,group+2,a,w,metadata,m,n,k);
+    if(group+2<32) prefetch_cohort(s,(group+2)%3,group+2,a,w,metadata,m,n,k);
     load_a(slot);
     o1_static_for<0,4>([&](auto nb) {
       load_b(slot,nb);
