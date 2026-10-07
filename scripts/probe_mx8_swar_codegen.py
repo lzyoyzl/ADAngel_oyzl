@@ -99,14 +99,19 @@ def generated_host():
     return text
 
 
+def find_mx8_entry(text,name):
+    # roof_fused_conversion_api.h: Nv4=0, Mx8=1, Hif4=2, Nv6=3.
+    # Match the format and vector width, never a similarly named probe.
+    result=[(s,e) for s,e in entries(text).items()
+            if name in s and 'GroupedSourceKindE1ELi16E' in s]
+    if len(result)!=1:raise ValueError('one MX8/Elements16 entry required: '+name)
+    return result[0]
+
+
 def audit(directory):
     before=(BASELINE/'prepare.sass').read_text();after=(directory/'prepare.sass').read_text()
-    def find(text,name):
-        result=[(s,e) for s,e in entries(text).items() if name in s and 'GroupedSourceKindE2E' in s]
-        if len(result)!=1:raise ValueError('one MX8 entry required: '+name)
-        return result[0]
-    old_symbol,a=find(before,'adangel_sm80_row_warp_lut_metadata')
-    symbol,b=find(after,'adangel_sm80_mx8_swar_metadata')
+    old_symbol,a=find_mx8_entry(before,'adangel_sm80_row_warp_lut_metadata')
+    symbol,b=find_mx8_entry(after,'adangel_sm80_mx8_swar_metadata')
     comparison=compare(before,after,'^'+re.escape(old_symbol)+'$')
     weight_text=(WEIGHT/'prepare.sass').read_text()
     weights=[s for s in entries(weight_text) if 'adangel_sm80_row_swar_metadata' in s and 'GroupedSourceKindE0E' in s]

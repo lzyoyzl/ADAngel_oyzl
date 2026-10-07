@@ -66,3 +66,14 @@ def test_cpu_matches_independent_format_decoder():
             with pytest.raises(ValueError):decode_scalar(c,'e4m3')
         else:
             assert p.scalar(c)==round(decode_scalar(c,'e4m3')*.25)
+
+
+def test_audit_selects_real_mx8_entry_and_rejects_other_formats():
+    text=(ROOT/'docs/evidence/a100_o378_roof_v106/reports/o378_roof_v106_codegen/prepare.sass').read_text()
+    name='adangel_sm80_row_warp_lut_metadata'
+    symbol,entry=p.find_mx8_entry(text,name)
+    assert 'GroupedSourceKindE1ELi16E' in symbol and entry['instructions']>0
+    assert 'enum class GroupedSourceKind { Nv4, Mx8, Hif4, Nv6 };' in (
+        ROOT/'csrc/sm80/roof_fused_conversion_api.h').read_text()
+    for wrong in ('GroupedSourceKindE2ELi16E','GroupedSourceKindE1ELi8E'):
+        with pytest.raises(ValueError):p.find_mx8_entry(text.replace('GroupedSourceKindE1ELi16E',wrong),name)
