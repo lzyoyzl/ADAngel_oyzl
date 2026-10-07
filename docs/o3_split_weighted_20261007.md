@@ -21,6 +21,14 @@ acc += high_dot × (16 × factor)
 
 门槛通过才查实际资源、GPU数值/guard/安全性，并直接做24样本×3轮、warmup1000/repeats200配对，不做小规模性能初筛。确认GEMM收益后再补四模式。失败即停止，不扫相邻链/排布、不迁移O7/O8、不修改5090。
 
+## 编译后的独立资源复核（尚未运行候选GPU）
+
+原始零spill门槛结果**保留为失败，不回写为通过**：323→337条（+4.33%），168 allocated/163 peak GPR，4条热LDL、0条热STL；原生MMA64/LDSM16/copy9/barrier1均不变。机器码确有32条同符号、长度2的MMA链，静态未完成链峰值8；旧控制完整编码相同。
+
+用户此前明确允许少量spill，只要正确且更快。此次目标依赖结构已真实改变，因此在任何候选GPU执行、计时或MSE之前，单独决定做一次完整配对取舍：允许已审计的4条local读取、不允许local写，其他原门槛保持；实际资源API必须确认仍≥3 CTA/SM后才准许运行。**这不是宣称spill无害，也不修改未来通用验收门槛。** 初始失败和本次复核均保存，性能不好就停止，不扫描相邻版本。
+
+运行入口为`benchmark_o3_split_weighted.py`，输出额外记录初始gate及复核依据。原控制、guard、输入、转换、计时协议不变。
+
 ```bash
 python -m pytest tests/unit/test_split_weighted_codegen.py -q
 python scripts/probe_split_weighted_codegen.py --output reports/o378_roof_v125_codegen

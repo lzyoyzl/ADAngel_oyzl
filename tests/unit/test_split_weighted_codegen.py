@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import random
 import sys
+import pytest
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
@@ -60,3 +61,20 @@ def test_gate_rejects_resource_and_work_regression():
     assert not mod.cost_gate(record(),record(regs=176),chain)['passed']
     assert not mod.cost_gate(record(),record(extra={'LDL':1}),chain)['passed']
     assert not mod.cost_gate(record(),record(),chain|{'peak_started_not_finished':4})['passed']
+
+
+def test_actual_chain_parser_rejects_mixed_signedness():
+    ops=[]
+    for _ in range(4):
+        for stage in range(2):
+            for cid in range(8):
+                reg=cid*4;kind='S4' if cid&1 else 'U4'
+                c='RZ' if stage==0 else 'R'+str(reg)
+                ops.append(f'IMMA.16864.{kind}.S4 R{reg}, R80.ROW, R84.COL, {c}')
+    sass='Function : candidate\n'+''.join(f'/*{i*16:04x}*/ {op};\n' for i,op in enumerate(ops))
+    live=dict(loops=[dict(kind='integer',begin_pc='0x0',end_pc=hex((len(ops)-1)*16))])
+    result=mod.split_chain_trace(sass,'candidate',live)
+    assert result['chain_count']==32 and result['peak_started_not_finished']==8
+    bad=sass.replace('/*0080*/ IMMA.16864.U4.S4','/*0080*/ IMMA.16864.S4.S4')
+    with pytest.raises(ValueError,match='mixed signedness'):
+        mod.split_chain_trace(bad,'candidate',live)
