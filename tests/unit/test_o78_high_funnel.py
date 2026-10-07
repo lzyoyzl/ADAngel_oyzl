@@ -73,3 +73,29 @@ def test_predeclared_gate_does_not_accept_unchanged_routing_or_work_spill():
         assert not cost_gate(live(),candidate,route)['passed']
     assert not cost_gate(live(),live(imad=136),{'opcodes':{'IMAD.SHL.U32':22,'SHF.L.U32':42}})['passed']
     assert LIMITS['min_fma_family_reduction']==.10 and LIMITS['max_static_work_ratio']==1.01
+
+
+def test_full_sample_only_before_gpu_and_variant_rejection():
+    from types import SimpleNamespace
+    from benchmark_o78_high_funnel import require_full_samples,require_variant,timing_contract
+    assert require_full_samples([])==['--samples','24']
+    assert require_full_samples(['--samples=24'])==['--samples=24']
+    with pytest.raises(SystemExit):
+        require_full_samples(['--samples','4'])
+    for v in ('o7','o8'):
+        require_variant(SimpleNamespace(variant=v))
+    for v in ('o3','o9'):
+        with pytest.raises(ValueError):
+            require_variant(SimpleNamespace(variant=v))
+    for mode in ('conversion_only','compute_only','cold','steady_state'):
+        c=timing_contract(mode,100)
+        assert not c['new_preparation_or_layout'] and c['supported_variants']==['o7','o8']
+        assert c['stage_timing_inner_repeats']['total']==(100 if mode=='conversion_only' else 1)
+
+
+def test_frozen_real_v78_high_dataflow_counts_not_address_shifts():
+    import json
+    p=ROOT/'docs/evidence/a100_o378_roof_v78/reports/o378_roof_v78_codegen'
+    r=json.loads((p/'codegen.json').read_text())
+    x=high_reconstruction((p/'o78_eight_chain.sass').read_text(),CONTROL,r['liveness'][CONTROL])
+    assert x['components']==64 and x['opcodes']=={'SHF.L.U32':43,'IMAD.SHL.U32':21}

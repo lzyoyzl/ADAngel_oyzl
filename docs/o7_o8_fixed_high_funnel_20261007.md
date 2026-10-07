@@ -1,6 +1,6 @@
 # O7/O8 固定 high×16 的指令路由检查（v117）
 
-状态：单一独立候选，等待编译成本检查；没有新增性能或MSE成绩，不改正式默认。
+状态：单一独立候选，编译成本检查通过，等待GPU正确性/24样本配对；没有新增性能或MSE成绩，不改正式默认。
 
 ## 为什么不是重复优化
 
@@ -10,6 +10,7 @@ v71处理可变scale与partial的移位/加法，v87把可变激活因子改为C
 不重新测试tile、stage、producer、partial存储或累加链数。
 
 最佳v78的整数循环383条指令，IMAD族158条（含地址运算），固定high重构混用IMAD.SHL与SHF。
+实际def-use核对为21条IMAD.SHL与43条SHF，不把地址移位计入64个high分量。
 最佳O8的预热NCU中FMA/ALU管线活跃比例约37.96%/21.65%，提示可能存在路由空间，
 但这些百分比不是可相加的延迟，也不能据此推算加速。
 
@@ -34,3 +35,20 @@ G128 signed-high partial绝对值不超过8192，重构×16不溢出INT32；无�
 门槛失败就停止，不扫描seed/opcode相邻变体。通过后先核对synthetic输出、guard/fallback，
 再直接进行24样本三轮交错A/B、逐位输出/MSE与计时对照；不做小规模性能初筛。
 只有实测收益成立才继续四种模式、GPU安全和必要NCU验收。O3暂不迁移该路由。
+
+## 编译检查结果
+
+同一CUDA12.8/CUTLASS固定commit下，候选循环385条（+0.522%），IMAD族137条（−13.291%）。
+64个high分量全部走SHF，两个原生INT4各32条、LDSM16、copy10不变；168regs，整数热local为0。
+旧v78控制编码完全一致，正式扩展SHA不变。尚不能将13.291%指令路由减少称为性能提升。
+
+运行（所有路径在A100项目内）：
+
+```bash
+python scripts/benchmark_o78_high_funnel.py \
+  --cubins reports/o378_roof_v117_codegen \
+  --output reports/o378_roof_v117_compute24 \
+  --samples 24 --rounds 3 --warmup 1000 --repeats 200 --inner 100
+```
+
+脚本先运行synthetic正确性与guard/fallback验证，再做24样本交错配对；禁止4样本初筛。
