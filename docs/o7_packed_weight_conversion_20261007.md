@@ -47,7 +47,14 @@ GEMM逼近有效吞吐上界的主要目标不因这个辅助候选而改变。
 ```bash
 python -m pytest tests/unit/test_nv4_swar_codegen.py -q
 python scripts/probe_nv4_swar_codegen.py --output reports/o378_roof_v118_codegen
+python scripts/benchmark_o7_nv4_swar.py --validate-only --output runs/o378_v118_preflight
+python scripts/benchmark_o7_nv4_swar.py --samples 24 --rounds 3 \
+  --warmup 1000 --repeats 200 --inner 100 --output runs/o378_v118_full24
+python scripts/analyze_nv4_swar.py --input runs/o378_v118_full24 \
+  --output runs/o378_v118_full24/analysis.json
 ```
 
 源码先在本地提交并成功推送，再在A100项目内fetch/ff-only、编译。计时仍使用原双轨
-CUDA Event方法；目前尚无 GPU 性能、MSE、安全性或端到端新结论。
+CUDA Event方法。A100编译 gate 已通过：392→320指令（−18.367%）、31→30寄存器，
+256B shared、一个barrier、10次POPC、stack/local=0，旧入口完整编码SASS一致。
+这是静态成本减少，不是18.367%的延迟提升；目前尚无 GPU 性能、MSE、安全性或端到端新结论。

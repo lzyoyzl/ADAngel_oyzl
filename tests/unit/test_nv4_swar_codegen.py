@@ -67,3 +67,42 @@ def test_scope_compile_gate_and_boolean_masks():
     for lut in (0x24,0xb8,0xc0,0x98,0x20,0x40,0x80):
         assert 'truth<0x'+format(lut,'02x')+'>' in helper
     assert 'shfl' not in helper and 'constant__' not in helper
+
+
+def test_runtime_has_identical_GEMM_full24_and_after_Event_payload_norm_checks():
+    source=(ROOT/'scripts/benchmark_o7_nv4_swar.py').read_text()
+    assert 'self.handles[0]=self.handles[1]' in source
+    assert 'negative compile gate; do not launch candidate' in source
+    assert 'full24 only; no small performance screen' in source
+    assert "variants=('o7',)" in source
+    assert "case.group_squares_reference['wsq']" in source
+    assert 'case.expected_payload[key].view(torch.uint8)' in source
+    assert 'full_v99_source_identity_equal=True' in source
+    assert 'fn(self.handles[1],variant,1,0,sa,sw,state' in source
+
+
+def test_runtime_event_selection_and_scope_with_mock(monkeypatch):
+    from types import SimpleNamespace
+    import numpy as np
+    import benchmark_o7_nv4_swar as runtime
+    calls=[]
+    def invoke(*args):
+        calls.append(args)
+        for i in range(len(args[-1])):args[-1][i]=1.
+        if args[3]==0:
+            for i in range(args[-4]):args[-1][3*args[-4]+i]=2.
+        return 0
+    tensor=SimpleNamespace(view=lambda _:None,cpu=lambda:SimpleNamespace(numpy=lambda:np.array([1])))
+    monkeypatch.setitem(sys.modules,'torch',SimpleNamespace(uint8='u8',equal=lambda *_:True,
+        cuda=SimpleNamespace(current_stream=lambda:SimpleNamespace(cuda_stream=7))))
+    driver=object.__new__(runtime.Driver);driver.handles={0:11,1:11,2:22}
+    driver.lib=SimpleNamespace(roof_o78_nv4_swar_benchmark=invoke)
+    case=SimpleNamespace(variant='o7',oracle={'status_flat':np.array([0])},
+        a_source=1,w_source=2,state_pointers=3,m=64,n=128,a_multiplier=4.,w_multiplier=1.,
+        state={'y':'out','w':tensor,'ws':tensor,'wsq':tensor},
+        expected_payload={'w':tensor,'ws':tensor},group_squares_reference={'wsq':np.array([1])})
+    for mode in runtime.eight.base.MODES:
+        for policy in (0,1,2):driver.run(case,policy,mode,50,2,100)
+    assert [c[0] for c in calls]==[11,11,22]*4
+    assert [c[2] for c in calls]==[0,1,0]*4
+    assert all(c[-3]==100 for c in calls)
