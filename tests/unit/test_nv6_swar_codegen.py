@@ -60,3 +60,43 @@ def test_event_guard_weight_and_scope_preserved():
     assert 'improvement>=.05 and dots==4' in source
     assert "b['registers']<=a['registers']" in source
     assert 'GEMM_modified=False' in source and 'production_default_changed=False' in source
+
+
+def test_actual_residency_review_and_runtime_contract():
+    source=Path(probe.__file__).read_text()
+    assert 'first_no_register_growth_gate_passed=first_gate' in source
+    assert "runtime['control']['active_blocks_per_sm']==runtime['candidate']['active_blocks_per_sm']==8" in source
+    assert "b['registers']<=32 and residency" in source
+    runtime=(ROOT/'scripts/benchmark_o8_nv6_swar.py').read_text()
+    for statement in ('self.handles[0]=self.handles[1]',"variants=('o8',)",
+            'full24 only; no small performance screen',"case.group_squares_reference['asq']",
+            'case.expected_payload[key].view(torch.uint8)','full_v99_source_identity_equal=True',
+            'fn(self.handles[1],variant,1,0,sa,sw,state'):
+        assert statement in runtime
+
+
+def test_runtime_policy_mode_selection_with_mock(monkeypatch):
+    from types import SimpleNamespace
+    import numpy as np
+    import benchmark_o8_nv6_swar as runtime
+    calls=[]
+    def invoke(*args):
+        calls.append(args)
+        for i in range(len(args[-1])):args[-1][i]=1.
+        if args[3]==0:
+            for i in range(args[-4]):args[-1][3*args[-4]+i]=2.
+        return 0
+    tensor=SimpleNamespace(view=lambda _:None,cpu=lambda:SimpleNamespace(numpy=lambda:np.array([1])))
+    monkeypatch.setitem(sys.modules,'torch',SimpleNamespace(uint8='u8',equal=lambda *_:True,
+        cuda=SimpleNamespace(current_stream=lambda:SimpleNamespace(cuda_stream=7))))
+    driver=object.__new__(runtime.Driver);driver.handles={0:11,1:11,2:22}
+    driver.lib=SimpleNamespace(roof_o78_nv6_swar_benchmark=invoke)
+    case=SimpleNamespace(variant='o8',oracle={'status_flat':np.array([0])},
+        a_source=1,w_source=2,state_pointers=3,m=64,n=128,a_multiplier=4.,w_multiplier=1.,
+        state={'y':'out','a':tensor,'as':tensor,'asq':tensor},
+        expected_payload={'a':tensor,'as':tensor},group_squares_reference={'asq':np.array([1])})
+    for mode in runtime.eight.base.MODES:
+        for policy in (0,1,2):driver.run(case,policy,mode,50,2,100)
+    assert [c[0] for c in calls]==[11,11,22]*4
+    assert [c[2] for c in calls]==[0,1,0]*4
+    assert all(c[-3]==100 for c in calls)
