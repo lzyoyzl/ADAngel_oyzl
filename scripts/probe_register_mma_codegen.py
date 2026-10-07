@@ -49,7 +49,11 @@ def original_operations(arch_text):
 
 def generated_atoms(arch_text):
     old=original_operations(arch_text)
-    payload=['// Generated from pinned CuTe operations; only asm volatility changes.\n',
+    # Keep the complete upstream BSD notice in future generated copies.
+    notice=arch_text[:arch_text.index('#pragma once')]
+    if 'SPDX-License-Identifier: BSD-3-Clause' not in notice:
+        raise ValueError('pinned CuTe copyright/license notice missing')
+    payload=[notice,'// Generated from pinned CuTe operations; only asm volatility changes.\n',
         '#pragma once\n#include <cute/atom/mma_traits_sm80.hpp>\n']
     for name,new in OPERATIONS.items():
         payload.append(old[name].replace(name,new).replace('asm volatile(','asm('))

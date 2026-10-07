@@ -1,0 +1,32 @@
+{
+  "passed": false,
+  "checks": {
+    "allocation": true,
+    "no_hot_local": true,
+    "bounded_total_work": true,
+    "meaningful_potential": false,
+    "native_math": true,
+    "unchanged_supply": true,
+    "unchanged_barrier": true
+  },
+  "limits": {
+    "max_allocated_gpr": 168,
+    "max_hot_local": 0,
+    "max_work_ratio": 1.02,
+    "min_static_work_reduction": 0.05,
+    "alternative_max_allocated_gpr": 128,
+    "required_mma_each": 32,
+    "required_ldsm": 16,
+    "required_async_copy": 10
+  },
+  "old_static": 383,
+  "new_static": 383,
+  "static_work_ratio": 1.0,
+  "static_work_reduction": 0.0,
+  "old_allocated_gpr": 168,
+  "new_allocated_gpr": 168,
+  "scope": "compile_potential_only_not_latency_concurrency_or_GPU_safety",
+  "control_encoding_unchanged": true,
+  "full_entry_encoded_equal": true
+}
+Gate FAILED: no candidate launch, no neighboring volatility variants or O3 migration.

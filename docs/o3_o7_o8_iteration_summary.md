@@ -1,5 +1,15 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v119：新纯寄存器MMA编译依赖，完整SASS相同，停止
+
+查重后不重复既有链调度、固定high路由或tile/pipeline参数；只去除两个寄存器MMA的asm volatile。
+指令字符串/约束/CuTe traits不改，原状态guard、fallback、barrier、conversion和FP32输出不变。
+A100候选与v78控制完整编码相同：整数383条、168regs、166活跃峰值、热local0；64 MMA/16 LDSM/10 copy/1 barrier不变。
+编译投入gate失败，不启动候选GPU/性能/MSE、NCU/sanitizer，不扫描相邻asm或迁移O3。
+14份原文本、BSD说明与SHA冻结，CPU重放可复算源码/完整机器码/失败gate；不是GPU验收。
+没有新实测提升；最佳O3 v89/O7-O8 v78、正式扩展和5090不改，主目标尚未达到。
+[v119结果、查重与原始证据](o7_o8_register_mma_20261007.md)。
+
 ## v118：新packed权重布尔转换，O7 Cold小幅正向，GEMM最佳不变
 
 先按机制核对v34/v53/v69/v73/v106，不重复tile/stage/warp、累加链、供数、scale预计算或固定high路由。

@@ -15,6 +15,7 @@ def arch_source():
 def test_atoms_only_change_names_and_volatility_not_instructions_or_constraints():
     old=probe.original_operations(arch_source())
     new=probe.generated_atoms(arch_source())
+    assert new.startswith(arch_source()[:arch_source().index('#pragma once')])
     assert new.count('asm(')==2 and 'asm volatile(' not in new
     for name,replacement in probe.OPERATIONS.items():
         assert old[name].replace(name,replacement).replace('asm volatile(','asm(') in new
