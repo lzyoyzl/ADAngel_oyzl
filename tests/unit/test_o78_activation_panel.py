@@ -61,3 +61,22 @@ def test_invalid_copy_coordinates_and_negative_gate():
     assert not p.cost_gate(live(383),live(370,1),resources)['passed']
     resources['candidate']['active_blocks_per_sm']=2
     assert not p.cost_gate(live(383),live(370),resources)['passed']
+
+
+def test_separate_small_spill_review_does_not_rewrite_failed_gate():
+    from copy import deepcopy
+    from benchmark_o78_activation_panel import resource_review
+    gate=dict(passed=False,checks=dict(no_hot_local=False,allocation=True,
+        meaningful_work_reduction=True,native_math=True,control_encoding_unchanged=True))
+    original=deepcopy(gate)
+    live=dict(loops=[dict(kind='integer',opcode_counts={'LDL':1,'STL':0})])
+    resources=dict(candidate=dict(registers_per_thread=168,local_bytes=8,threads=128,active_blocks_per_sm=3))
+    assert resource_review(gate,live,resources)['passed']
+    assert gate==original and not gate['passed']
+    for change in ('more_loads','hot_store','lower_residency','no_work_reduction'):
+        g,l,r=deepcopy(gate),deepcopy(live),deepcopy(resources)
+        if change=='more_loads':l['loops'][0]['opcode_counts']['LDL']=2
+        elif change=='hot_store':l['loops'][0]['opcode_counts']['STL']=1
+        elif change=='lower_residency':r['candidate']['active_blocks_per_sm']=2
+        else:g['checks']['meaningful_work_reduction']=False
+        assert not resource_review(g,l,r)['passed']
