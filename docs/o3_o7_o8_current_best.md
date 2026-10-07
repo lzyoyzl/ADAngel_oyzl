@@ -1,5 +1,13 @@
 # A100 O3 / O7 / O8：当前主基准与最新结果（O3 v89；O7/O8 v78+v73，附 v99 微调）
 
+**2026-10-07 v121：factor-only只读供数未过投入gate，最佳不变。**
+已查重v43/v76/v87/v106/v109/v112/v120，仅更换Af/Wf读取路径，matrix shared pipeline、两路原生INT4、八链和scale语义不改。
+A100旧控制完整编码相同；同entry64 MMA/16 LDSM/8 copy/1 barrier、168regs、零热local。
+但循环383→534（+39.43%），只减少两条metadata copy，新增20条只读LDG及更多地址/搬移指令，普通IMAD仍128。
+未通过预设至少3%工作减少门槛，停止，不运行候选GPU/性能/MSE或相邻cache扫描/O3迁移。
+13份原始文本与SHA冻结；无新实测提升，正式默认/扩展/5090不改，主GEMM目标尚未达到。
+[v121结果、瓶颈与跨平台迁移说明](o3_o7_o8_bottleneck_portability_20261007.md)。
+
 **2026-10-07 v120：固定CTA异构调度未过编译gate，最佳不变。**
 查重后不重复统一四/八链、tile/stage/warp、坐标顺序或asm策略；只固定1/3 CTA四链、2/3八链。
 原控制完整编码不变，候选同entry两路原生INT4与供数不变；循环368/367、168regs，

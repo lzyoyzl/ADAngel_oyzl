@@ -1,5 +1,16 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v121：factor-only只读global供数，编译成本反增，停止
+
+核对v43/v76/v87/v106/v109/v112/v120；不重复register scale hoist或全payload global供数。
+仅移除两条Af/Wf metadata copy及其shared读，matrix pipeline/shared reservation/八链/整数数学保持。
+同entry原生双INT4、矩阵cg copy、旧控制完整编码通过，168regs/零热local；循环383→534，+39.43%。
+新增20条只读LDG及更多64-bit地址/搬移成本，普通IMAD仍128；没有降低scale的核心整数加权工作。
+预先3%减少gate失败，不运行候选或扩展NCU/端到端，不扫cache/地址邻居，不迁移O3。
+13份原始文本与SHA冻结，无新Event/MSE；最佳/默认/正式扩展/5090不改，主目标尚未达到。
+新增瓶颈与迁移文档：原则可移植，但atom/fragment/pipeline/资源/精确范围须按平台重审计。
+[v121结果、瓶颈及平台迁移](o3_o7_o8_bottleneck_portability_20261007.md)。
+
 ## v120：固定CTA异构调度，编译gate失败即停止
 
 先核对v63/v78/v92/v96/v97、v41/v89/v104/v119；不重测统一链数、producer、tile顺序或asm。
