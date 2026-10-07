@@ -1,0 +1,375 @@
+{
+  "cost_gate": {
+    "passed": false,
+    "checks": {
+      "work": true,
+      "allocation": true,
+      "hot_local": true,
+      "native_math": true,
+      "same_supply": true,
+      "same_barrier": true,
+      "low_loads_really_delayed": false,
+      "chain_parallelism": true
+    },
+    "limits": {
+      "max_work_ratio": 1.02,
+      "max_allocated_gpr": 168,
+      "max_hot_local": 0,
+      "min_actual_cta": 3,
+      "min_first_low_mma_ordinal": 8,
+      "min_chain_peak": 8
+    },
+    "old_static": 323,
+    "new_static": 323,
+    "work_ratio": 1.0,
+    "scope": "predeclared_compile_investment_gate_not_measured_speedup",
+    "control_encoding_unchanged": true
+  },
+  "liveness": {
+    "adangel_roof_o3_grouped_cta_candidate": {
+      "symbol": "adangel_roof_o3_grouped_cta_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 166,
+      "loops": [
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x1240",
+          "end_pc": "0x2a20",
+          "static_instructions": 383,
+          "max_live_gpr": 162,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 4,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 2,
+            "FFMA": 64,
+            "FSEL": 1,
+            "I2F": 64,
+            "IADD3": 17,
+            "IADD3.X": 9,
+            "IMAD": 35,
+            "IMAD.SHL.U32": 1,
+            "IMAD.U32": 4,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.NE.AND": 1,
+            "LDG.E.U8": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 8,
+            "LDL": 3,
+            "LDS": 3,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 36,
+            "LOP3.LUT": 6,
+            "MOV": 3,
+            "PLOP3.LUT": 3,
+            "S2R": 2,
+            "SHF.L.U32": 3,
+            "SHF.R.U32.HI": 1,
+            "STS": 1,
+            "UIADD3": 2,
+            "UIMAD": 4,
+            "UIMAD.WIDE.U32": 2,
+            "UISETP.GE.AND": 3,
+            "ULDC.64": 1,
+            "ULEA": 2,
+            "USHF.L.U32": 2,
+            "USHF.R.S32.HI": 2,
+            "USHF.R.U32.HI": 2
+          },
+          "peak_pcs": [
+            "0x21d0",
+            "0x21e0",
+            "0x21f0",
+            "0x2200",
+            "0x2210",
+            "0x2220",
+            "0x2230",
+            "0x2240"
+          ]
+        },
+        {
+          "kind": "integer",
+          "begin_pc": "0x4d70",
+          "end_pc": "0x6190",
+          "static_instructions": 323,
+          "max_live_gpr": 166,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 5,
+            "BSSY": 1,
+            "BSYNC": 1,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 2,
+            "IADD3": 14,
+            "IADD3.X": 9,
+            "IMAD": 65,
+            "IMAD.SHL.U32": 23,
+            "IMAD.U32": 3,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 9,
+            "LDS": 3,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 6,
+            "LEA.HI.X": 1,
+            "LOP3.LUT": 4,
+            "MOV": 4,
+            "PLOP3.LUT": 3,
+            "S2R": 2,
+            "SHF.L.U32": 44,
+            "UIADD3": 6,
+            "UIMAD": 6,
+            "UISETP.GE.U32.AND": 1,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULEA": 2,
+            "ULOP3.LUT": 4,
+            "UPRMT": 4,
+            "USHF.L.U32": 2,
+            "USHF.R.S32.HI": 3,
+            "USHF.R.U32.HI": 2
+          },
+          "peak_pcs": [
+            "0x56e0",
+            "0x56f0",
+            "0x5700",
+            "0x5710",
+            "0x5720",
+            "0x5730",
+            "0x5740",
+            "0x5760"
+          ]
+        }
+      ],
+      "cta_threads": 128,
+      "register_only_four_cta_limit_per_thread": 128,
+      "interpretation": "static_binary_live_range_not_runtime_timing_or_universal_register_lower_bound"
+    },
+    "adangel_roof_o3_late_low_candidate": {
+      "symbol": "adangel_roof_o3_late_low_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 166,
+      "loops": [
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x1240",
+          "end_pc": "0x2a20",
+          "static_instructions": 383,
+          "max_live_gpr": 162,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 4,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 2,
+            "FFMA": 64,
+            "FSEL": 1,
+            "I2F": 64,
+            "IADD3": 17,
+            "IADD3.X": 9,
+            "IMAD": 35,
+            "IMAD.SHL.U32": 1,
+            "IMAD.U32": 4,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.NE.AND": 1,
+            "LDG.E.U8": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 8,
+            "LDL": 3,
+            "LDS": 3,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 36,
+            "LOP3.LUT": 6,
+            "MOV": 3,
+            "PLOP3.LUT": 3,
+            "S2R": 2,
+            "SHF.L.U32": 3,
+            "SHF.R.U32.HI": 1,
+            "STS": 1,
+            "UIADD3": 2,
+            "UIMAD": 4,
+            "UIMAD.WIDE.U32": 2,
+            "UISETP.GE.AND": 3,
+            "ULDC.64": 1,
+            "ULEA": 2,
+            "USHF.L.U32": 2,
+            "USHF.R.S32.HI": 2,
+            "USHF.R.U32.HI": 2
+          },
+          "peak_pcs": [
+            "0x21d0",
+            "0x21e0",
+            "0x21f0",
+            "0x2200",
+            "0x2210",
+            "0x2220",
+            "0x2230",
+            "0x2240"
+          ]
+        },
+        {
+          "kind": "integer",
+          "begin_pc": "0x4d70",
+          "end_pc": "0x6190",
+          "static_instructions": 323,
+          "max_live_gpr": 166,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 5,
+            "BSSY": 1,
+            "BSYNC": 1,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 2,
+            "IADD3": 14,
+            "IADD3.X": 9,
+            "IMAD": 65,
+            "IMAD.SHL.U32": 23,
+            "IMAD.U32": 3,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 9,
+            "LDS": 3,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 6,
+            "LEA.HI.X": 1,
+            "LOP3.LUT": 4,
+            "MOV": 4,
+            "PLOP3.LUT": 3,
+            "S2R": 2,
+            "SHF.L.U32": 44,
+            "UIADD3": 6,
+            "UIMAD": 6,
+            "UISETP.GE.U32.AND": 1,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULEA": 2,
+            "ULOP3.LUT": 4,
+            "UPRMT": 4,
+            "USHF.L.U32": 2,
+            "USHF.R.S32.HI": 3,
+            "USHF.R.U32.HI": 2
+          },
+          "peak_pcs": [
+            "0x56e0",
+            "0x56f0",
+            "0x5700",
+            "0x5710",
+            "0x5720",
+            "0x5730",
+            "0x5740",
+            "0x5760"
+          ]
+        }
+      ],
+      "cta_threads": 128,
+      "register_only_four_cta_limit_per_thread": 128,
+      "interpretation": "static_binary_live_range_not_runtime_timing_or_universal_register_lower_bound"
+    }
+  },
+  "load_order": {
+    "adangel_roof_o3_grouped_cta_candidate": {
+      "S4": [
+        {
+          "pc": "0x53f0",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R92, [R20+0x3000]"
+        },
+        {
+          "pc": "0x5400",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R100, [R20+0x3800]"
+        },
+        {
+          "pc": "0x5420",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R88, [R16+0x3000]"
+        },
+        {
+          "pc": "0x5430",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R28, [R16+0x3800]"
+        }
+      ],
+      "U4": [
+        {
+          "pc": "0x5440",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R84, [R20]"
+        },
+        {
+          "pc": "0x5450",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R32, [R20+0x800]"
+        },
+        {
+          "pc": "0x5640",
+          "mma_before": 12,
+          "instruction": "LDSM.16.M88.4 R40, [R16+0x800]"
+        },
+        {
+          "pc": "0x5660",
+          "mma_before": 13,
+          "instruction": "LDSM.16.M88.4 R36, [R16]"
+        }
+      ],
+      "first_low_mma_ordinal": 0
+    },
+    "adangel_roof_o3_late_low_candidate": {
+      "S4": [
+        {
+          "pc": "0x53f0",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R92, [R20+0x3000]"
+        },
+        {
+          "pc": "0x5400",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R100, [R20+0x3800]"
+        },
+        {
+          "pc": "0x5420",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R88, [R16+0x3000]"
+        },
+        {
+          "pc": "0x5430",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R28, [R16+0x3800]"
+        }
+      ],
+      "U4": [
+        {
+          "pc": "0x5440",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R84, [R20]"
+        },
+        {
+          "pc": "0x5450",
+          "mma_before": 0,
+          "instruction": "LDSM.16.M88.4 R32, [R20+0x800]"
+        },
+        {
+          "pc": "0x5640",
+          "mma_before": 12,
+          "instruction": "LDSM.16.M88.4 R40, [R16+0x800]"
+        },
+        {
+          "pc": "0x5660",
+          "mma_before": 13,
+          "instruction": "LDSM.16.M88.4 R36, [R16]"
+        }
+      ],
+      "first_low_mma_ordinal": 0
+    }
+  }
+}
+FAILED: stop without GPU timing or neighboring schedule sweep
