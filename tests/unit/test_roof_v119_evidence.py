@@ -25,7 +25,10 @@ def test_original_file_hashes_source_commit_and_no_new_performance_scope():
     assert INDEX['source_commit']==R['source_commit']=='e92177f5cb8c65f7bfb9fcb38ab1b9f626c592e1'
     assert not INDEX['production_default_changed'] and not INDEX['new_performance_or_MSE']
     assert len(INDEX['files'])==15
+    tracked={p.decode() for p in subprocess.check_output(['git','ls-files','-z','--',
+        E.relative_to(ROOT).as_posix()],cwd=ROOT).split(b'\0') if p}
     for f in INDEX['files']:
+        assert (E/f['path']).relative_to(ROOT).as_posix() in tracked,f['path']
         payload=(E/f['path']).read_bytes()
         assert sha(payload)==f['sha256'] and len(payload)==f['bytes']
     for name,digest in R['sources'].items():
