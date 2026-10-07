@@ -1,0 +1,48 @@
+{
+  "gate": {
+    "passed": false,
+    "checks": {
+      "allocation": true,
+      "no_hot_local": false,
+      "meaningful_work_reduction": true,
+      "native_math": true,
+      "same_fragments": true,
+      "only_weight_metadata_in_hot_copy": true,
+      "same_barrier": true,
+      "same_residency": true,
+      "control_encoding_unchanged": true
+    },
+    "limits": {
+      "min_static_reduction": 0.03,
+      "max_allocated_gpr": 168,
+      "max_hot_local": 0,
+      "required_mma_each": 32,
+      "required_ldsm": 16,
+      "required_async_copy": 9,
+      "required_barriers": 1,
+      "minimum_active_ctas": 3
+    },
+    "old_static": 383,
+    "new_static": 356,
+    "static_reduction": 0.07049608355091386,
+    "old_allocated_gpr": 168,
+    "new_allocated_gpr": 168,
+    "scope": "predeclared_compile_potential_not_performance_or_MSE"
+  },
+  "resources": {
+    "control": {
+      "registers_per_thread": 168,
+      "local_bytes": 0,
+      "threads": 128,
+      "active_blocks_per_sm": 3,
+      "shared_bytes": 34304
+    },
+    "candidate": {
+      "registers_per_thread": 168,
+      "local_bytes": 8,
+      "threads": 128,
+      "active_blocks_per_sm": 3,
+      "shared_bytes": 41984
+    }
+  }
+}
