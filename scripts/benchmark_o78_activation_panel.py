@@ -24,6 +24,11 @@ from probe_o78_activation_panel_codegen import (
 sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
 
 
+def same_json_value(live, saved):
+    # Chain histograms have integer keys in memory, string keys in JSON.
+    return json.loads(json.dumps(live, allow_nan=False)) == saved
+
+
 def resource_review(gate, candidate_live, resources):
     """Investment decision only, not an acceptance rule or performance claim."""
     counts = next(x for x in candidate_live['loops'] if x['kind'] == 'integer')['opcode_counts']
@@ -62,7 +67,7 @@ def checked(directory):
     live = {s: analyze((directory / 'liveness.txt').read_text(), s) for s in (CONTROL, SYMBOL)}
     if live != r['liveness']:
         raise ValueError('resource audit replay drift')
-    if {s: trace(sass, s, live[s]) for s in (CONTROL, SYMBOL)} != r['schedules']:
+    if not same_json_value({s: trace(sass, s, live[s]) for s in (CONTROL, SYMBOL)}, r['schedules']):
         raise ValueError('schedule replay drift')
     control = compare((BASELINE / 'o78_eight_chain.sass').read_text(), sass, '^' + CONTROL + '$')
     if not control['passed'] or control != r['control_comparison']:

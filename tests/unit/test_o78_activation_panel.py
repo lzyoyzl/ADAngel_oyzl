@@ -80,3 +80,9 @@ def test_separate_small_spill_review_does_not_rewrite_failed_gate():
         elif change=='lower_residency':r['candidate']['active_blocks_per_sm']=2
         else:g['checks']['meaningful_work_reduction']=False
         assert not resource_review(g,l,r)['passed']
+
+
+def test_schedule_roundtrip_only_normalizes_json_key_types():
+    from benchmark_o78_activation_panel import same_json_value
+    assert same_json_value({'histogram':{0:3,1:8}}, {'histogram':{'0':3,'1':8}})
+    assert not same_json_value({'histogram':{0:3,1:8}}, {'histogram':{'0':3,'1':9}})
