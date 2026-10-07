@@ -1,5 +1,17 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v117：固定high×16的FMA→ALU路由，新候选实测负向
+
+核对v71/v87后，只改固定high重构，不改可变scale、八链、tile/stage或v73准备。
+公开PTX双源SHF精确等价：threadIdx.x上4位为0；CPU穷举partial与合法thread范围验证。
+编译门槛通过：IMAD族158→137、循环383→385、168regs/零热local，两路原生INT4与旧控制编码不变。
+直接全24样本三轮配对（warmup1000/repeats200），O7吞吐−1.469%、O8−1.468%，CI均低于1。
+288条记录逐位相同、MSE不变；64项synthetic和12项边界通过，各组CV失败0～1/72，未过滤。
+新增S2R5→7且静态链顺序改变，路由减少不是总关键路径减少；不将静态链峰值当硬件并发度。
+停止，不扫相近funnel变体或迁移O3；无新增conversion/端到端、NCU或sanitizer结果。
+最佳仍O3 v89、O7/O8 v78+v73，默认/扩展/源量化/trace/5090不改。
+[v117完整配对、分析和原始证据](o7_o8_fixed_high_funnel_20261007.md)。
+
 ## v116：先查重，再检查原生子块 unit 系数，数据门槛失败即停止
 
 v77全unit人工诊断、v105四行factor重复和v108整32组同质profile均不重测。
