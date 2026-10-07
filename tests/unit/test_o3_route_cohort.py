@@ -38,3 +38,14 @@ def test_barriers_shared_epilogue_and_original_guard_remain_explicit():
     assert 'if(flag&6u) return' in wrapper and 'if(flag&1u)' in wrapper
     assert 'if(threadIdx.x>=128) return' in wrapper
     assert LIMITS['max_allocated_gpr']==128 and LIMITS['max_hot_local_instructions']==4
+
+
+def test_isolated_driver_uses_actual_threads_and_original_timing():
+    source=(ROOT/'csrc/sm80/roof_o3_route_cohort_driver.cpp').read_text()
+    script=(ROOT/'scripts/benchmark_o3_route_cohort.py').read_text()
+    assert 'blocks,m/64,1,p->threads,1,1,p->smem' in source
+    assert 'p->threads!=128 && p->threads!=256' in source
+    assert 'policy!=1' in source and 'times[stage*repeats+i]/=inner' in source
+    assert 'full_sample_args()' in script and "single_int8_route=False" in script
+    assert "values[3]<(2 if policy else 3)" in script
+    assert 'safety_validate' in script and "ws[256:,-1]=131" in script
