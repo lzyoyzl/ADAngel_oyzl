@@ -1,0 +1,295 @@
+{
+  "command": [
+    "g++",
+    "-std=c++17",
+    "-O2",
+    "-shared",
+    "-fPIC",
+    "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_latency_validation_driver.cpp",
+    "-I/usr/local/cuda-12.8/include",
+    "-L/usr/local/cuda-12.8/lib64/stubs",
+    "-lcuda",
+    "-o",
+    "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v122_handoff_synccheck/build/liblatency_validation.so"
+  ],
+  "library_sha256": "279770950a48b5a5ac2440df4b18a6f4ad88bc7649ccc1057cf5fdf912400a21",
+  "codegen": {
+    "source_commit": "499b6efa8c1f79b52819790af94f9593090a713c",
+    "sources": {
+      "csrc/sm80/o78_fullk_integer_probe.cuh": "8e7e2bd5718fa7bf637a67abbd89347ebe99863c81daf1da03e962b1174e11cc",
+      "csrc/sm80/o78_partial_handoff_probe.cuh": "8ea90e64861e1768df9adc124ad64f3db75258b71f5b47856991f015c81de11c",
+      "csrc/sm80/o78_unsigned_payload_candidate.cuh": "899819e7d2eeb19acdca23cb9326846d8c674763fc57bc62e58a8cf8ee830a25",
+      "csrc/sm80/o78_warp_geometry_probe.cuh": "a7b6260e8f4922e0285beea7ec462847d3f5233674f2bb6e6de20f0494937106",
+      "csrc/sm80/roof_o78_eight_chain_probe.cu": "c4fd0001f7fbd02f4756794bed85a125d949e9135ac28f16a2f24e966ef2bcd5",
+      "csrc/sm80/roof_o78_eight_warp_fullk_probe.cu": "fb3d635c2b583f8e4031a66584f29d1483a44ca5f9190502c53593ecc93ddbe7",
+      "csrc/sm80/roof_o78_fullk_driver.cpp": "36422a6e0d37269ee0a324c53a3488c874bbee1b4c490da2e3b7b59628a5cd0b",
+      "csrc/sm80/roof_o78_fullk_probe.cu": "c463d24d9e17ae7972fa1fdd4b6f7543e64268e4bcae66b3b457d81afdb6d19e",
+      "csrc/sm80/roof_o78_partial_handoff_probe.cu": "9d54e46504bb91b73fedf084e9aaebdba08f2eb3ac1c19c36a9f65a6c5983b46",
+      "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9",
+      "scripts/compare_a100_codegen.py": "ebb2603e66143e037b5e076f6a88fdfc8f81d743fd30b994d5388d874c673653",
+      "scripts/probe_eight_warp_fullk_codegen.py": "23a6864732f6a101f6151585d059bee7e9ceb843068760dda96de34b05a7a1a5",
+      "scripts/probe_o78_eight_chain_codegen.py": "df14edf4eb8b89f5bf8c2c61086f6a16a847be775d93aa0bf411d13506ad6a57",
+      "scripts/probe_partial_handoff_codegen.py": "8b7386b195a7126998f303a080c619eee0e55e561c0bb19ed7a8190ece6e5731"
+    },
+    "headers": {
+      "o78_eight_chain_generated.cuh": "6d4510513f07e6b1645bc3e51d4936935c734a06bf971a72a7a4b4685b260156",
+      "o78_eight_warp_fullk_generated.cuh": "88cc184d633e8c29bc6c447b7203c856617a4e0c940b904bc08c7323bf66fa85",
+      "o78_eight_warp_fullk_fallback_generated.cuh": "3acb612083e578f298b961d7f195061bca6a9ff174089eb22c3c6eec5d2b0ee9",
+      "o78_partial_handoff_producer_generated.cuh": "0ace2a76be4c2faa66056816894db05c7ef96615bb69493421fd55fe323d8784"
+    },
+    "data_gate_sha256": "8bc3e54fe456bf0a004fdbd14cf1865e071ab2f3137444ffa4101094f25920dd",
+    "limits": {
+      "max_registers": 128,
+      "max_hot_local": 0,
+      "minimum_active_ctas": 2,
+      "max_weighted_static_ratio": 1.75,
+      "required_mma_each": 32,
+      "required_ldsm": 16
+    },
+    "shared_bytes": 51712,
+    "threads": 256,
+    "stages": 2,
+    "cta_tile": [
+      64,
+      128,
+      128
+    ],
+    "no_candidate_launched": true,
+    "no_performance_or_MSE_measured": true,
+    "production_default_changed": false,
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+    "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+    "commands": [
+      [
+        "/usr/local/cuda-12.8/bin/nvcc",
+        "-O3",
+        "-std=c++17",
+        "--expt-relaxed-constexpr",
+        "-lineinfo",
+        "-arch=sm_80",
+        "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+        "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+        "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v122_handoff_codegen",
+        "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_partial_handoff_probe.cu",
+        "-cubin",
+        "-o",
+        "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v122_handoff_codegen/o78_partial_handoff.cubin",
+        "-Xptxas=-v"
+      ],
+      [
+        "/usr/local/cuda-12.8/bin/nvcc",
+        "-O3",
+        "-std=c++17",
+        "--expt-relaxed-constexpr",
+        "-lineinfo",
+        "-arch=sm_80",
+        "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+        "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+        "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v122_handoff_codegen",
+        "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_partial_handoff_probe.cu",
+        "-ptx",
+        "-o",
+        "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v122_handoff_codegen/o78_partial_handoff.ptx"
+      ],
+      [
+        "/usr/local/cuda-12.8/bin/cuobjdump",
+        "--dump-sass",
+        "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v122_handoff_codegen/o78_partial_handoff.cubin"
+      ],
+      [
+        "/usr/local/cuda-12.8/bin/cuobjdump",
+        "--dump-resource-usage",
+        "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v122_handoff_codegen/o78_partial_handoff.cubin"
+      ],
+      [
+        "/usr/local/cuda-12.8/bin/nvdisasm",
+        "--print-code",
+        "--life-range-mode",
+        "count",
+        "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v122_handoff_codegen/o78_partial_handoff.cubin"
+      ]
+    ],
+    "liveness": {
+      "registers": 128,
+      "loops": [
+        {
+          "kind": "integer_fallback",
+          "begin_pc": "0x7c0",
+          "end_pc": "0x1480",
+          "static_instructions": 205,
+          "max_live": 116,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "DEPBAR.LE": 1,
+            "IADD3": 8,
+            "IADD3.X": 5,
+            "IMAD": 70,
+            "IMAD.IADD": 3,
+            "IMAD.SHL.U32": 19,
+            "IMAD.X": 1,
+            "IMMA.16864.S4.S4": 16,
+            "IMMA.16864.U4.S4": 16,
+            "ISETP.GT.U32.AND": 2,
+            "ISETP.NE.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 6,
+            "LDS": 7,
+            "LDS.64": 4,
+            "LDSM.16.M88.4": 12,
+            "LEA": 6,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 4,
+            "SHF.L.U32": 18
+          }
+        },
+        {
+          "kind": "consumer",
+          "begin_pc": "0x28d0",
+          "end_pc": "0x36c0",
+          "static_instructions": 224,
+          "max_live": 109,
+          "opcode_counts": {
+            "BAR.ARV": 2,
+            "BAR.SYNC.DEFER_BLOCKING": 2,
+            "BRA": 1,
+            "IADD3": 1,
+            "IMAD": 128,
+            "ISETP.NE.AND": 1,
+            "LDS": 8,
+            "LDS.128": 8,
+            "LDS.64": 8,
+            "PRMT": 32,
+            "SHF.R.S32.HI": 32,
+            "WARPSYNC": 1
+          }
+        },
+        {
+          "kind": "producer",
+          "begin_pc": "0x5e80",
+          "end_pc": "0x6f60",
+          "static_instructions": 271,
+          "max_live": 110,
+          "opcode_counts": {
+            "BAR.ARV": 2,
+            "BAR.SYNC.DEFER_BLOCKING": 3,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 17,
+            "IADD3.X": 3,
+            "IMAD": 4,
+            "IMAD.IADD": 3,
+            "IMAD.SHL.U32": 35,
+            "IMAD.X": 7,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GE.U32.AND": 1,
+            "ISETP.GT.U32.AND": 2,
+            "ISETP.NE.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 5,
+            "LDSM.16.M88.4": 16,
+            "LEA": 8,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 4,
+            "PRMT": 32,
+            "SEL": 1,
+            "SHF.L.U32": 35,
+            "STS": 2,
+            "STS.128": 8,
+            "WARPSYNC": 1
+          }
+        },
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x76c0",
+          "end_pc": "0x8580",
+          "static_instructions": 237,
+          "max_live": 119,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "DEPBAR.LE": 1,
+            "FFMA": 32,
+            "FMUL": 32,
+            "I2F": 32,
+            "IADD3": 9,
+            "IADD3.X": 4,
+            "IMAD": 16,
+            "IMAD.IADD": 2,
+            "IMAD.SHL.U32": 2,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 16,
+            "IMMA.16864.U4.S4": 16,
+            "ISETP.GE.U32.AND": 2,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 6,
+            "LDS": 7,
+            "LDS.64": 4,
+            "LDSM.16.M88.4": 12,
+            "LEA": 28,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 4,
+            "NOP": 1,
+            "SHF.L.U32": 3
+          }
+        }
+      ]
+    },
+    "control_comparison": {
+      "passed": true,
+      "missing": [],
+      "changed": [],
+      "old_symbols": 1,
+      "new_symbols": 1,
+      "unchanged": [
+        "adangel_roof_o78_eight_chain_candidate"
+      ],
+      "scope": "exact_SASS_words_of_matched_old_entries_not_full_binary_or_performance"
+    },
+    "cubin_sha256": "f675af83af4ca820c1962fd708b053de655f1d71efbfa795e8b442539e202d39",
+    "compile_gate": {
+      "passed": true,
+      "checks": {
+        "control_unchanged": true,
+        "register_budget": true,
+        "no_hot_local": true,
+        "weighted_instruction_budget": true,
+        "same_four_warp_native_mma": true,
+        "same_operand_reuse": true,
+        "helper_has_no_mma": true
+      },
+      "weighted_instruction_ratio": 1.2924281984334203,
+      "hot_local_instructions": 0
+    },
+    "artifact_sha256": {
+      "build.log": "454947c2d5d185566b7aab1478edcb93ab876ff4b889674ad8b78a05bf512766",
+      "resources.txt": "7dbbe781623a8ff1d5d66b337115443d14654122571c0b46d2bc45e5ef78876f",
+      "liveness.txt": "0898ddbbae8909d871fadc2ba3169c931e2c7f9d0862cbfab9e11bd02a28f756",
+      "o78_partial_handoff.sass": "11afd4d16ed85591a887f4462e0e66a99b465c1735d5c7331604c1bac6ffe6a0",
+      "o78_partial_handoff.ptx": "509847399ced58bb6ce61f7bef7c77defc5dd053a32e99d1541dbbb04985309c"
+    }
+  },
+  "resources": {
+    "0": {
+      "registers": 168,
+      "local_bytes": 0,
+      "threads": 128,
+      "active_blocks": 3,
+      "active_warps": 12,
+      "shared_bytes": 34304,
+      "kernel_symbol": "adangel_roof_o78_eight_chain_candidate"
+    },
+    "1": {
+      "registers": 128,
+      "local_bytes": 0,
+      "threads": 256,
+      "active_blocks": 2,
+      "active_warps": 16,
+      "shared_bytes": 51712,
+      "kernel_symbol": "adangel_roof_o78_partial_handoff_candidate"
+    }
+  }
+}

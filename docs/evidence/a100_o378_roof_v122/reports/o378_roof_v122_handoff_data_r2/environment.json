@@ -1,0 +1,35 @@
+{
+  "git_commit": "6e5e9483a69df359b0568c7439e71180cc27a635",
+  "native_extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "torch": "2.7.1+cu128",
+  "torch_cuda": "12.8",
+  "source_hashes": {
+    "scripts/inspect_partial_handoff.py": "43a7af65e45174ad3e8725a3ea4eb3a9cbc4ca80ab4b495641715f8de7bf914b",
+    "scripts/o78_fullk_integer_metadata.py": "1fb04c9e2eacd2832061acd83196b9b138384741b1443ed15553f3d4a232e9c0",
+    "scripts/benchmark_a100_mixed_trace.py": "d3ce9c425b40a430ac7e4f058dac30568137f30c89253590f80c02caa9182c26",
+    "python/adangel/quantization/mixed_formats.py": "c130f8436e828eb38976ebde1f58dfe2a41f50966a718184c5dee989a071d788"
+  },
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "provenance_sha256": "c3c17774b90cd75c14a6c88a8c1d20272b3ed6fa2fcfc581f4c8e4a00a23e42d",
+  "capacity_model": {
+    "sm_count": 108,
+    "clock_mhz": 1410,
+    "wavefront_bytes": 128,
+    "assumed_wavefronts_per_sm_cycle": 1,
+    "original_shared_reservation_bytes": 34304,
+    "candidate_shared_reservation_bytes": 51712,
+    "handoff_int32_extra_bytes": 4294967296,
+    "handoff_int16_extra_bytes": 2147483648,
+    "handoff_int32_service_floor_ms": 0.22034693984764905,
+    "handoff_int16_service_floor_ms": 0.11017346992382453,
+    "synchronization_packing_metadata_costs_not_included": true,
+    "actual_candidate_performance_not_measured": true
+  },
+  "mechanism": "four_MMA_warps_to_four_scale_warps_exact_INT16_shared_handoff",
+  "gate_per_sample_minimum_fraction": 0.95,
+  "source_quantizer_unchanged": true,
+  "no_candidate_GEMM_launched": true,
+  "no_performance_or_MSE_measured": true
+}

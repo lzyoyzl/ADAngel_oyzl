@@ -1,0 +1,331 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "variant": "o7",
+      "pattern": "random",
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 4,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 4,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      },
+      "handoff_guard": {
+        "ctas": 4,
+        "integer_ctas": 4,
+        "narrow_integer_ctas": 4,
+        "wide_integer_ctas": 0,
+        "fp32_fallback_ctas": 0,
+        "narrow_fraction_of_all_ctas": 1.0,
+        "narrow_fraction_of_integer_ctas": 1.0,
+        "maximum_squared_bound": 442013740,
+        "maximum_integer_abs_bound": 21024,
+        "minimum_required_fraction": 0.95,
+        "data_gate_passed": true,
+        "exact_integer_bound": true,
+        "actual_G128_partials_measured": false,
+        "rejected_bound_does_not_imply_actual_overflow": true
+      },
+      "bitwise_best": true,
+      "production_reference_close": true,
+      "finite_fp32": true,
+      "nondefault_stream": true
+    },
+    {
+      "variant": "o7",
+      "pattern": "zero",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      },
+      "handoff_guard": {
+        "ctas": 1,
+        "integer_ctas": 1,
+        "narrow_integer_ctas": 1,
+        "wide_integer_ctas": 0,
+        "fp32_fallback_ctas": 0,
+        "narrow_fraction_of_all_ctas": 1.0,
+        "narrow_fraction_of_integer_ctas": 1.0,
+        "maximum_squared_bound": 0,
+        "maximum_integer_abs_bound": 0,
+        "minimum_required_fraction": 0.95,
+        "data_gate_passed": true,
+        "exact_integer_bound": true,
+        "actual_G128_partials_measured": false,
+        "rejected_bound_does_not_imply_actual_overflow": true
+      },
+      "bitwise_best": true,
+      "production_reference_close": true,
+      "finite_fp32": true,
+      "nondefault_stream": true
+    },
+    {
+      "variant": "o7",
+      "pattern": "saturated",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      },
+      "handoff_guard": {
+        "ctas": 1,
+        "integer_ctas": 1,
+        "narrow_integer_ctas": 0,
+        "wide_integer_ctas": 1,
+        "fp32_fallback_ctas": 0,
+        "narrow_fraction_of_all_ctas": 0.0,
+        "narrow_fraction_of_integer_ctas": 0.0,
+        "maximum_squared_bound": 2132803584,
+        "maximum_integer_abs_bound": 46182,
+        "minimum_required_fraction": 0.95,
+        "data_gate_passed": false,
+        "exact_integer_bound": true,
+        "actual_G128_partials_measured": false,
+        "rejected_bound_does_not_imply_actual_overflow": true
+      },
+      "bitwise_best": true,
+      "production_reference_close": true,
+      "finite_fp32": true,
+      "nondefault_stream": true
+    },
+    {
+      "variant": "o7",
+      "pattern": "fallback",
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 4,
+        "invalid_ctas": 0,
+        "ctas": 4,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      },
+      "handoff_guard": {
+        "ctas": 4,
+        "integer_ctas": 0,
+        "narrow_integer_ctas": 0,
+        "wide_integer_ctas": 0,
+        "fp32_fallback_ctas": 4,
+        "narrow_fraction_of_all_ctas": 0.0,
+        "narrow_fraction_of_integer_ctas": 0.0,
+        "maximum_squared_bound": 442013740,
+        "maximum_integer_abs_bound": 21024,
+        "minimum_required_fraction": 0.95,
+        "data_gate_passed": false,
+        "exact_integer_bound": true,
+        "actual_G128_partials_measured": false,
+        "rejected_bound_does_not_imply_actual_overflow": true
+      },
+      "bitwise_best": true,
+      "production_reference_close": true,
+      "finite_fp32": true,
+      "nondefault_stream": true
+    },
+    {
+      "variant": "o8",
+      "pattern": "random",
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 4,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 4,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      },
+      "handoff_guard": {
+        "ctas": 4,
+        "integer_ctas": 4,
+        "narrow_integer_ctas": 4,
+        "wide_integer_ctas": 0,
+        "fp32_fallback_ctas": 0,
+        "narrow_fraction_of_all_ctas": 1.0,
+        "narrow_fraction_of_integer_ctas": 1.0,
+        "maximum_squared_bound": 48933882,
+        "maximum_integer_abs_bound": 6995,
+        "minimum_required_fraction": 0.95,
+        "data_gate_passed": true,
+        "exact_integer_bound": true,
+        "actual_G128_partials_measured": false,
+        "rejected_bound_does_not_imply_actual_overflow": true
+      },
+      "bitwise_best": true,
+      "production_reference_close": true,
+      "finite_fp32": true,
+      "nondefault_stream": true
+    },
+    {
+      "variant": "o8",
+      "pattern": "zero",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      },
+      "handoff_guard": {
+        "ctas": 1,
+        "integer_ctas": 1,
+        "narrow_integer_ctas": 1,
+        "wide_integer_ctas": 0,
+        "fp32_fallback_ctas": 0,
+        "narrow_fraction_of_all_ctas": 1.0,
+        "narrow_fraction_of_integer_ctas": 1.0,
+        "maximum_squared_bound": 0,
+        "maximum_integer_abs_bound": 0,
+        "minimum_required_fraction": 0.95,
+        "data_gate_passed": true,
+        "exact_integer_bound": true,
+        "actual_G128_partials_measured": false,
+        "rejected_bound_does_not_imply_actual_overflow": true
+      },
+      "bitwise_best": true,
+      "production_reference_close": true,
+      "finite_fp32": true,
+      "nondefault_stream": true
+    },
+    {
+      "variant": "o8",
+      "pattern": "saturated",
+      "shape": [
+        64,
+        128,
+        4096
+      ],
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      },
+      "handoff_guard": {
+        "ctas": 1,
+        "integer_ctas": 1,
+        "narrow_integer_ctas": 1,
+        "wide_integer_ctas": 0,
+        "fp32_fallback_ctas": 0,
+        "narrow_fraction_of_all_ctas": 1.0,
+        "narrow_fraction_of_integer_ctas": 1.0,
+        "maximum_squared_bound": 548700160,
+        "maximum_integer_abs_bound": 23424,
+        "minimum_required_fraction": 0.95,
+        "data_gate_passed": true,
+        "exact_integer_bound": true,
+        "actual_G128_partials_measured": false,
+        "rejected_bound_does_not_imply_actual_overflow": true
+      },
+      "bitwise_best": true,
+      "production_reference_close": true,
+      "finite_fp32": true,
+      "nondefault_stream": true
+    },
+    {
+      "variant": "o8",
+      "pattern": "fallback",
+      "shape": [
+        128,
+        256,
+        4096
+      ],
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 4,
+        "invalid_ctas": 0,
+        "ctas": 4,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0,
+        "group_squares_exact": true
+      },
+      "handoff_guard": {
+        "ctas": 4,
+        "integer_ctas": 0,
+        "narrow_integer_ctas": 0,
+        "wide_integer_ctas": 0,
+        "fp32_fallback_ctas": 4,
+        "narrow_fraction_of_all_ctas": 0.0,
+        "narrow_fraction_of_integer_ctas": 0.0,
+        "maximum_squared_bound": 48933882,
+        "maximum_integer_abs_bound": 6995,
+        "minimum_required_fraction": 0.95,
+        "data_gate_passed": false,
+        "exact_integer_bound": true,
+        "actual_G128_partials_measured": false,
+        "rejected_bound_does_not_imply_actual_overflow": true
+      },
+      "bitwise_best": true,
+      "production_reference_close": true,
+      "finite_fp32": true,
+      "nondefault_stream": true
+    }
+  ],
+  "statuses_seen": [
+    0,
+    1,
+    3
+  ],
+  "scope": "small_MN_fullK_numerical_not_performance_screen"
+}

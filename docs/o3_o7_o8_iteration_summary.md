@@ -1,5 +1,16 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v122：MMA/整数scale分工，完整24样本确认负向
+
+不是v41搬运producer，也不是v98八warp都做MMA：固定4 MMA +4整数后处理warp，保留原operand复用。
+先用全24精确平方和证明G128 partial可无损INT16存储；原fullK溢出guard及两条回退路径保留。
+编译128regs/零spill，271 producer+224 consumer指令（较旧383增加29.24%），原生双INT4/16LDSM不变。
+实际2CTA/16warp，数值和mem/sync/race通过后直接全24三轮1000/200配对，无小规模性能筛选。
+O7 0.478208→0.595968ms，吞吐−20.07%；O8 0.480256→0.601088ms，−20.24%。
+288条记录逐位相同/MSE不变；新CV失败2/72、1/72，全部保留，无选择性重测。
+新增shared交接/位操作/同步没有被重叠收益抵消，不再扫描或迁移O3，不追加E2E，也不改变正式默认/5090。
+[方法、结果及可移植性](o7_o8_partial_handoff_20261007.md)。
+
 ## v121：factor-only只读global供数，编译成本反增，停止
 
 核对v43/v76/v87/v106/v109/v112/v120；不重复register scale hoist或全payload global供数。

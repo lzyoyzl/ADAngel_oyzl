@@ -1,0 +1,76 @@
+{
+  "git_commit": "d6bebfe0887c8aa78a130659c207cbab51ec1e44",
+  "torch": "2.7.1+cu128",
+  "cuda": "12.8",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "raw_manifest_sha256": "4ff05585d91f8940f20328b140c637ac948d0dbe47f1506db0cb5d839c9c3db0",
+  "prepared_manifest_sha256": "05849422f6d8ad18e7c3468ff6af549d33ce86eeb9590af7388ab3452d26881c",
+  "resources": {
+    "0": {
+      "registers": 168,
+      "local_bytes": 0,
+      "threads": 128,
+      "active_blocks": 3,
+      "active_warps": 12,
+      "shared_bytes": 34304,
+      "kernel_symbol": "adangel_roof_o78_eight_chain_candidate"
+    },
+    "1": {
+      "registers": 128,
+      "local_bytes": 0,
+      "threads": 256,
+      "active_blocks": 2,
+      "active_warps": 16,
+      "shared_bytes": 51712,
+      "kernel_symbol": "adangel_roof_o78_partial_handoff_candidate"
+    }
+  },
+  "source_hashes": {
+    "scripts/benchmark_partial_handoff.py": "90faff3bd06b8292d9b28ae67e468f5ab8f11223f7e2cb9467df453371d91987",
+    "csrc/sm80/roof_latency_validation_driver.cpp": "e7a4107ccc089e5346317c2948717ea41a8aaf4078381521c69fe1e7e9a9717f",
+    "scripts/inspect_partial_handoff.py": "43a7af65e45174ad3e8725a3ea4eb3a9cbc4ca80ab4b495641715f8de7bf914b"
+  },
+  "preparation_receipt": {
+    "scope": "independent_row_fused_conversion_factor_metadata_no_GEMM_or_default_change",
+    "source_commit": "7cb5d7b8a2125dc808d35e91df51a6509ee0bc75",
+    "sources": {
+      "csrc/sm80/roof_o78_row_fused_prepare.cu": "46a0f6b3ff4059094fc762f2a58e75160ce115bc97f044bc2111f42f0e43b56e",
+      "csrc/sm80/roof_row_fused_conversion.cuh": "bf64d05bfa741d0c86a84c4f1dea38b8cdc75b1e060cf5314b53fe57b88e26ac",
+      "csrc/sm80/roof_o78_fused_prepare.cu": "3c59446cb983ee0cc9f9619f1ac34f8c5ee6be6abc8c8ff6a20fe1ced42953bc",
+      "csrc/sm80/roof_vector_norm_conversion.cuh": "8e5f61881f8b2eed27a16525eccd9624068cdddacdb09888bd720e666cdfc8a2",
+      "csrc/sm80/roof_o78_gpu_prepare.cu": "456f784f5ff2433a06bb7a47b4056b94ecddc9c3996950bc868d8a0d079b35fc",
+      "csrc/sm80/roof_vector_conversion_impl.cuh": "d1aad7ef5ec6ab2c9ab840eaf19fee8153f40a867338970e871e0cd93c4850cc",
+      "csrc/sm80/roof_fused_conversion_api.h": "8fffbaede2373d69b6d0ba741f9ddb19ac43d63ab1a2faa8ab96f805697504cd",
+      "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9"
+    },
+    "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+    "commands": [
+      [
+        "/usr/local/cuda-12.8/bin/nvcc",
+        "-O3",
+        "-std=c++17",
+        "-lineinfo",
+        "-arch=sm_80",
+        "-shared",
+        "-Xcompiler=-fPIC",
+        "-Xptxas=-v",
+        "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_row_fused_prepare.cu",
+        "-lcuda",
+        "-o",
+        "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v73_codegen/libo78_gpu_prepare.so"
+      ]
+    ],
+    "driver_sha256": "0973712a07dd42954cb5443763846034449e82391c0c80880fa29e22a9ab7d34"
+  },
+  "warmup": 1000,
+  "repeats": 200,
+  "rounds": 3,
+  "conversion_inner_repeats": 100,
+  "input_and_timing_contract": "same_original_sources_single_stream_preallocated_interleaved",
+  "CPU_narrow_guard_cached_outside_Events": true,
+  "conversion_or_E2E_claim": false,
+  "no_filtering": true,
+  "no_clock_lock": true,
+  "production_default_changed": false
+}
