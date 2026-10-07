@@ -47,7 +47,7 @@ def observe(asq, wsq, status):
         maximum_squared_bound=int(bound_squared.max()),
         maximum_integer_abs_bound=math.isqrt(int(bound_squared.max())),
         minimum_required_fraction=MIN_COVERAGE,
-        data_gate_passed=eligible.sum()/total >= MIN_COVERAGE,
+        data_gate_passed=bool(eligible.sum()/total >= MIN_COVERAGE),
         exact_integer_bound=True, actual_G128_partials_measured=False,
         rejected_bound_does_not_imply_actual_overflow=True)
 

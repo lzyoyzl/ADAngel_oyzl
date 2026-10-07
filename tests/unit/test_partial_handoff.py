@@ -1,5 +1,6 @@
 """INT16 is a guarded storage optimization, never another quantization."""
 import sys
+import json
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +24,7 @@ def test_exact_bound_boundary_and_old_guard():
     assert result['narrow_integer_ctas'] == 2
     assert result['wide_integer_ctas'] == 1
     assert result['fp32_fallback_ctas'] == 1
+    json.dumps(result, allow_nan=False)
 
 
 def test_zero_worst_case_and_invalid_guard():
