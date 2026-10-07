@@ -1,0 +1,209 @@
+{
+  "scope": "v123_FP6_packed_activation_conversion_identical_v78_GEMM",
+  "samples": 24,
+  "records": 576,
+  "original_event_values": 345600,
+  "source_identity": {
+    "passed": true,
+    "samples": 24,
+    "variant": "o8",
+    "full_v99_source_identity_equal": true,
+    "old_provenance_sha256": "c3c17774b90cd75c14a6c88a8c1d20272b3ed6fa2fcfc581f4c8e4a00a23e42d"
+  },
+  "GEMM_modified": false,
+  "production_default_changed": false,
+  "no_filtering": true,
+  "all_outputs_bitwise_equal": true,
+  "output_mse_vs_O6": {
+    "median": 0.004411084910985704,
+    "mean": 0.00438137929907354
+  },
+  "stages": [
+    {
+      "mode": "conversion_only",
+      "stage": "weight_conversion",
+      "control_median_ms": 0.03377151861786842,
+      "candidate_median_ms": 0.03377151861786842,
+      "paired_speedup": 1.0,
+      "paired_throughput_change_percent": 0.0,
+      "paired_speedup_ci95": [
+        1.0,
+        1.0
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "conversion_only",
+      "stage": "activation_conversion",
+      "control_median_ms": 0.05750783905386925,
+      "candidate_median_ms": 0.040588799864053726,
+      "paired_speedup": 1.4139467122753333,
+      "paired_throughput_change_percent": 41.39467122753333,
+      "paired_speedup_ci95": [
+        1.410696337058193,
+        1.4175669824405508
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "conversion_only",
+      "stage": "total",
+      "control_median_ms": 0.09128960222005844,
+      "candidate_median_ms": 0.07441407814621925,
+      "paired_speedup": 1.2261040939921344,
+      "paired_throughput_change_percent": 22.610409399213438,
+      "paired_speedup_ci95": [
+        1.2242565432031,
+        1.2273417869723904
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "compute_only",
+      "stage": "gemm",
+      "control_median_ms": 0.48127999901771545,
+      "candidate_median_ms": 0.48127999901771545,
+      "paired_speedup": 1.0,
+      "paired_throughput_change_percent": 0.0,
+      "paired_speedup_ci95": [
+        1.0,
+        1.0
+      ],
+      "control_cv_failed": 3,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "compute_only",
+      "stage": "total",
+      "control_median_ms": 0.48127999901771545,
+      "candidate_median_ms": 0.48127999901771545,
+      "paired_speedup": 1.0,
+      "paired_throughput_change_percent": 0.0,
+      "paired_speedup_ci95": [
+        1.0,
+        1.0
+      ],
+      "control_cv_failed": 3,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "cold",
+      "stage": "weight_conversion",
+      "control_median_ms": 0.03378687985241413,
+      "candidate_median_ms": 0.033832959830760956,
+      "paired_speedup": 1.0,
+      "paired_throughput_change_percent": 0.0,
+      "paired_speedup_ci95": [
+        0.9997001449844829,
+        1.0
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "cold",
+      "stage": "activation_conversion",
+      "control_median_ms": 0.057548798620700836,
+      "candidate_median_ms": 0.04060672037303448,
+      "paired_speedup": 1.4146449808867505,
+      "paired_throughput_change_percent": 41.46449808867505,
+      "paired_speedup_ci95": [
+        1.4099064266268784,
+        1.4168496745387484
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "cold",
+      "stage": "gemm",
+      "control_median_ms": 0.4689919948577881,
+      "candidate_median_ms": 0.47411200404167175,
+      "paired_speedup": 0.9892124817614093,
+      "paired_throughput_change_percent": -1.0787518238590699,
+      "paired_speedup_ci95": [
+        0.9892008446522403,
+        0.9913606882936412
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 3,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "cold",
+      "stage": "total",
+      "control_median_ms": 0.5806080102920532,
+      "candidate_median_ms": 0.5662720203399658,
+      "paired_speedup": 1.02625536557461,
+      "paired_throughput_change_percent": 2.6255365574610057,
+      "paired_speedup_ci95": [
+        1.0253164370428909,
+        1.027173908458754
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 5,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "steady_state",
+      "stage": "activation_conversion",
+      "control_median_ms": 0.05746688134968281,
+      "candidate_median_ms": 0.04059135913848877,
+      "paired_speedup": 1.4145360324038192,
+      "paired_throughput_change_percent": 41.45360324038192,
+      "paired_speedup_ci95": [
+        1.4109073178420704,
+        1.4177214886757084
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "steady_state",
+      "stage": "gemm",
+      "control_median_ms": 0.47513601183891296,
+      "candidate_median_ms": 0.48025599122047424,
+      "paired_speedup": 0.9893390619270571,
+      "paired_throughput_change_percent": -1.0660938072942883,
+      "paired_speedup_ci95": [
+        0.9882854446690306,
+        1.0
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 2,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "steady_state",
+      "stage": "total",
+      "control_median_ms": 0.5457919836044312,
+      "candidate_median_ms": 0.5294079780578613,
+      "paired_speedup": 1.0304497411695692,
+      "paired_throughput_change_percent": 3.044974116956922,
+      "paired_speedup_ci95": [
+        1.0290135366030504,
+        1.0354166947094208
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 3,
+      "records_per_policy": 72
+    }
+  ],
+  "gpu_sampled_sm_clock_MHz": {
+    "min": 1290,
+    "max": 1410
+  },
+  "GEMM_speedup_claim": false,
+  "results_sha256": "6ecc9cda65348da1ba79abd8e46dafc6528d6aa91dd1a8b7b04f4285c36fb850"
+}
