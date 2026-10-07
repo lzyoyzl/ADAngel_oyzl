@@ -5,7 +5,7 @@ import pytest
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
-from probe_o3_crossk_load_codegen import generated_header, ring_schedule, LIMITS
+from probe_o3_crossk_load_codegen import generated_header, ring_schedule, LIMITS, cost_gate
 
 
 def test_same_ring_work_and_group_order():
@@ -53,3 +53,18 @@ def test_generation_contract():
     assert 'if(flag&6u) return;' in wrapper and 'if(flag&1u)' in wrapper
     assert 'o3_grouped_fallback::o3_body' in wrapper
     assert '__launch_bounds__(128,3)' in wrapper
+
+
+def test_predeclared_gate_requires_schedule_without_work_regression():
+    counts={'IMMA.16864.S4.S4':32,'IMMA.16864.U4.S4':32,
+            'LDSM.16.M88.4':16,'LDGSTS.E.BYPASS.128':9,'BAR.SYNC.DEFER_BLOCKING':1}
+    def record(static=323,regs=168,extra=None):
+        return dict(allocated_gpr=regs,loops=[dict(kind='integer',static_instructions=static,
+                         opcode_counts=counts|(extra or {}))])
+    evidence=dict(next_loads=[{}]*8,weighted_updates_after_first_next_load=[{}]*32)
+    assert cost_gate(record(),record(335,extra={'LDL':1}),evidence)['passed']
+    assert not cost_gate(record(),record(374),evidence)['passed']
+    assert not cost_gate(record(),record(extra={'LDL':2}),evidence)['passed']
+    assert not cost_gate(record(),record(regs=176),evidence)['passed']
+    assert not cost_gate(record(),record(),evidence|{'next_loads':[]})['passed']
+    assert not cost_gate(record(),record(),evidence|{'weighted_updates_after_first_next_load':[{}]*7})['passed']
