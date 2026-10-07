@@ -6,6 +6,7 @@ v73 row fusion, vector16 memory IO, G128 norms, source scale, guards and timing.
 One fixed candidate; no adjacent LUT/Boolean/geometry parameter search.
 """
 import argparse
+import ctypes as ct
 import hashlib
 import json
 import os
@@ -127,6 +128,28 @@ extern "C" int roof_nv6_swar_exhaustive(uint4* out,void* stream) {
   adangel_nv6_swar_exhaustive<<<512,256,0,reinterpret_cast<cudaStream_t>(stream)>>>(out);
   return int(cudaGetLastError());
 }
+// Resource query only: neither entry is launched, no performance screening.
+extern "C" int roof_nv6_swar_resources(int* values) {
+  if(!values)return 1;
+  cudaFuncAttributes old{},candidate{};int old_blocks=0,new_blocks=0;
+  cudaError_t err=cudaFuncGetAttributes(&old,
+      row_fused_probe::adangel_sm80_row_conversion_metadata<Kind::Nv6,16>);
+  if(err!=cudaSuccess)return int(err);
+  err=cudaFuncGetAttributes(&candidate,
+      nv6_row_swar_probe::adangel_sm80_nv6_swar_metadata<Kind::Nv6,16>);
+  if(err!=cudaSuccess)return int(err);
+  err=cudaOccupancyMaxActiveBlocksPerMultiprocessor(&old_blocks,
+      row_fused_probe::adangel_sm80_row_conversion_metadata<Kind::Nv6,16>,256,0);
+  if(err!=cudaSuccess)return int(err);
+  err=cudaOccupancyMaxActiveBlocksPerMultiprocessor(&new_blocks,
+      nv6_row_swar_probe::adangel_sm80_nv6_swar_metadata<Kind::Nv6,16>,256,0);
+  if(err!=cudaSuccess)return int(err);
+  values[0]=old.numRegs;values[1]=old.localSizeBytes;values[2]=old.sharedSizeBytes;
+  values[3]=old.maxThreadsPerBlock;values[4]=old_blocks;
+  values[5]=candidate.numRegs;values[6]=candidate.localSizeBytes;values[7]=candidate.sharedSizeBytes;
+  values[8]=candidate.maxThreadsPerBlock;values[9]=new_blocks;
+  return 0;
+}
 '''+benchmark
 
 
@@ -149,13 +172,32 @@ def audit(directory):
     barriers=sum(count for op,count in ops.items() if op.startswith('BAR.SYNC'))
     dots=sum(count for op,count in ops.items() if op.startswith('IDP.4A.S8.S8'))
     improvement=1-new_entry['instructions']/old_entry['instructions']
-    gate=(comparison['passed'] and b['registers']<=a['registers'] and
+    # Preserve the first gate verdict. The first compile reduced work41.4%
+    # but increased registers23->29, so NO kernels were launched. Review the
+    # actual residency instead of treating any register growth as a slowdown.
+    # Both <=32 should permit eight256-thread CTAs on SM80; verify with CUDA.
+    lib=ct.CDLL(str((directory/'libo78_gpu_prepare.so').resolve()))
+    fn=lib.roof_nv6_swar_resources;fn.argtypes=[ct.POINTER(ct.c_int)];fn.restype=ct.c_int
+    values=(ct.c_int*10)();error=fn(values)
+    if error:raise RuntimeError('CUDA resource query failed: '+str(error))
+    runtime={name:dict(zip(('registers','local','shared','max_threads','active_blocks_per_sm'),
+                         list(values)[offset:offset+5])) for name,offset in (('control',0),('candidate',5))}
+    if any(runtime[name][key]!=resources[symbol_][key] for name,symbol_ in
+           (('control',old_symbol),('candidate',symbol)) for key in ('registers','local','shared')):
+        raise ValueError('SASS/runtime resource mismatch')
+    residency=(runtime['control']['active_blocks_per_sm']==runtime['candidate']['active_blocks_per_sm']==8)
+    first_gate=(comparison['passed'] and b['registers']<=a['registers'] and
+        b['stack']==b['local']==local_count==0 and b['shared']==256 and barriers==1 and
+        improvement>=.05 and dots==4)
+    gate=(comparison['passed'] and b['registers']<=32 and residency and
         b['stack']==b['local']==local_count==0 and b['shared']==256 and barriers==1 and
         improvement>=.05 and dots==4)
     return dict(scope='static_activation_conversion_gate_not_latency_or_MSE',old_controls=comparison,
         control=dict(symbol=old_symbol,**a,**old_entry),candidate=dict(symbol=symbol,**b,**new_entry),
         static_instruction_reduction_fraction=improvement,local_instructions=local_count,
-        native_signed_byte_dot_instructions=dots,cta_barriers=barriers,worth_runtime_validation=gate)
+        native_signed_byte_dot_instructions=dots,cta_barriers=barriers,
+        first_no_register_growth_gate_passed=first_gate,resource_review_before_any_kernel_launch=True,
+        runtime_resources=runtime,residency_equal=residency,worth_runtime_validation=gate)
 
 
 def checked(directory):
