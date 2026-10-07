@@ -1,0 +1,80 @@
+{
+  "scope": "full24_exact_activation_H_data_gate_not_GPU_performance",
+  "records": 120,
+  "variants": [
+    {
+      "variant": "o3",
+      "policy": "ordinary",
+      "samples": 24,
+      "median_high_zero_fraction": 0.5200720429420471,
+      "median_residual_fraction": 0.1333838701248169,
+      "maximum_residual_fraction": 0.21157538890838623,
+      "median_scalar_correction_model_ms": 0.4702516417126346,
+      "maximum_scalar_correction_model_ms": 0.7459198318886262,
+      "data_gate_samples": 0,
+      "investment_gate_passed": false
+    },
+    {
+      "variant": "o7",
+      "policy": "ordinary",
+      "samples": 24,
+      "median_high_zero_fraction": 0.3090895414352417,
+      "median_residual_fraction": 0.24969607591629028,
+      "maximum_residual_fraction": 0.2805996537208557,
+      "median_scalar_correction_model_ms": 0.8803162595219333,
+      "maximum_scalar_correction_model_ms": 0.9892684003152088,
+      "data_gate_samples": 0,
+      "investment_gate_passed": false
+    },
+    {
+      "variant": "o7",
+      "policy": "balanced",
+      "samples": 24,
+      "median_high_zero_fraction": 0.3616522550582886,
+      "median_residual_fraction": 0.22697919607162476,
+      "maximum_residual_fraction": 0.2708548307418823,
+      "median_scalar_correction_model_ms": 0.8002267402153928,
+      "maximum_scalar_correction_model_ms": 0.9549125295508274,
+      "data_gate_samples": 0,
+      "investment_gate_passed": false
+    },
+    {
+      "variant": "o8",
+      "policy": "ordinary",
+      "samples": 24,
+      "median_high_zero_fraction": 0.506037712097168,
+      "median_residual_fraction": 0.1366921067237854,
+      "maximum_residual_fraction": 0.15067869424819946,
+      "median_scalar_correction_model_ms": 0.4819149986866299,
+      "maximum_scalar_correction_model_ms": 0.531225426845285,
+      "data_gate_samples": 0,
+      "investment_gate_passed": false
+    },
+    {
+      "variant": "o8",
+      "policy": "balanced",
+      "samples": 24,
+      "median_high_zero_fraction": 0.685151219367981,
+      "median_residual_fraction": 0.0734177827835083,
+      "maximum_residual_fraction": 0.09576541185379028,
+      "median_scalar_correction_model_ms": 0.2588381402679275,
+      "maximum_scalar_correction_model_ms": 0.33762584712371946,
+      "data_gate_samples": 4,
+      "investment_gate_passed": false
+    }
+  ],
+  "budget_ms": 0.05508675,
+  "fixed_model_inputs": {
+    "sm_count": 108,
+    "clock_mhz": 1410,
+    "generous_lane_corrections_per_cycle": 128
+  },
+  "interpretation": "scalar_correction_budget_not_additive_lower_bound_or_measured_speedup",
+  "candidate_GEMM_launched": false,
+  "new_GEMM_measured": false,
+  "new_MSE_measured": false,
+  "production_default_changed": false,
+  "quantization_semantics_changed": false,
+  "sparse_kernel_implemented": false,
+  "ptx_rule": "https://docs.nvidia.com/cuda/archive/12.8.0/parallel-thread-execution/index.html#sparse-matrix-storage"
+}
