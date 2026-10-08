@@ -1,0 +1,228 @@
+layer_31_q_proj o8 paired complete
+layer_31_k_proj o8 paired complete
+layer_31_v_proj o8 paired complete
+layer_31_o_proj o8 paired complete
+HIF4 PACKED SWAR RECOVERY PAIRED TEST PASSED
+{
+  "scope": "v138_HiF4_conversion_identical_v123_activation_v78_GEMM",
+  "samples": 24,
+  "records": 576,
+  "original_event_values": 345600,
+  "source_identity": {
+    "passed": true,
+    "samples": 24,
+    "variant": "o8",
+    "full_v99_source_identity_equal": true,
+    "old_provenance_sha256": "c3c17774b90cd75c14a6c88a8c1d20272b3ed6fa2fcfc581f4c8e4a00a23e42d"
+  },
+  "GEMM_modified": false,
+  "production_default_changed": false,
+  "no_filtering": true,
+  "all_outputs_bitwise_equal": true,
+  "output_mse_vs_O6": {
+    "median": 0.004411084910985704,
+    "mean": 0.00438137929907354
+  },
+  "stages": [
+    {
+      "mode": "conversion_only",
+      "stage": "weight_conversion",
+      "control_median_ms": 0.03380223922431469,
+      "candidate_median_ms": 0.018539519980549812,
+      "paired_speedup": 1.8317135586537328,
+      "paired_throughput_change_percent": 83.17135586537327,
+      "paired_latency_reduction_percent": 45.406311195568314,
+      "paired_speedup_ci95": [
+        1.8243093367421799,
+        1.836808895596978
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "conversion_only",
+      "stage": "activation_conversion",
+      "control_median_ms": 0.04053504019975662,
+      "candidate_median_ms": 0.04049920104444027,
+      "paired_speedup": 1.0010060307399287,
+      "paired_throughput_change_percent": 0.1006030739928665,
+      "paired_latency_reduction_percent": 0.10050196592572558,
+      "paired_speedup_ci95": [
+        1.0005041998157258,
+        1.0033513672291543
+      ],
+      "control_cv_failed": 1,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "conversion_only",
+      "stage": "total",
+      "control_median_ms": 0.07443967834115028,
+      "candidate_median_ms": 0.05911040026694536,
+      "paired_speedup": 1.262465475193245,
+      "paired_throughput_change_percent": 26.246547519324494,
+      "paired_latency_reduction_percent": 20.78991309865875,
+      "paired_speedup_ci95": [
+        1.259355568452495,
+        1.2670926081673657
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "compute_only",
+      "stage": "gemm",
+      "control_median_ms": 0.48127999901771545,
+      "candidate_median_ms": 0.48127999901771545,
+      "paired_speedup": 1.0,
+      "paired_throughput_change_percent": 0.0,
+      "paired_latency_reduction_percent": 0.0,
+      "paired_speedup_ci95": [
+        1.0,
+        1.0
+      ],
+      "control_cv_failed": 3,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "compute_only",
+      "stage": "total",
+      "control_median_ms": 0.48127999901771545,
+      "candidate_median_ms": 0.48127999901771545,
+      "paired_speedup": 1.0,
+      "paired_throughput_change_percent": 0.0,
+      "paired_latency_reduction_percent": 0.0,
+      "paired_speedup_ci95": [
+        1.0,
+        1.0
+      ],
+      "control_cv_failed": 3,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "cold",
+      "stage": "weight_conversion",
+      "control_median_ms": 0.03411712031811476,
+      "candidate_median_ms": 0.018644480034708977,
+      "paired_speedup": 1.82424630111544,
+      "paired_throughput_change_percent": 82.42463011154399,
+      "paired_latency_reduction_percent": 45.18284074970866,
+      "paired_speedup_ci95": [
+        1.8182319082717873,
+        1.829508402687691
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 54,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "cold",
+      "stage": "activation_conversion",
+      "control_median_ms": 0.04066304303705692,
+      "candidate_median_ms": 0.04053503833711147,
+      "paired_speedup": 1.0021205481860966,
+      "paired_throughput_change_percent": 0.2120548186096638,
+      "paired_latency_reduction_percent": 0.21160609768305916,
+      "paired_speedup_ci95": [
+        1.0005106359107445,
+        1.0041995262415724
+      ],
+      "control_cv_failed": 0,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "cold",
+      "stage": "gemm",
+      "control_median_ms": 0.47411200404167175,
+      "candidate_median_ms": 0.47513601183891296,
+      "paired_speedup": 0.9978448112293614,
+      "paired_throughput_change_percent": -0.2155188770638583,
+      "paired_latency_reduction_percent": -0.21598436414007605,
+      "paired_speedup_ci95": [
+        0.9956989544777277,
+        0.9978448112293614
+      ],
+      "control_cv_failed": 3,
+      "candidate_cv_failed": 3,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "cold",
+      "stage": "total",
+      "control_median_ms": 0.5662720203399658,
+      "candidate_median_ms": 0.549888014793396,
+      "paired_speedup": 1.0297951675719386,
+      "paired_throughput_change_percent": 2.9795167571938563,
+      "paired_latency_reduction_percent": 2.8933100979867565,
+      "paired_speedup_ci95": [
+        1.0297951675719386,
+        1.0305926318676133
+      ],
+      "control_cv_failed": 3,
+      "candidate_cv_failed": 2,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "steady_state",
+      "stage": "activation_conversion",
+      "control_median_ms": 0.040504319593310356,
+      "candidate_median_ms": 0.040519678965210915,
+      "paired_speedup": 0.9999371879454616,
+      "paired_throughput_change_percent": -0.0062812054538397,
+      "paired_latency_reduction_percent": -0.006281600014035327,
+      "paired_speedup_ci95": [
+        0.9994981688686863,
+        1.0005037377690595
+      ],
+      "control_cv_failed": 1,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "steady_state",
+      "stage": "gemm",
+      "control_median_ms": 0.48025599122047424,
+      "candidate_median_ms": 0.48025599122047424,
+      "paired_speedup": 1.0,
+      "paired_throughput_change_percent": 0.0,
+      "paired_latency_reduction_percent": 0.0,
+      "paired_speedup_ci95": [
+        1.0,
+        1.0
+      ],
+      "control_cv_failed": 1,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    },
+    {
+      "mode": "steady_state",
+      "stage": "total",
+      "control_median_ms": 0.5294079780578613,
+      "candidate_median_ms": 0.5294079780578613,
+      "paired_speedup": 1.0,
+      "paired_throughput_change_percent": 0.0,
+      "paired_latency_reduction_percent": 0.0,
+      "paired_speedup_ci95": [
+        1.0,
+        1.0
+      ],
+      "control_cv_failed": 1,
+      "candidate_cv_failed": 0,
+      "records_per_policy": 72
+    }
+  ],
+  "gpu_sampled_sm_clock_MHz": {
+    "min": 1275,
+    "max": 1410
+  },
+  "GEMM_speedup_claim": false,
+  "all_real_integer_path": false,
+  "results_sha256": "3d141b9f1f856acf91471e032972bf88ad0fdcdaed9fdbdbbb7412c10b05586f"
+}
+HIF4 RECOVERED FULL24 PASSED

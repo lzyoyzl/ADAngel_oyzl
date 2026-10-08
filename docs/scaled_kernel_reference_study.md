@@ -1,6 +1,6 @@
 # 带 scale 的开源 kernel：与 O3/O7/O8 的对应关系
 
-源码核对日期：2026-10-02；相关实测结果更新：2026-10-03。
+源码核对日期：2026-10-02；多级 scale 源码复核补充：2026-10-08。
 源码研究本身不计作性能迭代，下面另列已完成的独立实测；正式后端、量化和依赖未更改。
 
 ## 参考后的实际效果：区分来源与实测收益
@@ -17,6 +17,7 @@
 |本项目减少metadata启动/读取|v73 将转换与行factor/anchor/范数生成融合，同一v67 GEMM|相对v69，24样本转换 +14.23%/+11.15%、Cold +1.83%/+1.66%；不是新增GEMM收益，直接计时CV仍大量失败|
 
 最后四项是针对本项目数据格式实现的优化，**不声称直接来自某一个开源 kernel**。
+后续当前结果和否定证据以[迭代台账](o3_o7_o8_iteration_summary.md)为准，不能将上表理解为最新最佳汇总。
 v88参考落实到实际机器码，主循环383→377条、MMA复用标记25→27，但不足以证明稳定提速；
 不把静态`.reuse`标记当作动态bank冲突改善。详见[v88证据](evidence/a100_o378_roof_v88/README.md)。
 上述百分比来自各自同轮控制/候选配对，不能跨不同轮次相乘或拼接成累计实测。
@@ -136,6 +137,54 @@ v64 实测已完成：虽消除 spill，四样本配对吞吐 O3/O7/O8 为−5.3
 
 ## 从参考源码到候选的筛选口径
 
+### Tilus：借鉴布局与打包转换，不照搬 FP16 计算路径
+
+核对用户提供的 arXiv:2504.12984v3（2025-08-31），重点为图1(c)、图9、§7.2、§8.1、§9.4。
+同时核对 [NVIDIA/Tilus 固定提交4597cd5](https://github.com/NVIDIA/tilus/tree/4597cd5ba3f24501ba411cefa61a76fd9d3ba2c8)，
+未安装Tilus或修改当前依赖。论文版本与当前源码分开记录，不假定二者代码完全相同。
+
+其核心并非“任意低比特都能直接用原生Tensor Core”：先按MMA消费关系把权重tile预打包，
+使global→shared→register加载后，每线程已经拥有所需bit；兼容的`View`只重新解释本线程位串。
+数值`Cast`仍需执行，提前打包也有成本。图1(c)避免的是额外shared往返/跨线程布局转换，
+不是移除所有shared memory，亦不是零成本反量化。
+
+[实际grouped kernel](https://github.com/NVIDIA/tilus/blob/4597cd5ba3f24501ba411cefa61a76fd9d3ba2c8/examples/quantization/matmul_a16wx.py)
+的`QuantizedMatmulChangeLayout`负责权重预排；主循环为
+`load_shared → view(lowbit) → cast(FP16/BF16) → ×group_scale → dot`，
+scale以`[K/group_size,N]`存放并参与异步流水线。
+[cast emitter](https://github.com/NVIDIA/tilus/blob/4597cd5ba3f24501ba411cefa61a76fd9d3ba2c8/python/tilus/backends/emitters/cast.py)
+使用LOP3/PRMT和向量数值修正，例如一次处理8个INT4；它没有提供本项目HiF4→Q4的同款数值转换。
+
+| 可借鉴思想 | 与当前实现的关系 | 本轮处理 |
+|---|---|---|
+| 按MMA线程/元素所有权预打包 | 已有group-major、CuTe fragment和swizzled shared；v85/v86消费者预排改LDS.128已无收益 | 不重复该候选；只有发现可删除的实际重排/搬运才另做实验 |
+| 寄存器内成组位操作，避免逐元素解包 | v118 NVFP4、v123 FP6已有；v138将HiF4 micro8/micro4共享字段纳入打包转换 | v138设计在本次阅读前已完成，不能把其收益追溯归因于Tilus；共同原则提供交叉验证 |
+| 显式布局、内存层级和向量搬运 | 已有cp.async、寄存器partial、分阶段shared供数 | 审计实际SASS及生命周期，不把已有技术算成新优化 |
+
+论文§9.4的prefill使用量化权重解码至FP16后的标准FP16 GEMM；图14也显示大batch收益与decode不同。
+其主要低比特性能结论不能外推为本项目4096³双原生INT4的加速承诺。
+本项目保留独立G128 scale、两路原生INT4、FP32输出与现有计时，不通过换FP16/INT8路径宣称达标。
+截至本次源码核对，没有新增“Tilus带来的GEMM加速”测量结论。
+
+### 本次补查：HiFloat4 与新版 Marlin 的多级 scale
+
+[HiFloat4 官方 GPU 源码，固定提交 6d937b6](https://github.com/global-computing-consortium/HiFloat4/blob/6d937b6fcf34f63b8fc563bd72e3aea0f44a46b4/hif4_gpu/quant_cy/base/cusrc/hifxg_quant_cuda.cu)
+的 `hifx_quant_cuda_inner` 先计算分层块参数，再按8元素/4元素的共享范围处理数据，
+返回的是模拟量化后的浮点结果。README 的 GPU 示例随后调用普通 `torch.nn.functional.linear`。
+**这是量化/反量化参考，不是可以直接移植的原生 HiF4 Tensor Core GEMM。**
+本项目保留已确认的 G128 实验变体，不改成参考实现的默认分组。
+
+[vLLM Marlin dequant.h，固定提交 87d9996](https://github.com/vllm-project/vllm/blob/87d9996abe7ae0173fa8c1b6ccc2411041bcac81/csrc/libtorch_stable/quantization/marlin/dequant.h)
+将低比特解包表示为打包位操作加数值修正；FP4路径可把常量指数修正合并到后续 scale。
+可借鉴的是**按字段共享范围复用元数据、保持打包形式、将固定修正并入已有步骤**，
+而非照搬其FP16/FP8 MMA或更改本实验的两路原生INT4。
+
+据此选择本项目独立 v138：保持 v123 FP6激活转换、v78 GEMM、G128 E6M2 scale和溢出guard不变，
+只将HiF4权重的逐元素RNE替换为八nibble并行RNE；micro8/micro4各字节按16元素向量复用，
+用标量DP4A计算精确平方和。它是本项目针对既有格式重新推导的代码，不是复制开源kernel，
+也不是新的GEMM调度方案。与此前NVFP4/FP6打包转换不同，必须同时保留micro8/micro4两级局部指数。
+编译和性能结果另见[本轮报告](o8_hif4_packed_conversion_20261008.md)。
+
 |问题|在本项目中怎样核对|不能据此宣称什么|
 |scale 是否随 K 变化|检查 `S_A[row,g]`、`S_W[col,g]` 的实际索引与消费点|不能把仅 epilogue scale 的 GEMM 当成同类性能上界|
 |加载与计算是否重叠|对照 cp.async、stage 最后一次读取、barrier 与寄存器后处理|Hopper 的 TMA/WGMMA 方案不能原样用于 A100|
@@ -153,12 +202,14 @@ v63 已完成编译、正确性与四样本初筛：虽然 spill 降低，但三
 
 当前实现**已经有** G128-major payload/scale、cp.async、swizzled shared layout、寄存器 partial、
 部分流式 fragment 和向量转换，不应把这些成熟做法再次包装为新候选。
-下一步先对照 DeepGEMM/CUTLASS 的“scale读取—MMA—stage释放—缩放累加”边界，
-检查是否能在不增加大批常驻寄存器的情况下，让搬运/后处理重叠得更好。
-这是待证实方向，不是已经找到的确定收益；已失败的 producer warp、整批预取挪动等不重复测试。
+截至v137，分段拷贝、提前读取、扩大tile、增加warp、系数预排、分离缩放、high/low拆链等
+已有编译或完整配对否定证据；不能再次笼统地以“借鉴开源流水线”为名重复测试。
+当前最佳GEMM已用带guard的全K整数累加，不能继续把旧版逐G128 FP32 FMA链当作它的主瓶颈。
+先查台账及当前NCU，再决定是否存在确实不同、值得投入的机制。
 
 只选择一个能明确减少动态工作或缩短真实等待的新差异：先检查 SASS、寄存器和同步安全，
-再进行少量配对初筛；有收益才扩大24样本、MSE和四模式验证。
+直接按当前要求进行24样本×3轮配对、MSE和相关计时验证，不再做小规模性能初筛。
+小规模正确性、边界和sanitizer检查不属于性能初筛。
 保留独立 G128 scale、两路原生 INT4、FP32输出与原计时口径，不修改源量化来换取虚假加速。
 
 补充：[LiquidGEMM 论文](https://arxiv.org/html/2509.01229v1)讨论 load/dequant/MMA 重叠，

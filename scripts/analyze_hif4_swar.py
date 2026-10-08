@@ -33,6 +33,8 @@ def analyze(directory):
             raise ValueError('new/old output differs')
         if row['mse_vs_paired_fp16']!=index[row['sample_id'],'compute_only',0,0]['mse_vs_paired_fp16']:
             raise ValueError('paired FP16 MSE changed')
+        if row['guard']!=index[row['sample_id'],'compute_only',0,0]['guard'] or row['guard']['invalid_ctas']:
+            raise ValueError('guard changed between policies/modes or invalid real input')
         if (row['modified_stage']!='weight_payload_decode_and_exact_square_sum_only' or
             row['activation_preparation_implementation']!='v123_packed_FP6' or
             set(row['raw_ms'])!=set(STAGES[row['mode']])):
@@ -63,6 +65,7 @@ def analyze(directory):
     if {r['resources']['kernel_symbol'] for r in rows}!={'adangel_roof_o78_eight_chain_candidate'}:
         raise ValueError('identical actual v78 GEMM required')
     errors=[index[s,'compute_only',0,0]['mse_vs_paired_fp16'] for s in ids]
+    guards={s:index[s,'compute_only',0,0]['guard'] for s in ids}
     snapshots=list(map(json.loads,(directory/'gpu_snapshots.jsonl').read_text().splitlines()))
     clocks=[int(x.group(1)) for r in snapshots for x in re.finditer(r'(\d+)\s+MHz',r['gpu'])]
     if len(snapshots)!=72 or len(clocks)!=72:raise ValueError('incomplete GPU snapshots')
@@ -76,6 +79,11 @@ def analyze(directory):
         stages=records,gpu_sampled_sm_clock_MHz=dict(min=min(clocks),max=max(clocks)),
         conversion_compile_audit=receipt['audit'],GEMM_speedup_claim=False,
         all_real_integer_path=all(r['guard']['fallback_ctas']==r['guard']['invalid_ctas']==0 for r in rows),
+        guard_summary=dict(total_ctas_once_per_sample=sum(g['ctas'] for g in guards.values()),
+            integer_ctas_once_per_sample=sum(g['integer_ctas'] for g in guards.values()),
+            fallback_ctas_once_per_sample=sum(g['fallback_ctas'] for g in guards.values()),
+            fallback_samples={s:g['fallback_ctas'] for s,g in guards.items() if g['fallback_ctas']},
+            same_guard_all_policies_modes_rounds=True),
         results_sha256=hashlib.sha256((directory/'results.jsonl').read_bytes()).hexdigest())
 
 
