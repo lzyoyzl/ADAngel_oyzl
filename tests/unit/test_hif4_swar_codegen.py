@@ -82,6 +82,6 @@ def test_runtime_contract_and_candidate_scope():
         assert c['stage_timing_inner_repeats']['total']==(100 if mode=='conversion_only' else 1)
     runtime=(ROOT/'scripts/benchmark_o8_hif4_swar.py').read_text()
     assert 'self.handles[0]=self.handles[1]' in runtime
-    assert "for key in ('a','as','w','ws')" in runtime
+    assert 'for key in case.expected_payload' in runtime
     assert "for key in ('asq','wsq')" in runtime
     assert 'no small performance screen' in runtime

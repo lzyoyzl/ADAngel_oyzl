@@ -145,7 +145,16 @@ extern "C" int roof_hif4_swar_resources(int* values) {
 def audit(directory):
     before=(BASELINE/'prepare.sass').read_text();after=(directory/'prepare.sass').read_text()
     old,new=entries(before),entries(after)
-    comparison=compare(before,after,'|'.join('^'+re.escape(s)+'$' for s in old))
+    pattern='|'.join('^'+re.escape(s)+'$' for s in old)
+    raw_comparison=compare(before,after,pattern)
+    # nvcc embeds the TU name/hash in this anonymous test-kernel symbol.
+    # Compare all its actual instruction words, not just the stable kernels;
+    # normalize ONLY this verified one-to-one symbol, never instruction data.
+    probe_suffix='adangel_nv6_swar_exhaustiveEP5uint4'
+    lhs=[s for s in old if s.endswith(probe_suffix)]
+    rhs=[s for s in new if s.endswith(probe_suffix)]
+    if len(lhs)!=1 or len(rhs)!=1:raise ValueError('unique retained FP6 test entry required')
+    comparison=compare(before,after.replace(rhs[0],lhs[0]),pattern)
     def find(rows,name):
         found=[(s,e) for s,e in rows.items() if name in s and 'GroupedSourceKindE2E' in s]
         if len(found)!=1:raise ValueError('one HiF4 entry required: '+name)
@@ -174,6 +183,7 @@ def audit(directory):
     gate=(comparison['passed'] and residency and b['stack']==b['local']==local_count==0 and
           b['shared']==256 and barriers==1 and improvement>=.05 and dots==4)
     return dict(scope='HiF4_conversion_compile_gate_not_latency',old_controls=comparison,
+        raw_symbol_comparison=raw_comparison,anonymous_probe_symbol_mapping={rhs[0]:lhs[0]},
         control=dict(symbol=old_symbol,**a,**old_entry),candidate=dict(symbol=symbol,**b,**new_entry),
         static_instruction_reduction_fraction=improvement,local_instructions=local_count,
         scalar_DP4A_instructions=dots,cta_barriers=barriers,runtime_resources=runtime,

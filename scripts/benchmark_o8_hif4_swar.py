@@ -71,7 +71,7 @@ class Driver(eight.Driver):
             case.a_multiplier,case.w_multiplier,warmup,repeats,inner,
             torch.cuda.current_stream().cuda_stream,values))
         # Entire payloads/scales/norms checked outside measured intervals.
-        for key in ('a','as','w','ws'):
+        for key in case.expected_payload:
             if not torch.equal(case.state[key].view(torch.uint8),case.expected_payload[key].view(torch.uint8)):
                 raise ValueError('packed payload/scale mismatch: '+key)
         for key in ('asq','wsq'):
@@ -108,7 +108,7 @@ def main():
         if flag not in sys.argv:sys.argv.extend([flag,value])
     if '--full-modes' not in sys.argv:sys.argv.append('--full-modes')
     if '--cubins' not in sys.argv:sys.argv.extend(['--cubins','reports/o378_roof_v78_codegen'])
-    paired_main(driver_cls=Driver,default_gpu_build=Path('reports/o378_roof_v138_codegen'),
+    paired_main(driver_cls=Driver,default_gpu_build=Path('reports/o378_roof_v138_codegen_r2'),
         labels=('v73_HiF4_same_v123_A_v78_GEMM','v138_HiF4_same_v123_A_v78_GEMM'),
         experiment='HiF4_packed_conversion_not_GEMM',banner='HIF4 PACKED SWAR',
         contract=timing_contract,description=__doc__,variants=('o8',),validation_fn=validate)
