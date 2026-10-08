@@ -176,7 +176,7 @@ def main(*, driver_cls=Driver, default_gpu_build=Path('reports/o378_roof_v69_cod
          labels=('v67_fullK_same_v69_preparation', 'v72_coefficient_first_same_v69_preparation'),
          experiment='coefficient_first', banner='COEFFICIENT',
          contract=fused.timing_contract, description=__doc__, variants=('o7', 'o8'),
-         validation_fn=None):
+         validation_fn=None, sample_start=0):
     """Shared paired protocol; defaults preserve the original v72 experiment."""
     p = argparse.ArgumentParser(description=description)
     if not variants or len(set(variants)) != len(variants) or not set(variants) <= {'o7', 'o8'}:
@@ -198,6 +198,8 @@ def main(*, driver_cls=Driver, default_gpu_build=Path('reports/o378_roof_v69_cod
     args = p.parse_args()
     if args.output.exists() or not args.output.resolve().is_relative_to(ROOT) or min(args.rounds, args.repeats) < 1 or args.inner < 2 or args.warmup < 0:
         p.error('fresh repository output and valid counts required')
+    if not isinstance(sample_start, int) or not 0 <= sample_start < args.samples:
+        p.error('invalid recovery sample offset')
     import torch
     from adangel import _sm80 as native
     from adangel.quantization import mixed_formats as mf
@@ -235,9 +237,12 @@ def main(*, driver_cls=Driver, default_gpu_build=Path('reports/o378_roof_v69_cod
             control=labels[0], candidate=labels[1],
             source_quantization='original_FP16_direct_source_quantization_excluded',
             timing_scope='all_four_modes' if args.full_modes else 'cached_compute_only_not_E2E', no_filtering=True,
-            args={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}))
+            args={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
+            sample_start=sample_start))
         rows = []
         for si, entry in enumerate(manifest['samples'][:args.samples]):
+            if si < sample_start:
+                continue
             re = raw_index[entry['sample_id']]
             path, rp = args.data / entry['file'], args.raw_data / re['file']
             assert sha256_file(path) == entry['sha256'] and sha256_file(rp) == re['sha256']
