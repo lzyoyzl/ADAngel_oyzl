@@ -45,3 +45,33 @@ def test_original_reference_and_audits_preserved():
     assert 'return super().run(case, policy' in source
     assert "SYMBOLS[policy]" in source
     assert 'full_v99_source_identity_equal=True' in source
+
+
+@pytest.mark.parametrize('variant', ['o7', 'o8'])
+@pytest.mark.parametrize('mode', ['conversion_only','compute_only','cold','steady_state'])
+def test_analyzer_accepts_exact_route_and_rejects_false_identity(variant, mode):
+    from analyze_o78_best_combo import validate_row
+    from analyze_mx8_warp_lut import STAGES
+    from benchmark_o78_best_combo import SYMBOLS, PREPARATIONS
+    import copy
+    name, selector = route(variant, 1)
+    row = dict(variant=variant, candidate=1, mode=mode, bitwise_equal_v67=True,
+        MSE_regression_passed=True, finite_fp32=True, metadata_exact=True,
+        mse_vs_v67=0, max_abs_vs_v67=0,
+        resources=dict(kernel_symbol=SYMBOLS[1], preparation=PREPARATIONS[variant],
+            conversion_host_function=name, conversion_selector=selector),
+        raw_ms={stage:[1.0]*200 for stage in STAGES[mode]},
+        stage_summaries={stage:dict(median_ms=1.0,cv_percent=0.0) for stage in STAGES[mode]},
+        **timing_contract(variant, mode, 100))
+    validate_row(row, variant)
+    for field, value in (('gemm_cufunction_identical_between_policies',True),
+                         ('weight_preparation_identical',False), ('mse_vs_v67',1e-10)):
+        bad = copy.deepcopy(row); bad[field] = value
+        with pytest.raises(ValueError):
+            validate_row(bad, variant)
+    bad = copy.deepcopy(row); bad['resources']['conversion_selector'] = 1-selector
+    with pytest.raises(ValueError):
+        validate_row(bad, variant)
+    bad = copy.deepcopy(row); bad['raw_ms'][STAGES[mode][0]].pop()
+    with pytest.raises(ValueError):
+        validate_row(bad, variant)
