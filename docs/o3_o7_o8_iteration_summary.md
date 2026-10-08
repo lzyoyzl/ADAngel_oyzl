@@ -1,5 +1,17 @@
 # O3 / O7 / O8 优化迭代简报
 
+## v139：O7既有转换组合验收，转换+1.09%，steady+0.19%，不是新GEMM优化
+
+补齐v118 packed NVFP4权重和v106 MXFP8 lookup激活的联合验证；直接对照更强的v118 W＋原A。
+复用v126冻结库的control，不执行其未过门槛的packed-MX8候选；不新增CUDA编译。
+双方同一v78 GEMM；24×3四模式：转换total0.063201→0.062459ms，配对吞吐+1.09%；
+steady0.528384→0.527360ms，+0.19%；Cold点估计+0.18%但95%区间触及1，未确认；GEMM0新增收益。
+576条输出与scale/payload/norm/guard逐位一致，vsO5 MSE median/mean仍0.005536172273439442/0.005053635851002639。
+32合成/9边界/131072编码、定向row-conversion memcheck/synccheck通过；不是完整GEMM安全复测。
+转换total双方0/72 CV超标；Cold total2/0，steady1/1；Cold-W分项53/58全部保留，不能称全部阶段严格稳定。
+保留O7独立转换组合，不改默认/扩展/5090，不继续相邻查表变体，GEMM主目标未完成。
+[v139全部结果、取舍与证据](o7_conversion_integration_20261008.md)。
+
 ## v138：O8 HiF4权重打包转换，Cold配对吞吐提升2.98%
 
 按micro8/micro4共享字段，32-bit word并行处理8个Q4 RNE，标量DP4A精确平方和；
