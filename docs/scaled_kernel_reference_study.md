@@ -215,3 +215,56 @@ v63 已完成编译、正确性与四样本初筛：虽然 spill 降低，但三
 补充：[LiquidGEMM 论文](https://arxiv.org/html/2509.01229v1)讨论 load/dequant/MMA 重叠，
 但依赖 Hopper 与专门的量化方法。当前只核对论文，未确认作者的公开 kernel 仓库；
 不把第三方重实现称为作者官方源码，也不直接采用其量化变更。
+
+## 2026-10-08：收紧通用优化方向，并复核真实的加权交错
+
+仍在O3/O7/O8代表格式上优化，不另建通用编译框架。新机制应由位宽、分组scale和
+数据依赖决定，而非某个格式的码值、这24组数据的特殊分布或某个编译器的偶然指令选择。
+必要的格式解码和ISA适配不等于应当消除所有硬件相关代码。
+
+补查两篇原始论文后，没有找到可以直接替换本实验的同语义kernel：
+
+|参考|可以借鉴的原则|本轮不能直接采用的部分|
+|---|---|---|
+|[APEX4 §3.2、§4](https://arxiv.org/html/2606.08761v1)|把scale计算需求和Tensor Core供给一起建模|混合粒度方案改变组量化；不能把G128改成per-channel来声称本实验加速|
+|[LiquidGEMM §5.1–5.3](https://arxiv.org/html/2509.01229v1)|避免为了流水化而新增寄存器↔shared往返；保留consumer内的数据复用|Hopper/WGMMA与W4→INT8反量化路径不同；不能替换我们的两路原生INT4|
+
+**进一步检查发现：当前最佳机器码已经交错了不同输出片段的MMA与整数加权。**
+不能因为源码先写MMA、后写scale，就把二者描述成整个warp完全分离的两个阶段。
+同一输出的RAW依赖仍存在；下面也不证明硬件上这些指令实际同时执行。
+
+新增`inspect_scaled_partial_overlap.py`，沿最后一次MMA的四个INT32结果，经过行因子乘法，
+追踪到最终accumulator的IMAD更新。每个G128必须恰好找到16条链×4个值=64次更新，
+丢失、重复或无法解析的数据流立即报错。复用v96/v97归档的同构建控制与候选，不重新编译。
+
+|机器码|旧半tile的32次加权更新中，排在下一半tile首条MMA之后的数量|旧加权排空前已排入的下一半tile MMA数|
+|---|---:|---:|
+|O3 当前v89控制|12|9|
+|O3 v96 / v97|12 / 12|9 / 9|
+|O7/O8 当前v78控制|16|7|
+|O7/O8 v96|10|2|
+|O7/O8 v97|0|0|
+
+这是**静态指令交错计数，不是周期数、硬件in-flight数量或性能百分比**。
+旧审计的“第9条链从第33条MMA开始”只回答MMA链排序，不能单独回答scale是否被交错。
+补充逐值追踪后，v96没有增强该交错，v97在O7/O8反而完全排空旧加权再开始新片段。
+因此不以“更早开始下一片段”之名重跑它们，也不因v97静态指令少6条便升级为性能候选。
+
+这次结论进一步缩小下一候选的范围：必须证明**比现有交错更强的依赖安排，或实际减少必要工作**，
+同时核算寄存器、供数和同步代价。已经有的cp.async、八链与scale/MMA交错不能再次算作新优化；
+增加producer、shared partial交接、扩大tile等已测负结果也不因论文采用类似名字就重做。
+目前没有足够证据承诺某个新增通用候选会提速；不为凑轮次启动无依据的GPU扫描。
+
+这是一轮诊断与筛选工具改进，**不是新增kernel性能迭代**，没有新MSE、Event或NCU数据。
+O3 v89、O7/O8 v78及最佳转换组合、正式默认与5090保持不变，原GEMM目标仍未完成。
+可重放JSON见[evidence](evidence/o378_scale_overlap_reaudit_20261008/)，输入文件SHA写入各JSON。
+回放命令示例：
+
+```bash
+python scripts/inspect_scaled_partial_overlap.py \
+  --codegen docs/evidence/a100_o378_roof_v96/reports/o378_roof_v96_o78_codegen/codegen.json \
+  --sass docs/evidence/a100_o378_roof_v96/reports/o378_roof_v96_o78_codegen/o78_interleaved_tail.sass \
+  --symbols adangel_roof_o78_eight_chain_candidate adangel_roof_o78_interleaved_tail_candidate \
+  --output reports/scale_overlap_fresh/o78.json
+python -m pytest tests/unit/test_scaled_partial_overlap.py tests/unit/test_interleaved_tail_probe.py -q
+```
