@@ -1,0 +1,2129 @@
+{
+  "runs": {
+    "o378_roof_v141_paired": {
+      "scope": "v141_full24_unfiltered_paired_replay_not_cross_run_speedup",
+      "records": 288,
+      "raw_event_values_including_duplicate_compute_total": 115200,
+      "samples": 24,
+      "variants": [
+        "o7",
+        "o8"
+      ],
+      "modes": [
+        "compute_only"
+      ],
+      "table": [
+        {
+          "variant": "o7",
+          "mode": "compute_only",
+          "old_median_ms": 0.4403199851512909,
+          "new_median_ms": 0.4497919976711273,
+          "paired_speedup": 0.9811673991168932,
+          "paired_throughput_change_percent": -1.8832600883106787,
+          "paired_latency_reduction_percent": -1.9194075241449227,
+          "paired_speedup_ci95": [
+            0.9789293644345182,
+            0.9818181758049938
+          ],
+          "round_paired_speedups": [
+            0.981651370022761,
+            0.980554013140448,
+            0.9784779497636977
+          ],
+          "old_cv_failed": 72,
+          "new_cv_failed": 72,
+          "old_any_stage_cv_failed": 72,
+          "new_any_stage_cv_failed": 72,
+          "old_median_cv_percent": 54.115486095598826,
+          "new_median_cv_percent": 53.40712914080032,
+          "records_each": 72,
+          "median_mse": 0.005536172273439442,
+          "mean_mse": 0.005053635851002639,
+          "output_bitwise_unchanged": true,
+          "median_speedup_ci_above_one": false,
+          "all_record_CV_below3": false
+        },
+        {
+          "variant": "o8",
+          "mode": "compute_only",
+          "old_median_ms": 0.4423680007457733,
+          "new_median_ms": 0.45158401131629944,
+          "paired_speedup": 0.9801801359349649,
+          "paired_throughput_change_percent": -1.9819864065035109,
+          "paired_latency_reduction_percent": -2.022063428793075,
+          "paired_speedup_ci95": [
+            0.97910218629753,
+            0.9824910611902108
+          ],
+          "round_paired_speedups": [
+            0.9811427556659604,
+            0.9820613309161659,
+            0.9820201958517103
+          ],
+          "old_cv_failed": 72,
+          "new_cv_failed": 72,
+          "old_any_stage_cv_failed": 72,
+          "new_any_stage_cv_failed": 72,
+          "old_median_cv_percent": 53.922997677579914,
+          "new_median_cv_percent": 53.513687794009016,
+          "records_each": 72,
+          "median_mse": 0.004411084910985704,
+          "mean_mse": 0.00438137929907354,
+          "output_bitwise_unchanged": true,
+          "median_speedup_ci_above_one": false,
+          "all_record_CV_below3": false
+        }
+      ],
+      "guard_summary": [
+        {
+          "sample_id": "layer_00_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2036,
+          "fallback_ctas": 12,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        }
+      ],
+      "production_default_changed": false,
+      "conversion_modified": false,
+      "new_conversion_gain_claim": false,
+      "no_filtering": true,
+      "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462"
+    },
+    "o378_roof_v141_paired_r2": {
+      "scope": "v141_full24_unfiltered_paired_replay_not_cross_run_speedup",
+      "records": 288,
+      "raw_event_values_including_duplicate_compute_total": 115200,
+      "samples": 24,
+      "variants": [
+        "o7",
+        "o8"
+      ],
+      "modes": [
+        "compute_only"
+      ],
+      "table": [
+        {
+          "variant": "o7",
+          "mode": "compute_only",
+          "old_median_ms": 0.4413439929485321,
+          "new_median_ms": 0.4505600035190582,
+          "paired_speedup": 0.9804718945905944,
+          "paired_throughput_change_percent": -1.9528105409405638,
+          "paired_latency_reduction_percent": -1.991704761466906,
+          "paired_speedup_ci95": [
+            0.9775280502056104,
+            0.9818181758049938
+          ],
+          "round_paired_speedups": [
+            0.9795454312443508,
+            0.9795686225413964,
+            0.9817974674191015
+          ],
+          "old_cv_failed": 72,
+          "new_cv_failed": 72,
+          "old_any_stage_cv_failed": 72,
+          "new_any_stage_cv_failed": 72,
+          "old_median_cv_percent": 54.24652971990315,
+          "new_median_cv_percent": 53.01995532201268,
+          "records_each": 72,
+          "median_mse": 0.005536172273439442,
+          "mean_mse": 0.005053635851002639,
+          "output_bitwise_unchanged": true,
+          "median_speedup_ci_above_one": false,
+          "all_record_CV_below3": false
+        },
+        {
+          "variant": "o8",
+          "mode": "compute_only",
+          "old_median_ms": 0.4433920085430145,
+          "new_median_ms": 0.45209600031375885,
+          "paired_speedup": 0.9806236200012216,
+          "paired_throughput_change_percent": -1.9376379998778392,
+          "paired_latency_reduction_percent": -1.975924259172368,
+          "paired_speedup_ci95": [
+            0.9775784999167669,
+            0.9824551320728842
+          ],
+          "round_paired_speedups": [
+            0.9818594047441882,
+            0.9817347729138775,
+            0.9777272833971388
+          ],
+          "old_cv_failed": 72,
+          "new_cv_failed": 72,
+          "old_any_stage_cv_failed": 72,
+          "new_any_stage_cv_failed": 72,
+          "old_median_cv_percent": 54.577398342986385,
+          "new_median_cv_percent": 53.2736911041024,
+          "records_each": 72,
+          "median_mse": 0.004411084910985704,
+          "mean_mse": 0.00438137929907354,
+          "output_bitwise_unchanged": true,
+          "median_speedup_ci_above_one": false,
+          "all_record_CV_below3": false
+        }
+      ],
+      "guard_summary": [
+        {
+          "sample_id": "layer_00_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_00_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_06_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_12_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_18_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2036,
+          "fallback_ctas": 12,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_24_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_k_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_k_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_o_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_o_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_q_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_q_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_v_proj",
+          "variant": "o7",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        },
+        {
+          "sample_id": "layer_31_v_proj",
+          "variant": "o8",
+          "metadata_exact": true,
+          "integer_ctas": 2048,
+          "fallback_ctas": 0,
+          "invalid_ctas": 0,
+          "ctas": 2048,
+          "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+          "additional_fp32_epilogue_range_guard": true,
+          "epilogue_guard_extra_fallback_ctas": 0
+        }
+      ],
+      "production_default_changed": false,
+      "conversion_modified": false,
+      "new_conversion_gain_claim": false,
+      "no_filtering": true,
+      "extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462"
+    }
+  },
+  "scale_overlap": {
+    "adangel_roof_o78_eight_chain_candidate": {
+      "symbol": "adangel_roof_o78_eight_chain_candidate",
+      "scaled_accumulator_updates": 64,
+      "old_slice_updates_before_next_mma": 16,
+      "old_slice_updates_after_next_mma": 16,
+      "next_slice_mma_before_old_scale_drains": 7,
+      "first_next_mma_pc": "0x1830",
+      "last_old_scale_pc": "0x1a60",
+      "integer_loop_instructions": 383,
+      "updates": [
+        {
+          "pc": "0x1390",
+          "instruction_index": 147,
+          "chain": 0,
+          "value": 0
+        },
+        {
+          "pc": "0x13c0",
+          "instruction_index": 150,
+          "chain": 0,
+          "value": 1
+        },
+        {
+          "pc": "0x1440",
+          "instruction_index": 158,
+          "chain": 1,
+          "value": 2
+        },
+        {
+          "pc": "0x1450",
+          "instruction_index": 159,
+          "chain": 1,
+          "value": 3
+        },
+        {
+          "pc": "0x14a0",
+          "instruction_index": 164,
+          "chain": 0,
+          "value": 2
+        },
+        {
+          "pc": "0x14b0",
+          "instruction_index": 165,
+          "chain": 0,
+          "value": 3
+        },
+        {
+          "pc": "0x1550",
+          "instruction_index": 175,
+          "chain": 1,
+          "value": 0
+        },
+        {
+          "pc": "0x15a0",
+          "instruction_index": 180,
+          "chain": 1,
+          "value": 1
+        },
+        {
+          "pc": "0x1620",
+          "instruction_index": 188,
+          "chain": 2,
+          "value": 2
+        },
+        {
+          "pc": "0x1630",
+          "instruction_index": 189,
+          "chain": 3,
+          "value": 0
+        },
+        {
+          "pc": "0x1670",
+          "instruction_index": 193,
+          "chain": 3,
+          "value": 2
+        },
+        {
+          "pc": "0x16e0",
+          "instruction_index": 200,
+          "chain": 2,
+          "value": 3
+        },
+        {
+          "pc": "0x1710",
+          "instruction_index": 203,
+          "chain": 3,
+          "value": 1
+        },
+        {
+          "pc": "0x1730",
+          "instruction_index": 205,
+          "chain": 3,
+          "value": 3
+        },
+        {
+          "pc": "0x1740",
+          "instruction_index": 206,
+          "chain": 2,
+          "value": 0
+        },
+        {
+          "pc": "0x1760",
+          "instruction_index": 208,
+          "chain": 2,
+          "value": 1
+        },
+        {
+          "pc": "0x1890",
+          "instruction_index": 227,
+          "chain": 4,
+          "value": 0
+        },
+        {
+          "pc": "0x18a0",
+          "instruction_index": 228,
+          "chain": 4,
+          "value": 2
+        },
+        {
+          "pc": "0x18b0",
+          "instruction_index": 229,
+          "chain": 5,
+          "value": 0
+        },
+        {
+          "pc": "0x18c0",
+          "instruction_index": 230,
+          "chain": 5,
+          "value": 2
+        },
+        {
+          "pc": "0x18d0",
+          "instruction_index": 231,
+          "chain": 4,
+          "value": 1
+        },
+        {
+          "pc": "0x18e0",
+          "instruction_index": 232,
+          "chain": 4,
+          "value": 3
+        },
+        {
+          "pc": "0x18f0",
+          "instruction_index": 233,
+          "chain": 5,
+          "value": 1
+        },
+        {
+          "pc": "0x1910",
+          "instruction_index": 235,
+          "chain": 5,
+          "value": 3
+        },
+        {
+          "pc": "0x1980",
+          "instruction_index": 242,
+          "chain": 6,
+          "value": 0
+        },
+        {
+          "pc": "0x1990",
+          "instruction_index": 243,
+          "chain": 6,
+          "value": 2
+        },
+        {
+          "pc": "0x19b0",
+          "instruction_index": 245,
+          "chain": 7,
+          "value": 0
+        },
+        {
+          "pc": "0x19c0",
+          "instruction_index": 246,
+          "chain": 7,
+          "value": 2
+        },
+        {
+          "pc": "0x1a20",
+          "instruction_index": 252,
+          "chain": 6,
+          "value": 1
+        },
+        {
+          "pc": "0x1a30",
+          "instruction_index": 253,
+          "chain": 6,
+          "value": 3
+        },
+        {
+          "pc": "0x1a50",
+          "instruction_index": 255,
+          "chain": 7,
+          "value": 1
+        },
+        {
+          "pc": "0x1a60",
+          "instruction_index": 256,
+          "chain": 7,
+          "value": 3
+        },
+        {
+          "pc": "0x1de0",
+          "instruction_index": 312,
+          "chain": 11,
+          "value": 0
+        },
+        {
+          "pc": "0x1e10",
+          "instruction_index": 315,
+          "chain": 11,
+          "value": 2
+        },
+        {
+          "pc": "0x1e20",
+          "instruction_index": 316,
+          "chain": 11,
+          "value": 1
+        },
+        {
+          "pc": "0x1e30",
+          "instruction_index": 317,
+          "chain": 11,
+          "value": 3
+        },
+        {
+          "pc": "0x1fa0",
+          "instruction_index": 340,
+          "chain": 13,
+          "value": 0
+        },
+        {
+          "pc": "0x2080",
+          "instruction_index": 354,
+          "chain": 13,
+          "value": 2
+        },
+        {
+          "pc": "0x2090",
+          "instruction_index": 355,
+          "chain": 13,
+          "value": 1
+        },
+        {
+          "pc": "0x20a0",
+          "instruction_index": 356,
+          "chain": 13,
+          "value": 3
+        },
+        {
+          "pc": "0x20b0",
+          "instruction_index": 357,
+          "chain": 10,
+          "value": 0
+        },
+        {
+          "pc": "0x20c0",
+          "instruction_index": 358,
+          "chain": 10,
+          "value": 2
+        },
+        {
+          "pc": "0x20d0",
+          "instruction_index": 359,
+          "chain": 9,
+          "value": 0
+        },
+        {
+          "pc": "0x20e0",
+          "instruction_index": 360,
+          "chain": 9,
+          "value": 2
+        },
+        {
+          "pc": "0x20f0",
+          "instruction_index": 361,
+          "chain": 10,
+          "value": 1
+        },
+        {
+          "pc": "0x2100",
+          "instruction_index": 362,
+          "chain": 10,
+          "value": 3
+        },
+        {
+          "pc": "0x2110",
+          "instruction_index": 363,
+          "chain": 9,
+          "value": 1
+        },
+        {
+          "pc": "0x2120",
+          "instruction_index": 364,
+          "chain": 9,
+          "value": 3
+        },
+        {
+          "pc": "0x2130",
+          "instruction_index": 365,
+          "chain": 8,
+          "value": 0
+        },
+        {
+          "pc": "0x2140",
+          "instruction_index": 366,
+          "chain": 8,
+          "value": 2
+        },
+        {
+          "pc": "0x2150",
+          "instruction_index": 367,
+          "chain": 14,
+          "value": 0
+        },
+        {
+          "pc": "0x2160",
+          "instruction_index": 368,
+          "chain": 14,
+          "value": 2
+        },
+        {
+          "pc": "0x2170",
+          "instruction_index": 369,
+          "chain": 8,
+          "value": 1
+        },
+        {
+          "pc": "0x2180",
+          "instruction_index": 370,
+          "chain": 8,
+          "value": 3
+        },
+        {
+          "pc": "0x2190",
+          "instruction_index": 371,
+          "chain": 14,
+          "value": 1
+        },
+        {
+          "pc": "0x21a0",
+          "instruction_index": 372,
+          "chain": 14,
+          "value": 3
+        },
+        {
+          "pc": "0x21b0",
+          "instruction_index": 373,
+          "chain": 12,
+          "value": 0
+        },
+        {
+          "pc": "0x21c0",
+          "instruction_index": 374,
+          "chain": 12,
+          "value": 2
+        },
+        {
+          "pc": "0x21d0",
+          "instruction_index": 375,
+          "chain": 15,
+          "value": 0
+        },
+        {
+          "pc": "0x21e0",
+          "instruction_index": 376,
+          "chain": 15,
+          "value": 2
+        },
+        {
+          "pc": "0x21f0",
+          "instruction_index": 377,
+          "chain": 12,
+          "value": 1
+        },
+        {
+          "pc": "0x2200",
+          "instruction_index": 378,
+          "chain": 12,
+          "value": 3
+        },
+        {
+          "pc": "0x2210",
+          "instruction_index": 379,
+          "chain": 15,
+          "value": 1
+        },
+        {
+          "pc": "0x2220",
+          "instruction_index": 380,
+          "chain": 15,
+          "value": 3
+        }
+      ],
+      "scope": "static interleaving only, not hardware overlap or measured speedup"
+    },
+    "adangel_roof_o78_recycled_coefficient_candidate": {
+      "symbol": "adangel_roof_o78_recycled_coefficient_candidate",
+      "scaled_accumulator_updates": 64,
+      "old_slice_updates_before_next_mma": 31,
+      "old_slice_updates_after_next_mma": 1,
+      "next_slice_mma_before_old_scale_drains": 1,
+      "first_next_mma_pc": "0x1960",
+      "last_old_scale_pc": "0x1970",
+      "integer_loop_instructions": 372,
+      "updates": [
+        {
+          "pc": "0x1300",
+          "instruction_index": 135,
+          "chain": 0,
+          "value": 0
+        },
+        {
+          "pc": "0x1320",
+          "instruction_index": 137,
+          "chain": 0,
+          "value": 1
+        },
+        {
+          "pc": "0x1330",
+          "instruction_index": 138,
+          "chain": 0,
+          "value": 2
+        },
+        {
+          "pc": "0x1370",
+          "instruction_index": 142,
+          "chain": 0,
+          "value": 3
+        },
+        {
+          "pc": "0x1390",
+          "instruction_index": 144,
+          "chain": 2,
+          "value": 0
+        },
+        {
+          "pc": "0x13c0",
+          "instruction_index": 147,
+          "chain": 2,
+          "value": 1
+        },
+        {
+          "pc": "0x13f0",
+          "instruction_index": 150,
+          "chain": 2,
+          "value": 2
+        },
+        {
+          "pc": "0x1420",
+          "instruction_index": 153,
+          "chain": 2,
+          "value": 3
+        },
+        {
+          "pc": "0x15d0",
+          "instruction_index": 180,
+          "chain": 1,
+          "value": 0
+        },
+        {
+          "pc": "0x15f0",
+          "instruction_index": 182,
+          "chain": 1,
+          "value": 1
+        },
+        {
+          "pc": "0x1630",
+          "instruction_index": 186,
+          "chain": 3,
+          "value": 0
+        },
+        {
+          "pc": "0x1660",
+          "instruction_index": 189,
+          "chain": 3,
+          "value": 1
+        },
+        {
+          "pc": "0x16a0",
+          "instruction_index": 193,
+          "chain": 1,
+          "value": 2
+        },
+        {
+          "pc": "0x16b0",
+          "instruction_index": 194,
+          "chain": 1,
+          "value": 3
+        },
+        {
+          "pc": "0x1700",
+          "instruction_index": 199,
+          "chain": 3,
+          "value": 2
+        },
+        {
+          "pc": "0x1710",
+          "instruction_index": 200,
+          "chain": 3,
+          "value": 3
+        },
+        {
+          "pc": "0x1750",
+          "instruction_index": 204,
+          "chain": 4,
+          "value": 0
+        },
+        {
+          "pc": "0x1780",
+          "instruction_index": 207,
+          "chain": 4,
+          "value": 1
+        },
+        {
+          "pc": "0x1790",
+          "instruction_index": 208,
+          "chain": 4,
+          "value": 3
+        },
+        {
+          "pc": "0x17c0",
+          "instruction_index": 211,
+          "chain": 4,
+          "value": 2
+        },
+        {
+          "pc": "0x17d0",
+          "instruction_index": 212,
+          "chain": 5,
+          "value": 0
+        },
+        {
+          "pc": "0x17f0",
+          "instruction_index": 214,
+          "chain": 5,
+          "value": 1
+        },
+        {
+          "pc": "0x1830",
+          "instruction_index": 218,
+          "chain": 5,
+          "value": 2
+        },
+        {
+          "pc": "0x1840",
+          "instruction_index": 219,
+          "chain": 6,
+          "value": 0
+        },
+        {
+          "pc": "0x1870",
+          "instruction_index": 222,
+          "chain": 6,
+          "value": 1
+        },
+        {
+          "pc": "0x1880",
+          "instruction_index": 223,
+          "chain": 6,
+          "value": 2
+        },
+        {
+          "pc": "0x18d0",
+          "instruction_index": 228,
+          "chain": 6,
+          "value": 3
+        },
+        {
+          "pc": "0x18e0",
+          "instruction_index": 229,
+          "chain": 5,
+          "value": 3
+        },
+        {
+          "pc": "0x18f0",
+          "instruction_index": 230,
+          "chain": 7,
+          "value": 0
+        },
+        {
+          "pc": "0x1910",
+          "instruction_index": 232,
+          "chain": 7,
+          "value": 1
+        },
+        {
+          "pc": "0x1950",
+          "instruction_index": 236,
+          "chain": 7,
+          "value": 2
+        },
+        {
+          "pc": "0x1970",
+          "instruction_index": 238,
+          "chain": 7,
+          "value": 3
+        },
+        {
+          "pc": "0x1d50",
+          "instruction_index": 300,
+          "chain": 8,
+          "value": 0
+        },
+        {
+          "pc": "0x1d60",
+          "instruction_index": 301,
+          "chain": 8,
+          "value": 1
+        },
+        {
+          "pc": "0x1db0",
+          "instruction_index": 306,
+          "chain": 8,
+          "value": 3
+        },
+        {
+          "pc": "0x1dd0",
+          "instruction_index": 308,
+          "chain": 8,
+          "value": 2
+        },
+        {
+          "pc": "0x1e40",
+          "instruction_index": 315,
+          "chain": 13,
+          "value": 3
+        },
+        {
+          "pc": "0x1e50",
+          "instruction_index": 316,
+          "chain": 13,
+          "value": 2
+        },
+        {
+          "pc": "0x1e90",
+          "instruction_index": 320,
+          "chain": 13,
+          "value": 1
+        },
+        {
+          "pc": "0x1ea0",
+          "instruction_index": 321,
+          "chain": 9,
+          "value": 1
+        },
+        {
+          "pc": "0x1eb0",
+          "instruction_index": 322,
+          "chain": 13,
+          "value": 0
+        },
+        {
+          "pc": "0x1ee0",
+          "instruction_index": 325,
+          "chain": 9,
+          "value": 0
+        },
+        {
+          "pc": "0x1f50",
+          "instruction_index": 332,
+          "chain": 12,
+          "value": 0
+        },
+        {
+          "pc": "0x1f60",
+          "instruction_index": 333,
+          "chain": 12,
+          "value": 3
+        },
+        {
+          "pc": "0x1f70",
+          "instruction_index": 334,
+          "chain": 12,
+          "value": 2
+        },
+        {
+          "pc": "0x1fa0",
+          "instruction_index": 337,
+          "chain": 12,
+          "value": 1
+        },
+        {
+          "pc": "0x1fd0",
+          "instruction_index": 340,
+          "chain": 10,
+          "value": 0
+        },
+        {
+          "pc": "0x1fe0",
+          "instruction_index": 341,
+          "chain": 10,
+          "value": 2
+        },
+        {
+          "pc": "0x1ff0",
+          "instruction_index": 342,
+          "chain": 10,
+          "value": 3
+        },
+        {
+          "pc": "0x2020",
+          "instruction_index": 345,
+          "chain": 10,
+          "value": 1
+        },
+        {
+          "pc": "0x2050",
+          "instruction_index": 348,
+          "chain": 14,
+          "value": 1
+        },
+        {
+          "pc": "0x2060",
+          "instruction_index": 349,
+          "chain": 14,
+          "value": 2
+        },
+        {
+          "pc": "0x2070",
+          "instruction_index": 350,
+          "chain": 14,
+          "value": 3
+        },
+        {
+          "pc": "0x20a0",
+          "instruction_index": 353,
+          "chain": 14,
+          "value": 0
+        },
+        {
+          "pc": "0x2110",
+          "instruction_index": 360,
+          "chain": 9,
+          "value": 2
+        },
+        {
+          "pc": "0x2120",
+          "instruction_index": 361,
+          "chain": 9,
+          "value": 3
+        },
+        {
+          "pc": "0x2130",
+          "instruction_index": 362,
+          "chain": 11,
+          "value": 0
+        },
+        {
+          "pc": "0x2140",
+          "instruction_index": 363,
+          "chain": 11,
+          "value": 1
+        },
+        {
+          "pc": "0x2150",
+          "instruction_index": 364,
+          "chain": 11,
+          "value": 2
+        },
+        {
+          "pc": "0x2160",
+          "instruction_index": 365,
+          "chain": 11,
+          "value": 3
+        },
+        {
+          "pc": "0x2170",
+          "instruction_index": 366,
+          "chain": 15,
+          "value": 0
+        },
+        {
+          "pc": "0x2180",
+          "instruction_index": 367,
+          "chain": 15,
+          "value": 1
+        },
+        {
+          "pc": "0x2190",
+          "instruction_index": 368,
+          "chain": 15,
+          "value": 2
+        },
+        {
+          "pc": "0x21a0",
+          "instruction_index": 369,
+          "chain": 15,
+          "value": 3
+        }
+      ],
+      "scope": "static interleaving only, not hardware overlap or measured speedup"
+    }
+  },
+  "candidate_adopted": false,
+  "production_default_changed": false,
+  "no_new_conversion_or_end_to_end_claim": true,
+  "compile_source_commit": "5a1ac427e4bf7ce9434be2afea8b68120435247c",
+  "runtime_source_commit": "47f848ea91ca892d8e79a76a7e06c3d7712dd8f9",
+  "formal_extension_sha256": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "limited_sanitizers": {
+    "memcheck": "0 errors",
+    "synccheck": "0 errors",
+    "scope": "candidate_entry_filter_small_MN_K4096_not_full4096cubed"
+  },
+  "synthetic_checks": 64,
+  "edge_checks": 12
+}

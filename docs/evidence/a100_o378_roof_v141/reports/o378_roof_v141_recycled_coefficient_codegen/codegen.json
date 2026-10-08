@@ -1,0 +1,1338 @@
+{
+  "scope": "v141_bounded_coefficient_register_handoff_compile_only",
+  "source_commit": "5a1ac427e4bf7ce9434be2afea8b68120435247c",
+  "sources": {
+    "csrc/sm80/o78_fullk_integer_probe.cuh": "8e7e2bd5718fa7bf637a67abbd89347ebe99863c81daf1da03e962b1174e11cc",
+    "csrc/sm80/o78_unsigned_payload_candidate.cuh": "899819e7d2eeb19acdca23cb9326846d8c674763fc57bc62e58a8cf8ee830a25",
+    "csrc/sm80/roof_o78_eight_chain_probe.cu": "c4fd0001f7fbd02f4756794bed85a125d949e9135ac28f16a2f24e966ef2bcd5",
+    "csrc/sm80/roof_o78_fullk_driver.cpp": "36422a6e0d37269ee0a324c53a3488c874bbee1b4c490da2e3b7b59628a5cd0b",
+    "csrc/sm80/roof_o78_fullk_probe.cu": "c463d24d9e17ae7972fa1fdd4b6f7543e64268e4bcae66b3b457d81afdb6d19e",
+    "csrc/sm80/roof_o78_recycled_coefficient_probe.cu": "88c76ff0c46bc2a7307a53fc9c9c0657743ca43ec9fcdb2ecb22e0bf764ae3c9",
+    "csrc/sm80/roof_producer_warp_driver.cpp": "1198c0254e798ae29d72a7d3b8216ee6fbdae4ff8f22bda876d4f963ea9c03f9",
+    "scripts/analyze_o78_coefficient_codegen.py": "b29056ea63c7cf67045f07a53a75ac084a864051d0cfddcadc28cf7f16f20fbb",
+    "scripts/compare_a100_codegen.py": "ebb2603e66143e037b5e076f6a88fdfc8f81d743fd30b994d5388d874c673653",
+    "scripts/inspect_eight_chain_schedule.py": "8a0bd31a628e9b541c69b1da7508f236c81221091e5024ed3c112ec167e08917",
+    "scripts/inspect_o78_register_liveness.py": "5b37a4a2c554fd7f905be3983f51829b769fe02d21487eec6a9b0fedde32bd62",
+    "scripts/probe_o78_eight_chain_codegen.py": "df14edf4eb8b89f5bf8c2c61086f6a16a847be775d93aa0bf411d13506ad6a57",
+    "scripts/probe_o78_recycled_coefficient_codegen.py": "7d2988b71bca5c4ce167956688a7d90e3dfa019967663f9e7e502bfa578f5f89"
+  },
+  "commands": [
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-lineinfo",
+      "-arch=sm_80",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v141_recycled_coefficient_codegen",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_recycled_coefficient_probe.cu",
+      "-cubin",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v141_recycled_coefficient_codegen/o78_recycled_coefficient.cubin",
+      "-Xptxas=-v"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvcc",
+      "-O3",
+      "-std=c++17",
+      "--expt-relaxed-constexpr",
+      "-lineinfo",
+      "-arch=sm_80",
+      "-I/home/zlouyang/ADAngel_oyzl/third_party/cutlass-src/include",
+      "-I/home/zlouyang/ADAngel_oyzl/csrc/sm80",
+      "-I/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v141_recycled_coefficient_codegen",
+      "/home/zlouyang/ADAngel_oyzl/csrc/sm80/roof_o78_recycled_coefficient_probe.cu",
+      "-ptx",
+      "-o",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v141_recycled_coefficient_codegen/o78_recycled_coefficient.ptx"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-sass",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v141_recycled_coefficient_codegen/o78_recycled_coefficient.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/cuobjdump",
+      "--dump-resource-usage",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v141_recycled_coefficient_codegen/o78_recycled_coefficient.cubin"
+    ],
+    [
+      "/usr/local/cuda-12.8/bin/nvdisasm",
+      "--print-code",
+      "--life-range-mode",
+      "count",
+      "/home/zlouyang/ADAngel_oyzl/reports/o378_roof_v141_recycled_coefficient_codegen/o78_recycled_coefficient.cubin"
+    ]
+  ],
+  "baseline_cubin_sha256": "08badf82c4538c2d3695ca0d53fa4082669db12038f356892bd5ec85d9d9c11a",
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0\n",
+  "cutlass_commit": "db1c288993354c88e551c40c19a8fb93a774a241",
+  "cta_tile": [
+    64,
+    128,
+    128
+  ],
+  "threads": 128,
+  "stages": 2,
+  "shared_bytes": 34304,
+  "coefficient_slots": 8,
+  "limits": {
+    "max_allocated_gpr": 168,
+    "max_hot_local": 0,
+    "max_static_ratio": 1.0,
+    "ldsm": 16,
+    "async_copy": 10,
+    "native_mma_each": 32,
+    "required_updates": 64,
+    "min_independent_chains": 8
+  },
+  "production_default_changed": false,
+  "conversion_changed": false,
+  "native_extension_rebuilt": false,
+  "candidate_gpu_launched": false,
+  "new_performance_result": false,
+  "new_MSE_measured": false,
+  "extension_sha256_before": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "control_comparison": {
+    "passed": true,
+    "missing": [],
+    "changed": [],
+    "old_symbols": 1,
+    "new_symbols": 1,
+    "unchanged": [
+      "adangel_roof_o78_eight_chain_candidate"
+    ],
+    "scope": "exact_SASS_words_of_matched_old_entries_not_full_binary_or_performance"
+  },
+  "entries": {
+    "adangel_roof_o78_recycled_coefficient_candidate": {
+      "instructions": 1960,
+      "opcode_counts": {
+        "MOV": 12,
+        "S2R": 12,
+        "ULDC": 7,
+        "IMAD": 365,
+        "USHF": 13,
+        "ULEA": 1,
+        "LDG": 21,
+        "ISETP": 74,
+        "EXIT": 5,
+        "SHF": 91,
+        "LOP3": 173,
+        "LEA": 74,
+        "IADD3": 196,
+        "BRA": 7,
+        "UIMAD": 4,
+        "LDGSTS": 40,
+        "CS2R": 62,
+        "UMOV": 2,
+        "LDGDEPBAR": 4,
+        "UIADD3": 1,
+        "DEPBAR": 2,
+        "UISETP": 2,
+        "BAR": 2,
+        "PLOP3": 2,
+        "ULOP3": 6,
+        "LDS": 33,
+        "LDSM": 32,
+        "IMMA": 128,
+        "CALL": 2,
+        "I2F": 128,
+        "FMUL": 192,
+        "STG": 192,
+        "FFMA": 64,
+        "NOP": 2,
+        "NOP;": 9
+      },
+      "copies": [
+        "LDGSTS.E.BYPASS.128 [R141+0x200], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x2200], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x200], [R22.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x2200], [R4.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x4200], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x4200], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3+0x4200], [R26.64] ;",
+        "LDGSTS.E.BYPASS.128 [R5+0x4200], [R28.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R162], [R10.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R162+0x8200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x200], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x2200], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R43+0x200], [R36.64] ;",
+        "LDGSTS.E.BYPASS.128 [R43+0x2200], [R38.64] ;",
+        "LDGSTS.E.BYPASS.128 [R45+0x4200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R47+0x4200], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x4200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x4200], [R34.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R17], [R18.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R37+0x8200], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x200], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x2200], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x200], [R142.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x2200], [R10.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x4200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x4200], [R148.64] ;",
+        "LDGSTS.E.BYPASS.128 [R11+0x4200], [R146.64] ;",
+        "LDGSTS.E.BYPASS.128 [R13+0x4200], [R144.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R162], [R2.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R162+0x8200], [R4.64] ;",
+        "LDGSTS.E.BYPASS.128 [R61+0x200], [R52.64] ;",
+        "LDGSTS.E.BYPASS.128 [R61+0x2200], [R54.64] ;",
+        "LDGSTS.E.BYPASS.128 [R69+0x200], [R56.64] ;",
+        "LDGSTS.E.BYPASS.128 [R69+0x2200], [R52.64] ;",
+        "LDGSTS.E.BYPASS.128 [R71+0x4200], [R58.64] ;",
+        "LDGSTS.E.BYPASS.128 [R73+0x4200], [R54.64] ;",
+        "LDGSTS.E.BYPASS.128 [R75+0x4200], [R60.64] ;",
+        "LDGSTS.E.BYPASS.128 [R77+0x4200], [R62.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R65], [R50.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R67+0x8200], [R48.64] ;"
+      ],
+      "all_copies_bypass_l1": true,
+      "native_u4_s4": true,
+      "native_s4_s4": true,
+      "int8_mma": false
+    },
+    "adangel_roof_o78_eight_chain_candidate": {
+      "instructions": 1976,
+      "opcode_counts": {
+        "MOV": 11,
+        "S2R": 17,
+        "ULDC": 7,
+        "IMAD": 370,
+        "USHF": 13,
+        "ULEA": 1,
+        "LDG": 21,
+        "ISETP": 74,
+        "EXIT": 5,
+        "SHF": 95,
+        "LOP3": 181,
+        "IADD3": 191,
+        "LEA": 72,
+        "BRA": 7,
+        "UIMAD": 4,
+        "LDGSTS": 40,
+        "CS2R": 62,
+        "UMOV": 2,
+        "LDGDEPBAR": 4,
+        "UIADD3": 1,
+        "DEPBAR": 2,
+        "UISETP": 2,
+        "BAR": 2,
+        "PLOP3": 2,
+        "ULOP3": 6,
+        "LDS": 33,
+        "LDSM": 32,
+        "IMMA": 128,
+        "CALL": 2,
+        "I2F": 128,
+        "FMUL": 192,
+        "STG": 192,
+        "FFMA": 64,
+        "NOP": 2,
+        "NOP;": 11
+      },
+      "copies": [
+        "LDGSTS.E.BYPASS.128 [R141+0x200], [R6.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x2200], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R9+0x200], [R20.64] ;",
+        "LDGSTS.E.BYPASS.128 [R9+0x2200], [R10.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x4200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R9+0x4200], [R22.64] ;",
+        "LDGSTS.E.BYPASS.128 [R3+0x4200], [R24.64] ;",
+        "LDGSTS.E.BYPASS.128 [R11+0x4200], [R26.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R31], [R14.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R31+0x8200], [R16.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x2200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x200], [R34.64] ;",
+        "LDGSTS.E.BYPASS.128 [R41+0x2200], [R36.64] ;",
+        "LDGSTS.E.BYPASS.128 [R43+0x4200], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R45+0x4200], [R32.64] ;",
+        "LDGSTS.E.BYPASS.128 [R37+0x4200], [R30.64] ;",
+        "LDGSTS.E.BYPASS.128 [R39+0x4200], [R32.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R15], [R16.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R35+0x8200], [R28.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x200], [R2.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x2200], [R8.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x200], [R142.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x2200], [R10.64] ;",
+        "LDGSTS.E.BYPASS.128 [R141+0x4200], [R12.64] ;",
+        "LDGSTS.E.BYPASS.128 [R15+0x4200], [R148.64] ;",
+        "LDGSTS.E.BYPASS.128 [R11+0x4200], [R146.64] ;",
+        "LDGSTS.E.BYPASS.128 [R13+0x4200], [R144.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R52], [R2.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R52+0x8200], [R4.64] ;",
+        "LDGSTS.E.BYPASS.128 [R61+0x200], [R52.64] ;",
+        "LDGSTS.E.BYPASS.128 [R61+0x2200], [R54.64] ;",
+        "LDGSTS.E.BYPASS.128 [R65+0x200], [R56.64] ;",
+        "LDGSTS.E.BYPASS.128 [R65+0x2200], [R52.64] ;",
+        "LDGSTS.E.BYPASS.128 [R67+0x4200], [R58.64] ;",
+        "LDGSTS.E.BYPASS.128 [R69+0x4200], [R54.64] ;",
+        "LDGSTS.E.BYPASS.128 [R71+0x4200], [R60.64] ;",
+        "LDGSTS.E.BYPASS.128 [R73+0x4200], [R62.64] ;",
+        "@!P0 LDGSTS.E.BYPASS.128 [R53], [R50.64] ;",
+        "@!P1 LDGSTS.E.BYPASS.128 [R57+0x8200], [R48.64] ;"
+      ],
+      "all_copies_bypass_l1": true,
+      "native_u4_s4": true,
+      "native_s4_s4": true,
+      "int8_mma": false
+    }
+  },
+  "liveness": {
+    "adangel_roof_o78_eight_chain_candidate": {
+      "symbol": "adangel_roof_o78_eight_chain_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 166,
+      "loops": [
+        {
+          "kind": "integer",
+          "begin_pc": "0xa60",
+          "end_pc": "0x2240",
+          "static_instructions": 383,
+          "max_live_gpr": 166,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 20,
+            "IADD3.X": 5,
+            "IMAD": 128,
+            "IMAD.IADD": 1,
+            "IMAD.SHL.U32": 24,
+            "IMAD.X": 5,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 2,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 6,
+            "MOV": 2,
+            "PLOP3.LUT": 2,
+            "S2R": 5,
+            "SHF.L.U32": 48,
+            "UIADD3": 1,
+            "UIMAD": 2,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULOP3.LUT": 6,
+            "UMOV": 1,
+            "USHF.L.U32": 8
+          },
+          "peak_pcs": [
+            "0x1880",
+            "0x1890",
+            "0x1950",
+            "0x1960",
+            "0x1970",
+            "0x1980"
+          ]
+        },
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x4d40",
+          "end_pc": "0x68b0",
+          "static_instructions": 440,
+          "max_live_gpr": 162,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "FFMA": 64,
+            "FMUL": 64,
+            "I2F": 64,
+            "IADD3": 19,
+            "IADD3.X": 8,
+            "IMAD": 23,
+            "IMAD.IADD": 5,
+            "IMAD.SHL.U32": 5,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GE.U32.AND": 2,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 45,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 12,
+            "MOV": 1,
+            "NOP": 2,
+            "S2R": 2,
+            "SHF.L.U32": 9
+          },
+          "peak_pcs": [
+            "0x58a0",
+            "0x5f50"
+          ]
+        }
+      ],
+      "cta_threads": 128,
+      "register_only_four_cta_limit_per_thread": 128,
+      "interpretation": "static_binary_live_range_not_runtime_timing_or_universal_register_lower_bound"
+    },
+    "adangel_roof_o78_recycled_coefficient_candidate": {
+      "symbol": "adangel_roof_o78_recycled_coefficient_candidate",
+      "allocated_gpr": 168,
+      "function_max_live_gpr": 164,
+      "loops": [
+        {
+          "kind": "integer",
+          "begin_pc": "0xa90",
+          "end_pc": "0x21c0",
+          "static_instructions": 372,
+          "max_live_gpr": 164,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "IADD3": 17,
+            "IADD3.X": 8,
+            "IMAD": 128,
+            "IMAD.IADD": 1,
+            "IMAD.SHL.U32": 23,
+            "IMAD.X": 2,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GT.U32.AND": 1,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 2,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 6,
+            "MOV": 2,
+            "PLOP3.LUT": 2,
+            "S2R": 2,
+            "SHF.L.U32": 44,
+            "UIADD3": 1,
+            "UIMAD": 2,
+            "UISETP.GT.U32.AND": 1,
+            "UISETP.NE.AND": 1,
+            "ULDC.64": 1,
+            "ULOP3.LUT": 6,
+            "UMOV": 1,
+            "USHF.L.U32": 8
+          },
+          "peak_pcs": [
+            "0x1460",
+            "0x1470",
+            "0x1480",
+            "0x1490",
+            "0x14a0",
+            "0x14b0",
+            "0x14c0",
+            "0x14d0",
+            "0x14e0",
+            "0x14f0",
+            "0x1500",
+            "0x1510"
+          ]
+        },
+        {
+          "kind": "fp32_fallback",
+          "begin_pc": "0x4ca0",
+          "end_pc": "0x67f0",
+          "static_instructions": 438,
+          "max_live_gpr": 163,
+          "opcode_counts": {
+            "BAR.SYNC.DEFER_BLOCKING": 1,
+            "BRA": 2,
+            "CALL.REL.NOINC": 1,
+            "DEPBAR.LE": 1,
+            "FFMA": 64,
+            "FMUL": 64,
+            "I2F": 64,
+            "IADD3": 18,
+            "IADD3.X": 9,
+            "IMAD": 23,
+            "IMAD.IADD": 6,
+            "IMAD.SHL.U32": 4,
+            "IMAD.X": 1,
+            "IMMA.16864.S4.S4": 32,
+            "IMMA.16864.U4.S4": 32,
+            "ISETP.GE.U32.AND": 2,
+            "LDGDEPBAR": 1,
+            "LDGSTS.E.BYPASS.128": 10,
+            "LDS": 7,
+            "LDS.64": 8,
+            "LDSM.16.M88.4": 16,
+            "LEA": 45,
+            "LEA.HI.X": 2,
+            "LOP3.LUT": 12,
+            "MOV": 1,
+            "NOP": 2,
+            "S2R": 1,
+            "SHF.L.U32": 9
+          },
+          "peak_pcs": [
+            "0x57e0",
+            "0x5e90"
+          ]
+        }
+      ],
+      "cta_threads": 128,
+      "register_only_four_cta_limit_per_thread": 128,
+      "interpretation": "static_binary_live_range_not_runtime_timing_or_universal_register_lower_bound"
+    }
+  },
+  "dependency_audit": {
+    "adangel_roof_o78_eight_chain_candidate": {
+      "counts": {
+        "independent_coefficient_multiplies": 0,
+        "partial_first_multiplies": 64,
+        "coefficient_based_accumulator_updates": 0
+      },
+      "details": {
+        "independent_coefficient_multiplies": [],
+        "partial_first_multiplies": [
+          {
+            "pc": "0x1370",
+            "instruction": "IMAD R17, R64, R15, RZ"
+          },
+          {
+            "pc": "0x1380",
+            "instruction": "IMAD R65, R65, R15, RZ"
+          },
+          {
+            "pc": "0x13f0",
+            "instruction": "IMAD R66, R66, R16.reuse, RZ"
+          },
+          {
+            "pc": "0x1400",
+            "instruction": "IMAD R67, R67, R16, RZ"
+          },
+          {
+            "pc": "0x1420",
+            "instruction": "IMAD R30, R30, R18.reuse, RZ"
+          },
+          {
+            "pc": "0x1430",
+            "instruction": "IMAD R31, R31, R18, RZ"
+          },
+          {
+            "pc": "0x1470",
+            "instruction": "IMAD R38, R38, R16.reuse, RZ"
+          },
+          {
+            "pc": "0x1490",
+            "instruction": "IMAD R39, R39, R16, RZ"
+          },
+          {
+            "pc": "0x14d0",
+            "instruction": "IMAD R34, R34, R18.reuse, RZ"
+          },
+          {
+            "pc": "0x14e0",
+            "instruction": "IMAD R35, R35, R18, RZ"
+          },
+          {
+            "pc": "0x1500",
+            "instruction": "IMAD R28, R28, R17, RZ"
+          },
+          {
+            "pc": "0x1520",
+            "instruction": "IMAD R29, R29, R17.reuse, RZ"
+          },
+          {
+            "pc": "0x1530",
+            "instruction": "IMAD R32, R32, R17.reuse, RZ"
+          },
+          {
+            "pc": "0x1540",
+            "instruction": "IMAD R33, R33, R17, RZ"
+          },
+          {
+            "pc": "0x15c0",
+            "instruction": "IMAD R29, R36, R15, RZ"
+          },
+          {
+            "pc": "0x16a0",
+            "instruction": "IMAD R28, R37, R15, RZ"
+          },
+          {
+            "pc": "0x17f0",
+            "instruction": "IMAD R48, R48, R15, RZ"
+          },
+          {
+            "pc": "0x1800",
+            "instruction": "IMAD R50, R50, R16, RZ"
+          },
+          {
+            "pc": "0x1810",
+            "instruction": "IMAD R49, R49, R15, RZ"
+          },
+          {
+            "pc": "0x1820",
+            "instruction": "IMAD R60, R60, R17.reuse, RZ"
+          },
+          {
+            "pc": "0x1840",
+            "instruction": "IMAD R62, R62, R18, RZ"
+          },
+          {
+            "pc": "0x1850",
+            "instruction": "IMAD R51, R51, R16, RZ"
+          },
+          {
+            "pc": "0x1860",
+            "instruction": "IMAD R61, R61, R17, RZ"
+          },
+          {
+            "pc": "0x1870",
+            "instruction": "IMAD R63, R63, R18, RZ"
+          },
+          {
+            "pc": "0x1930",
+            "instruction": "IMAD R44, R44, R15, RZ"
+          },
+          {
+            "pc": "0x1940",
+            "instruction": "IMAD R46, R46, R16, RZ"
+          },
+          {
+            "pc": "0x1960",
+            "instruction": "IMAD R40, R40, R17, RZ"
+          },
+          {
+            "pc": "0x1970",
+            "instruction": "IMAD R42, R42, R18, RZ"
+          },
+          {
+            "pc": "0x19d0",
+            "instruction": "IMAD R45, R45, R15, RZ"
+          },
+          {
+            "pc": "0x19e0",
+            "instruction": "IMAD R47, R47, R16, RZ"
+          },
+          {
+            "pc": "0x1a00",
+            "instruction": "IMAD R41, R41, R17, RZ"
+          },
+          {
+            "pc": "0x1a10",
+            "instruction": "IMAD R43, R43, R18, RZ"
+          },
+          {
+            "pc": "0x1d90",
+            "instruction": "IMAD R60, R15.reuse, R60, RZ"
+          },
+          {
+            "pc": "0x1db0",
+            "instruction": "IMAD R61, R15, R61, RZ"
+          },
+          {
+            "pc": "0x1dc0",
+            "instruction": "IMAD R62, R16.reuse, R62, RZ"
+          },
+          {
+            "pc": "0x1dd0",
+            "instruction": "IMAD R63, R16, R63, RZ"
+          },
+          {
+            "pc": "0x1e80",
+            "instruction": "IMAD R48, R15, R48, RZ"
+          },
+          {
+            "pc": "0x1e90",
+            "instruction": "IMAD R49, R15.reuse, R49, RZ"
+          },
+          {
+            "pc": "0x1ea0",
+            "instruction": "IMAD R50, R16.reuse, R50, RZ"
+          },
+          {
+            "pc": "0x1eb0",
+            "instruction": "IMAD R51, R16.reuse, R51, RZ"
+          },
+          {
+            "pc": "0x1ed0",
+            "instruction": "IMAD R68, R15.reuse, R68, RZ"
+          },
+          {
+            "pc": "0x1ee0",
+            "instruction": "IMAD R69, R15, R69, RZ"
+          },
+          {
+            "pc": "0x1ef0",
+            "instruction": "IMAD R70, R16, R70, RZ"
+          },
+          {
+            "pc": "0x1f00",
+            "instruction": "IMAD R71, R16.reuse, R71, RZ"
+          },
+          {
+            "pc": "0x1f20",
+            "instruction": "IMAD R39, R15.reuse, R56, RZ"
+          },
+          {
+            "pc": "0x1f30",
+            "instruction": "IMAD R28, R15, R57, RZ"
+          },
+          {
+            "pc": "0x1f40",
+            "instruction": "IMAD R15, R16.reuse, R58, RZ"
+          },
+          {
+            "pc": "0x1f50",
+            "instruction": "IMAD R16, R16, R59, RZ"
+          },
+          {
+            "pc": "0x1f70",
+            "instruction": "IMAD R57, R17, R52, RZ"
+          },
+          {
+            "pc": "0x1f80",
+            "instruction": "IMAD R38, R17.reuse, R53, RZ"
+          },
+          {
+            "pc": "0x1f90",
+            "instruction": "IMAD R40, R18, R55, RZ"
+          },
+          {
+            "pc": "0x1fb0",
+            "instruction": "IMAD R53, R17.reuse, R96, RZ"
+          },
+          {
+            "pc": "0x1fc0",
+            "instruction": "IMAD R42, R17, R97, RZ"
+          },
+          {
+            "pc": "0x1fd0",
+            "instruction": "IMAD R55, R18, R98, RZ"
+          },
+          {
+            "pc": "0x1fe0",
+            "instruction": "IMAD R44, R18.reuse, R99, RZ"
+          },
+          {
+            "pc": "0x1ff0",
+            "instruction": "IMAD R59, R17.reuse, R64, RZ"
+          },
+          {
+            "pc": "0x2000",
+            "instruction": "IMAD R46, R17.reuse, R65, RZ"
+          },
+          {
+            "pc": "0x2010",
+            "instruction": "IMAD R52, R18.reuse, R67, RZ"
+          },
+          {
+            "pc": "0x2020",
+            "instruction": "IMAD R65, R18, R66, RZ"
+          },
+          {
+            "pc": "0x2030",
+            "instruction": "IMAD R73, R17, R100, RZ"
+          },
+          {
+            "pc": "0x2040",
+            "instruction": "IMAD R56, R17, R101, RZ"
+          },
+          {
+            "pc": "0x2050",
+            "instruction": "IMAD R17, R18.reuse, R54, RZ"
+          },
+          {
+            "pc": "0x2060",
+            "instruction": "IMAD R67, R18.reuse, R102, RZ"
+          },
+          {
+            "pc": "0x2070",
+            "instruction": "IMAD R18, R18, R103, RZ"
+          }
+        ],
+        "coefficient_based_accumulator_updates": []
+      },
+      "peak_started_not_finished_chains": 8,
+      "scope": "static def-use only, not hardware overlap or measured speedup"
+    },
+    "adangel_roof_o78_recycled_coefficient_candidate": {
+      "counts": {
+        "independent_coefficient_multiplies": 64,
+        "partial_first_multiplies": 0,
+        "coefficient_based_accumulator_updates": 64
+      },
+      "details": {
+        "independent_coefficient_multiplies": [
+          {
+            "pc": "0x1130",
+            "instruction": "IMAD R17, R20, R30, RZ"
+          },
+          {
+            "pc": "0x1140",
+            "instruction": "IMAD R18, R20, R31, RZ"
+          },
+          {
+            "pc": "0x1310",
+            "instruction": "IMAD R17, R30, R19, RZ"
+          },
+          {
+            "pc": "0x1350",
+            "instruction": "IMAD R17, R20, R92, RZ"
+          },
+          {
+            "pc": "0x1360",
+            "instruction": "IMAD R18, R19, R31, RZ"
+          },
+          {
+            "pc": "0x13b0",
+            "instruction": "IMAD R17, R20, R93, RZ"
+          },
+          {
+            "pc": "0x13e0",
+            "instruction": "IMAD R17, R19, R92, RZ"
+          },
+          {
+            "pc": "0x1400",
+            "instruction": "IMAD R17, R19, R93, RZ"
+          },
+          {
+            "pc": "0x1590",
+            "instruction": "IMAD R49, R30, R17, RZ"
+          },
+          {
+            "pc": "0x15b0",
+            "instruction": "IMAD R48, R17, R31, RZ"
+          },
+          {
+            "pc": "0x1610",
+            "instruction": "IMAD R48, R17.reuse, R92, RZ"
+          },
+          {
+            "pc": "0x1640",
+            "instruction": "IMAD R52, R17, R93, RZ"
+          },
+          {
+            "pc": "0x1670",
+            "instruction": "IMAD R53, R30, R18, RZ"
+          },
+          {
+            "pc": "0x1680",
+            "instruction": "IMAD R30, R18, R31, RZ"
+          },
+          {
+            "pc": "0x16d0",
+            "instruction": "IMAD R92, R18.reuse, R92, RZ"
+          },
+          {
+            "pc": "0x16f0",
+            "instruction": "IMAD R93, R18, R93, RZ"
+          },
+          {
+            "pc": "0x1720",
+            "instruction": "IMAD R52, R20, R68, RZ"
+          },
+          {
+            "pc": "0x1740",
+            "instruction": "IMAD R53, R19.reuse, R68, RZ"
+          },
+          {
+            "pc": "0x1760",
+            "instruction": "IMAD R52, R20, R69.reuse, RZ"
+          },
+          {
+            "pc": "0x1770",
+            "instruction": "IMAD R56, R19, R69, RZ"
+          },
+          {
+            "pc": "0x17a0",
+            "instruction": "IMAD R56, R17.reuse, R68, RZ"
+          },
+          {
+            "pc": "0x17b0",
+            "instruction": "IMAD R57, R17, R69, RZ"
+          },
+          {
+            "pc": "0x1800",
+            "instruction": "IMAD R68, R18, R68, RZ"
+          },
+          {
+            "pc": "0x1820",
+            "instruction": "IMAD R60, R20, R30, RZ"
+          },
+          {
+            "pc": "0x1850",
+            "instruction": "IMAD R68, R20, R31, RZ"
+          },
+          {
+            "pc": "0x1860",
+            "instruction": "IMAD R64, R19, R30, RZ"
+          },
+          {
+            "pc": "0x1890",
+            "instruction": "IMAD R64, R19, R31.reuse, RZ"
+          },
+          {
+            "pc": "0x18a0",
+            "instruction": "IMAD R65, R17.reuse, R30, RZ"
+          },
+          {
+            "pc": "0x18b0",
+            "instruction": "IMAD R66, R17, R31, RZ"
+          },
+          {
+            "pc": "0x18c0",
+            "instruction": "IMAD R69, R18, R69, RZ"
+          },
+          {
+            "pc": "0x1920",
+            "instruction": "IMAD R30, R18.reuse, R30, RZ"
+          },
+          {
+            "pc": "0x1940",
+            "instruction": "IMAD R31, R18, R31, RZ"
+          },
+          {
+            "pc": "0x1d10",
+            "instruction": "IMAD R30, R20, R32, RZ"
+          },
+          {
+            "pc": "0x1d40",
+            "instruction": "IMAD R31, R20, R33, RZ"
+          },
+          {
+            "pc": "0x1d90",
+            "instruction": "IMAD R39, R19, R33, RZ"
+          },
+          {
+            "pc": "0x1da0",
+            "instruction": "IMAD R38, R19, R32, RZ"
+          },
+          {
+            "pc": "0x1de0",
+            "instruction": "IMAD R39, R17.reuse, R33.reuse, RZ"
+          },
+          {
+            "pc": "0x1df0",
+            "instruction": "IMAD R38, R17, R32.reuse, RZ"
+          },
+          {
+            "pc": "0x1e00",
+            "instruction": "IMAD R33, R18.reuse, R33, RZ"
+          },
+          {
+            "pc": "0x1e20",
+            "instruction": "IMAD R32, R18, R32, RZ"
+          },
+          {
+            "pc": "0x1e60",
+            "instruction": "IMAD R33, R20.reuse, R35, RZ"
+          },
+          {
+            "pc": "0x1e70",
+            "instruction": "IMAD R32, R20, R34, RZ"
+          },
+          {
+            "pc": "0x1ec0",
+            "instruction": "IMAD R39, R19, R35.reuse, RZ"
+          },
+          {
+            "pc": "0x1ef0",
+            "instruction": "IMAD R33, R17, R35.reuse, RZ"
+          },
+          {
+            "pc": "0x1f00",
+            "instruction": "IMAD R38, R19, R34.reuse, RZ"
+          },
+          {
+            "pc": "0x1f10",
+            "instruction": "IMAD R32, R17, R34, RZ"
+          },
+          {
+            "pc": "0x1f30",
+            "instruction": "IMAD R35, R18, R35, RZ"
+          },
+          {
+            "pc": "0x1f40",
+            "instruction": "IMAD R34, R18, R34, RZ"
+          },
+          {
+            "pc": "0x1f80",
+            "instruction": "IMAD R32, R20, R36.reuse, RZ"
+          },
+          {
+            "pc": "0x1f90",
+            "instruction": "IMAD R35, R19, R36, RZ"
+          },
+          {
+            "pc": "0x1fb0",
+            "instruction": "IMAD R34, R19, R37.reuse, RZ"
+          },
+          {
+            "pc": "0x1fc0",
+            "instruction": "IMAD R33, R20, R37, RZ"
+          },
+          {
+            "pc": "0x2000",
+            "instruction": "IMAD R32, R17, R37, RZ"
+          },
+          {
+            "pc": "0x2010",
+            "instruction": "IMAD R35, R18.reuse, R36.reuse, RZ"
+          },
+          {
+            "pc": "0x2030",
+            "instruction": "IMAD R34, R18, R37, RZ"
+          },
+          {
+            "pc": "0x2040",
+            "instruction": "IMAD R33, R17, R36, RZ"
+          },
+          {
+            "pc": "0x2080",
+            "instruction": "IMAD R35, R19.reuse, R30.reuse, RZ"
+          },
+          {
+            "pc": "0x2090",
+            "instruction": "IMAD R32, R19, R31, RZ"
+          },
+          {
+            "pc": "0x20b0",
+            "instruction": "IMAD R19, R17, R30, RZ"
+          },
+          {
+            "pc": "0x20c0",
+            "instruction": "IMAD R34, R17, R31.reuse, RZ"
+          },
+          {
+            "pc": "0x20d0",
+            "instruction": "IMAD R33, R20, R30.reuse, RZ"
+          },
+          {
+            "pc": "0x20e0",
+            "instruction": "IMAD R17, R18, R30, RZ"
+          },
+          {
+            "pc": "0x20f0",
+            "instruction": "IMAD R20, R20, R31.reuse, RZ"
+          },
+          {
+            "pc": "0x2100",
+            "instruction": "IMAD R18, R18, R31, RZ"
+          }
+        ],
+        "partial_first_multiplies": [],
+        "coefficient_based_accumulator_updates": [
+          {
+            "pc": "0x1300",
+            "instruction": "IMAD R12, R17, R72, R12"
+          },
+          {
+            "pc": "0x1320",
+            "instruction": "IMAD R11, R18, R73, R11"
+          },
+          {
+            "pc": "0x1330",
+            "instruction": "IMAD R10, R17, R74, R10"
+          },
+          {
+            "pc": "0x1370",
+            "instruction": "IMAD R9, R18, R75, R9"
+          },
+          {
+            "pc": "0x1390",
+            "instruction": "IMAD R21, R76, R17, R21"
+          },
+          {
+            "pc": "0x13c0",
+            "instruction": "IMAD R100, R77, R17, R100"
+          },
+          {
+            "pc": "0x13f0",
+            "instruction": "IMAD R101, R78, R17, R101"
+          },
+          {
+            "pc": "0x1420",
+            "instruction": "IMAD R102, R79, R17, R102"
+          },
+          {
+            "pc": "0x15d0",
+            "instruction": "IMAD R8, R49, R68, R8"
+          },
+          {
+            "pc": "0x15f0",
+            "instruction": "IMAD R5, R48, R69, R5"
+          },
+          {
+            "pc": "0x1630",
+            "instruction": "IMAD R103, R52, R48, R103"
+          },
+          {
+            "pc": "0x1660",
+            "instruction": "IMAD R104, R53, R52, R104"
+          },
+          {
+            "pc": "0x16a0",
+            "instruction": "IMAD R4, R53, R70, R4"
+          },
+          {
+            "pc": "0x16b0",
+            "instruction": "IMAD R3, R30, R71, R3"
+          },
+          {
+            "pc": "0x1700",
+            "instruction": "IMAD R105, R54, R92, R105"
+          },
+          {
+            "pc": "0x1710",
+            "instruction": "IMAD R106, R55, R93, R106"
+          },
+          {
+            "pc": "0x1750",
+            "instruction": "IMAD R107, R56, R52, R107"
+          },
+          {
+            "pc": "0x1780",
+            "instruction": "IMAD R108, R57, R52, R108"
+          },
+          {
+            "pc": "0x1790",
+            "instruction": "IMAD R110, R59, R56, R110"
+          },
+          {
+            "pc": "0x17c0",
+            "instruction": "IMAD R109, R58, R53, R109"
+          },
+          {
+            "pc": "0x17d0",
+            "instruction": "IMAD R111, R60, R56, R111"
+          },
+          {
+            "pc": "0x17f0",
+            "instruction": "IMAD R112, R61, R57, R112"
+          },
+          {
+            "pc": "0x1830",
+            "instruction": "IMAD R113, R62, R68, R113"
+          },
+          {
+            "pc": "0x1840",
+            "instruction": "IMAD R115, R64, R60, R115"
+          },
+          {
+            "pc": "0x1870",
+            "instruction": "IMAD R116, R65, R68, R116"
+          },
+          {
+            "pc": "0x1880",
+            "instruction": "IMAD R117, R66, R64, R117"
+          },
+          {
+            "pc": "0x18d0",
+            "instruction": "IMAD R118, R67, R64, R118"
+          },
+          {
+            "pc": "0x18e0",
+            "instruction": "IMAD R114, R63, R69, R114"
+          },
+          {
+            "pc": "0x18f0",
+            "instruction": "IMAD R119, R48, R65, R119"
+          },
+          {
+            "pc": "0x1910",
+            "instruction": "IMAD R120, R49, R66, R120"
+          },
+          {
+            "pc": "0x1950",
+            "instruction": "IMAD R121, R50, R30, R121"
+          },
+          {
+            "pc": "0x1970",
+            "instruction": "IMAD R122, R51, R31, R122"
+          },
+          {
+            "pc": "0x1d50",
+            "instruction": "IMAD R123, R30, R68, R123"
+          },
+          {
+            "pc": "0x1d60",
+            "instruction": "IMAD R124, R31, R69, R124"
+          },
+          {
+            "pc": "0x1db0",
+            "instruction": "IMAD R126, R39, R71, R126"
+          },
+          {
+            "pc": "0x1dd0",
+            "instruction": "IMAD R125, R38, R70, R125"
+          },
+          {
+            "pc": "0x1e40",
+            "instruction": "IMAD R130, R33, R87, R130"
+          },
+          {
+            "pc": "0x1e50",
+            "instruction": "IMAD R129, R32, R86, R129"
+          },
+          {
+            "pc": "0x1e90",
+            "instruction": "IMAD R128, R39, R85, R128"
+          },
+          {
+            "pc": "0x1ea0",
+            "instruction": "IMAD R132, R73, R33, R132"
+          },
+          {
+            "pc": "0x1eb0",
+            "instruction": "IMAD R127, R38, R84, R127"
+          },
+          {
+            "pc": "0x1ee0",
+            "instruction": "IMAD R131, R72, R32, R131"
+          },
+          {
+            "pc": "0x1f50",
+            "instruction": "IMAD R135, R92, R32, R135"
+          },
+          {
+            "pc": "0x1f60",
+            "instruction": "IMAD R138, R95, R35, R138"
+          },
+          {
+            "pc": "0x1f70",
+            "instruction": "IMAD R137, R94, R34, R137"
+          },
+          {
+            "pc": "0x1fa0",
+            "instruction": "IMAD R136, R93, R33, R136"
+          },
+          {
+            "pc": "0x1fd0",
+            "instruction": "IMAD R139, R76, R32, R139"
+          },
+          {
+            "pc": "0x1fe0",
+            "instruction": "IMAD R142, R78, R35, R142"
+          },
+          {
+            "pc": "0x1ff0",
+            "instruction": "IMAD R143, R79, R34, R143"
+          },
+          {
+            "pc": "0x2020",
+            "instruction": "IMAD R140, R77, R33, R140"
+          },
+          {
+            "pc": "0x2050",
+            "instruction": "IMAD R145, R89, R32, R145"
+          },
+          {
+            "pc": "0x2060",
+            "instruction": "IMAD R146, R90, R35, R146"
+          },
+          {
+            "pc": "0x2070",
+            "instruction": "IMAD R147, R91, R34, R147"
+          },
+          {
+            "pc": "0x20a0",
+            "instruction": "IMAD R144, R88, R33, R144"
+          },
+          {
+            "pc": "0x2110",
+            "instruction": "IMAD R133, R74, R38, R133"
+          },
+          {
+            "pc": "0x2120",
+            "instruction": "IMAD R134, R75, R39, R134"
+          },
+          {
+            "pc": "0x2130",
+            "instruction": "IMAD R148, R80, R33, R148"
+          },
+          {
+            "pc": "0x2140",
+            "instruction": "IMAD R149, R81, R20, R149"
+          },
+          {
+            "pc": "0x2150",
+            "instruction": "IMAD R150, R82, R35, R150"
+          },
+          {
+            "pc": "0x2160",
+            "instruction": "IMAD R151, R83, R32, R151"
+          },
+          {
+            "pc": "0x2170",
+            "instruction": "IMAD R152, R96, R19, R152"
+          },
+          {
+            "pc": "0x2180",
+            "instruction": "IMAD R153, R97, R34, R153"
+          },
+          {
+            "pc": "0x2190",
+            "instruction": "IMAD R154, R98, R17, R154"
+          },
+          {
+            "pc": "0x21a0",
+            "instruction": "IMAD R155, R99, R18, R155"
+          }
+        ]
+      },
+      "peak_started_not_finished_chains": 8,
+      "scope": "static def-use only, not hardware overlap or measured speedup"
+    }
+  },
+  "compile_gate": {
+    "passed": true,
+    "checks": {
+      "register_budget": true,
+      "no_hot_local": true,
+      "no_static_work_growth": true,
+      "same_native_math": true,
+      "same_payload_supply": true,
+      "no_scalar_load_growth": true,
+      "all_updates_coefficient_based": true,
+      "all_coefficients_independent": true,
+      "no_partial_first_multiply": true,
+      "eight_chains_preserved": true
+    },
+    "limits": {
+      "max_allocated_gpr": 168,
+      "max_hot_local": 0,
+      "max_static_ratio": 1.0,
+      "ldsm": 16,
+      "async_copy": 10,
+      "native_mma_each": 32,
+      "required_updates": 64,
+      "min_independent_chains": 8
+    },
+    "static_ratio": 0.9712793733681462,
+    "old_static": 383,
+    "new_static": 372,
+    "old_scalar_lds": 15,
+    "new_scalar_lds": 15,
+    "scope": "predeclared compile potential only; full24/MSE/safety still required"
+  },
+  "extension_sha256_after": "94ad3751657474b6c895c32f824554b92951c0cbccd137a0f19d35bb51d7c462",
+  "cubin_sha256": "adfde89c1ede96e7f445c67cfa7b691850c96b28dd8bf5faa69ff01a9582283c",
+  "artifact_sha256": {
+    "o78_recycled_coefficient.ptx": "36ea56698503e94a79de00379b05bd5559a7c439865c51c034e206e4740b7055",
+    "ptx_build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "resources.txt": "004cf87e5d39b4cc960ac0574b4647a2daa28353f3ad5ad0c51ee35181913a50",
+    "o78_recycled_coefficient_generated.cuh": "86f926493c35f78300b1f7ce9bb1fcecc05509f2cde9b43d14ee14f0c336aaf6",
+    "liveness.txt": "9a300a47244de752e0079522c643ece15c2532835fb571645fb7105e9aaac159",
+    "o78_recycled_coefficient.sass": "07abc5694e48901ec64a58ef2b5404e5198ea4f29e9f3faad5462dde73839a97",
+    "o78_eight_chain_generated.cuh": "6d4510513f07e6b1645bc3e51d4936935c734a06bf971a72a7a4b4685b260156",
+    "o78_recycled_coefficient.cubin": "adfde89c1ede96e7f445c67cfa7b691850c96b28dd8bf5faa69ff01a9582283c",
+    "build.log": "b313cc20791dd9db6bb558507bb797d8bd80ef62a8a68a3670b23d3b93ff90d5"
+  }
+}
