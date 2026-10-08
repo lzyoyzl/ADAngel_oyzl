@@ -89,3 +89,16 @@ def test_wrapper_preserves_fallback_and_exposes_no_python_binding():
     assert 'if(flag>1u) return;' in text and 'if(flag==1u)' in text
     assert 'O78::o3_body<' in text and '__launch_bounds__(128,3)' in text
     assert 'PYBIND' not in text
+
+
+def test_runtime_requires_full24_and_restricts_variants():
+    from types import SimpleNamespace
+    from benchmark_o78_recycled_coefficient import full_sample_args,require_variant,timing_contract
+    assert full_sample_args(['--validate-only'])==['--validate-only','--samples','24']
+    assert full_sample_args(['--samples=24'])==['--samples=24']
+    with pytest.raises(SystemExit):full_sample_args(['--samples','4'])
+    for variant in ('o7','o8'):require_variant(SimpleNamespace(variant=variant))
+    with pytest.raises(ValueError):require_variant(SimpleNamespace(variant='o3'))
+    contract=timing_contract('compute_only',100)
+    assert contract['conversion_changed'] is False
+    assert contract['gemm_cufunction_identical_between_policies'] is False

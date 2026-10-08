@@ -41,3 +41,23 @@ python -m pytest tests/unit/test_recycled_coefficient_codegen.py -q
 python scripts/probe_o78_recycled_coefficient_codegen.py \
   --output reports/o378_roof_v141_recycled_coefficient_codegen
 ```
+
+## 编译结果（已完成，尚不是性能结果）
+
+上述预设门槛全部通过：383→372条整数热循环指令；两边均168regs、无热local，
+LDSM16、异步copy10、标量LDS15保持不变；64个系数乘积/更新均有静态def-use证据，
+八条逻辑MMA链保留。独立CUBIN的STACK/LOCAL均为0，旧v78控制编码不变。
+
+下一步先验证正确性和sanitizer，再直接做完整24样本×3轮compute-only配对。
+若没有确认收益，不扩展负收益候选的端到端测试。所有CV/离群原样保留。
+两边先固定同一v73转换，以隔离GEMM变化；不能把此比较称为新conversion优化。
+
+```bash
+python scripts/benchmark_o78_recycled_coefficient.py \
+  --cubins reports/o378_roof_v141_recycled_coefficient_codegen \
+  --output runs/o378_roof_v141_validation --validate-only
+python scripts/benchmark_o78_recycled_coefficient.py \
+  --cubins reports/o378_roof_v141_recycled_coefficient_codegen \
+  --output runs/o378_roof_v141_paired --samples 24 --rounds 3 \
+  --warmup 50 --repeats 200 --inner 100
+```
