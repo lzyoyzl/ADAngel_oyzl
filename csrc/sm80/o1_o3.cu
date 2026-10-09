@@ -33,6 +33,7 @@
 #include "roof_vector_conversion_api.h"
 #include "roof_o3_conversion_api.h"
 #include "roof_cache_policy_api.h"
+#include "production_api.h"
 
 namespace py = pybind11;
 namespace {

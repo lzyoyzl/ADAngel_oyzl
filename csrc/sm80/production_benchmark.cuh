@@ -1,9 +1,8 @@
 // Included after MixedSource and Event helpers. SM80 only.
 #pragma once
-#include "production_api.h"
 
 namespace production {
-namespace api=adangel_sm80_production;
+namespace api=::adangel_sm80_production;
 void shape(int m,int n,int k) {
   TORCH_CHECK(m>0 && n>0 && k==4096 && m%64==0 && n%128==0,
       "accepted full-K path requires K4096, M%64=N%128=0");

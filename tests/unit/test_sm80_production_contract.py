@@ -29,6 +29,7 @@ def test_dispatch_retains_explicit_legacy():
     host = (ROOT/'csrc/sm80/o1_o3.cu').read_text()
     mixed = (ROOT/'csrc/sm80/mixed_benchmark.cuh').read_text()
     assert 'return production::o3(' in host
+    assert host.index('#include "production_api.h"') < host.index('namespace {')
     assert 'if(implementation=="legacy")implementation="production"' in host
     assert 'return production::mixed(' in mixed
     assert 'implementation=="legacy"' in mixed
