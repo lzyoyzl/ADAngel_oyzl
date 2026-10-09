@@ -68,6 +68,8 @@ def extensions():
     if target == "sm80":
         sources = [
             "csrc/sm80/o1_o3.cu",
+            "csrc/sm80/production_gemm.cu",
+            "csrc/sm80/production_conversion.cu",
             "csrc/sm80/roof_pipeline.cu",
             "csrc/sm80/roof_warp_reuse.cu",
             "csrc/sm80/roof_reuse_pipeline.cu",
@@ -107,6 +109,7 @@ def extensions():
             str(root / "include"),
             str(cutlass_root / "include"),
             str(cutlass_root / "tools/util/include"),
+            *([str(Path(__file__).resolve().parent / "csrc/sm80")] if target == "sm80" else []),
         ],
         libraries=["cublasLt", "cuda"],
         extra_compile_args={

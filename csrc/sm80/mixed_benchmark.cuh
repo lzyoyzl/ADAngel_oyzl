@@ -35,7 +35,8 @@ py::dict convert_mixed_fused_payload(const py::dict& source) {
 py::dict benchmark_mixed(std::string variant,std::string mode,
     const py::dict& weight_source,const py::dict& activation_source,
     int warmup,int repeats,int inner,std::string tile,std::string scale_layout,int roof_tune,
-    int conversion_impl) {
+    int conversion_impl,std::string implementation="production") {
+  TORCH_CHECK(implementation=="production" || implementation=="legacy","invalid implementation");
   TORCH_CHECK(variant=="o5" || variant=="o6" || variant=="o7" || variant=="o8" || variant=="o9" || variant=="o10","expected o5 through o10");
   const bool fp16=variant=="o5" || variant=="o6";
   const bool binary=variant=="o9" || variant=="o10";
@@ -71,6 +72,9 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   cudaDeviceProp prop;check(cudaGetDeviceProperties(&prop,a.payload.get_device()));
   TORCH_CHECK(prop.major==8 && prop.minor==0,"requires A100 SM80");
   const int m=a.rows,n=w.rows,k=a.k,tn=(tile=="64x128x256" || horner || wide || swizzle)?128:64;
+  if(!fp16 && !binary && implementation=="production" && roof_tune<0 && conversion_impl==0 &&
+      tile=="64x128x256" && k==4096 && m%64==0 && n%128==0)
+    return production::mixed(variant,mode,w,a,warmup,repeats,inner);
   TORCH_CHECK(conversion_impl<3 || k/128<=65535,"conversion candidate grid.y exceeds65535");
   if(conversion_impl==5) {
     TORCH_CHECK(reinterpret_cast<uintptr_t>(a.payload.data_ptr<uint8_t>())%16==0 &&

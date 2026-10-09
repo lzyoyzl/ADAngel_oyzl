@@ -200,6 +200,7 @@ template<class F> std::vector<float> batch(F f,int repeats,int inner,cudaStream_
 #include "split_grouped.cuh"
 #include "roof_candidates.cuh"
 #include "mixed_conversion.cuh"
+#include "production_benchmark.cuh"
 #include "mixed_bitplane.cuh"
 #include "mixed_benchmark.cuh"
 #include "mixed_conversion_probe.cuh"
@@ -214,6 +215,11 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   TORCH_CHECK(conversion_impl==0 || (split && roof_tune==54 && implementation=="production"),
       "O3 conversion candidates require explicit GEMM54; formal defaults remain unchanged");
   const auto requested_implementation=implementation;
+  if(split && implementation=="production" && roof_tune<0 && conversion_impl==0 &&
+      a.dim()==2 && w.dim()==2 && a.size(1)==4096 && a.size(0)%64==0 && w.size(0)%128==0)
+    return production::o3(mode,a,as,w,ws,warmup,repeats,inner);
+  // Explicit legacy keeps the pre-promotion production policy as a regression control.
+  if(implementation=="legacy")implementation="production";
   TORCH_CHECK(roof_tune!=61 && roof_tune!=62,"cache candidates61/62 require prepared-core API");
   TORCH_CHECK(valid_roof_tune(roof_tune) && (roof_tune<0 || (split && implementation=="production")),
       "roof candidate requires O3 production-compatible input path");
@@ -753,7 +759,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME,m) {
       py::arg("weight_source"),py::arg("activation_source"),py::arg("warmup")=50,
       py::arg("repeats")=200,py::arg("conversion_inner_repeats")=100,
       py::arg("tile")="64x128x256",py::arg("scale_layout")="row_major",py::arg("roof_tune")=-1,
-      py::arg("conversion_impl")=0);
+      py::arg("conversion_impl")=0,py::arg("implementation")="production");
   m.def("_benchmark_split_grouped",&benchmark_split_grouped,py::arg("a_split"),py::arg("a_scale"),py::arg("w_q4"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("tile")="64x128x256");
   m.def("benchmark",&benchmark,py::arg("variant"),py::arg("mode"),py::arg("a"),py::arg("a_scale"),py::arg("w"),py::arg("w_scale"),py::arg("warmup")=50,py::arg("repeats")=200,py::arg("inner")=100,py::arg("implementation")="production",py::arg("roof_tune")=-1,py::arg("conversion_impl")=0);
   m.def("benchmark_o0",&adangel_benchmark_o0);
