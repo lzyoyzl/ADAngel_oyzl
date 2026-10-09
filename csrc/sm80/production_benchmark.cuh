@@ -19,6 +19,7 @@ py::dict metadata(bool mixed) {
   r["implementation"]=mixed?"fullk_v99_best_conversion":"fullk_v89_grouped_cta";
   r["kernel_symbol"]=mixed?"adangel_sm80_o78_fullk_streaming":"adangel_sm80_o3_fullk_grouped";
   r["production_default"]=true;r["library"]="CUTLASS CuTe + CUDA";
+  r["architecture"]="sm80";r["requested_implementation"]="production";
   r["cta_tile"]=std::vector<int>{64,128,128};r["threads"]=128;
   r["pipeline_stages"]=mixed?2:3;r["cta_order_group_m"]=mixed?1:8;
   r["registers_per_thread"]=attr.numRegs;r["local_size_bytes"]=attr.localSizeBytes;
@@ -27,6 +28,8 @@ py::dict metadata(bool mixed) {
   r["tensor_core"]=true;r["mma_family"]="IMMA";
   r["mma_types"]="U4*S4 and S4*S4";r["output_dtype"]="fp32";
   r["guarded_fullk_int32"]=true;r["fallback"]="per_tile_fp32_G128_scale";
+  r["group_accumulation"]="guarded_fullk_integer_then_fp32_epilogue";
+  r["fp32_reassociated"]=true;r["scale_layout"]="group_major";
   r["payload_layout"]="plane_group_row_k64_bytes";
   r["integer_guard_in_conversion_timing"]=true;
   return r;
@@ -61,6 +64,9 @@ py::dict measure(std::string mode,int warmup,int repeats,int inner,cudaStream_t 
   times["total"]=tt;counts["total"]=g?1:inner;
   py::dict r;r["timings_ms"]=times;r["stage_timing_inner_repeats"]=counts;
   r["total_timing"]=g?"single_execution_cuda_event":"sum_of_batched_stage_samples";
+  r["timing_contract_version"]=2;
+  r["timing_strategy"]="conversion_amortized_end_to_end_direct";
+  r["measurement_order"]="direct_path_then_isolated_conversions";
   r["weight_cached"]=!w;r["activation_prepared"]=!a;return r;
 }
 
@@ -84,8 +90,10 @@ py::dict o3(std::string mode,at::Tensor a,at::Tensor as,at::Tensor w,at::Tensor 
   auto r=measure(mode,warmup,repeats,inner,stream,weight,activation,gemm);
   TORCH_CHECK(at::isfinite(out).all().item<bool>(),"nonfinite O3 output");
   info["fallback_tiles"]=status.eq(1).sum().item<int64_t>()*(m/64);
+  info["variant"]="o3";
   info["weight_conversion"]="v36_vector_conversion2_and_fullk_guard";info["activation_conversion"]="v36_vector_conversion2";
   r["output"]=out;r["kernel"]=info;r["guard_status"]=status;r["factor_metadata"]=meta;
+  r["conversion_scope"]="source_to_fixed_g128_payload_and_fullk_metadata";
   r["packed_activation_g128_major"]=pa;r["packed_weight_g128_major"]=pw;r["converted_weight_scale"]=s;
   // Backward-compatible diagnostic views, outside all measured intervals.
   r["converted_activation"]=pa.permute({0,2,1,3}).contiguous().reshape({2*m,k/2});
@@ -120,9 +128,14 @@ py::dict mixed(std::string variant,std::string mode,const MixedSource& w,const M
   auto r=measure(mode,warmup,repeats,inner,stream,weight,activation,gemm);
   TORCH_CHECK(at::isfinite(state[15]).all().item<bool>(),"nonfinite mixed output");
   info["fallback_tiles"]=state[14].eq(1).sum().item<int64_t>();
+  info["variant"]=variant;info["experiment_naming_version"]=3;
+  info["paired_fp16_baseline"]=variant_id==7?"o5":"o6";
+  info["weight_source_format"]=variant_id==7?"nvfp4_g128":"hif4_g128";
+  info["activation_source_format"]=variant_id==7?"mxfp8_e4m3_g128":"nvstyle_fp6_e2m3_g128";
   info["weight_conversion"]=variant_id==7?"v118_packed_NVFP4":"v138_packed_HiF4";
   info["activation_conversion"]=variant_id==7?"v106_MXFP8_warp_lookup":"v123_packed_FP6";
   r["output"]=state[15];r["kernel"]=info;r["guard_status"]=state[14];
+  r["conversion_scope"]="source_to_fixed_g128_payload_and_fullk_metadata";
   r["packed_activation_g128_major"]=state[0];r["packed_weight_g128_major"]=state[1];
   r["activation_scale"]=state[2].transpose(0,1);r["weight_scale"]=state[3].transpose(0,1);
   r["converted_activation"]=py::make_tuple(state[0].permute({0,2,1,3}).contiguous().reshape({2*m,2048}),state[2].transpose(0,1));

@@ -88,6 +88,8 @@ def contract(result,mode,repeats,inner):
     assert result['weight_cached']==(mode in ('compute_only','steady_state'))
     assert result['activation_prepared']==(mode=='compute_only')
     assert result['kernel']['production_default']
+    assert result['timing_contract_version']==2
+    assert result['timing_strategy']=='conversion_amortized_end_to_end_direct'
 
 
 def mixed_payload(result,w,a):
@@ -211,7 +213,10 @@ def main():
     from adangel.trace.storage import load_prepared,sha256_file
     from adangel.trace.prepare import _load_and_validate_raw
     from adangel.quantization import mixed_formats as mf
-    torch.set_num_threads(4);torch.backends.cuda.matmul.allow_tf32=False;torch.cuda.init()
+    torch.set_num_threads(4);torch.backends.cuda.matmul.allow_tf32=False
+    # cuda.init() alone need not make a driver context current. Materialize the
+    # primary context before the read-only frozen cubin oracle calls cuModuleLoad.
+    context_anchor=torch.empty(1,device='cuda')
     assert torch.cuda.get_device_capability()==(8,0)
     args.output.mkdir(parents=True)
     def save(file,value):(args.output/file).write_text(json.dumps(value,indent=2,allow_nan=False)+'\n')

@@ -36,6 +36,9 @@ o7 = native._benchmark_mixed("o7", mode, weight_source, activation_source,
 `kernel.production_default=true` 是新默认标识；正式 symbol 为
 `adangel_sm80_o3_fullk_grouped` / `adangel_sm80_o78_fullk_streaming`。
 核函数资源、fallback tile 数及转换实现名称随结果保存。
+混合格式接口的旧 `tile="64x128x256"` 默认参数作为兼容选择器保留；当前正式核函数的实际
+CTA 为 `64×128×128`，以返回的 `kernel.cta_tile` 为准。`scale_layout` 不再改变该快路径的物理布局。
+旧 trace/synthetic 脚本仍可运行；INT4 与 Binary 的跨实现对照使用数值容差，重复同一实现仍检查逐位一致。
 
 ## 计时口径
 

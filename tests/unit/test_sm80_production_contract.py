@@ -23,6 +23,20 @@ def test_native_production_entry_and_guards():
     assert 'adangel_sm80_o78_fullk_streaming' in gemm
     assert 'if(flag==1u)' in gemm and 'if(flag&1u)' in gemm
     assert 'reports/' not in host and 'ctypes' not in host
+    assert 'r["timing_contract_version"]=2' in host
+    assert 'conversion_amortized_end_to_end_direct' in host
+    assert 'direct_path_then_isolated_conversions' in host
+
+
+def test_current_default_profile_symbols_and_metadata_bytes():
+    from benchmark_a100_mixed import profile_spec, conversion_bytes
+    for case, symbol in [('o3','adangel_sm80_o3_fullk_grouped'),
+                         ('o7/64x128x256','adangel_sm80_o78_fullk_streaming'),
+                         ('o8/64x128x256/group_major','adangel_sm80_o78_fullk_streaming')]:
+        spec=profile_spec(case,50,4096)
+        assert spec['kernel_filter']=='regex:'+symbol
+        assert spec['launch_skip']==50
+    assert conversion_bytes('o7/x','total',4096,4096,4096,{'production_default':True}) is None
 
 
 def test_dispatch_retains_explicit_legacy():
