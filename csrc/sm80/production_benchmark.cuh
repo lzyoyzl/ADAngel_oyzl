@@ -88,6 +88,9 @@ py::dict o3(std::string mode,at::Tensor a,at::Tensor as,at::Tensor w,at::Tensor 
   info["weight_conversion"]="v36_vector_conversion2_and_fullk_guard";info["activation_conversion"]="v36_vector_conversion2";
   r["output"]=out;r["kernel"]=info;r["guard_status"]=status;r["factor_metadata"]=meta;
   r["packed_activation_g128_major"]=pa;r["packed_weight_g128_major"]=pw;r["converted_weight_scale"]=s;
+  // Backward-compatible diagnostic views, outside all measured intervals.
+  r["converted_activation"]=pa.permute({0,2,1,3}).contiguous().reshape({2*m,k/2});
+  r["converted_weight"]=pw.permute({1,0,2}).contiguous().reshape({n,k/2});
   return r;
 }
 
@@ -123,6 +126,8 @@ py::dict mixed(std::string variant,std::string mode,const MixedSource& w,const M
   r["output"]=state[15];r["kernel"]=info;r["guard_status"]=state[14];
   r["packed_activation_g128_major"]=state[0];r["packed_weight_g128_major"]=state[1];
   r["activation_scale"]=state[2].transpose(0,1);r["weight_scale"]=state[3].transpose(0,1);
+  r["converted_activation"]=py::make_tuple(state[0].permute({0,2,1,3}).contiguous().reshape({2*m,2048}),state[2].transpose(0,1));
+  r["converted_weight"]=py::make_tuple(state[1].permute({1,0,2}).contiguous().reshape({n,2048}),state[3].transpose(0,1));
   py::dict diagnostic;const char* names[]={"pa","pw","as","ws","af","wf","ab","wb","an","wn","am","wm","ast","wst","status","y","asq","wsq"};
   for(int j=0;j<18;++j)diagnostic[names[j]]=state[j];r["prepared_state"]=diagnostic;
   return r;
