@@ -48,6 +48,8 @@ def main():
             # Compare encoded instruction words after ONLY renaming the entry.
             checks[symbol]['candidate_sass_comparison']=compare((ROOT/file).read_text(),
                 outputs['extension.sass'].replace(symbol,old),'^'+old+'$')
+            if not checks[symbol]['candidate_sass_comparison']['passed']:
+                raise ValueError('production SASS differs from accepted candidate: '+symbol)
     result=dict(passed=True,extension_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                 entries=checks,torch=torch.__version__,cuda=torch.version.cuda)
     (args.output/'audit.json').write_text(json.dumps(result,indent=2)+'\n')

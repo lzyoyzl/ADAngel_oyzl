@@ -1,5 +1,7 @@
 # ADAngel 文档索引
 
+- [A100 O3/O7/O8 最佳方案正式接入与验收](sm80_production_release.md)：正式默认、重新编译、指令与安全检查、24样本配对性能及MSE。
+
 - [O0–O4 最终实现与正式实验结果](o0_o4_final_results_report.md)：当前五个 production 后端、24 样本性能、转换开销、MSE、验收结果与性能差异分析；不包含历史候选或消融数据。
 - [O1–O4 Nsight Compute profiling](ncu_profiling.md)：单真实样本、单 production kernel 的 NCU 驱动、过滤器、分层采集命令和可比性规则。
 - [O3/O4 NCU 性能瓶颈分析报告](o3_o4_ncu_bottleneck_report.md)：NCU 基础、compute、scheduler、memory、occupancy 与 SASS 证据，以及 O3/O4 慢于 O1/O2 的根因和优化优先级。

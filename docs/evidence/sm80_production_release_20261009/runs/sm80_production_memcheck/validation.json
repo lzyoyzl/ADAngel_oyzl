@@ -1,0 +1,763 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "variant": "o3",
+      "pattern": "random",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "random",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "random",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "random",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "random",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "random",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "random",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "random",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "random",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "random",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "random",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "random",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "zero",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "zero",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "zero",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "zero",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "zero",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "zero",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "zero",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "zero",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "zero",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "zero",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "zero",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "zero",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "alternating",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "alternating",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "alternating",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "alternating",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "alternating",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "alternating",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "alternating",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "alternating",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "alternating",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "alternating",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "alternating",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "alternating",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 1,
+        "fallback_ctas": 0,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "wide_scale",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 1
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "wide_scale",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 1
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "wide_scale",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 1
+      }
+    },
+    {
+      "variant": "o3",
+      "pattern": "wide_scale",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "fallback_ctas": 1
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "wide_scale",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 1,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "wide_scale",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 1,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "wide_scale",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 1,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o7",
+      "pattern": "wide_scale",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 1,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "wide_scale",
+      "mode": "conversion_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 1,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "wide_scale",
+      "mode": "compute_only",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 1,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "wide_scale",
+      "mode": "cold",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 1,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    },
+    {
+      "variant": "o8",
+      "pattern": "wide_scale",
+      "mode": "steady_state",
+      "nondefault_stream": true,
+      "bitwise_frozen_best": true,
+      "semantic_tolerance": true,
+      "guard": {
+        "metadata_exact": true,
+        "integer_ctas": 0,
+        "fallback_ctas": 1,
+        "invalid_ctas": 0,
+        "ctas": 1,
+        "preparation_scope": "GPU_online_except_cached_weight_in_steady",
+        "additional_fp32_epilogue_range_guard": true,
+        "epilogue_guard_extra_fallback_ctas": 0
+      }
+    }
+  ],
+  "invalid_codes_rejected": [
+    "o3",
+    "o7",
+    "o8"
+  ],
+  "scope": "small_MN_K4096_correctness_not_performance_screen"
+}
