@@ -70,6 +70,8 @@ def extensions():
             "csrc/sm80/o1_o3.cu",
             "csrc/sm80/production_gemm.cu",
             "csrc/sm80/production_conversion.cu",
+            "csrc/sm80/production_sized_gemm.cu",
+            "csrc/sm80/production_sized_conversion.cu",
             "csrc/sm80/roof_pipeline.cu",
             "csrc/sm80/roof_warp_reuse.cu",
             "csrc/sm80/roof_reuse_pipeline.cu",

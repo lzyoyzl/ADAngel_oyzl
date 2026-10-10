@@ -75,6 +75,9 @@ py::dict benchmark_mixed(std::string variant,std::string mode,
   if(!fp16 && !binary && implementation=="production" && roof_tune<0 && conversion_impl==0 &&
       tile=="64x128x256" && k==4096 && m%64==0 && n%128==0)
     return production::mixed(variant,mode,w,a,warmup,repeats,inner);
+  if(!fp16 && !binary && implementation=="production" && roof_tune<0 && conversion_impl==0 &&
+      tile=="64x128x256" && (k==512 || k==1024) && m%64==0 && n%128==0)
+    return production_sized::mixed(variant,mode,w,a,warmup,repeats,inner);
   TORCH_CHECK(conversion_impl<3 || k/128<=65535,"conversion candidate grid.y exceeds65535");
   if(conversion_impl==5) {
     TORCH_CHECK(reinterpret_cast<uintptr_t>(a.payload.data_ptr<uint8_t>())%16==0 &&

@@ -34,6 +34,7 @@
 #include "roof_o3_conversion_api.h"
 #include "roof_cache_policy_api.h"
 #include "production_api.h"
+#include "production_sized_api.h"
 
 namespace py = pybind11;
 namespace {
@@ -202,6 +203,7 @@ template<class F> std::vector<float> batch(F f,int repeats,int inner,cudaStream_
 #include "roof_candidates.cuh"
 #include "mixed_conversion.cuh"
 #include "production_benchmark.cuh"
+#include "production_sized_benchmark.cuh"
 #include "mixed_bitplane.cuh"
 #include "mixed_benchmark.cuh"
 #include "mixed_conversion_probe.cuh"
@@ -219,6 +221,10 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   if(split && implementation=="production" && roof_tune<0 && conversion_impl==0 &&
       a.dim()==2 && w.dim()==2 && a.size(1)==4096 && a.size(0)%64==0 && w.size(0)%128==0)
     return production::o3(mode,a,as,w,ws,warmup,repeats,inner);
+  if(split && implementation=="production" && roof_tune<0 && conversion_impl==0 &&
+      a.dim()==2 && w.dim()==2 && (a.size(1)==512 || a.size(1)==1024) &&
+      a.size(0)%64==0 && w.size(0)%128==0)
+    return production_sized::o3(mode,a,as,w,ws,warmup,repeats,inner);
   // Explicit legacy keeps the pre-promotion production policy as a regression control.
   if(implementation=="legacy")implementation="production";
   TORCH_CHECK(roof_tune!=61 && roof_tune!=62,"cache candidates61/62 require prepared-core API");

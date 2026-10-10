@@ -69,6 +69,8 @@ def profile_spec(case, warmup, size=None):
         raise ValueError("negative warmup")
     if case == "o3":
         symbol = "adangel_sm80_o3_fullk_grouped" if size == 4096 else "adangel_sm80_o3_swizzled_bound2"
+        if size in (512, 1024):
+            symbol = f"adangel_sm80_o3_fullk_grouped_k{size}"
         initial = 0
     elif case in ("o5", "o6"):
         # The actual cuBLASLt kernel name and HMMA SASS must be saved by NCU.
@@ -80,6 +82,8 @@ def profile_spec(case, warmup, size=None):
         initial = 1
         if variant in ("o7", "o8") and tile == "64x128x256" and size == 4096:
             symbol, initial = "adangel_sm80_o78_fullk_streaming", 0
+        if variant in ("o7", "o8") and tile == "64x128x256" and size in (512, 1024):
+            symbol, initial = f"adangel_sm80_o78_fullk_streaming_k{size}", 0
     return {"kernel_filter": "regex:" + symbol, "launch_skip": warmup + initial,
             "launch_count": 1, "initial_correctness_launches": initial}
 
