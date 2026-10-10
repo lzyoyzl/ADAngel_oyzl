@@ -9,8 +9,8 @@ DIR = ROOT / 'csrc/sm80/production_sized_generated'
 
 def test_group_count_is_the_only_gemm_body_change():
     for name, old_ns, new_ns in (
-        ('o3.cuh', 'o3_grouped_cta', 'o3_sized_grouped_cta'),
-        ('o78.cuh', 'o78_output_streaming', 'o78_sized_output_streaming'),
+        ('o3.cuh', 'o3_grouped_cta_experiment', 'o3_sized_grouped_cta'),
+        ('o78.cuh', 'o78_output_streaming_experiment', 'o78_sized_output_streaming'),
     ):
         original = (ROOT / 'csrc/sm80/production_generated' / name).read_text()
         sized = (DIR / name).read_text()
