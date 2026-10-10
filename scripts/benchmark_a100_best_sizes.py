@@ -223,6 +223,8 @@ def main():
         with (args.output / file).open('a') as f: f.write(json.dumps(obj, allow_nan=False) + '\n')
     save('environment.json', dict(commit=command('git', 'rev-parse', 'HEAD'), extension_sha256=sha256_file(Path(native.__file__)),
         gpu=torch.cuda.get_device_name(), torch=torch.__version__, cuda=torch.version.cuda,
+        sm_count=torch.cuda.get_device_properties(0).multi_processor_count,
+        driver=command('nvidia-smi', '--query-gpu=driver_version', '--format=csv,noheader'),
         settings={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
         no_filtering=True, clock_policy='unlocked', no_4096_padding=True, source_quantization_timed=False))
     if args.validate_only:
