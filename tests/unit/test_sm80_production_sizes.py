@@ -55,3 +55,5 @@ def test_size_dispatch_metadata_and_profile_filters():
     source = (ROOT / 'csrc/sm80/o1_o3.cu').read_text()
     assert source.index('#include "production_sized_api.h"') < source.index('namespace {')
     assert 'return production::o3(' in source and 'return production_sized::o3(' in source
+    assert 'no_empty_stage_events_compute_total_equals_gemm' in source
+    assert 'const bool size_timing=!split' in source and '(k==512 || k==1024)' in source

@@ -618,14 +618,17 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   bool weight=mode=="cold"||mode=="conversion_only";
   bool activation=split&&mode!="compute_only";
   bool compute=mode!="conversion_only";
+  // For the new best-plan size comparison, match mixed/full-K timing: do not
+  // inject events for nonexistent stages. All original K4096 timing is retained.
+  const bool size_timing=!split && requested_implementation=="production" && (k==512 || k==1024);
   cvw(); cva();
   for(int j=0;j<warmup;++j){if(weight) cvw();if(activation)cva();if(compute)gemm();}
   check(cudaStreamSynchronize(stream));
   std::vector<Mark> markers(repeats);
   for(auto& e:markers) {
     check(cudaEventRecord(e.start.e,stream));
-    if(weight)cvw(); check(cudaEventRecord(e.w.e,stream));
-    if(activation)cva(); check(cudaEventRecord(e.a.e,stream));
+    if(weight)cvw(); if(!size_timing)check(cudaEventRecord(e.w.e,stream));
+    if(activation)cva(); if(!size_timing || weight || activation)check(cudaEventRecord(e.a.e,stream));
     if(compute)gemm(); check(cudaEventRecord(e.end.e,stream));
   }
   check(cudaEventSynchronize(markers.back().end.e));
@@ -633,8 +636,8 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   auto at=activation?batch(cva,repeats,inner,stream):std::vector<float>{};
   std::vector<float> gt,total;
   for(int j=0;j<repeats;++j){
-    if(compute)gt.push_back(elapsed(markers[j].a,markers[j].end));
-    total.push_back(compute?elapsed(markers[j].start,markers[j].end):wt[j]+(activation?at[j]:0.0f));
+    if(compute)gt.push_back(elapsed(size_timing && !weight && !activation?markers[j].start:markers[j].a,markers[j].end));
+    total.push_back(compute?(size_timing && mode=="compute_only"?gt.back():elapsed(markers[j].start,markers[j].end)):wt[j]+(activation?at[j]:0.0f));
   }
   if(!compute) {gemm();check(cudaStreamSynchronize(stream));}
   py::dict timings;
@@ -647,6 +650,7 @@ py::dict benchmark(std::string variant,std::string mode,at::Tensor a,at::Tensor 
   meta["cta_tile"]=py::make_tuple(tile_m,tile_n,tile_k);
   meta["implementation"]=implementation;
   meta["requested_implementation"]=requested_implementation;
+  if(size_timing)meta["size_timing_alignment"]="no_empty_stage_events_compute_total_equals_gemm";
   if(split) meta["production_shape_fallback"]=requested_implementation=="production"&&implementation=="baseline";
   if(o3_candidate) meta["spill_policy"]="report_and_validate_correctness_and_performance";
   meta["exponent_scale_fast_path"]=exponent_scale;

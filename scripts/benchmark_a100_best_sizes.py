@@ -36,6 +36,7 @@ def check_path(result, variant, size):
     if variant == 'o1':
         assert meta['implementation'] == 'swizzle_128x64_k128_magic', meta
         assert meta['requested_implementation'] == 'production'
+        assert meta['size_timing_alignment'] == 'no_empty_stage_events_compute_total_equals_gemm'
     elif variant in ('o3', 'o7', 'o8'):
         prefix = 'adangel_sm80_o3_fullk_grouped' if variant == 'o3' else 'adangel_sm80_o78_fullk_streaming'
         assert meta['kernel_symbol'] == f'{prefix}_k{size}', meta
@@ -265,6 +266,7 @@ def main():
                         check_path(result, v, size)
                         assert torch.equal(result['output'].view(torch.int32), expected[v].view(torch.int32))
                         raw, native_total, method = aligned_timings(result, mode)
+                        if mode == 'compute_only': assert raw['gemm'] == raw['total']
                         assert all(len(values) == args.repeats and min(values) > 0 for values in raw.values())
                         row = dict(sample_id=entry['sample_id'], size=size, variant=v, mode=mode, round=ri,
                             execution_order=order, kernel=dict(result['kernel']), mse=errors[v], reference=REFERENCES[v],
