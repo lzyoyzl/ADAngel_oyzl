@@ -14,7 +14,9 @@ O0/O1、O5/O6、O9/O10 的实现不变；量化值、G128 分组及 MSE 参考�
 两路原生 `U4×S4` / `S4×S4` Tensor Core 保留。安全检查不通过的 tile 使用逐 G128 FP32 缩放路径，
 不是溢出后继续计算。无效源编码直接报错。允许合理的 FP32 求和顺序变化，但必须重新核对 MSE。
 
-全 K 快路径支持 K=4096、M 为64的倍数、N为128的倍数；O3 的该路径要求正常 UE8M0 code 1–254。
+全 K 快路径支持 K=512/1024/4096、M 为64的倍数、N为128的倍数；O3 的该路径要求正常 UE8M0 code 1–254。
+K512/K1024 是相同最佳算法的独立实例，G128 组数分别为4/8；不补齐到4096，原 K4096 编译单元保持不变。
+小尺寸实验、正确性与指令证据见 [512³ / 1024³ 当前最佳后端实验](a100_512_1024_best_results.md)。
 其他原有受支持形状仍采用原实现。`implementation="legacy"` 可显式复现切换前的正式调度。
 旧候选的 `roof_tune` 显式选择不变，不会被新默认覆盖。
 
@@ -36,6 +38,8 @@ o7 = native._benchmark_mixed("o7", mode, weight_source, activation_source,
 
 `kernel.production_default=true` 是新默认标识；正式 symbol 为
 `adangel_sm80_o3_fullk_grouped` / `adangel_sm80_o78_fullk_streaming`。
+K512/K1024 对应上述 symbol 的 `_k512` / `_k1024` 后缀，并记录 `physical_k`、`group_count` 和
+`legacy_shape_fallback=false`；不能把旧兼容后端的结果标为当前最佳实现。
 核函数资源、fallback tile 数及转换实现名称随结果保存。
 混合格式接口的旧 `tile="64x128x256"` 默认参数作为兼容选择器保留；当前正式核函数的实际
 CTA 为 `64×128×128`，以返回的 `kernel.cta_tile` 为准。`scale_layout` 不再改变该快路径的物理布局。
